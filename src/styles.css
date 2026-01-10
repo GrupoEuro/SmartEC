@@ -29,9 +29,11 @@
 
 body {
   font-family: 'Inter', sans-serif;
+  background: radial-gradient(circle at top center, #111111 0%, #000000 100%);
   background-color: #000000;
   color: var(--white);
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* Animations */
@@ -202,16 +204,16 @@ body {
   font-weight: 700;
 }
 
-/* Primary Button (Yellow CTA) */
+/* Primary Button (Purple CTA - Updated) */
 .btn-primary {
-  background-color: #ffd700;
-  color: #000;
+  background-color: #8b5cf6;
+  color: #ffffff;
   padding: 0.85rem 1.75rem;
   text-decoration: none;
   border-radius: 8px;
   font-weight: 700;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.25);
   z-index: 1;
   text-transform: uppercase;
   font-size: 0.9rem;
@@ -225,8 +227,8 @@ body {
 
 .btn-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.25);
-  background-color: #ffdb4d;
+  box-shadow: 0 7px 14px rgba(139, 92, 246, 0.35);
+  background-color: #7c3aed;
 }
 
 /* Operations Glassmorphic Buttons */
@@ -245,15 +247,15 @@ body {
 
 .btn-glass-primary {
   @apply px-4 py-2 rounded-lg font-bold uppercase tracking-wide transition-all duration-200 flex items-center justify-center gap-2;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border: 1px solid #60a5fa;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border: 1px solid #a78bfa;
   color: white;
-  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);
 }
 
 .btn-glass-primary:hover {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 12px rgba(139, 92, 246, 0.4);
   transform: translateY(-1px);
 }
 

@@ -5,7 +5,7 @@
             <div class="header-content">
                 <h3>Admin</h3>
                 <button class="toggle-btn" (click)="toggleSidebar()">
-                    {{ isSidebarCollapsed ? '☰' : '←' }}
+                    <app-icon [name]="isSidebarCollapsed ? 'menu' : 'chevron-left'" [size]="20"></app-icon>
                 </button>
             </div>
         </div>

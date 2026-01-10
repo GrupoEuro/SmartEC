@@ -59,21 +59,21 @@
 }
 
 .channel-web {
-    @apply bg-blue-900/20 text-blue-400 border border-blue-800/30;
+    @apply bg-zinc-800 text-blue-400 border border-blue-800/50;
 }
 
 .channel-pos {
-    @apply bg-purple-900/20 text-purple-400 border border-purple-800/30;
+    @apply bg-zinc-800 text-purple-400 border border-purple-800/50;
 }
 
 .channel-on-behalf {
-    @apply bg-amber-900/20 text-amber-400 border border-amber-800/30;
+    @apply bg-zinc-800 text-amber-400 border border-amber-800/50;
 }
 
 .channel-amazon {
-    @apply bg-orange-900/20 text-orange-400 border border-orange-800/30;
+    @apply bg-zinc-800 text-orange-400 border border-orange-800/50;
 }
 
 .channel-meli {
-    @apply bg-yellow-900/20 text-yellow-400 border border-yellow-800/30;
+    @apply bg-zinc-800 text-yellow-400 border border-yellow-800/50;
 }

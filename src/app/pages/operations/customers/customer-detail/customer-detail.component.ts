@@ -87,8 +87,8 @@ export class CustomerDetailComponent implements OnInit {
         });
     }
 
-    setTab(tab: TabType) {
-        this.activeTab.set(tab);
+    setTab(tab: string) {
+        this.activeTab.set(tab as TabType);
     }
 
     goBack() {

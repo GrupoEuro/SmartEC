@@ -19,10 +19,11 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <button (click)="openAdjustment()" class="btn-glass-primary text-sm">
-                    <app-icon name="sliders" [size]="18"></app-icon>
-                    <span>{{ 'OPERATIONS.INVENTORY.KARDEX.ADJUST_BTN' | translate }}</span>
-                </button>
+                <a [routerLink]="['/operations/inventory/kardex', product?.id]"
+                    class="btn-glass-secondary text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors bg-zinc-800/50 border border-zinc-700">
+                    <app-icon name="external-link" [size]="16"></app-icon>
+                    <span>Full Analysis</span>
+                </a>
                 <button (click)="onClose()"
                     class="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all active:scale-95">
                     <app-icon name="x" [size]="24"></app-icon>
@@ -173,6 +174,3 @@
 
 <!-- Modal remains same -->
 <!-- Adjustment Modal -->
-<app-inventory-adjustment-modal *ngIf="showAdjustmentModal()" [product]="product"
-    [currentStock]="currentBalance()?.quantity || product?.stockQuantity || 0" (close)="onAdjustmentClose($event)">
-</app-inventory-adjustment-modal>

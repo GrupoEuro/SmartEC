@@ -5,8 +5,6 @@
 
 .sidebar {
     width: 250px;
-    /* background-color: var(--theme-nav-bg); REMOVED for Tailwind */
-    /* color: white; REMOVED for Tailwind */
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -72,93 +70,22 @@
     width: 100%;
 }
 
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
-    padding: 1rem 0.5rem;
-    overflow-y: auto;
-    overflow-x: hidden;
+/* Premium Active Nav Item */
+.active-nav-item {
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.15) 0%, transparent 100%);
+    color: #60a5fa !important;
+    /* blue-400 */
+    border-left: 3px solid #3b82f6;
+    /* blue-500 */
+    border-radius: 4px 8px 8px 4px !important;
 }
 
-.sidebar-nav a {
-    color: #ccc;
-    text-decoration: none;
-    padding: 0.75rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    white-space: nowrap;
+.active-nav-item .group-hover\:text-blue-400 {
+    color: #60a5fa;
+    /* blue-400 */
 }
 
-.sidebar-nav a:hover,
-.sidebar-nav a.active {
-    background-color: var(--theme-nav-item-active);
-    /* Praxis Yellow / Theme Active */
-    color: var(--theme-nav-item-active-text);
-    font-weight: bold;
-}
-
-.sidebar-nav a .icon {
-    font-size: 1.2rem;
-    width: 24px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.sidebar.collapsed .sidebar-nav a .text {
-    opacity: 0;
-    width: 0;
-    display: none;
-}
-
-.sidebar.collapsed .sidebar-nav a {
-    justify-content: center;
-    padding: 0.75rem;
-    position: relative;
-    /* For tooltip positioning */
-}
-
-/* Tooltip styles for collapsed sidebar */
-.sidebar.collapsed .sidebar-nav a:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #333;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    margin-left: 10px;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-}
-
-/* Tooltip arrow */
-.sidebar.collapsed .sidebar-nav a:hover::before {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: transparent #333 transparent transparent;
-    margin-left: 0px;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-
+/* Sidebar Footer */
 .sidebar-footer {
     padding: 1rem;
     border-top: 1px solid #333;
@@ -180,27 +107,6 @@
     align-items: center;
     gap: 1.5rem;
 }
-
-.lang-btn-header {
-    background: transparent;
-    border: 1px solid #4a4a5e;
-    color: #eaeaea;
-    padding: 6px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 12px;
-    transition: all 0.2s;
-    min-width: 40px;
-}
-
-.lang-btn-header:hover {
-    background: #1a1a2e;
-    color: white;
-}
-
-/* Old lang-switcher styles removed */
-
 
 .user-profile {
     display: flex;
@@ -310,14 +216,15 @@
     font-size: 1.2rem;
 }
 
-/* Tooltip for logout button */
+/* Tooltips */
+.sidebar.collapsed .nav-item:hover::after,
 .sidebar.collapsed .logout-btn:hover::after {
     content: attr(title);
     position: absolute;
     left: 100%;
     top: 50%;
     transform: translateY(-50%);
-    background-color: #ff4444;
+    background-color: #333;
     color: white;
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
@@ -329,6 +236,7 @@
     pointer-events: none;
 }
 
+.sidebar.collapsed .nav-item:hover::before,
 .sidebar.collapsed .logout-btn:hover::before {
     content: '';
     position: absolute;
@@ -337,7 +245,7 @@
     transform: translateY(-50%);
     border-width: 5px;
     border-style: solid;
-    border-color: transparent #ff4444 transparent transparent;
+    border-color: transparent #333 transparent transparent;
     margin-left: 0px;
     z-index: 1000;
     pointer-events: none;
@@ -346,7 +254,6 @@
 .operations-content {
     flex: 1;
     margin-left: 250px;
-    /* background-color: var(--theme-bg-app); REMOVED for Tailwind */
     min-height: 100vh;
     transition: margin-left 0.3s ease;
     display: flex;
@@ -355,8 +262,6 @@
 
 .operations-header {
     height: 64px;
-    /* background: white; REMOVED */
-    /* border-bottom: 1px solid #e0e0e0; REMOVED */
     display: flex;
     align-items: center;
     padding: 0 2rem;
@@ -370,7 +275,6 @@
 .content-wrapper {
     padding: 2rem;
     flex: 1;
-    /* Removed overflow-y: auto to allow sticky positioning to work */
 }
 
 /* Header Avatar */
@@ -418,14 +322,11 @@
     position: absolute;
     top: 50px;
     right: 0;
-    /* background: white; REMOVED */
     min-width: 220px;
     border-radius: 8px;
-    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); REMOVED */
     z-index: 1000;
     padding: 0.5rem 0;
     animation: slideDown 0.2s ease-out;
-    /* border: 1px solid #eee; REMOVED */
 }
 
 @keyframes slideDown {
@@ -521,144 +422,4 @@
     .user-profile {
         justify-content: center;
     }
-}
-
-/* Collapsible Navigation Sections */
-.nav-section {
-    margin-bottom: 0.5rem;
-}
-
-.section-header {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: #888;
-    padding: 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.2s;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.section-header:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-}
-
-.section-icon {
-    font-size: 1.1rem;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.section-title {
-    flex: 1;
-    text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.toggle-icon {
-    font-size: 0.7rem;
-    transition: transform 0.2s;
-    flex-shrink: 0;
-}
-
-.section-header.collapsed .toggle-icon {
-    transform: rotate(-90deg);
-}
-
-.section-items {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-    padding-left: 0.5rem;
-}
-
-.section-items.expanded {
-    max-height: 500px;
-    transition: max-height 0.3s ease-in;
-}
-
-.section-items a {
-    margin: 0.25rem 0;
-}
-
-/* Coming Soon Badge */
-.coming-soon {
-    opacity: 0.6;
-    pointer-events: none;
-    position: relative;
-}
-
-.coming-soon .badge {
-    background: #ff9800;
-    color: white;
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    margin-left: auto;
-}
-
-/* Collapsed Sidebar Adjustments for Sections */
-.sidebar.collapsed .section-title,
-.sidebar.collapsed .toggle-icon {
-    opacity: 0;
-    width: 0;
-    display: none;
-}
-
-.sidebar.collapsed .section-header {
-    justify-content: center;
-    padding: 0.75rem;
-}
-
-.sidebar.collapsed .section-items {
-    padding-left: 0;
-}
-
-/* Tooltip for section headers when collapsed */
-.sidebar.collapsed .section-header:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #333;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    margin-left: 10px;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-}
-
-.sidebar.collapsed .section-header:hover::before {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: transparent #333 transparent transparent;
-    margin-left: 0px;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-/* Hide coming soon badge when collapsed */
-.sidebar.collapsed .coming-soon .badge {
-    display: none;
 }

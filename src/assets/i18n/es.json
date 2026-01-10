@@ -466,7 +466,19 @@
                 "PROCESSING": "Procesando",
                 "SHIPPED": "Enviado",
                 "DELIVERED": "Entregado",
-                "CANCELLED": "Cancelado"
+                "CANCELLED": "Cancelado",
+                "REFUNDED": "Reembolsado",
+                "RETURNED": "Devuelto"
+            },
+            "CHANNEL": "Canal",
+            "CHANNELS": {
+                "WEB": "WEB",
+                "POS": "POS",
+                "PHONE": "TEL",
+                "AMAZON_MFN": "AMZ MFN",
+                "MELI_CLASSIC": "MELI",
+                "AMAZON_FBA": "AMZ FBA",
+                "MELI_FULL": "MELI FULL"
             },
             "NO_HISTORY": "No hay historial disponible",
             "PACKING_SLIP": "Hoja de Empaque",
@@ -527,6 +539,7 @@
                 "ALL_ASSIGNMENTS": "Todas las Asignaciones",
                 "ASSIGNED": "Asignado",
                 "UNASSIGNED": "Sin Asignar",
+                "ALL_CHANNELS": "Todos los Canales",
                 "MY_ORDERS": "Mis Pedidos",
                 "ALL_PRIORITIES": "Todas las Prioridades",
                 "STANDARD": "Estándar",

@@ -6,10 +6,12 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../../core/services/language.service';
 import { HasRoleDirective } from '../../../core/directives/has-role.directive';
 
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslateModule, HasRoleDirective],
+  imports: [CommonModule, RouterModule, TranslateModule, HasRoleDirective, AppIconComponent],
   templateUrl: './admin-layout.component.html',
   styleUrls: ['./admin-layout.component.css', '../admin-tables.css']
 })
@@ -17,9 +19,11 @@ export class AdminLayoutComponent {
   authService = inject(AuthService);
   user$ = this.authService.user$;
   userProfile$ = this.authService.userProfile$;
-  isSidebarCollapsed = false;
   translate = inject(TranslateService);
   languageService = inject(LanguageService);
+
+  // Sidebar state with persistence
+  isSidebarCollapsed = localStorage.getItem('admin-sidebar-collapsed') === 'true';
 
 
   isUserMenuOpen = false;
@@ -50,6 +54,7 @@ export class AdminLayoutComponent {
 
   toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    localStorage.setItem('admin-sidebar-collapsed', this.isSidebarCollapsed.toString());
   }
 
   toggleUserMenu() {

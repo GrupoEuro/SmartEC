@@ -17,30 +17,41 @@ import { DataSeederService } from '../../../core/services/data-seeder.service';
                 <span class="version-badge">{{ getSeederVersion() }}</span>
             </p>
         </div>
-        <div class="controls">
-            <!-- Global Reset -->
+      </div>
+
+      <!-- Actions Toolbar -->
+      <div class="actions-toolbar">
+         
+         <!-- Simulation Group -->
+         <div class="action-group">
+            <span class="group-label">Simulation</span>
+            <button class="btn btn-secondary" (click)="seedPraxisHistory()" [disabled]="isSeeding()">
+                <app-icon name="activity" [size]="18"></app-icon>
+                SoTA Backfill
+            </button>
+            <button class="btn btn-secondary" (click)="seedCoupons()" [disabled]="isSeeding()">
+                <app-icon name="tag" [size]="18"></app-icon>
+                Seed Coupons
+            </button> 
+         </div>
+
+         <!-- Maintenance Group -->
+         <div class="action-group danger-zone">
+            <span class="group-label">Maintenance</span>
             <button class="btn btn-primary" (click)="runScenario('GOLDEN_PATH')" [disabled]="isSeeding()">
                 <app-icon name="refresh-cw" [size]="18"></app-icon>
                 Reset to Default
             </button>
-            
-            <!-- Seed Coupons -->
-            <button class="btn btn-secondary" (click)="seedCoupons()" [disabled]="isSeeding()">
-                <app-icon name="tag" [size]="18"></app-icon>
-                Seed Coupons
-            </button>
-            
-            <!-- Global Clear -->
             <button class="btn btn-ghost" (click)="clearAll()" [disabled]="isSeeding()">
                 <app-icon name="trash-2" [size]="18"></app-icon>
                 Wipe All Data
             </button>
-        </div>
+         </div>
+
       </div>
 
       <!-- Scenarios Grid -->
       <div class="scenarios-grid">
-        <!-- ... existing scenarios ... -->
         
         <!-- Golden Path -->
         <div class="scenario-card golden" (click)="runScenario('GOLDEN_PATH')" [class.disabled]="isSeeding()">
@@ -113,7 +124,7 @@ import { DataSeederService } from '../../../core/services/data-seeder.service';
   `,
     styles: [`
     .seeder-container { padding: 2rem; max-width: 1200px; margin: 0 auto; color: #fff; }
-    .seeder-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; }
+    .seeder-header { margin-bottom: 2rem; }
     .page-title { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin: 0; background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .page-subtitle { color: #64748b; font-size: 1.1rem; margin-top: 0.5rem; }
     .version-badge { 
@@ -129,8 +140,53 @@ import { DataSeederService } from '../../../core/services/data-seeder.service';
         font-family: 'Courier New', monospace;
     }
 
-    .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; transition: all 0.2s; }
-    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2); }
+    .actions-toolbar {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 3rem;
+        background: #0f172a;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        border: 1px solid #1e293b;
+        flex-wrap: wrap;
+    }
+
+    .action-group {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+    }
+
+    .action-group:not(:last-child)::after {
+        content: '';
+        width: 1px;
+        height: 60%;
+        background: #334155;
+        margin-left: 1rem;
+        display: block;
+    }
+
+    .group-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+        font-weight: 700;
+        margin-right: 0.5rem;
+    }
+
+    .btn-primary { background: #3b82f6; color: white; border: none; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; transition: all 0.2s; font-weight: 600; }
+    .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    
+    .btn-secondary { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; transition: all 0.2s; }
+    .btn-secondary:hover { background: #334155; color: #ffffff; border-color: #475569; }
+
+    .btn-warning { background: #ca8a04; color: #fff; border: none; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; transition: all 0.2s; font-weight: 600; }
+    .btn-warning:hover { background: #a16207; }
+
+    .btn-ghost { background: transparent; border: 1px solid transparent; color: #ef4444; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: flex; gap: 0.5rem; align-items: center; cursor: pointer; transition: all 0.2s; }
+    .btn-ghost:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
     .btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Scenarios Grid */
@@ -202,6 +258,21 @@ export class DataSeederComponent {
         }
     }
 
+    async seedPraxisHistory() {
+        if (this.isSeeding()) return;
+        this.isSeeding.set(true);
+        this.addLog('Backfilling history for existing products...');
+        try {
+            await this.seeder.seedPraxisHistory((msg) => this.addLog(msg));
+            this.addLog('Success!', 'success');
+        } catch (e: any) {
+            console.error(e);
+            this.addLog('Error: ' + e.message, 'error');
+        } finally {
+            this.isSeeding.set(false);
+        }
+    }
+
     async seedCoupons() {
         if (this.isSeeding()) return;
         this.isSeeding.set(true);
@@ -266,10 +337,9 @@ export class DataSeederComponent {
     private addLog(message: string, type: 'info' | 'success' | 'error' = 'info') {
         const time = new Date().toLocaleTimeString('en-US', { hour12: false });
         this.logs.update(prev => [...prev, { time, message, type }]);
-        // Auto scroll would go here (need ViewChild)
     }
 
     getSeederVersion(): string {
-        return 'v2.5.0-kardex-schema-fix';
+        return 'v3.0.0-praxis-live-history';
     }
 }

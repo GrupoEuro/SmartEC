@@ -34,10 +34,10 @@
                     <!-- Date -->
                     <td class="p-4">
                         <div class="font-medium text-zinc-300">
-                            {{ entry.date.toDate() | date:'mediumDate' }}
+                            {{ getDate(entry.date) | date:'mediumDate' }}
                         </div>
                         <div class="text-xs text-zinc-500 font-mono">
-                            {{ entry.date.toDate() | date:'shortTime' }}
+                            {{ getDate(entry.date) | date:'shortTime' }}
                         </div>
                     </td>
 

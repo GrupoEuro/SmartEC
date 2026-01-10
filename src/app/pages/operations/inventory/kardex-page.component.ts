@@ -1,6 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CommonModule as AppCommonModule } from '../../../shared/modules/common.module';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { InventoryLedgerService } from '../../../core/services/inventory-ledger.service';
 import { ProductService } from '../../../core/services/product.service';
@@ -40,7 +39,7 @@ export class KardexPageComponent {
   async loadProduct(id: string) {
     this.isLoading.set(true);
     try {
-      const product = await firstValueFrom(this.productService.getProduct(id));
+      const product = await firstValueFrom(this.productService.getProductById(id));
       if (product) {
         this.product.set(product);
         this.currentStock.set(product.stockQuantity || 0); // Initial fast load

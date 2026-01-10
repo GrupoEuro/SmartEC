@@ -417,10 +417,11 @@
                 "OVERDUE": "Overdue",
                 "RUSH": "Rush",
                 "STANDARD": "Standard",
-                "ALL_ASSIGNMENTS": "[EN] Todas las Asignaciones",
-                "ASSIGNED": "[EN] Asignado",
-                "MY_ORDERS": "[EN] Mis Pedidos",
-                "UNASSIGNED": "[EN] Sin Asignar"
+                "ALL_ASSIGNMENTS": "All Assignments",
+                "ASSIGNED": "Assigned",
+                "MY_ORDERS": "My Orders",
+                "UNASSIGNED": "Unassigned",
+                "ALL_CHANNELS": "All Channels"
             },
             "DATE_RANGE": "Date Range",
             "TODAY": "Today",
@@ -466,7 +467,18 @@
                 "PROCESSING": "Processing",
                 "SHIPPED": "Shipped",
                 "DELIVERED": "Delivered",
-                "CANCELLED": "Cancelled"
+                "CANCELLED": "Cancelled",
+                "REFUNDED": "Refunded",
+                "RETURNED": "Returned"
+            },
+            "CHANNELS": {
+                "WEB": "WEB",
+                "POS": "POS",
+                "PHONE": "Phone",
+                "AMAZON_MFN": "AMZ MFN",
+                "MELI_CLASSIC": "MELI",
+                "AMAZON_FBA": "AMZ FBA",
+                "MELI_FULL": "MELI FULL"
             },
             "PAYMENT": "Payment",
             "PAYMENT_METHOD": "Payment Method",

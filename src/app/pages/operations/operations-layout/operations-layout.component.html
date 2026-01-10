@@ -5,145 +5,168 @@
             <div class="header-content">
                 <h3>{{ 'OPERATIONS.TITLE' | translate }}</h3>
                 <button class="toggle-btn" (click)="toggleSidebar()">
-                    <app-icon [name]="isSidebarCollapsed() ? 'menu' : 'chevron-left'" [size]="20"></app-icon>
+                    <app-icon [name]="isSidebarCollapsed() ? 'menu' : 'arrow-left'" [size]="20"></app-icon>
                 </button>
             </div>
         </div>
 
         <!-- Navigation Menu -->
-        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-8 custom-scrollbar">
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6 custom-scrollbar">
 
-            <!-- DASHBOARD -->
-            <div class="nav-group">
-                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
-                    [class.hidden]="isSidebarCollapsed()">DASHBOARD</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a routerLink="/operations/dashboard" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Overview' : ''">
-                            <app-icon name="layout-dashboard" [size]="20"
-                                class="group-hover:text-blue-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Overview</span>
-                        </a>
-                    </li>
-                </ul>
+            <!-- DASHBOARD (Always Visible) -->
+            <div class="nav-group mb-2">
+                <a routerLink="/operations/dashboard" routerLinkActive="active-nav-item"
+                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden"
+                    [title]="isSidebarCollapsed() ? 'Overview' : ''">
+                    <app-icon name="layout-dashboard" [size]="20"
+                        class="group-hover:text-blue-400 transition-colors relative z-10"></app-icon>
+                    <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                        [class.hidden]="isSidebarCollapsed()">{{ 'OPERATIONS.DASHBOARD.TITLE' | translate }}</span>
+                </a>
             </div>
 
             <!-- ORDER FULFILLMENT -->
-            <div class="nav-group">
-                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
-                    [class.hidden]="isSidebarCollapsed()">ORDER FULFILLMENT</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a routerLink="/operations/orders" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Order Queue' : ''">
-                            <app-icon name="shopping-cart" [size]="20"
-                                class="group-hover:text-blue-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Order Queue</span>
-                            <span
-                                class="ml-auto bg-blue-600/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full"
-                                *ngIf="!isSidebarCollapsed()">12</span>
-                        </a>
-                    </li>
-                </ul>
+            <div class="nav-section">
+                <button
+                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                    (click)="toggleSection('fulfillment')" [class.collapsed]="!sections.fulfillment"
+                    [title]="isSidebarCollapsed() ? 'Order Fulfillment' : ''">
+                    <span [class.hidden]="isSidebarCollapsed()">ORDER FULFILLMENT</span>
+                    <app-icon [name]="sections.fulfillment ? 'chevron-down' : 'chevron-right'" [size]="14"
+                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
+                    <app-icon name="shopping-bag" [size]="20" class="section-icon"
+                        *ngIf="isSidebarCollapsed()"></app-icon>
+                </button>
+
+                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
+                    [class.expanded]="sections.fulfillment" [style.height]="sections.fulfillment ? 'auto' : '0'"
+                    [class.opacity-0]="!sections.fulfillment" [class.opacity-100]="sections.fulfillment"
+                    [class.hidden]="isSidebarCollapsed() && !sections.fulfillment">
+                    <a routerLink="/operations/orders" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Order Queue' : ''">
+                        <app-icon name="shopping-bag" [size]="18"
+                            class="group-hover:text-blue-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Order Queue</span>
+                        <span
+                            class="ml-auto bg-blue-600/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full relative z-10"
+                            *ngIf="!isSidebarCollapsed()">12</span>
+                    </a>
+                </div>
             </div>
 
-            <!-- INVENTORY CONTROL -->
-            <div class="nav-group">
-                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
-                    [class.hidden]="isSidebarCollapsed()">INVENTORY CONTROL</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a routerLink="/operations/inventory" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Inventory Lookup' : ''">
-                            <app-icon name="search" [size]="20"
-                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Inventory Lookup</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a routerLink="/operations/cycle-counting" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Cycle Counting' : ''">
-                            <app-icon name="clipboard" [size]="20"
-                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Cycle Counting</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a routerLink="/operations/abc-analysis" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'ABC Analysis' : ''">
-                            <app-icon name="bar-chart-2" [size]="20"
-                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">ABC Analysis</span>
-                        </a>
-                    </li>
-                </ul>
+            <!-- INVENTORY & LOGISTICS -->
+            <div class="nav-section">
+                <button
+                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                    (click)="toggleSection('inventory')" [class.collapsed]="!sections.inventory"
+                    [title]="isSidebarCollapsed() ? 'Inventory & Logistics' : ''">
+                    <span [class.hidden]="isSidebarCollapsed()">INVENTORY & LOGISTICS</span>
+                    <app-icon [name]="sections.inventory ? 'chevron-down' : 'chevron-right'" [size]="14"
+                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
+                    <app-icon name="box" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
+                </button>
+
+                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
+                    [class.expanded]="sections.inventory" [style.height]="sections.inventory ? 'auto' : '0'"
+                    [class.opacity-0]="!sections.inventory" [class.opacity-100]="sections.inventory"
+                    [class.hidden]="isSidebarCollapsed() && !sections.inventory">
+                    <a routerLink="/operations/inventory" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Inventory Lookup' : ''">
+                        <app-icon name="search" [size]="18"
+                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Inventory Lookup</span>
+                    </a>
+                    <a routerLink="/operations/cycle-counting" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Cycle Counting' : ''">
+                        <app-icon name="refresh-cw" [size]="18"
+                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Cycle Counting</span>
+                    </a>
+                    <a routerLink="/operations/abc-analysis" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'ABC Analysis' : ''">
+                        <app-icon name="bar-chart-2" [size]="18"
+                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">ABC Analysis</span>
+                    </a>
+                    <a routerLink="/operations/warehouses" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Warehouses' : ''">
+                        <app-icon name="layers" [size]="18"
+                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Warehouses</span>
+                    </a>
+                </div>
             </div>
 
-            <!-- OPERATIONS -->
-            <div class="nav-group">
-                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
-                    [class.hidden]="isSidebarCollapsed()">OPERATIONS</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a routerLink="/operations/warehouses" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Warehouses' : ''">
-                            <app-icon name="box" [size]="20"
-                                class="group-hover:text-purple-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Warehouses</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a routerLink="/operations/customers" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Customers' : ''">
-                            <app-icon name="users" [size]="20"
-                                class="group-hover:text-purple-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Customers</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a routerLink="/operations/promotions" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Promotions' : ''">
-                            <app-icon name="tag" [size]="20"
-                                class="group-hover:text-purple-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Promotions</span>
-                        </a>
-                    </li>
-                </ul>
+            <!-- COMMERCIAL -->
+            <div class="nav-section">
+                <button
+                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                    (click)="toggleSection('customers')" [class.collapsed]="!sections.customers"
+                    [title]="isSidebarCollapsed() ? 'Commercial' : ''">
+                    <span [class.hidden]="isSidebarCollapsed()">COMMERCIAL</span>
+                    <app-icon [name]="sections.customers ? 'chevron-down' : 'chevron-right'" [size]="14"
+                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
+                    <app-icon name="users" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
+                </button>
+
+                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
+                    [class.expanded]="sections.customers" [style.height]="sections.customers ? 'auto' : '0'"
+                    [class.opacity-0]="!sections.customers" [class.opacity-100]="sections.customers"
+                    [class.hidden]="isSidebarCollapsed() && !sections.customers">
+                    <a routerLink="/operations/customers" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Customers' : ''">
+                        <app-icon name="users" [size]="18"
+                            class="group-hover:text-purple-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Customers</span>
+                    </a>
+                    <a routerLink="/operations/promotions" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Promotions' : ''">
+                        <app-icon name="tag" [size]="18"
+                            class="group-hover:text-purple-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Promotions</span>
+                    </a>
+                </div>
             </div>
 
             <!-- PROCUREMENT -->
-            <div class="nav-group">
-                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
-                    [class.hidden]="isSidebarCollapsed()">PROCUREMENT</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a routerLink="/operations/procurement" routerLinkActive="active"
-                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
-                            [title]="isSidebarCollapsed() ? 'Purchase Orders' : ''">
-                            <app-icon name="file-text" [size]="20"
-                                class="group-hover:text-amber-400 transition-colors"></app-icon>
-                            <span class="font-medium text-sm whitespace-nowrap"
-                                [class.hidden]="isSidebarCollapsed()">Purchase Orders</span>
-                        </a>
-                    </li>
-                </ul>
+            <div class="nav-section">
+                <button
+                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                    (click)="toggleSection('procurement')" [class.collapsed]="!sections.procurement"
+                    [title]="isSidebarCollapsed() ? 'Procurement' : ''">
+                    <span [class.hidden]="isSidebarCollapsed()">PROCUREMENT</span>
+                    <app-icon [name]="sections.procurement ? 'chevron-down' : 'chevron-right'" [size]="14"
+                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
+                    <app-icon name="truck" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
+                </button>
+
+                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
+                    [class.expanded]="sections.procurement" [style.height]="sections.procurement ? 'auto' : '0'"
+                    [class.opacity-0]="!sections.procurement" [class.opacity-100]="sections.procurement"
+                    [class.hidden]="isSidebarCollapsed() && !sections.procurement">
+                    <a routerLink="/operations/procurement" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                        [title]="isSidebarCollapsed() ? 'Purchase Orders' : ''">
+                        <app-icon name="truck" [size]="18"
+                            class="group-hover:text-amber-400 transition-colors relative z-10"></app-icon>
+                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                            [class.hidden]="isSidebarCollapsed()">Purchase Orders</span>
+                    </a>
+                </div>
             </div>
 
         </nav>

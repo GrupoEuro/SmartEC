@@ -570,13 +570,13 @@ export class OrderQueueComponent implements OnInit {
 
     getChannelBadgeConfig(channel: string): { label: string, icon: string, class: string } {
         const configs: Record<string, { label: string, icon: string, class: string }> = {
-            'WEB': { label: 'WEB', icon: 'globe', class: 'channel-web' },
-            'POS': { label: 'POS', icon: 'credit-card', class: 'channel-pos' },
-            'ON_BEHALF': { label: 'PHONE', icon: 'phone', class: 'channel-on-behalf' },
-            'AMAZON_MFN': { label: 'AMZ', icon: 'package', class: 'channel-amazon' },
-            'MELI_CLASSIC': { label: 'ML', icon: 'shopping-bag', class: 'channel-meli' },
-            'AMAZON_FBA': { label: 'FBA', icon: 'box', class: 'channel-amazon' },
-            'MELI_FULL': { label: 'FULL', icon: 'box', class: 'channel-meli' }
+            'WEB': { label: 'OPERATIONS.ORDERS.CHANNELS.WEB', icon: 'globe', class: 'channel-web' },
+            'POS': { label: 'OPERATIONS.ORDERS.CHANNELS.POS', icon: 'credit-card', class: 'channel-pos' },
+            'ON_BEHALF': { label: 'OPERATIONS.ORDERS.CHANNELS.PHONE', icon: 'phone', class: 'channel-on-behalf' },
+            'AMAZON_MFN': { label: 'OPERATIONS.ORDERS.CHANNELS.AMAZON_MFN', icon: 'package', class: 'channel-amazon' },
+            'MELI_CLASSIC': { label: 'OPERATIONS.ORDERS.CHANNELS.MELI_CLASSIC', icon: 'shopping-bag', class: 'channel-meli' },
+            'AMAZON_FBA': { label: 'OPERATIONS.ORDERS.CHANNELS.AMAZON_FBA', icon: 'box', class: 'channel-amazon' },
+            'MELI_FULL': { label: 'OPERATIONS.ORDERS.CHANNELS.MELI_FULL', icon: 'box', class: 'channel-meli' }
         };
         return configs[channel] || { label: channel, icon: 'help-circle', class: 'channel-web' };
     }

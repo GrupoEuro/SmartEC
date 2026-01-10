@@ -1,5 +1,6 @@
 import { Component, EventEmitter, inject, Input, OnChanges, Output, signal, SimpleChanges, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { InventoryLedgerService } from '../../../../core/services/inventory-ledger.service';
 import { KardexEntry, InventoryBalance } from '../../../../core/models/inventory-ledger.model';
 import { Product } from '../../../../core/models/product.model';
@@ -16,13 +17,12 @@ interface KardexRow extends KardexEntry {
     formattedDate: Date;
 }
 
-import { InventoryAdjustmentModalComponent } from '../adjustment/inventory-adjustment-modal.component';
 import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
     selector: 'app-inventory-kardex',
     standalone: true,
-    imports: [CommonModule, AppIconComponent, TranslateModule, InventoryAdjustmentModalComponent],
+    imports: [CommonModule, AppIconComponent, TranslateModule, RouterModule],
     templateUrl: './inventory-kardex.component.html',
     styleUrls: ['./inventory-kardex.component.css'],
     encapsulation: ViewEncapsulation.None
@@ -105,17 +105,7 @@ export class InventoryKardexComponent implements OnChanges {
         }
     }
 
-    openAdjustment() {
-        this.showAdjustmentModal.set(true);
-    }
 
-    async onAdjustmentClose(success: boolean) {
-        this.showAdjustmentModal.set(false);
-        if (success) {
-            // Reload history to show the new adjustment
-            await this.loadData();
-        }
-    }
 
 
     private calculateRunningBalances(entries: KardexEntry[], currentBal: InventoryBalance | null | undefined): KardexRow[] {

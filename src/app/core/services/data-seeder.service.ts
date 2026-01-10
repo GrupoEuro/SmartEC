@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, writeBatch, doc, Timestamp, getDocs, limit, query } from '@angular/fire/firestore';
+import { Coupon } from '../models/coupon.model';
 
 export interface SeederConfig {
     orderCount: number;
@@ -26,7 +27,7 @@ export class DataSeederService {
     private firestore = inject(Firestore);
 
     // Version identifier for tracking seed data schema
-    private readonly SEED_VERSION = 'v2.5.0-kardex-schema-fix';
+    private readonly SEED_VERSION = 'v3.0.0-praxis-live-history';
 
     constructor() { }
 
@@ -36,6 +37,99 @@ export class DataSeederService {
         if (onLog) {
             onLog(message);
         }
+    }
+
+    // --- NEW: SEED HISTORY FOR EXISTING PRODUCTS ---
+    /**
+     * Generates "Sell Down" history for existing products.
+     * Strategy:
+     * 1. Read Current Stock (Target).
+     * 2. Determine random Sales Volume (e.g., 20-50 units).
+     * 3. Set Initial Stock = Current + Sales Volume.
+     * 4. Generate Initial Load Entry (90 days ago).
+     * 5. Generate Sales Orders/Entries distributed over 90 days.
+     * Result: Charts light up, ABC gets revenue data, but Current Stock remains correct.
+     */
+    async seedPraxisHistory(onLog?: (message: string) => void): Promise<void> {
+        this.log('========================================', onLog);
+        this.log(`[Seeder] Backfilling History (v3.0.0)`, onLog);
+        this.log('Strat: Sell Down (Preserve Current Stock)', onLog);
+        this.log('========================================', onLog);
+
+        const productsSnap = await getDocs(collection(this.firestore, 'products'));
+        const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        this.log(`Found ${products.length} products.`, onLog);
+
+        const batchLimit = 400; // Operations per batch
+        let batch = writeBatch(this.firestore);
+        let opsCount = 0;
+
+        for (const p of products) {
+            const currentStock = p.stockQuantity || 0;
+            // Generate random sales volume (10% to 50% of Stock, or flat 10-50 if low stock)
+            const salesVol = Math.floor(Math.random() * 30) + 5;
+            const initialStock = currentStock + salesVol;
+
+            // 1. Initial Load (90 days ago)
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 90);
+
+            // Ledger Entry: Initial
+            const initialRef = doc(collection(this.firestore, 'inventory_ledger'));
+            batch.set(initialRef, {
+                productId: p.id,
+                date: Timestamp.fromDate(startDate),
+                type: 'INITIAL_LOAD',
+                quantityChange: initialStock,
+                balanceAfter: initialStock,
+                referenceId: 'INIT-BACKFILL',
+                referenceType: 'ADJUSTMENT',
+                unitCost: p.costPrice || 0,
+                notes: 'System Backfill Initialization',
+                warehouseId: 'MAIN',
+                userId: 'SYSTEM'
+            });
+            opsCount++;
+
+            // 2. Generate Sales
+            let runningBalance = initialStock;
+
+            for (let i = 0; i < salesVol; i++) {
+                // Random date between start and now
+                const saleDate = new Date(startDate.getTime() + Math.random() * (Date.now() - startDate.getTime()));
+
+                runningBalance--; // Sell 1
+
+                // Ledger Entry: Sale
+                const ledgerRef = doc(collection(this.firestore, 'inventory_ledger'));
+                batch.set(ledgerRef, {
+                    productId: p.id,
+                    date: Timestamp.fromDate(saleDate),
+                    type: 'SALE',
+                    quantityChange: -1,
+                    balanceAfter: runningBalance,
+                    referenceId: `ORD-${Date.now()}-${i}`,
+                    referenceType: 'ORDER',
+                    unitCost: p.price || 0, // Using Price for 'Value' context
+                    notes: 'Simulated Praxis Sale',
+                    warehouseId: 'MAIN',
+                    userId: 'SYSTEM'
+                });
+                opsCount++;
+
+                if (opsCount >= batchLimit) {
+                    await batch.commit();
+                    batch = writeBatch(this.firestore);
+                    opsCount = 0;
+                }
+            }
+        }
+
+        if (opsCount > 0) {
+            await batch.commit();
+        }
+
+        this.log('[Seeder] History Backfill Complete.', onLog);
     }
 
     // --- SCENARIO ORCHESTRATOR ---

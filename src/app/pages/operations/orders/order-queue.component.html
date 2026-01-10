@@ -3,8 +3,8 @@
     <div class="flex gap-2">
         <app-help-context-button topicId="fulfillment-process"
             tooltip="View Fulfillment Guide"></app-help-context-button>
-        <button class="btn-glass-primary text-sm" (click)="createOrder()">
-            <app-icon name="plus" [size]="16" class="mr-2"></app-icon>
+        <button class="btn-glass-primary" (click)="createOrder()">
+            <app-icon name="plus" [size]="16"></app-icon>
             {{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}
         </button>
     </div>
@@ -66,14 +66,14 @@
             <!-- Channel Filter -->
             <select [(ngModel)]="channelFilter" (ngModelChange)="onFilterChange()"
                 class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
-                <option value="all">All Channels</option>
-                <option value="WEB">WEB</option>
-                <option value="POS">POS</option>
-                <option value="ON_BEHALF">Phone/Email</option>
-                <option value="AMAZON_MFN">Amazon MFN</option>
-                <option value="MELI_CLASSIC">MercadoLibre Classic</option>
-                <option value="AMAZON_FBA">Amazon FBA</option>
-                <option value="MELI_FULL">MercadoLibre Full</option>
+                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_CHANNELS' | translate }}</option>
+                <option value="WEB">{{ 'OPERATIONS.ORDERS.CHANNELS.WEB' | translate }}</option>
+                <option value="POS">{{ 'OPERATIONS.ORDERS.CHANNELS.POS' | translate }}</option>
+                <option value="ON_BEHALF">{{ 'OPERATIONS.ORDERS.CHANNELS.PHONE' | translate }}</option>
+                <option value="AMAZON_MFN">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_MFN' | translate }}</option>
+                <option value="MELI_CLASSIC">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_CLASSIC' | translate }}</option>
+                <option value="AMAZON_FBA">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_FBA' | translate }}</option>
+                <option value="MELI_FULL">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_FULL' | translate }}</option>
             </select>
 
             <!-- Clear All Filters Button -->
@@ -180,7 +180,7 @@
                     </th>
                     <th class="p-4 border-b border-zinc-700 text-center">
                         <div class="flex items-center justify-center gap-1">
-                            Channel
+                            {{ 'OPERATIONS.ORDERS.CHANNEL' | translate }}
                         </div>
                     </th>
                     <th class="col-customer sortable" (click)="onSortChange('customer')">
@@ -227,7 +227,7 @@
                         @if (order.channel) {
                         <span class="channel-badge" [ngClass]="getChannelBadgeConfig(order.channel).class">
                             <app-icon [name]="getChannelBadgeConfig(order.channel).icon" [size]="12"></app-icon>
-                            {{ getChannelBadgeConfig(order.channel).label }}
+                            {{ getChannelBadgeConfig(order.channel).label | translate }}
                         </span>
                         } @else {
                         <span class="channel-badge channel-web">
@@ -264,7 +264,7 @@
                                 'bg-pink-900/30 text-pink-400': order.priorityLevel === 'express',
                                 'bg-red-900/30 text-red-400': order.priorityLevel === 'rush'
                             }">
-                            {{ order.priorityLevel | titlecase }}
+                            {{ 'OPERATIONS.ORDERS.FILTERS.' + (order.priorityLevel | uppercase) | translate }}
                         </span>
                         } @else {
                         <span

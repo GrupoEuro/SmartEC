@@ -1,217 +1,265 @@
-<div class="customer-detail-page">
-    <!-- Admin Page Header -->
-    <app-admin-page-header iconName="user"
-        [title]="customer()?.displayName || customer()?.email || ('OPERATIONS.CUSTOMERS.LOADING' | translate)"
-        [subtitle]="customer()?.email || ''" variant="operations">
-        <button class="btn-glass mr-2" (click)="goBack()">
-            <app-icon name="arrow-left" [size]="16" class="mr-1"></app-icon>
-            {{ 'OPERATIONS.CUSTOMERS.BACK' | translate }}
-        </button>
-        <button class="btn-glass-primary" (click)="createOnBehalfOrder()">
-            <app-icon name="shopping-cart" [size]="16" class="mr-1"></app-icon>
-            {{ 'OPERATIONS.CUSTOMERS.CREATE_ORDER' | translate }}
-        </button>
-    </app-admin-page-header>
+<div
+    class="h-full min-h-screen flex flex-col bg-zinc-950 text-white bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.15),rgba(255,255,255,0))]">
 
-    <!-- Loading State -->
-    <div class="loading-container" *ngIf="isLoading()">
-        <div class="spinner-large"></div>
-        <p>{{ 'OPERATIONS.CUSTOMERS.LOADING' | translate }}</p>
-    </div>
-
-    <!-- Error State -->
-    <div class="error-container" *ngIf="error() && !isLoading()">
-        <span class="error-icon"><app-icon name="alert-triangle" [size]="48" class="text-red-500"></app-icon></span>
-        <h3>{{ error() }}</h3>
-        <button class="btn-glass" (click)="loadCustomerData()">
-            {{ 'OPERATIONS.CUSTOMERS.RETRY' | translate }}
-        </button>
-    </div>
-
-    <!-- Content -->
-    <div class="content" *ngIf="!isLoading() && !error() && customer()">
-        <!-- Header -->
-        <app-admin-page-header iconName="user" [title]="customer()!.displayName || customer()!.email"
-            [subtitle]="customer()!.email">
-            <button class="btn-glass-primary text-sm" (click)="createOnBehalfOrder()">
-                <app-icon name="plus" [size]="16" class="mr-2"></app-icon>
-                {{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}
+    <!-- Admin Header (Customized) -->
+    <header
+        class="px-6 py-4 border-b border-zinc-800/50 flex items-center justify-between bg-zinc-900/40 backdrop-blur-md sticky top-0 z-20">
+        <div class="flex items-center gap-4">
+            <button (click)="goBack()"
+                class="p-2 -ml-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-full transition-all">
+                <app-icon name="arrow-left" [size]="20"></app-icon>
             </button>
-        </app-admin-page-header>
-
-        <!-- Tabs -->
-        <div class="tabs-container">
-            <div class="tabs">
-                <button class="tab" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">
-                    <app-icon name="bar-chart-2" [size]="16" class="mr-2"></app-icon> {{
-                    'OPERATIONS.CUSTOMERS.TABS.OVERVIEW' | translate }}
-                </button>
-                <button class="tab" [class.active]="activeTab() === 'orders'" (click)="setTab('orders')">
-                    <app-icon name="package" [size]="16" class="mr-2"></app-icon> {{ 'OPERATIONS.CUSTOMERS.TABS.ORDERS'
-                    | translate }}
-                    <span class="tab-badge">{{ customer()?.stats?.totalOrders || 0 }}</span>
-                </button>
-                <button class="tab" [class.active]="activeTab() === 'activity'" (click)="setTab('activity')">
-                    <app-icon name="activity" [size]="16" class="mr-2"></app-icon> {{
-                    'OPERATIONS.CUSTOMERS.TABS.ACTIVITY' | translate }}
-                </button>
-                <button class="tab" [class.active]="activeTab() === 'insights'" (click)="setTab('insights')">
-                    <app-icon name="trending-up" [size]="16" class="mr-2"></app-icon> {{
-                    'OPERATIONS.CUSTOMERS.TABS.INSIGHTS' | translate }}
-                </button>
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-600/30 text-blue-400">
+                    <app-icon name="user" [size]="20"></app-icon>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        {{ customer()?.displayName || customer()?.email || 'Loading...' }}
+                    </h1>
+                    <p class="text-xs text-zinc-400 font-medium font-mono">{{ customer()?.email }}</p>
+                </div>
             </div>
         </div>
 
-        <!-- Tab Content -->
-        <div class="tab-content">
-            <!-- Overview Tab -->
-            <div class="tab-pane" *ngIf="activeTab() === 'overview'">
-                <div class="overview-grid">
-                    <!-- Customer Info Card -->
-                    <div class="card">
-                        <h3 class="card-title">{{ 'OPERATIONS.CUSTOMERS.CUSTOMER_INFO' | translate }}</h3>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.NAME' | translate }}</span>
-                                <span class="info-value">{{ customer()!.displayName || 'N/A' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.EMAIL' | translate }}</span>
-                                <span class="info-value">{{ customer()!.email }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.PHONE' | translate }}</span>
-                                <span class="info-value">{{ customer()!.phone || 'N/A' }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.ACCOUNT_CREATED' | translate }}</span>
-                                <span class="info-value">{{ formatDate(customer()!.createdAt) }}</span>
+        <div class="flex items-center gap-3">
+            <button (click)="createOnBehalfOrder()"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2 group border border-blue-500/50">
+                <app-icon name="shopping-bag" [size]="18" class="group-hover:scale-110 transition-transform"></app-icon>
+                <span>{{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto custom-scrollbar">
+
+        <!-- Loading -->
+        <div *ngIf="isLoading()" class="flex flex-col items-center justify-center h-full gap-4 text-zinc-500">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <p class="text-sm tracking-wider uppercase font-medium">Loading Profile...</p>
+        </div>
+
+        <!-- Error -->
+        <div *ngIf="error() && !isLoading()" class="flex flex-col items-center justify-center h-full gap-4 p-8">
+            <div class="w-16 h-16 rounded-full bg-red-900/20 flex items-center justify-center text-red-500 mb-2">
+                <app-icon name="alert-triangle" [size]="32"></app-icon>
+            </div>
+            <h3 class="text-lg font-bold text-white">{{ error() }}</h3>
+            <button (click)="loadCustomerData()" class="btn-glass text-sm">
+                {{ 'OPERATIONS.CUSTOMERS.RETRY' | translate }}
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6 max-w-7xl mx-auto space-y-6" *ngIf="!isLoading() && !error() && customer()">
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Orders -->
+                <div
+                    class="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/60 backdrop-blur-sm relative overflow-hidden group hover:border-zinc-700 transition-colors">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="flex justify-between items-start mb-2 relative z-10">
+                        <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{
+                            'OPERATIONS.CUSTOMERS.TOTAL_ORDERS' | translate }}</span>
+                        <app-icon name="package" [size]="16" class="text-blue-500"></app-icon>
+                    </div>
+                    <div class="text-2xl font-bold text-white relative z-10">{{ customer()?.stats?.totalOrders || 0 }}
+                    </div>
+                </div>
+
+                <!-- Spend -->
+                <div
+                    class="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/60 backdrop-blur-sm relative overflow-hidden group hover:border-zinc-700 transition-colors">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-emerald-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="flex justify-between items-start mb-2 relative z-10">
+                        <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{
+                            'OPERATIONS.CUSTOMERS.TOTAL_SPEND' | translate }}</span>
+                        <app-icon name="dollar-sign" [size]="16" class="text-emerald-500"></app-icon>
+                    </div>
+                    <div class="text-2xl font-bold text-emerald-400 font-mono relative z-10">{{
+                        formatCurrency(customer()?.stats?.totalSpend || 0) }}</div>
+                </div>
+
+                <!-- AOV -->
+                <div
+                    class="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/60 backdrop-blur-sm relative overflow-hidden group hover:border-zinc-700 transition-colors">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="flex justify-between items-start mb-2 relative z-10">
+                        <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{
+                            'OPERATIONS.CUSTOMERS.AVG_ORDER_VALUE' | translate }}</span>
+                        <app-icon name="bar-chart-2" [size]="16" class="text-indigo-500"></app-icon>
+                    </div>
+                    <div class="text-2xl font-bold text-indigo-400 font-mono relative z-10">{{
+                        formatCurrency(getAverageOrderValue()) }}</div>
+                </div>
+
+                <!-- Last Order -->
+                <div
+                    class="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/60 backdrop-blur-sm relative overflow-hidden group hover:border-zinc-700 transition-colors">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-br from-amber-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="flex justify-between items-start mb-2 relative z-10">
+                        <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{
+                            'OPERATIONS.CUSTOMERS.LAST_ORDER' | translate }}</span>
+                        <app-icon name="clock" [size]="16" class="text-amber-500"></app-icon>
+                    </div>
+                    <div class="text-base font-bold text-white relative z-10 mt-1">{{ customer()?.stats?.lastOrderDate ?
+                        formatDate(customer()?.stats?.lastOrderDate) : 'Never' }}</div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="border-b border-zinc-800 flex gap-6 px-2 overflow-x-auto">
+                <button *ngFor="let tab of ['overview', 'orders', 'activity', 'insights']" (click)="setTab(tab)"
+                    class="pb-3 text-sm font-medium transition-all border-b-2 capitalize flex items-center gap-2"
+                    [ngClass]="activeTab() === tab ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'">
+
+                    <app-icon *ngIf="tab === 'overview'" name="grid" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'orders'" name="shopping-bag" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'activity'" name="activity" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'insights'" name="zap" [size]="16"></app-icon>
+
+                    {{ tab }}
+                    <span *ngIf="tab === 'orders'"
+                        class="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded-full text-zinc-400 ml-1 font-mono">{{
+                        customer()?.stats?.totalOrders || 0 }}</span>
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+
+            <!-- OVERVIEW -->
+            <div *ngIf="activeTab() === 'overview'" class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+
+                <!-- Contact Info -->
+                <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6">
+                    <h3 class="font-bold text-white mb-4 flex items-center gap-2">
+                        <app-icon name="user" [size]="18" class="text-zinc-400"></app-icon>
+                        Contact Information
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between py-2 border-b border-zinc-800/50">
+                            <span class="text-sm text-zinc-500">Full Name</span>
+                            <span class="text-sm text-white font-medium">{{ customer()?.displayName || 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-zinc-800/50">
+                            <span class="text-sm text-zinc-500">Email</span>
+                            <span class="text-sm text-white font-medium">{{ customer()?.email }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-zinc-800/50">
+                            <span class="text-sm text-zinc-500">Phone</span>
+                            <span class="text-sm text-white font-medium">{{ customer()?.phone || 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-zinc-800/50">
+                            <span class="text-sm text-zinc-500">Joined</span>
+                            <span class="text-sm text-white font-medium">{{ formatDate(customer()!.createdAt) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping Address -->
+                <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6">
+                    <h3 class="font-bold text-white mb-4 flex items-center gap-2">
+                        <app-icon name="map-pin" [size]="18" class="text-zinc-400"></app-icon>
+                        Shipping Defaults
+                    </h3>
+                    <div *ngIf="customer()?.shippingAddress; else noAddress"
+                        class="p-4 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
+                        <div class="flex flex-col gap-1 text-sm text-zinc-300">
+                            <span class="font-bold text-white">{{ customer()?.displayName }}</span>
+                            <span>{{ customer()!.shippingAddress!.street }} {{ customer()!.shippingAddress!.interior ?
+                                'Int ' + customer()!.shippingAddress!.interior : '' }}</span>
+                            <span>{{ customer()!.shippingAddress!.city }}, {{ customer()!.shippingAddress!.state
+                                }}</span>
+                            <span class="font-mono text-zinc-500">CP {{ customer()!.shippingAddress!.zipCode }}</span>
+
+                            <div *ngIf="customer()!.shippingAddress!.references"
+                                class="mt-3 text-xs text-zinc-500 italic border-t border-zinc-800 pt-2">
+                                " {{ customer()!.shippingAddress!.references }} "
                             </div>
                         </div>
                     </div>
+                    <ng-template #noAddress>
+                        <div class="flex flex-col items-center justify-center py-8 text-zinc-600">
+                            <app-icon name="map" [size]="32" class="mb-2 opacity-50"></app-icon>
+                            <span class="text-sm">No shipping address on file</span>
+                        </div>
+                    </ng-template>
+                </div>
+            </div>
 
-                    <!-- Statistics Cards -->
-                    <div class="stats-row">
-                        <div class="stat-card primary">
-                            <div class="stat-icon"><app-icon name="package" [size]="24"
-                                    class="text-blue-500"></app-icon></div>
-                            <div class="stat-content">
-                                <div class="stat-value">{{ customer()?.stats?.totalOrders || 0 }}</div>
-                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_ORDERS' | translate }}</div>
-                            </div>
-                        </div>
-                        <div class="stat-card success">
-                            <div class="stat-icon"><app-icon name="dollar-sign" [size]="24"
-                                    class="text-green-500"></app-icon></div>
-                            <div class="stat-content">
-                                <div class="stat-value">{{ formatCurrency(customer()?.stats?.totalSpend || 0) }}</div>
-                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_SPEND' | translate }}</div>
-                            </div>
-                        </div>
-                        <div class="stat-card info">
-                            <div class="stat-icon"><app-icon name="bar-chart-2" [size]="24"
-                                    class="text-indigo-500"></app-icon></div>
-                            <div class="stat-content">
-                                <div class="stat-value">{{ formatCurrency(getAverageOrderValue()) }}</div>
-                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.AVG_ORDER_VALUE' | translate }}</div>
-                            </div>
-                        </div>
-                        <div class="stat-card warning">
-                            <div class="stat-icon"><app-icon name="calendar" [size]="24"
-                                    class="text-orange-500"></app-icon></div>
-                            <div class="stat-content">
-                                <div class="stat-value">{{ formatDate(customer()?.stats?.lastOrderDate) }}</div>
-                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.LAST_ORDER' | translate }}</div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- ORDERS -->
+            <div *ngIf="activeTab() === 'orders'" class="animate-fadeIn">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead
+                            class="bg-zinc-900/80 text-xs uppercase text-zinc-500 font-semibold border-b border-zinc-800">
+                            <tr>
+                                <th class="p-4">{{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</th>
+                                <th class="p-4">{{ 'OPERATIONS.ORDERS.DATE' | translate }}</th>
+                                <th class="p-4 text-right">{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</th>
+                                <th class="p-4 text-center">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
+                                <th class="p-4 text-right">{{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-800/50 text-sm">
+                            <tr *ngFor="let order of ordersDataSource.displayedData"
+                                class="hover:bg-zinc-800/30 transition-colors group">
+                                <td class="p-4 text-white font-mono font-medium">#{{ order.orderNumber }}</td>
+                                <td class="p-4 text-zinc-400">{{ formatDate(order.createdAt) }}</td>
+                                <td class="p-4 text-right font-mono text-emerald-400 font-medium">{{
+                                    formatCurrency(order.total) }}</td>
+                                <td class="p-4 text-center">
+                                    <span
+                                        class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                                        [ngClass]="getStatusBadgeClass(order.status)">
+                                        {{ order.status }}
+                                    </span>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button (click)="viewOrder(order.id!)"
+                                        class="text-zinc-500 hover:text-blue-400 p-1 rounded-md hover:bg-blue-900/20 transition-all">
+                                        <app-icon name="eye" [size]="18"></app-icon>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr *ngIf="ordersDataSource.displayedData.length === 0">
+                                <td colspan="5" class="py-12 text-center text-zinc-500">
+                                    No orders found for this customer.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    <!-- Shipping Address -->
-                    <div class="card" *ngIf="customer()!.shippingAddress">
-                        <h3 class="card-title">{{ 'OPERATIONS.CUSTOMERS.SHIPPING_ADDRESS' | translate }}</h3>
-                        <div class="address-content">
-                            <p>{{ customer()!.shippingAddress.street }}</p>
-                            <p *ngIf="customer()!.shippingAddress.interior">
-                                Int. {{ customer()!.shippingAddress.interior }}
-                            </p>
-                            <p>{{ customer()!.shippingAddress.city }}, {{ customer()!.shippingAddress.state }}</p>
-                            <p>CP {{ customer()!.shippingAddress.zipCode }}</p>
-                            <p *ngIf="customer()!.shippingAddress.references" class="text-muted">
-                                {{ customer()!.shippingAddress.references }}
-                            </p>
-                        </div>
+                    <!-- Pagination (Wrapper) -->
+                    <div class="p-4 border-t border-zinc-800 bg-zinc-900/50"
+                        *ngIf="ordersDataSource.displayedData.length > 0">
+                        <app-pagination [config]="ordersDataSource.pagination"
+                            (pageChange)="ordersDataSource.setPage($event)"
+                            (itemsPerPageChange)="ordersDataSource.setItemsPerPage($event)">
+                        </app-pagination>
                     </div>
                 </div>
             </div>
 
-            <!-- Orders Tab -->
-            <div class="tab-pane" *ngIf="activeTab() === 'orders'">
-                <div class="orders-section">
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>{{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</th>
-                                    <th>{{ 'OPERATIONS.ORDERS.DATE' | translate }}</th>
-                                    <th>{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</th>
-                                    <th>{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
-                                    <th>{{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr *ngFor="let order of ordersDataSource.displayedData">
-                                    <td class="font-mono">#{{ order.orderNumber }}</td>
-                                    <td>{{ formatDate(order.createdAt) }}</td>
-                                    <td class="font-mono">{{ formatCurrency(order.total) }}</td>
-                                    <td>
-                                        <span class="status-badge" [ngClass]="getStatusBadgeClass(order.status)">
-                                            {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="text-gray-400 hover:text-blue-600 transition-colors p-1"
-                                            (click)="viewOrder(order.id!)" title="View Order">
-                                            <app-icon name="eye" [size]="18"></app-icon>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr *ngIf="ordersDataSource.displayedData.length === 0">
-                                    <td colspan="5" class="empty-state">
-                                        <span class="empty-icon"><app-icon name="package" [size]="48"
-                                                class="text-gray-300"></app-icon></span>
-                                        <p>{{ 'OPERATIONS.CUSTOMERS.NO_ORDERS' | translate }}</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <app-pagination *ngIf="ordersDataSource.displayedData.length > 0"
-                        [config]="ordersDataSource.pagination" (pageChange)="ordersDataSource.setPage($event)"
-                        (itemsPerPageChange)="ordersDataSource.setItemsPerPage($event)">
-                    </app-pagination>
-                </div>
+            <!-- PLACEHOLDERS -->
+            <div *ngIf="activeTab() === 'activity' || activeTab() === 'insights'"
+                class="flex flex-col items-center justify-center py-20 bg-zinc-900/30 rounded-xl border border-zinc-800 border-dashed animate-fadeIn text-zinc-500">
+                <app-icon name="construction" [size]="48" class="mb-4 opacity-50"></app-icon>
+                <h3 class="text-lg font-bold text-zinc-300">Under Construction</h3>
+                <p class="text-sm">Advanced customer analytics coming soon.</p>
             </div>
 
-            <!-- Activity Tab (Placeholder) -->
-            <div class="tab-pane" *ngIf="activeTab() === 'activity'">
-                <div class="placeholder-content">
-                    <span class="placeholder-icon"><app-icon name="activity" [size]="64"
-                            class="text-gray-300"></app-icon></span>
-                    <h3>{{ 'OPERATIONS.CUSTOMERS.ACTIVITY_COMING_SOON' | translate }}</h3>
-                    <p>{{ 'OPERATIONS.CUSTOMERS.ACTIVITY_DESC' | translate }}</p>
-                </div>
-            </div>
-
-            <!-- Insights Tab (Placeholder) -->
-            <div class="tab-pane" *ngIf="activeTab() === 'insights'">
-                <div class="placeholder-content">
-                    <span class="placeholder-icon"><app-icon name="trending-up" [size]="64"
-                            class="text-gray-300"></app-icon></span>
-                    <h3>{{ 'OPERATIONS.CUSTOMERS.INSIGHTS_COMING_SOON' | translate }}</h3>
-                    <p>{{ 'OPERATIONS.CUSTOMERS.INSIGHTS_DESC' | translate }}</p>
-                </div>
-            </div>
         </div>
     </div>
 </div>

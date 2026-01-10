@@ -1,14 +1,17 @@
 .order-notes-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: #27272a;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    border: 1px solid #3f3f46;
 }
 
 .card-header {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, rgba(240, 147, 251, 0.8) 0%, rgba(245, 87, 108, 0.8) 100%);
+    backdrop-filter: blur(10px);
     color: white;
     padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header-content {
@@ -24,21 +27,23 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .notes-count {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.2);
     padding: 0.125rem 0.5rem;
     border-radius: 12px;
     font-size: 0.75rem;
 }
 
 .issues-badge {
-    background: #dc3545;
-    padding: 0.125rem 0.5rem;
+    background: rgba(239, 68, 68, 0.9);
+    padding: 0.125rem 0.6rem;
     border-radius: 12px;
     font-size: 0.75rem;
     animation: pulse 2s infinite;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
 @keyframes pulse {
@@ -59,11 +64,11 @@
 
 /* Add Note Form */
 .add-note-form {
-    background: #f8f9fa;
-    border-radius: 6px;
+    background: #18181b;
+    border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1.5rem;
-    border: 2px dashed #dee2e6;
+    border: 2px dashed #3f3f46;
 }
 
 .form-group {
@@ -78,23 +83,25 @@
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
-    color: #495057;
+    color: #d4d4d8;
     font-size: 0.875rem;
 }
 
 .form-control {
     width: 100%;
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.75rem;
     font-size: 0.875rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    color: #e4e4e7;
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
 .form-control:focus {
     border-color: #f5576c;
     outline: 0;
-    box-shadow: 0 0 0 0.2rem rgba(245, 87, 108, 0.25);
+    box-shadow: 0 0 0 2px rgba(245, 87, 108, 0.25);
 }
 
 textarea.form-control {
@@ -106,20 +113,21 @@ textarea.form-control {
 .loading-state {
     text-align: center;
     padding: 2rem;
-    color: #6c757d;
+    color: #a1a1aa;
 }
 
 .loading-state i {
     font-size: 2rem;
     margin-bottom: 0.5rem;
     display: block;
+    color: #52525b;
 }
 
 /* Empty State */
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: #6c757d;
+    color: #71717a;
 }
 
 .empty-state i {
@@ -127,16 +135,18 @@ textarea.form-control {
     margin-bottom: 1rem;
     display: block;
     opacity: 0.5;
+    color: #52525b;
 }
 
 .empty-state p {
     margin: 0 0 0.5rem 0;
     font-weight: 600;
+    color: #a1a1aa;
 }
 
 .empty-state small {
     font-size: 0.875rem;
-    opacity: 0.8;
+    color: #52525b;
 }
 
 /* Notes List */
@@ -148,29 +158,33 @@ textarea.form-control {
 
 /* Note Item */
 .note-item {
-    border-left: 4px solid #dee2e6;
-    background: #f8f9fa;
-    border-radius: 6px;
+    border-left: 4px solid #3f3f46;
+    background: #18181b;
+    border-radius: 8px;
     padding: 1rem;
     transition: all 0.2s ease;
+    border: 1px solid #3f3f46;
+    border-left-width: 4px;
 }
 
 .note-item:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateX(2px);
 }
 
 .note-item.note-info {
-    border-left-color: #17a2b8;
+    border-left-color: #06b6d4;
+    background: linear-gradient(to right, rgba(6, 182, 212, 0.05), transparent);
 }
 
 .note-item.note-warning {
-    border-left-color: #ffc107;
-    background: #fff9e6;
+    border-left-color: #f59e0b;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.05), transparent);
 }
 
 .note-item.note-issue {
-    border-left-color: #dc3545;
-    background: #ffe6e6;
+    border-left-color: #ef4444;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent);
 }
 
 .note-header {
@@ -186,6 +200,7 @@ textarea.form-control {
     gap: 0.5rem;
     flex-wrap: wrap;
     font-size: 0.8125rem;
+    color: #a1a1aa;
 }
 
 .note-meta i {
@@ -196,15 +211,16 @@ textarea.form-control {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: #e4e4e7;
 }
 
 .note-author {
-    color: #495057;
+    color: #d4d4d8;
     font-weight: 600;
 }
 
 .note-date {
-    color: #6c757d;
+    color: #71717a;
 }
 
 .note-actions {
@@ -220,27 +236,29 @@ textarea.form-control {
     border-radius: 4px;
     transition: all 0.2s ease;
     font-size: 0.875rem;
+    color: #a1a1aa;
 }
 
 .btn-icon:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 .btn-icon.btn-success {
-    color: #28a745;
+    color: #34d399;
 }
 
 .btn-icon.btn-edit {
-    color: #007bff;
+    color: #60a5fa;
 }
 
 .btn-icon.btn-delete {
-    color: #dc3545;
+    color: #f87171;
 }
 
 .note-content p {
     margin: 0;
-    color: #212529;
+    color: #e4e4e7;
     line-height: 1.6;
     white-space: pre-wrap;
 }
@@ -249,13 +267,14 @@ textarea.form-control {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    background: #28a745;
-    color: white;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 600;
     margin-top: 0.5rem;
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 /* Note Edit */
@@ -272,20 +291,20 @@ textarea.form-control {
 .note-footer {
     margin-top: 0.5rem;
     padding-top: 0.5rem;
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid #27272a;
 }
 
 .text-muted {
-    color: #6c757d;
+    color: #71717a;
 }
 
 /* Buttons */
 .btn {
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
     font-size: 0.875rem;
     font-weight: 600;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
@@ -295,37 +314,38 @@ textarea.form-control {
 }
 
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
+    box-shadow: 0 4px 6px rgba(245, 87, 108, 0.25);
 }
 
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(245, 87, 108, 0.3);
+    box-shadow: 0 6px 12px rgba(245, 87, 108, 0.35);
 }
 
 .btn-secondary {
-    background: #6c757d;
+    background: #52525b;
     color: white;
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #5a6268;
+    background: #3f3f46;
 }
 
 .btn-light {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-light:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .btn-sm {

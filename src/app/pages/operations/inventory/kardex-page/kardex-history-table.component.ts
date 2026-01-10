@@ -73,9 +73,15 @@ export class KardexHistoryTableComponent implements OnChanges {
     if (this.dateRange === '90d') cutoff.setDate(now.getDate() - 90);
 
     return entries.filter(e => {
-      const date = (e.date as Timestamp).toDate();
+      const date = this.getDate(e.date);
       return date >= cutoff;
     });
+  }
+
+  getDate(date: Timestamp | Date): Date {
+    // Handle Firestore Timestamp or native Date
+    if (!date) return new Date();
+    return (date as any).toDate ? (date as any).toDate() : (date as Date);
   }
 
   getTypeColor(type: string): string {

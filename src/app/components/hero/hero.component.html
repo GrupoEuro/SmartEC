@@ -1,0 +1,86 @@
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <div class="hero-badge">
+                🏍️ {{ 'HERO.BADGE' | translate }}
+            </div>
+            <h1 class="hero-title">
+                {{ 'HERO.TITLE_1' | translate }}<br>
+                {{ 'HERO.TITLE_2' | translate }}<br>
+                {{ 'HERO.TITLE_3' | translate }}
+            </h1>
+            <p class="hero-subtitle">
+                {{ 'HERO.SUBTITLE' | translate }}
+            </p>
+            <div class="hero-actions">
+                <button class="btn-large btn-primary">{{ 'HERO.BTN_CATALOG' | translate }}</button>
+                <button class="btn-large btn-outline" (click)="scrollToContact()">{{ 'HERO.BTN_CONTACT' | translate
+                    }}</button>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="online-store-cta">
+                <div class="store-card">
+                    <div class="store-icon">
+                        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" width="64" height="64">
+                            <defs>
+                                <linearGradient id="storeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#00ACD8;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#93D500;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <path
+                                d="M20 52c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zm24 0c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4zM8 8v4h4l7.2 15.2-2.7 4.9c-.3.6-.5 1.2-.5 2 0 2.2 1.8 4 4 4h28v-4H21.4c-.3 0-.5-.2-.5-.5v-.2l1.8-3.3h17.4c1.5 0 2.8-.8 3.5-2.1l7.1-12.9c.1-.3.2-.6.2-1 0-1.1-.9-2-2-2H16.2l-1.9-4H8z"
+                                fill="url(#storeGrad)" />
+                        </svg>
+                    </div>
+                    <div class="store-content">
+                        <div class="store-badge">{{ 'HERO.STORE_BADGE' | translate }}</div>
+                        <h3>{{ 'HERO.STORE_TITLE' | translate }}</h3>
+                        <p>{{ 'HERO.STORE_DESC' | translate }}</p>
+                        <div class="store-platforms">
+                            <a href="https://www.mercadolibre.com.mx/tienda/praxis" target="_blank"
+                                class="platform-btn">
+                                <span>Mercado Libre</span>
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </a>
+                            <a href="https://www.amazon.com.mx/s?me=AYIVREVB9HQHB" target="_blank" class="platform-btn">
+                                <span>Amazon</span>
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="store-glow"></div>
+                </div>
+
+                <div class="floating-product badge-top-left">
+                    <div class="product-mini">
+                        <div class="product-icon">🏍️</div>
+                        <span>Michelin</span>
+                    </div>
+                </div>
+                <div class="floating-product badge-top-right">
+                    <div class="product-mini">
+                        <div class="product-icon">⚡</div>
+                        <span>Praxis</span>
+                    </div>
+                </div>
+                <div class="floating-product badge-bottom">
+                    <div class="product-mini">
+                        <div class="product-icon">🚚</div>
+                        <span>{{ 'HERO.FLOATING_SHIPPING' | translate }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

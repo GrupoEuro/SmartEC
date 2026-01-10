@@ -1,0 +1,79 @@
+<div class="p-8 max-w-[1600px] mx-auto min-h-screen">
+
+    <!-- Header with 3D Float Animation -->
+    <div class="header mb-12 relative z-10">
+        <div class="absolute -left-10 -top-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-[80px] animate-pulse"></div>
+        <h1
+            class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-indigo-400 mb-4 tracking-tighter drop-shadow-lg">
+            {{ 'DEV_TOOLS.LIBRARIES.TITLE' | translate }} 📦
+        </h1>
+        <p class="text-slate-400 text-xl font-light max-w-2xl leading-relaxed">
+            {{ 'DEV_TOOLS.LIBRARIES.SUBTITLE' | translate }}
+        </p>
+    </div>
+
+    <!-- Grid Layout -->
+    <div class="space-y-16">
+        <div *ngFor="let cat of categories" class="category-section">
+
+            <!-- Category Title -->
+            <div class="flex items-center gap-4 mb-8">
+                <div class="h-px flex-1 bg-gradient-to-r from-indigo-500/50 to-transparent"></div>
+                <h2 class="text-2xl font-bold text-white uppercase tracking-widest pl-4 border-l-4 border-indigo-500">
+                    {{ 'DEV_TOOLS.LIBRARIES.CAT.' + cat | translate }}
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 perspective-1000">
+
+                <!-- Library Card (Loop) -->
+                <div *ngFor="let lib of getLibrariesByCategory(cat)"
+                    class="lib-card group relative h-[240px] rounded-3xl p-[1px] bg-gradient-to-br from-white/10 to-transparent transition-all duration-500 hover:scale-[1.02] hover:-translate-y-2">
+
+                    <!-- Inner Content (Glass) -->
+                    <div
+                        class="relative h-full w-full bg-slate-900/80 backdrop-blur-xl rounded-[23px] overflow-hidden p-6 flex flex-col justify-between border border-white/5 shadow-xl group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all">
+
+                        <!-- Ambience Glow -->
+                        <div class="absolute -right-10 -top-10 w-32 h-32 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity duration-700"
+                            [style.background-color]="lib.color"></div>
+
+                        <!-- Top: Icon & Version -->
+                        <div class="flex justify-between items-start z-10">
+                            <div
+                                class="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                                <app-icon [name]="lib.icon" [style.color]="lib.color" [size]="28"></app-icon>
+                            </div>
+                            <span
+                                class="px-3 py-1 rounded-full text-xs font-mono bg-white/5 text-slate-400 border border-white/5 group-hover:bg-white/10 group-hover:text-white transition-colors">
+                                v{{ lib.version }}
+                            </span>
+                        </div>
+
+                        <!-- Middle: Info -->
+                        <div class="z-10 mt-4">
+                            <h3
+                                class="text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
+                                {{ lib.name }}
+                            </h3>
+                            <p class="text-sm text-slate-400 leading-relaxed line-clamp-2 group-hover:text-slate-300">
+                                {{ lib.description }}
+                            </p>
+                        </div>
+
+                        <!-- Bottom: Footer -->
+                        <div class="pt-4 border-t border-white/5 flex justify-between items-center z-10">
+                            <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                                {{ lib.category }}
+                            </span>
+                            <div class="w-2 h-2 rounded-full shadow-[0_0_10px_currentColor]" [style.color]="lib.color"
+                                [style.background-color]="lib.color"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

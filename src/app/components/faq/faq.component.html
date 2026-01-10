@@ -1,0 +1,39 @@
+<section class="faq-section">
+    <div class="faq-container">
+        <div class="header-content">
+            <div class="section-overline">{{ 'FAQ.OVERLINE' | translate }}</div>
+            <h2 class="section-title">{{ 'FAQ.TITLE' | translate }}</h2>
+            <p class="section-description">
+                {{ 'FAQ.DESCRIPTION' | translate }}
+            </p>
+        </div>
+
+        <div class="faq-grid">
+            <div class="faq-item" *ngFor="let faq of displayedFaqs; let i = index" [class.active]="activeIndex === i">
+                <div class="faq-question" (click)="toggle(i)">
+                    <div class="faq-question-content">
+                        <span class="faq-icon display-icon">{{ faq.icon }}</span>
+                        <h3>{{ faq.questionKey | translate }}</h3>
+                    </div>
+                    <div class="faq-toggle">+</div>
+                </div>
+                <div class="faq-answer-wrapper">
+                    <p class="faq-answer">
+                        {{ faq.answerKey | translate }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-more">
+            <button class="btn-faq-more" (click)="toggleMore()">
+                <span>{{ (showAll ? 'FAQ.BTN_LESS' : 'FAQ.BTN_MORE') | translate }}</span>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    [style.transform]="showAll ? 'rotate(180deg)' : 'rotate(0)'" style="transition: transform 0.3s">
+                    <path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</section>

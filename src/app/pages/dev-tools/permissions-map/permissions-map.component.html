@@ -1,0 +1,191 @@
+<div class="p-6 max-h-full overflow-y-auto">
+    <div
+        class="mb-8 p-6 rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden group">
+        <div
+            class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px] group-hover:bg-indigo-500/30 transition-all duration-700">
+        </div>
+        <div
+            class="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/20 rounded-full blur-[100px] group-hover:bg-purple-500/30 transition-all duration-700">
+        </div>
+
+        <div class="relative z-10">
+            <h1
+                class="text-3xl font-black bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent mb-2 tracking-tight">
+                Permissions Map
+            </h1>
+            <p class="text-slate-400 text-lg font-light max-w-2xl">
+                Visual matrix of application routes vs. user roles. Identify security gaps at a glance.
+            </p>
+
+            <div class="mt-4 flex items-center gap-4 text-sm">
+                <div class="flex items-center gap-2">
+                    <app-icon name="check-circle" class="text-emerald-500" [size]="16"></app-icon>
+                    <span class="text-slate-300">Allowed</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <app-icon name="x-circle" class="text-gray-500" [size]="16"></app-icon>
+                    <span class="text-slate-300">Denied</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <app-icon name="alert-triangle" class="text-amber-500" [size]="16"></app-icon>
+                    <span class="text-slate-300">Warning (Open Access)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Architecture Diagram -->
+    <div class="mb-8 p-6 rounded-2xl bg-slate-900/50 border border-slate-700/50 shadow-xl overflow-x-auto text-center">
+        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2 justify-center">
+            <app-icon name="share-2" [size]="20"></app-icon>
+            Security Architecture
+        </h3>
+
+        <div class="tree">
+            <ul>
+                <li>
+                    <div class="tree-node root group">
+                        <div class="flex items-center gap-2 font-bold mb-1">
+                            <app-icon name="key" [size]="16"></app-icon> Authentication
+                        </div>
+                        <span class="text-[10px] opacity-70">Firebase Auth</span>
+                    </div>
+
+                    <ul>
+                        <li>
+                            <div class="tree-node guard group">
+                                <span class="font-bold flex items-center gap-2">
+                                    <app-icon name="shield" [size]="14"></app-icon> adminGuard
+                                </span>
+                                <span class="text-[10px] text-slate-400 mt-1">Checks: Is Logged In?</span>
+                                <div class="absolute -right-1 -top-1 w-3 h-3 rounded-full bg-red-500 animate-pulse"
+                                    title="Risk: No Role Check"></div>
+                            </div>
+
+                            <ul>
+                                <li>
+                                    <div class="tree-node page group">
+                                        <div class="font-bold mb-1 flex items-center gap-2 text-emerald-400">
+                                            <app-icon name="activity" [size]="16"></app-icon> Command Center
+                                        </div>
+                                        <div
+                                            class="text-[10px] text-slate-400 border-t border-slate-700 pt-1 mt-1 w-full text-center">
+                                            guard: commandCenterGuard<br>
+                                            <span class="text-emerald-500/80">SUPER_ADMIN | MANAGER</span>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="tree-node page-ops group">
+                                        <div class="font-bold mb-1 flex items-center gap-2 text-blue-400">
+                                            <app-icon name="truck" [size]="16"></app-icon> Operations
+                                        </div>
+                                        <div
+                                            class="text-[10px] text-slate-400 border-t border-slate-700 pt-1 mt-1 w-full text-center">
+                                            guard: operationsGuard<br>
+                                            <span class="text-blue-500/80">ADMIN | OPS</span>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="tree-node page-admin group">
+                                        <div class="font-bold mb-1 flex items-center gap-2 text-purple-400">
+                                            <app-icon name="settings" [size]="16"></app-icon> Admin Pages
+                                        </div>
+                                        <div
+                                            class="text-[10px] text-slate-400 border-t border-slate-700 pt-1 mt-1 w-full text-center">
+                                            guard: roleGuard<br>
+                                            <span class="text-purple-500/80">Matches route.data.roles</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-700/50 overflow-hidden bg-slate-900/50 shadow-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-800/90 border-b border-slate-700 backdrop-blur">
+                        <th
+                            class="p-4 font-bold text-slate-300 whitespace-nowrap sticky left-0 bg-slate-900 min-w-[200px] z-10 border-r border-slate-700/50 shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
+                            Route / Guard
+                        </th>
+                        <th *ngFor="let role of roles"
+                            class="p-4 font-mono text-xs font-bold text-slate-400 text-center uppercase tracking-wider min-w-[100px]">
+                            {{ role.replace('_', ' ') }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700/50">
+                    <!-- Zebra Striping via odd:bg-slate-800/30 -->
+                    <tr *ngFor="let row of matrix; let i = index" class="group transition-colors hover:bg-white/5"
+                        [class.bg-slate-800-20]="i % 2 === 0" [class.bg-transparent]="i % 2 !== 0">
+
+                        <!-- Route Info -->
+                        <td
+                            class="p-4 sticky left-0 bg-slate-900 group-hover:bg-slate-800 transition-colors border-r border-slate-700/50 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-white font-mono text-sm flex items-center gap-2">
+                                    {{ row.route }}
+                                    <app-icon *ngIf="row.risk === 'HIGH'" name="shield-alert"
+                                        class="text-red-500 animate-pulse" [size]="14"></app-icon>
+                                </span>
+                                <span class="text-xs text-slate-500 mb-1">{{ row.description }}</span>
+                                <span
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 w-fit">
+                                    {{ row.guard }}
+                                </span>
+                            </div>
+                        </td>
+
+                        <!-- Role Cells -->
+                        <td *ngFor="let role of roles" class="p-4 text-center relative">
+                            <!-- Cell Background Hover Effect -->
+                            <div
+                                class="absolute inset-x-1 inset-y-1 rounded transition-colors group-hover:bg-white/5 pointer-events-none">
+                            </div>
+
+                            <div class="relative z-10 flex items-center justify-center">
+                                <app-icon [name]="getIcon(row.roles[role])" [class]="getColor(row.roles[role])"
+                                    [size]="24" class="transition-transform group-hover:scale-110 duration-200">
+                                </app-icon>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Security Insights Footer -->
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-xl backdrop-blur-sm">
+            <h3 class="font-bold text-red-400 flex items-center gap-2 mb-2">
+                <app-icon name="shield-alert" [size]="18"></app-icon> Critical: /admin Guard
+            </h3>
+            <p class="text-sm text-red-200/70">
+                The current <code>adminGuard</code> only checks if a user is authenticated. It does NOT enforce role
+                checks.
+                Any logged-in user (including CUSTOMERS) can hypothetically access the root <code>/admin</code> layout,
+                though they might be blocked from inner pages or API calls.
+            </p>
+        </div>
+
+        <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl backdrop-blur-sm">
+            <h3 class="font-bold text-blue-400 flex items-center gap-2 mb-2">
+                <app-icon name="info" [size]="18"></app-icon> Role Heirarchy
+            </h3>
+            <p class="text-sm text-blue-200/70">
+                <code>SUPER_ADMIN</code> has universal access.
+                <code>MANAGER</code> is optimized for Command Center.
+                <code>OPERATIONS</code> is strictly limited to the Operations Portal.
+            </p>
+        </div>
+    </div>
+</div>

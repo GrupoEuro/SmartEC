@@ -1,0 +1,83 @@
+<div class="order-assignment-card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-user-check"></i>
+            Order Assignment
+        </h3>
+    </div>
+
+    <div class="card-body">
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading assignment...
+        </div>
+
+        <!-- Current Assignment -->
+        <div *ngIf="!isLoading() && currentAssignment()" class="current-assignment">
+            <div class="assignment-info">
+                <div class="info-row">
+                    <span class="label">Assigned To:</span>
+                    <span class="value">{{ currentAssignment()?.assignedToName }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Assigned By:</span>
+                    <span class="value">{{ currentAssignment()?.assignedByName }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Assigned At:</span>
+                    <span class="value">{{ formatDate(currentAssignment()?.assignedAt) }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Status:</span>
+                    <span class="badge" [ngClass]="getStatusBadgeClass(currentAssignment()!.status)">
+                        {{ currentAssignment()?.status | titlecase }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Status Update Buttons -->
+            <div class="status-actions" *ngIf="currentAssignment()?.status !== 'completed'">
+                <button *ngIf="currentAssignment()?.status === 'assigned'" class="btn btn-sm btn-primary"
+                    (click)="updateStatus('in-progress')">
+                    <i class="fas fa-play"></i>
+                    Start Processing
+                </button>
+                <button *ngIf="currentAssignment()?.status === 'in-progress'" class="btn btn-sm btn-success"
+                    (click)="updateStatus('completed')">
+                    <i class="fas fa-check"></i>
+                    Mark Complete
+                </button>
+            </div>
+        </div>
+
+        <!-- No Assignment -->
+        <div *ngIf="!isLoading() && !currentAssignment()" class="no-assignment">
+            <i class="fas fa-user-slash"></i>
+            <p>This order has not been assigned yet</p>
+        </div>
+
+        <!-- Assignment Form -->
+        <div class="assignment-form">
+            <div class="form-group">
+                <label for="staffSelect">
+                    {{ currentAssignment() ? 'Reassign to:' : 'Assign to:' }}
+                </label>
+                <select id="staffSelect" class="form-control" [(ngModel)]="selectedStaffId"
+                    [disabled]="isAssigning() || availableStaff().length === 0">
+                    <option value="">Select staff member...</option>
+                    <option *ngFor="let staff of availableStaff()" [value]="staff.uid">
+                        {{ staff.displayName || staff.email }}
+                        <span *ngIf="staff.role">({{ staff.role }})</span>
+                    </option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary btn-block" (click)="assignOrder()"
+                [disabled]="!selectedStaffId() || isAssigning()">
+                <i class="fas" [ngClass]="isAssigning() ? 'fa-spinner fa-spin' : 'fa-user-check'"></i>
+                {{ isAssigning() ? 'Assigning...' : (currentAssignment() ? 'Reassign Order' : 'Assign Order') }}
+            </button>
+        </div>
+    </div>
+</div>

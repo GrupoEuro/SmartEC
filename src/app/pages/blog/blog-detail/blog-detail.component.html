@@ -1,0 +1,62 @@
+<ng-container *ngIf="post$ | async as post; else loading">
+    <div class="article-container">
+        <!-- Article Header -->
+        <header class="article-header">
+            <div class="header-meta">
+                <span class="category-pill">{{ post.category }}</span>
+                <span class="date">{{ post.date | date:'longDate' }}</span>
+            </div>
+            <h1>{{ post.title }}</h1>
+            <div class="author-block">
+                <div class="avatar-large">{{ post.author.avatar }}</div>
+                <div class="author-details">
+                    <span class="name">{{ post.author.name }}</span>
+                    <span class="role">{{ post.author.role }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="article-layout">
+            <main class="article-content">
+                <div class="content-body" [innerHTML]="post.content"></div>
+
+                <div class="article-tags">
+                    <span class="tag" *ngFor="let tag of post.tags">#{{ tag }}</span>
+                </div>
+            </main>
+
+            <!-- Sidebar -->
+            <aside class="article-sidebar">
+                <div class="sidebar-widget">
+                    <h3>{{ 'BLOG.SHARE' | translate }}</h3>
+                    <div class="share-buttons">
+                        <button class="share-btn fb">Facebook</button>
+                        <button class="share-btn tw">Twitter</button>
+                        <button class="share-btn wa">WhatsApp</button>
+                    </div>
+                </div>
+
+                <div class="sidebar-widget newsletter">
+                    <h3>{{ 'BLOG.SUBSCRIBE.TITLE' | translate }}</h3>
+                    <p>{{ 'BLOG.SUBSCRIBE.DESC' | translate }}</p>
+                    <div *ngIf="subscribeSuccess" class="success-msg" style="color: var(--lime); margin-bottom: 1rem;">
+                        ¡Suscrito!
+                    </div>
+                    <input type="email" [placeholder]="'BLOG.SUBSCRIBE.PLACEHOLDER' | translate" [(ngModel)]="email"
+                        [disabled]="isSubscribing || subscribeSuccess">
+                    <button (click)="subscribe()" [disabled]="isSubscribing || subscribeSuccess">
+                        {{ isSubscribing ? '...' : ('BLOG.SUBSCRIBE.BTN' | translate) }}
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+</ng-container>
+
+<ng-template #loading>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <p>{{ 'BLOG.LOADING' | translate }}</p>
+    </div>
+</ng-template>

@@ -1,0 +1,150 @@
+<app-admin-page-header iconName="users" [title]="'OPERATIONS.CUSTOMERS.TITLE' | translate"
+    [subtitle]="dataSource.pagination.totalItems + ' ' + ('OPERATIONS.CUSTOMERS.COUNT_LABEL' | translate)"
+    variant="operations">
+</app-admin-page-header>
+
+<div class="list-container p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Filters Bar -->
+    <div
+        class="filters-bar flex flex-col md:flex-row justify-between items-start md:items-center bg-zinc-800 p-4 rounded-xl shadow-lg gap-4">
+        <div class="search-and-filters flex flex-1 w-full md:w-auto gap-4 flex-wrap items-center">
+            <div class="search-box relative w-full sm:w-64">
+                <span class="search-icon absolute left-3 top-2.5"><app-icon name="search" [size]="18"
+                        class="text-zinc-500"></app-icon></span>
+                <input type="text" [formControl]="searchControl"
+                    [placeholder]="'OPERATIONS.CUSTOMERS.SEARCH_PLACEHOLDER' | translate"
+                    class="search-input w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="filter-controls flex items-center gap-3 flex-wrap">
+                <select [ngModel]="customerTypeFilter()" (ngModelChange)="setFilter('type', $event)"
+                    class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                    <option value="all">{{ 'OPERATIONS.CUSTOMERS.TYPE_ALL' | translate }}</option>
+                    <option value="new">{{ 'OPERATIONS.CUSTOMERS.TYPE_NEW' | translate }}</option>
+                    <option value="returning">{{ 'OPERATIONS.CUSTOMERS.TYPE_RETURNING' | translate }}</option>
+                </select>
+
+                <select [ngModel]="spendingTierFilter()" (ngModelChange)="setFilter('tier', $event)"
+                    class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                    <option value="all">{{ 'OPERATIONS.CUSTOMERS.SPEND_ALL' | translate }}</option>
+                    <option value="high">{{ 'OPERATIONS.CUSTOMERS.SPEND_HIGH' | translate }}</option>
+                    <option value="standard">{{ 'OPERATIONS.CUSTOMERS.SPEND_STANDARD' | translate }}</option>
+                </select>
+            </div>
+
+            <button *ngIf="customerTypeFilter() !== 'all' || spendingTierFilter() !== 'all' || searchControl.value"
+                class="btn-clear-filters text-zinc-400 hover:text-white underline text-sm transition-colors"
+                (click)="clearFilters()">
+                {{ 'OPERATIONS.CUSTOMERS.CLEAR_FILTERS' | translate }}
+            </button>
+
+            <!-- Export Button -->
+            <button
+                class="btn-glass-primary small icon flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                (click)="handleExport()" [title]="'OPERATIONS.CUSTOMERS.EXPORT_CSV' | translate">
+                <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.CUSTOMERS.EXPORT_CSV' |
+                translate }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="operations-table-container">
+        <table class="operations-table w-full text-left border-collapse">
+            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase font-semibold">
+                <tr>
+                    <th (click)="onSort('displayName')"
+                        class="p-4 border-b border-zinc-700 cursor-pointer hover:text-white transition-colors sortable">
+                        <div class="flex items-center gap-1">
+                            {{ 'OPERATIONS.CUSTOMERS.NAME' | translate }}
+                            <span *ngIf="sortField === 'displayName'" class="sort-indicator text-blue-500">
+                                <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                            </span>
+                        </div>
+                    </th>
+                    <th (click)="onSort('email')"
+                        class="p-4 border-b border-zinc-700 cursor-pointer hover:text-white transition-colors sortable">
+                        <div class="flex items-center gap-1">
+                            {{ 'OPERATIONS.CUSTOMERS.EMAIL' | translate }}
+                            <span *ngIf="sortField === 'email'" class="sort-indicator text-blue-500">
+                                <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                            </span>
+                        </div>
+                    </th>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.CUSTOMERS.PHONE' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700 text-right">{{ 'OPERATIONS.CUSTOMERS.TOTAL_ORDERS' |
+                        translate }}</th>
+                    <th class="p-4 border-b border-zinc-700 text-right">{{ 'OPERATIONS.CUSTOMERS.TOTAL_SPEND' |
+                        translate }}</th>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.CUSTOMERS.LAST_ORDER' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700 actions-col">{{ 'OPERATIONS.CUSTOMERS.ACTIONS' | translate
+                        }}</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-300 text-sm">
+                <tr *ngFor="let customer of dataSource.displayedData"
+                    class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors">
+                    <td class="p-4">
+                        <div class="user-info flex items-center gap-3">
+                            <div class="avatar-placeholder-sm w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm"
+                                *ngIf="!customer.photoURL" [style.background-color]="getItemsBgColor(customer.email)">
+                                {{ (customer.displayName || customer.email || '?').charAt(0) | uppercase }}
+                            </div>
+                            <img *ngIf="customer.photoURL" [src]="customer.photoURL"
+                                class="avatar-sm w-9 h-9 rounded-full object-cover">
+                            <span class="name font-medium text-white">{{ customer.displayName || 'Guest' }}</span>
+                        </div>
+                    </td>
+                    <td class="p-4">{{ customer.email }}</td>
+                    <td class="p-4 text-zinc-400">{{ customer.phone || '-' }}</td>
+                    <!-- Stats -->
+                    <td class="p-4 text-right">
+                        <span
+                            class="badge badge-neutral px-2 py-1 rounded bg-zinc-700 text-zinc-300 text-xs font-semibold"
+                            *ngIf="customer.stats?.totalOrders">
+                            {{ customer.stats?.totalOrders || 0 }}
+                        </span>
+                        <span *ngIf="!customer.stats?.totalOrders">-</span>
+                    </td>
+                    <td class="p-4 text-right font-mono font-medium text-emerald-400">
+                        {{ (customer.stats?.totalSpend || 0) | currency }}
+                    </td>
+                    <td class="p-4">
+                        {{ formatDate(customer.stats?.lastOrderDate) | date:'mediumDate' }}
+                        <span *ngIf="!customer.stats?.lastOrderDate">-</span>
+                    </td>
+                    <td class="p-4 actions-cell">
+                        <button
+                            class="flex items-center justify-center p-2 rounded-lg text-blue-400 hover:bg-zinc-700 hover:text-blue-300 transition-colors"
+                            (click)="viewCustomerDetails(customer)"
+                            [title]="'OPERATIONS.CUSTOMERS.VIEW_DETAILS' | translate">
+                            <app-icon name="eye" [size]="18"></app-icon>
+                        </button>
+                    </td>
+                </tr>
+                <tr *ngIf="dataSource.displayedData.length === 0">
+                    <td colspan="7" class="empty-state p-12 text-center text-zinc-500">
+                        <div class="empty-content flex flex-col items-center gap-4">
+                            <span class="empty-icon"><app-icon name="users" [size]="48"
+                                    class="text-zinc-600 opacity-50"></app-icon></span>
+                            <h3 class="text-white font-medium">{{ 'OPERATIONS.CUSTOMERS.NO_DATA' | translate }}</h3>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <app-pagination [config]="dataSource.pagination" [translationPrefix]="'OPERATIONS.CUSTOMERS'"
+        (pageChange)="onPageChange($event)" (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+</div>
+
+<!-- Customer Detail Panel -->
+<app-customer-detail-panel [customerId]="selectedCustomerId" [isOpen]="isPanelOpen" (closePanel)="closePanel()"
+    (viewFullDetails)="onViewFullDetails($event)">
+</app-customer-detail-panel>

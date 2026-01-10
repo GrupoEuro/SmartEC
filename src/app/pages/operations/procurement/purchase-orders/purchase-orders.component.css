@@ -1,0 +1,54 @@
+/* Purchase Orders CSS */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+}
+
+.status-DRAFT {
+    background-color: #334155;
+    /* bg-slate-700 */
+    color: #cbd5e1;
+    /* text-slate-300 */
+    border: 1px solid #475569;
+    /* border-slate-600 */
+}
+
+.status-ORDERED {
+    background-color: rgba(30, 58, 138, 0.3);
+    /* bg-blue-900/30 */
+    color: #60a5fa;
+    /* text-blue-400 */
+    border: 1px solid rgba(30, 64, 175, 0.5);
+    /* border-blue-800/50 */
+}
+
+.status-IN_TRANSIT {
+    background-color: rgba(88, 28, 135, 0.3);
+    /* bg-purple-900/30 */
+    color: #c084fc;
+    /* text-purple-400 */
+    border: 1px solid rgba(107, 33, 168, 0.5);
+    /* border-purple-800/50 */
+}
+
+.status-RECEIVED {
+    background-color: rgba(6, 78, 59, 0.3);
+    /* bg-emerald-900/30 */
+    color: #34d399;
+    /* text-emerald-400 */
+    border: 1px solid rgba(6, 95, 70, 0.5);
+    /* border-emerald-800/50 */
+}
+
+.status-CANCELLED {
+    background-color: rgba(127, 29, 29, 0.3);
+    /* bg-red-900/30 */
+    color: #f87171;
+    /* text-red-400 */
+    border: 1px solid rgba(153, 27, 27, 0.5);
+    /* border-red-800/50 */
+}

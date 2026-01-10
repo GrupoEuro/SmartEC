@@ -1,0 +1,445 @@
+<div class="sales-analytics-container">
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <app-icon name="chart-bar" [size]="40" class="text-indigo-500"></app-icon>
+                <div class="header-text">
+                    <h1>{{ 'COMMAND_CENTER.SALES_ANALYTICS.TITLE' | translate }}</h1>
+                    <p>{{ 'COMMAND_CENTER.SALES_ANALYTICS.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+            <div class="sales-header-actions">
+                <button class="btn-icon-subtle" (click)="exportToPDF()" [disabled]="isLoading()"
+                    [title]="'COMMAND_CENTER.SALES_ANALYTICS.EXPORT_PDF' | translate">
+                    <app-icon name="file-text" [size]="20"></app-icon>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Empty State (Lazy Load) -->
+    <div *ngIf="!contextService.isInitialized()" class="empty-dashboard-state">
+        <div class="empty-state-content">
+            <div class="empty-icon-large">
+                <app-icon name="calendar" [size]="64"></app-icon>
+            </div>
+            <h2>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE' | translate }}</h2>
+            <p>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE_DESC' | translate }}</p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="contextService.isInitialized() && !isLoading()" class="analytics-content">
+        <!-- Premium Summary Card -->
+        <div class="summary-card-premium">
+            <div class="summary-icon">
+                <app-icon name="activity" [size]="48" class="text-white"></app-icon>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-metrics-grid">
+                <div class="summary-metric">
+                    <span class="metric-label-sm">{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOTAL_REVENUE' | translate
+                        }}</span>
+                    <div class="metric-value-xl">${{ totalRevenue().toLocaleString('en-US', {minimumFractionDigits: 2,
+                        maximumFractionDigits: 2}) }}</div>
+                </div>
+                <div class="metric-separator-vertical"></div>
+                <div class="summary-metric">
+                    <span class="metric-label-sm">{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOTAL_ORDERS' | translate }}</span>
+                    <div class="metric-value-lg">{{ totalOrders().toLocaleString() }}</div>
+                </div>
+                <div class="metric-separator-vertical"></div>
+                <div class="summary-metric">
+                    <span class="metric-label-sm">{{ 'COMMAND_CENTER.SALES_ANALYTICS.AVG_ORDER_VALUE' | translate
+                        }}</span>
+                    <div class="metric-value-lg">${{ averageOrderValue().toLocaleString('en-US',
+                        {minimumFractionDigits:
+                        2, maximumFractionDigits: 2}) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card-modern">
+                <div class="kpi-card-header">
+                    <app-icon name="wallet" [size]="32" class="kpi-svg-icon text-yellow-400"></app-icon>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-label-modern">{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOTAL_REVENUE' | translate }}</div>
+                    <div class="kpi-value-modern">${{ totalRevenue().toLocaleString('en-US', {minimumFractionDigits: 2,
+                        maximumFractionDigits: 2}) }}</div>
+                    <div *ngIf="periodComparison"
+                        [class]="periodComparison.change.revenuePercent >= 0 ? 'kpi-trend positive' : 'kpi-trend negative'">
+                        <app-icon [name]="periodComparison.change.revenuePercent >= 0 ? 'trending-up' : 'trending-down'"
+                            [size]="16"></app-icon>
+                        <span>{{ periodComparison.change.revenuePercent >= 0 ? '+' : '' }}{{
+                            periodComparison.change.revenuePercent.toFixed(1) }}% {{
+                            'COMMAND_CENTER.SALES_ANALYTICS.VS_LAST_PERIOD' | translate }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card-modern">
+                <div class="kpi-card-header">
+                    <app-icon name="box" [size]="32" class="kpi-svg-icon text-blue-400"></app-icon>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-label-modern">{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOTAL_ORDERS' | translate }}</div>
+                    <div class="kpi-value-modern">{{ totalOrders().toLocaleString() }}</div>
+                    <div *ngIf="periodComparison"
+                        [class]="periodComparison.change.ordersPercent >= 0 ? 'kpi-trend positive' : 'kpi-trend negative'">
+                        <app-icon [name]="periodComparison.change.ordersPercent >= 0 ? 'trending-up' : 'trending-down'"
+                            [size]="16"></app-icon>
+                        <span>{{ periodComparison.change.ordersPercent >= 0 ? '+' : '' }}{{
+                            periodComparison.change.ordersPercent.toFixed(1) }}% {{
+                            'COMMAND_CENTER.LABELS.VS_LAST_PERIOD' | translate }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card-modern">
+                <div class="kpi-card-header">
+                    <app-icon name="cart" [size]="32" class="kpi-svg-icon text-purple-400"></app-icon>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-label-modern">{{ 'COMMAND_CENTER.SALES_ANALYTICS.AVG_ORDER_VALUE' | translate }}
+                    </div>
+                    <div class="kpi-value-modern">${{ averageOrderValue().toLocaleString('en-US',
+                        {minimumFractionDigits:
+                        2, maximumFractionDigits: 2}) }}</div>
+                    <div *ngIf="periodComparison"
+                        [class]="periodComparison.change.averageOrderValuePercent >= 0 ? 'kpi-trend positive' : 'kpi-trend negative'">
+                        <app-icon
+                            [name]="periodComparison.change.averageOrderValuePercent >= 0 ? 'trending-up' : 'trending-down'"
+                            [size]="16"></app-icon>
+                        <span>{{ periodComparison.change.averageOrderValuePercent >= 0 ? '+' : '' }}{{
+                            periodComparison.change.averageOrderValuePercent.toFixed(1) }}% {{
+                            'COMMAND_CENTER.LABELS.VS_LAST_PERIOD' | translate }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card-modern">
+                <div class="kpi-card-header">
+                    <app-icon name="trophy" [size]="32" class="kpi-svg-icon text-yellow-500"></app-icon>
+                </div>
+                <div class="kpi-card-content">
+                    <div class="kpi-label-modern">{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOP_PRODUCT_REVENUE' | translate }}
+                    </div>
+                    <div class="kpi-value-modern">${{ topProductRevenue().toLocaleString('en-US',
+                        {minimumFractionDigits:
+                        2, maximumFractionDigits: 2}) }}</div>
+                    <div class="kpi-trend positive">
+                        <app-icon name="trending-up" [size]="16"></app-icon>
+                        <span>{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOP_PERFORMER' | translate }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales Velocity & Customer Insights Row -->
+        <div class="insights-row">
+            <!-- Sales Velocity Card -->
+            <div class="insight-card" *ngIf="salesVelocity">
+                <div class="insight-header">
+                    <h3>{{ 'COMMAND_CENTER.SALES_ANALYTICS.SALES_VELOCITY' | translate }}</h3>
+                    <div class="velocity-badge" [class.trending-up]="salesVelocity.trend === 'increasing'"
+                        [class.trending-down]="salesVelocity.trend === 'decreasing'">
+                        <app-icon
+                            [name]="salesVelocity.trend === 'increasing' ? 'trending-up' : salesVelocity.trend === 'decreasing' ? 'trending-down' : 'minus'"
+                            [size]="16" class="mr-1"></app-icon>
+                        {{ getTrendTranslation(salesVelocity.trend) | translate }}
+                    </div>
+                </div>
+                <div class="velocity-metrics">
+                    <div class="velocity-metric">
+                        <span class="metric-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.VELOCITY_DAILY' | translate
+                            }}</span>
+                        <span class="metric-value">${{ salesVelocity.daily.toLocaleString('en-US',
+                            {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
+                    </div>
+                    <div class="velocity-metric">
+                        <span class="metric-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.VELOCITY_WEEKLY' | translate
+                            }}</span>
+                        <span class="metric-value">${{ salesVelocity.weekly.toLocaleString('en-US',
+                            {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
+                    </div>
+                    <div class="velocity-metric">
+                        <span class="metric-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.VELOCITY_MONTHLY' | translate
+                            }}</span>
+                        <span class="metric-value">${{ salesVelocity.monthly.toLocaleString('en-US',
+                            {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
+                    </div>
+                </div>
+                <div class="velocity-score">
+                    <div class="score-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.VELOCITY_SCORE' | translate }}</div>
+                    <div class="score-bar">
+                        <div class="score-fill" [style.width.%]="salesVelocity.velocityScore"></div>
+                    </div>
+                    <div class="score-value">{{ salesVelocity.velocityScore }}/100</div>
+                </div>
+            </div>
+
+            <!-- Customer Segmentation Card -->
+            <div class="insight-card" *ngIf="customerSegments && customerSegments.length > 0">
+                <div class="insight-header">
+                    <h3>{{ 'COMMAND_CENTER.SALES_ANALYTICS.CUSTOMER_SEGMENTS' | translate }}</h3>
+                </div>
+                <div class="segments-grid">
+                    <div class="segment-item" *ngFor="let segment of customerSegments">
+                        <div class="segment-icon"
+                            [class]="'segment-' + segment.segment.toLowerCase().replace(' ', '-')">
+                            <app-icon
+                                [name]="segment.segment === 'Champions' ? 'trophy' : segment.segment === 'Loyal' ? 'heart' : segment.segment === 'Potential' ? 'trending-up' : segment.segment === 'At Risk' ? 'alert-triangle' : 'moon'"
+                                [size]="24"></app-icon>
+                        </div>
+                        <div class="segment-info">
+                            <div class="segment-name">{{ getSegmentTranslation(segment.segment) | translate }}</div>
+                            <div class="segment-count">{{ segment.count }} {{ 'COMMAND_CENTER.SALES_ANALYTICS.CUSTOMERS'
+                                | translate }}</div>
+                            <div class="segment-revenue">${{ segment.totalRevenue.toLocaleString('en-US',
+                                {minimumFractionDigits: 2}) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversion Funnel - Premium Design -->
+        <div class="chart-card funnel-card" *ngIf="conversionFunnel && conversionFunnel.length > 0">
+            <div class="chart-header">
+                <h2>{{ 'COMMAND_CENTER.SALES_ANALYTICS.CONVERSION_FUNNEL' | translate }}</h2>
+                <div class="chart-loading" *ngIf="isLoadingFunnel">
+                    <div class="spinner-small"></div>
+                </div>
+            </div>
+            <div class="funnel-premium-container">
+                <div class="funnel-stage-premium"
+                    *ngFor="let stage of conversionFunnel; let i = index; let isFirst = first; let isLast = last"
+                    [class.first-stage]="isFirst" [class.last-stage]="isLast">
+
+                    <!-- Funnel Shape Bar with inline badge -->
+                    <div class="funnel-shape-wrapper">
+                        <div class="funnel-shape-bar" [style.width.%]="100 - (i * 15)" [class.stage-0]="i === 0"
+                            [class.stage-1]="i === 1" [class.stage-2]="i === 2" [class.stage-3]="i === 3">
+
+                            <!-- Stage Badge Inside Bar -->
+                            <div class="stage-badge-inline">
+                                <span class="stage-number">{{ i + 1 }}</span>
+                            </div>
+
+                            <div class="funnel-bar-content">
+                                <div class="funnel-stage-info">
+                                    <div class="stage-name">{{ stage.stage }}</div>
+                                    <div class="stage-count">{{ stage.count.toLocaleString() }}</div>
+                                </div>
+                                <div class="funnel-percentage">
+                                    <span class="percentage-value">{{ stage.percentage.toFixed(1) }}%</span>
+                                </div>
+                            </div>
+
+                            <!-- Custom Tooltip -->
+                            <div class="funnel-tooltip">
+                                <strong>{{ stage.stage }}</strong><br>
+                                <span class="tooltip-detail">{{ stage.count.toLocaleString() }} visitors ({{
+                                    stage.percentage.toFixed(2) }}%)</span>
+                            </div>
+
+                            <!-- Shine effect -->
+                            <div class="funnel-shine"></div>
+                        </div>
+
+                        <!-- Drop-off Indicator - Inline to the right -->
+                        <div class="dropoff-indicator-inline" *ngIf="!isLast && stage.dropoffRate > 0">
+                            <span class="dropoff-arrow">↓</span>
+                            <span class="dropoff-compact">{{ stage.dropoffRate.toFixed(1) }}%</span>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <!-- Conversion Summary -->
+                <div class="funnel-summary" *ngIf="conversionFunnel && conversionFunnel.length > 0">
+                    <div class="summary-item">
+                        <span class="summary-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.CONVERSION_RATE' | translate
+                            }}</span>
+                        <span class="summary-value success">
+                            {{ (conversionFunnel[conversionFunnel.length - 1].percentage).toFixed(2) }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Growth Metrics -->
+        <div class="growth-metrics-section" *ngIf="growthMetrics">
+            <div class="section-header">
+                <h2>{{ 'COMMAND_CENTER.SALES_ANALYTICS.GROWTH_METRICS' | translate }}</h2>
+            </div>
+            <div class="growth-grid">
+                <div class="growth-card">
+                    <div class="growth-icon"><app-icon name="trending-up" [size]="24" class="text-blue-500"></app-icon>
+                    </div>
+                    <div class="growth-content">
+                        <div class="growth-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.REVENUE_GROWTH' | translate }}
+                        </div>
+                        <div class="growth-value" [class.positive]="growthMetrics.revenueGrowth >= 0"
+                            [class.negative]="growthMetrics.revenueGrowth < 0">
+                            {{ growthMetrics.revenueGrowth >= 0 ? '+' : '' }}{{ growthMetrics.revenueGrowth.toFixed(1)
+                            }}%
+                        </div>
+                        <div class="growth-period">{{ 'COMMAND_CENTER.SALES_ANALYTICS.MOM' | translate }}</div>
+                    </div>
+                </div>
+                <div class="growth-card">
+                    <div class="growth-icon"><app-icon name="cart" [size]="24" class="text-green-500"></app-icon></div>
+                    <div class="growth-content">
+                        <div class="growth-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.ORDER_GROWTH' | translate }}</div>
+                        <div class="growth-value" [class.positive]="growthMetrics.orderGrowth >= 0"
+                            [class.negative]="growthMetrics.orderGrowth < 0">
+                            {{ growthMetrics.orderGrowth >= 0 ? '+' : '' }}{{ growthMetrics.orderGrowth.toFixed(1) }}%
+                        </div>
+                        <div class="growth-period">{{ 'COMMAND_CENTER.SALES_ANALYTICS.MOM' | translate }}</div>
+                    </div>
+                </div>
+                <div class="growth-card">
+                    <div class="growth-icon"><app-icon name="users" [size]="24" class="text-purple-500"></app-icon>
+                    </div>
+                    <div class="growth-content">
+                        <div class="growth-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.CUSTOMER_GROWTH' | translate }}
+                        </div>
+                        <div class="growth-value" [class.positive]="growthMetrics.customerGrowth >= 0"
+                            [class.negative]="growthMetrics.customerGrowth < 0">
+                            {{ growthMetrics.customerGrowth >= 0 ? '+' : '' }}{{ growthMetrics.customerGrowth.toFixed(1)
+                            }}%
+                        </div>
+                        <div class="growth-period">{{ 'COMMAND_CENTER.SALES_ANALYTICS.MOM' | translate }}</div>
+                    </div>
+                </div>
+                <div class="growth-card">
+                    <div class="growth-icon"><app-icon name="banknote" [size]="24" class="text-yellow-500"></app-icon>
+                    </div>
+                    <div class="growth-content">
+                        <div class="growth-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.AOV_GROWTH' | translate }}</div>
+                        <div class="growth-value" [class.positive]="growthMetrics.aovGrowth >= 0"
+                            [class.negative]="growthMetrics.aovGrowth < 0">
+                            {{ growthMetrics.aovGrowth >= 0 ? '+' : '' }}{{ growthMetrics.aovGrowth.toFixed(1) }}%
+                        </div>
+                        <div class="growth-period">{{ 'COMMAND_CENTER.SALES_ANALYTICS.MOM' | translate }}</div>
+                    </div>
+                </div>
+                <div class="growth-card cagr-card">
+                    <div class="growth-icon"><app-icon name="chart-bar" [size]="24" class="text-white"></app-icon></div>
+                    <div class="growth-content">
+                        <div class="growth-label">{{ 'COMMAND_CENTER.SALES_ANALYTICS.CAGR' | translate }}</div>
+                        <div class="growth-value highlight">
+                            {{ growthMetrics.compoundGrowthRate.toFixed(1) }}%
+                        </div>
+                        <div class="growth-period">{{ 'COMMAND_CENTER.SALES_ANALYTICS.YOY' | translate }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Trend Chart -->
+        <!-- Revenue Trend Chart -->
+        <app-chart-card [title]="'COMMAND_CENTER.SALES_ANALYTICS.REVENUE_TREND' | translate" [type]="'line'"
+            [data]="revenueChartData()" [options]="revenueChartOptions" [height]="300" [tableData]="revenueTableData()"
+            [tableColumns]="revenueTableColumns">
+        </app-chart-card>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <!-- Category Sales Chart -->
+            <div class="chart-half-container">
+                <app-chart-card [title]="'COMMAND_CENTER.SALES_ANALYTICS.SALES_BY_CATEGORY' | translate"
+                    [type]="'doughnut'" [data]="categoryChartData()" [options]="categoryChartOptions" [height]="300"
+                    [tableData]="categoryTableData()" [tableColumns]="categoryTableColumns">
+                </app-chart-card>
+            </div>
+
+            <!-- Brand Sales Chart -->
+            <div class="chart-half-container">
+                <app-chart-card [title]="'COMMAND_CENTER.SALES_ANALYTICS.SALES_BY_BRAND' | translate" [type]="'bar'"
+                    [data]="brandChartData()" [options]="brandChartOptions" [height]="300"
+                    [tableData]="brandTableData()" [tableColumns]="brandTableColumns">
+                </app-chart-card>
+            </div>
+        </div>
+
+        <!-- Top Products Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h2>{{ 'COMMAND_CENTER.SALES_ANALYTICS.TOP_PRODUCTS' | translate }}</h2>
+                <div class="sales-table-actions">
+                    <button class="btn-icon-subtle" (click)="exportTopProducts()"
+                        [title]="'COMMAND_CENTER.ACTIONS.EXPORT' | translate">
+                        <app-icon name="download" [size]="18"></app-icon>
+                    </button>
+                    <div class="chart-loading" *ngIf="isLoadingProducts">
+                        <div class="spinner-small"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container" *ngIf="topProducts().length > 0">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>{{ 'COMMAND_CENTER.SALES_ANALYTICS.PRODUCT_NAME' | translate }}</th>
+
+                            <th>{{ 'COMMAND_CENTER.SALES_ANALYTICS.REVENUE' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.SALES_ANALYTICS.QUANTITY' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.SALES_ANALYTICS.ORDERS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let product of topProducts(); let i = index">
+                            <td class="rank">
+                                <span class="rank-badge" [class.top-3]="i < 3">{{ i + 1 }}</span>
+                            </td>
+                            <td class="product-name">
+                                <div class="product-info">
+                                    <span class="name">{{ product.productName }}</span>
+                                    <span class="sku-badge">{{ product.sku }}</span>
+                                </div>
+                            </td>
+                            <td class="revenue">
+                                <div class="revenue-cell">
+                                    <div class="revenue-bar-bg">
+                                        <div class="revenue-bar-fill"
+                                            [style.width.%]="(product.totalRevenue / topProducts()[0].totalRevenue) * 100">
+                                        </div>
+                                    </div>
+                                    <span class="revenue-value">${{ product.totalRevenue.toLocaleString('en-US',
+                                        {minimumFractionDigits: 2}) }}</span>
+                                </div>
+                            </td>
+                            <td class="quantity">{{ product.totalQuantity }}</td>
+                            <td class="orders">{{ product.orderCount }}</td>
+                        </tr>
+                        <tr *ngIf="topProducts().length === 0">
+                            <td colspan="6" class="no-data">{{ 'COMMAND_CENTER.SALES_ANALYTICS.NO_DATA' | translate }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="empty-state" *ngIf="topProducts().length === 0 && !isLoadingProducts">
+                <div class="empty-icon"><app-icon name="trophy" [size]="48" class="text-slate-600"></app-icon></div>
+                <div class="empty-title">{{ 'COMMAND_CENTER.SALES_ANALYTICS.NO_DATA' | translate }}</div>
+                <div class="empty-message">{{ 'COMMAND_CENTER.LABELS.EMPTY_PRODUCTS_MESSAGE' | translate }}</div>
+            </div>
+        </div>
+        <app-dashboard-diagnostics [logs]="[]" [buildVersion]="'v2.0-Reactive'"></app-dashboard-diagnostics>
+    </div>
+</div>

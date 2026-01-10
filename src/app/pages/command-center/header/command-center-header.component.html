@@ -1,0 +1,155 @@
+<header class="command-center-header" id="cc-header">
+    <div class="header-left">
+        <!-- Breadcrumbs -->
+        <nav class="breadcrumbs">
+            <ng-container *ngFor="let crumb of breadcrumbs(); let last = last">
+                <a [routerLink]="crumb.url" class="crumb-link" [class.active]="last">
+                    {{ crumb.label }}
+                </a>
+                <span class="crumb-separator" *ngIf="!last">
+                    <app-icon name="chevron-right" [size]="14"></app-icon>
+                </span>
+            </ng-container>
+        </nav>
+    </div>
+
+    <div class="header-center">
+        <!-- Global Search -->
+        <div class="global-search glass-input-wrapper" id="cc-global-search">
+            <app-icon name="search" [size]="16" class="search-icon"></app-icon>
+            <input type="text" placeholder="Search (⌘K)..." class="search-input">
+            <div class="kbd-shortcut">
+                <span>⌘</span><span>K</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <!-- Global Period Selector (Custom Dropdown) -->
+        <div class="period-selector-wrapper" id="cc-date-range">
+            <button class="period-btn glass-btn" (click)="togglePeriodSelector()"
+                [class.active]="isPeriodSelectorOpen()">
+                <app-icon name="calendar" [size]="16" class="text-indigo-400"></app-icon>
+                <span class="period-label">
+                    {{ contextService.selectedPeriod() ? (contextService.selectedPeriod()! | titlecase) : 'Select
+                    Period' }}
+                </span>
+                <app-icon name="chevron-down" [size]="14" class="arrow-icon"></app-icon>
+            </button>
+
+            <!-- Custom Dropdown Menu -->
+            <div class="custom-dropdown" *ngIf="isPeriodSelectorOpen()">
+                <div class="dropdown-section">
+                    <div class="section-label">{{ 'COMMAND_CENTER.FINANCIALS.PERIODS.QUICK_PERIODS' | translate }}</div>
+                    <button class="dropdown-option" (click)="selectPeriod('today')"
+                        [class.selected]="contextService.selectedPeriod() === 'today'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.TODAY' | translate }}
+                    </button>
+                    <button class="dropdown-option" (click)="selectPeriod('yesterday')"
+                        [class.selected]="contextService.selectedPeriod() === 'yesterday'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.YESTERDAY' | translate }}
+                    </button>
+                    <button class="dropdown-option" (click)="selectPeriod('last7days')"
+                        [class.selected]="contextService.selectedPeriod() === 'last7days'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.LAST_7_DAYS' | translate }}
+                    </button>
+                    <button class="dropdown-option" (click)="selectPeriod('last30days')"
+                        [class.selected]="contextService.selectedPeriod() === 'last30days'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.LAST_30_DAYS' | translate }}
+                    </button>
+                    <button class="dropdown-option" (click)="selectPeriod('thisMonth')"
+                        [class.selected]="contextService.selectedPeriod() === 'thisMonth'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.MTD' | translate }}
+                    </button>
+                    <button class="dropdown-option" (click)="selectPeriod('lastMonth')"
+                        [class.selected]="contextService.selectedPeriod() === 'lastMonth'">
+                        {{ 'COMMAND_CENTER.FINANCIALS.PERIODS.LAST_MONTH' | translate }}
+                    </button>
+                </div>
+
+                <div class="dropdown-divider"></div>
+
+                <!-- Custom Range Inputs -->
+                <div class="dropdown-section custom-range-inputs" *ngIf="contextService.selectedPeriod() === 'custom'">
+                    <div class="date-input-group">
+                        <label>Start</label>
+                        <input type="date" [ngModel]="customStart" (ngModelChange)="onCustomDateChange($event, 'start')"
+                            class="glass-date-input">
+                    </div>
+                    <div class="date-input-group">
+                        <label>End</label>
+                        <input type="date" [ngModel]="customEnd" (ngModelChange)="onCustomDateChange($event, 'end')"
+                            class="glass-date-input">
+                    </div>
+                </div>
+
+                <div class="dropdown-divider"></div>
+
+                <!-- Historical Months -->
+                <div class="dropdown-section"
+                    *ngFor="let year of (contextService.groupedMonthOptions | keyvalue: contextService.descendingOrder)">
+                    <div class="section-label">{{ year.key }}</div>
+                    <button *ngFor="let month of year.value" class="dropdown-option" (click)="selectPeriod(month.value)"
+                        [class.selected]="contextService.selectedPeriod() === month.value">
+                        {{ month.date | date:'MMMM' | titlecase }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button class="icon-btn glass-btn" (click)="refreshData()"
+            [title]="'COMMAND_CENTER.LABELS.REFRESH' | translate">
+            <app-icon name="refresh-cw" [size]="18"></app-icon>
+        </button>
+
+        <div class="v-divider"></div>
+
+        <!-- Language Switcher -->
+        <!-- Language Switcher -->
+        <button (click)="toggleLanguage()" class="lang-btn glass-btn" [title]="'Switch Language'">
+            <div class="lang-content" *ngIf="languageService.currentLang() === 'es'">
+                <span class="flag-icon">🇲🇽</span>
+                <span class="lang-code">ES</span>
+            </div>
+            <div class="lang-content" *ngIf="languageService.currentLang() === 'en'">
+                <span class="flag-icon">🇺🇸</span>
+                <span class="lang-code">EN</span>
+            </div>
+        </button>
+
+        <!-- Notification Bell -->
+        <app-notification-bell></app-notification-bell>
+
+        <!-- User Menu -->
+        <div class="user-menu-wrapper">
+            <button class="user-avatar-btn" (click)="toggleUserMenu()">
+                <ng-container *ngIf="user$ | async as user">
+                    <img *ngIf="user.photoURL" [src]="user.photoURL" alt="User" class="avatar-img">
+                    <div *ngIf="!user.photoURL" class="avatar-placeholder">
+                        {{ getUserInitials((userProfile$ | async)?.displayName || user.displayName) }}
+                    </div>
+                </ng-container>
+            </button>
+
+            <!-- User Dropdown -->
+            <div class="custom-dropdown user-dropdown-pos" *ngIf="isUserMenuOpen()">
+                <ng-container *ngIf="user$ | async as user">
+                    <div class="dropdown-header">
+                        <span class="u-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'User'
+                            }}</span>
+                        <span class="u-email">{{ user.email }}</span>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a routerLink="/" class="dropdown-option">
+                        <app-icon name="home" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.GO_HOME' | translate }}
+                    </a>
+                    <button (click)="logout()" class="dropdown-option text-red-400">
+                        <app-icon name="log-out" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}
+                    </button>
+                </ng-container>
+            </div>
+        </div>
+    </div>
+</header>

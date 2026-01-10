@@ -1,0 +1,37 @@
+/* Spinner Animation */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #ffd700;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Status Badges - Using standard CSS (Tailwind inline preferred but keeping for reference if needed) can run alongside */
+/* These are now largely superseded by inline classes in HTML but kept for safety if dynamic calls use them */
+.status-badge {
+    display: inline-block;
+}
+
+/* Chart Canvas Responsive Fix */
+.chart-body {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.chart-card.full-width .chart-body {
+    height: 350px;
+}

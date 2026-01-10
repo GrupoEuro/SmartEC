@@ -1,0 +1,129 @@
+/* Add to existing CSS */
+
+/* Help Icon */
+.help-icon {
+    cursor: help;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    font-size: 0.9rem;
+    margin-left: 0.25rem;
+}
+
+.help-icon:hover {
+    opacity: 1;
+}
+
+/* Currency Prefix */
+.input-with-prefix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-prefix {
+    position: absolute;
+    left: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.form-control.with-prefix {
+    padding-left: 28px;
+}
+
+/* Stock Warnings - Enhanced */
+.stock-warning,
+.stock-alert,
+.stock-success {
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 0.75rem;
+    animation: slideDown 0.3s ease-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stock-warning {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%);
+    border-left: 4px solid #FFD700;
+}
+
+.stock-alert {
+    background: linear-gradient(135deg, rgba(208, 44, 47, 0.15) 0%, rgba(220, 53, 69, 0.1) 100%);
+    border-left: 4px solid #D02C2F;
+}
+
+.stock-success {
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.15) 0%, rgba(40, 167, 69, 0.1) 100%);
+    border-left: 4px solid #28a745;
+}
+
+.warning-header,
+.alert-header,
+.success-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.warning-header strong {
+    color: #FF8C00;
+    font-size: 0.95rem;
+}
+
+.alert-header strong {
+    color: #D02C2F;
+    font-size: 0.95rem;
+}
+
+.success-header strong {
+    color: #28a745;
+    font-size: 0.95rem;
+}
+
+.warning-icon,
+.alert-icon,
+.success-icon {
+    font-size: 1.25rem;
+}
+
+.warning-text,
+.alert-text,
+.success-text {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    padding-left: 1.75rem;
+}
+
+.warning-text {
+    color: #856404;
+}
+
+.alert-text {
+    color: #721c24;
+}
+
+.success-text {
+    color: #155724;
+}
+
+.warning-text strong,
+.alert-text strong,
+.success-text strong {
+    font-weight: 700;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

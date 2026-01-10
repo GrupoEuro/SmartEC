@@ -1,0 +1,89 @@
+<div *ngIf="isLoading()" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading warehouses...</p>
+</div>
+
+<div *ngIf="!isLoading()" class="warehouse-container">
+    <app-admin-page-header iconName="warehouse" title="Warehouse Management"
+        subtitle="Manage warehouses, transfers, and stock allocation" variant="operations">
+    </app-admin-page-header>
+
+    <!-- Warehouse Grid -->
+    <div class="warehouse-grid">
+        <div *ngFor="let warehouse of warehouses()" class="warehouse-card">
+            <!-- Header -->
+            <div class="warehouse-header">
+                <div class="warehouse-info">
+                    <h3>{{ warehouse.name }}</h3>
+                    <span class="warehouse-code">{{ warehouse.code }}</span>
+                </div>
+                <div class="warehouse-badges">
+                    <span class="badge" [ngClass]="getTypeBadgeClass(warehouse.type)">
+                        {{ warehouse.type }}
+                    </span>
+                    <span class="badge" [ngClass]="getStatusBadgeClass(warehouse.status)">
+                        {{ warehouse.status }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Metrics -->
+            <div class="warehouse-metrics">
+                <div class="metric">
+                    <app-icon name="package" [size]="20"></app-icon>
+                    <div class="metric-info">
+                        <span class="metric-value">{{ warehouse.metrics?.totalProducts || 0 }}</span>
+                        <span class="metric-label">Products</span>
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <app-icon name="box" [size]="20"></app-icon>
+                    <div class="metric-info">
+                        <span class="metric-value">{{ warehouse.metrics?.totalUnits || 0 }}</span>
+                        <span class="metric-label">Total Units</span>
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <app-icon name="alert-triangle" [size]="20"></app-icon>
+                    <div class="metric-info">
+                        <span class="metric-value">{{ warehouse.metrics?.lowStockCount || 0 }}</span>
+                        <span class="metric-label">Low Stock</span>
+                    </div>
+                </div>
+
+                <div class="metric">
+                    <app-icon name="truck" [size]="20"></app-icon>
+                    <div class="metric-info">
+                        <span class="metric-value">{{ warehouse.metrics?.activeTransfers || 0 }}</span>
+                        <span class="metric-label">Active Transfers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="warehouse-actions">
+                <button class="btn-action">
+                    <app-icon name="eye" [size]="16"></app-icon>
+                    View Details
+                </button>
+                <button class="btn-action">
+                    <app-icon name="arrow-right-left" [size]="16"></app-icon>
+                    Transfers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="warehouses().length === 0" class="empty-state">
+        <app-icon name="warehouse" [size]="64"></app-icon>
+        <h3>No Warehouses Found</h3>
+        <p>Get started by adding your first warehouse</p>
+        <button class="btn-primary">
+            <app-icon name="plus" [size]="16"></app-icon>
+            Add Warehouse
+        </button>
+    </div>
+</div>

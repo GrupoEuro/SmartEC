@@ -1,0 +1,132 @@
+<div class="h-full flex flex-col bg-zinc-950 text-white">
+    <!-- Header -->
+    <header
+        class="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center border border-blue-600/30 text-blue-400">
+                <app-icon name="check-square" [size]="24"></app-icon>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Cycle Counting</h1>
+                <p class="text-xs text-zinc-400 font-medium">Inventory Accuracy Program</p>
+            </div>
+        </div>
+
+        <button
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2">
+            <app-icon name="plus" [size]="18"></app-icon>
+            Create Count
+        </button>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Accuracy Rate -->
+            <div class="p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-zinc-400 font-medium">Inventory Accuracy</span>
+                    <app-icon name="target" [size]="18" class="text-emerald-400"></app-icon>
+                </div>
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl font-bold text-white">{{ accuracyRate() }}%</span>
+                    <span class="text-xs text-emerald-400 font-medium mb-1 flex items-center gap-0.5">
+                        <app-icon name="trending-up" [size]="12"></app-icon> +0.2%
+                    </span>
+                </div>
+                <div class="w-full h-1 bg-zinc-800 rounded-full mt-3 overflow-hidden">
+                    <div class="h-full bg-emerald-500 rounded-full" [style.width.%]="accuracyRate()"></div>
+                </div>
+            </div>
+
+            <!-- Pending Items -->
+            <div class="p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-zinc-400 font-medium">Pending To Count</span>
+                    <app-icon name="clipboard-list" [size]="18" class="text-amber-400"></app-icon>
+                </div>
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl font-bold text-white">{{ pendingItems() }}</span>
+                    <span class="text-xs text-amber-400 font-medium mb-1">Items</span>
+                </div>
+                <p class="text-xs text-zinc-500 mt-2">Scheduled for this week</p>
+            </div>
+
+            <!-- Completed This Week -->
+            <div class="p-4 bg-zinc-900 rounded-xl border border-zinc-800">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-zinc-400 font-medium">Completed This Week</span>
+                    <app-icon name="check-circle" [size]="18" class="text-blue-400"></app-icon>
+                </div>
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl font-bold text-white">{{ completedThisWeek() }}</span>
+                    <span class="text-xs text-zinc-400 font-medium mb-1">Counts</span>
+                </div>
+                <p class="text-xs text-zinc-500 mt-2">On track with schedule</p>
+            </div>
+        </div>
+
+        <!-- Active Counts List -->
+        <div>
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                <app-icon name="list" [size]="20" class="text-zinc-400"></app-icon>
+                Recent Counts
+            </h2>
+
+            <div class="space-y-3">
+                <a *ngFor="let count of activeCounts()" [routerLink]="['/operations/cycle-counting', count.id]"
+                    class="block p-4 bg-zinc-900 rounded-xl border border-zinc-800 hover:border-blue-500/50 hover:bg-zinc-800/50 transition-all group">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <!-- Type Icon -->
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border"
+                                [ngClass]="{
+                                    'bg-purple-900/20 text-purple-400 border-purple-500/20': count.type === 'ABC',
+                                    'bg-orange-900/20 text-orange-400 border-orange-500/20': count.type === 'ZONE',
+                                    'bg-blue-900/20 text-blue-400 border-blue-500/20': count.type === 'SPOT',
+                                    'bg-zinc-800 text-zinc-400 border-zinc-700': count.type === 'FULL'
+                                }">
+                                {{ count.type }}
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-white group-hover:text-blue-400 transition-colors">
+                                    {{ count.notes }}
+                                </h3>
+                                <div class="flex items-center gap-3 mt-1 text-xs text-zinc-400">
+                                    <span class="flex items-center gap-1">
+                                        <app-icon name="calendar" [size]="12"></app-icon>
+                                        {{ count.scheduledDate.toDate() | date:'mediumDate' }}
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <app-icon name="box" [size]="12"></app-icon>
+                                        {{ count.metadata.totalItems }} Items
+                                    </span>
+                                    <span *ngIf="count.status === 'COMPLETED'"
+                                        class="flex items-center gap-1 text-emerald-400">
+                                        <app-icon name="check" [size]="12"></app-icon>
+                                        {{ count.metadata.accuracyRate }}% Accuracy
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <!-- Status Badge -->
+                            <span class="px-2.5 py-1 rounded-md text-xs font-bold border uppercase tracking-wider"
+                                [ngClass]="getStatusColor(count.status)">
+                                {{ count.status.replace('_', ' ') }}
+                            </span>
+
+                            <app-icon name="chevron-right" [size]="16"
+                                class="text-zinc-600 group-hover:text-zinc-400"></app-icon>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>

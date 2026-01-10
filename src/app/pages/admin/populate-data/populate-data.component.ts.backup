@@ -1,0 +1,899 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { Firestore, collection, addDoc, Timestamp, doc, setDoc, writeBatch, getDocs, limit, query } from '@angular/fire/firestore';
+
+@Component({
+  selector: 'app-populate-data',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  template: `
+    <div class="populate-container">
+      <header class="page-header">
+        <h1>🛠️ Data Seeder</h1>
+        <p>Manage your test environment data. Populate individual sections or reset the database.</p>
+      </header>
+      
+      <div class="status-console" *ngIf="logs.length > 0">
+        <div class="console-header">
+          <span>Activity Log</span>
+          <button (click)="clearLogs()" class="btn-clear">Clear</button>
+        </div>
+        <div class="console-body">
+          <div *ngFor="let log of logs" class="log-entry" [ngClass]="log.type">
+            <span class="timestamp">{{ log.time }}</span>
+            <span class="message">{{ log.message }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-layout">
+        <!-- 1. CATALOG -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">📦</span>
+            <h2>Catalog</h2>
+            <span class="badge success" *ngIf="catalogSeeded">Seeded</span>
+          </div>
+          <div class="card-body">
+            <p><strong>Foundational Data:</strong> Brands, Categories, Products.</p>
+            <div class="stats">
+              <span>Brands: 5</span>
+              <span>Categories: 4</span>
+              <span>Products: 10</span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" (click)="populateCatalog()" [disabled]="isLoading">
+                {{ isLoading ? 'Processing...' : 'Seed Catalog' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearCatalog()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. CUSTOMERS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">👥</span>
+            <h2>Customers</h2>
+            <span class="badge success" *ngIf="customersSeeded">Seeded</span>
+          </div>
+          <div class="card-body">
+            <p><strong>Collection 'customers':</strong> Mock customer profiles with realistic addresses.</p>
+            <div class="stats">
+              <span>Profiles: 10</span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" (click)="populateCustomers()" [disabled]="isLoading">
+                {{ isLoading ? 'Processing...' : 'Seed Customers' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearCustomers()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. ORDERS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">🛒</span>
+            <h2>Orders</h2>
+          </div>
+          <div class="card-body">
+            <p><strong>Sales History:</strong> Diverse orders linked to customers/products.</p>
+            <div class="stats">
+              <span>Orders: 20</span>
+              <span>Statuses: Mixed</span>
+            </div>
+            <div class="warning-box" *ngIf="!catalogSeeded || !customersSeeded">
+              ⚠️ Needs Catalog & Customers first
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" (click)="populateOrders()" [disabled]="isLoading || !catalogSeeded || !customersSeeded">
+                {{ isLoading ? 'Processing...' : 'Seed Orders' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearOrders()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. PROMOTIONS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">🎟️</span>
+            <h2>Promotions</h2>
+          </div>
+          <div class="card-body">
+            <p><strong>Marketing:</strong> Discount codes and campaigns.</p>
+            <div class="stats">
+              <span>Coupons: 8</span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" (click)="populateCoupons()" [disabled]="isLoading">
+                {{ isLoading ? 'Processing...' : 'Seed Coupons' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearCoupons()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. PRODUCT COSTS -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">💵</span>
+            <h2>Product Costs</h2>
+            <span class="badge success" *ngIf="costsSeeded">Seeded</span>
+          </div>
+          <div class="card-body">
+            <p><strong>Financial Data:</strong> Add cost prices to products for accurate COGS.</p>
+            <div class="stats">
+              <span>Products: 10</span>
+              <span>Margin: 35-45%</span>
+            </div>
+            <div class="warning-box" *ngIf="!catalogSeeded">
+              ⚠️ Needs Catalog first
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" (click)="populateProductCosts()" [disabled]="isLoading || !catalogSeeded">
+                {{ isLoading ? 'Processing...' : 'Add Cost Prices' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearProductCosts()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. EXPENSES -->
+        <div class="card">
+          <div class="card-header">
+            <span class="icon">💰</span>
+            <h2>Operating Expenses</h2>
+            <span class="badge success" *ngIf="expensesSeeded">Seeded</span>
+          </div>
+          <div class="card-body">
+            <p><strong>Financial Data:</strong> Sample operating expenses for Income Statement.</p>
+            <div class="stats">
+              <span>Expenses: 15</span>
+              <span>Categories: 8</span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" (click)="populateExpenses()" [disabled]="isLoading">
+                {{ isLoading ? 'Processing...' : 'Seed Expenses' }}
+              </button>
+              <button class="btn btn-warning" (click)="clearExpenses()" [disabled]="isLoading">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [`
+    .populate-container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #fff;
+    }
+
+    .page-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .page-header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #00ACD8, #93D500);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-console {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .console-header {
+      background: #252525;
+      padding: 0.5rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .console-body {
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 1rem;
+      font-family: monospace;
+    }
+
+    .log-entry {
+      margin-bottom: 0.25rem;
+    }
+
+    .log-entry.success { color: #93D500; }
+    .log-entry.error { color: #ff4444; }
+    .log-entry.info { color: #00ACD8; }
+
+    .timestamp {
+      color: #666;
+      margin-right: 0.5rem;
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-header .icon {
+      font-size: 1.5rem;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.875rem;
+      color: #aaa;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .stats span {
+      background: rgba(255,255,255,0.05);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .actions {
+      margin-top: auto;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #00ACD8;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #333;
+      color: white;
+      border: 1px solid #444;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #444;
+    }
+    
+    .btn-warning {
+      background: rgba(255, 68, 68, 0.1);
+      color: #ff4444;
+      border: 1px solid #ff4444;
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 80px;
+    }
+    
+    .btn-warning:hover:not(:disabled) {
+      background: rgba(255, 68, 68, 0.2);
+    }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid #444;
+      color: #aaa;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .badge.success {
+      background: rgba(147, 213, 0, 0.2);
+      color: #93D500;
+      border: 1px solid #93D500;
+    }
+
+    .warning-box {
+      background: rgba(255, 204, 0, 0.1);
+      border: 1px solid rgba(255, 204, 0, 0.3);
+      color: #ffcc00;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  `]
+})
+export class PopulateDataComponent implements OnInit {
+  private firestore = inject(Firestore);
+
+  isLoading = false;
+  logs: { time: string, message: string, type: 'info' | 'success' | 'error' }[] = [];
+
+  catalogSeeded = false;
+  customersSeeded = false;
+  costsSeeded = false;
+  expensesSeeded = false;
+
+  async ngOnInit() {
+    await this.checkSeededData();
+  }
+
+  async checkSeededData() {
+    try {
+      // Check for at least one product
+      const productQuery = query(collection(this.firestore, 'products'), limit(1));
+      const productSnapshot = await getDocs(productQuery);
+      this.catalogSeeded = !productSnapshot.empty;
+
+      // Check for at least one customer
+      const customerQuery = query(collection(this.firestore, 'customers'), limit(1));
+      const customerSnapshot = await getDocs(customerQuery);
+      this.customersSeeded = !customerSnapshot.empty;
+
+      // Check for expenses
+      const expenseQuery = query(collection(this.firestore, 'expenses'), limit(1));
+      const expenseSnapshot = await getDocs(expenseQuery);
+      this.expensesSeeded = !expenseSnapshot.empty;
+
+      if (this.catalogSeeded) this.log('Found existing catalog data.', 'info');
+      if (this.customersSeeded) this.log('Found existing customer data.', 'info');
+      if (this.expensesSeeded) this.log('Found existing expense data.', 'info');
+    } catch (error) {
+      console.error('Error checking seeded data:', error);
+    }
+  }
+
+  log(message: string, type: 'info' | 'success' | 'error' = 'info') {
+    const time = new Date().toLocaleTimeString();
+    this.logs.unshift({ time, message, type });
+  }
+
+  clearLogs() {
+    this.logs = [];
+  }
+
+  // Wrapper helper to enable consistent loading state
+  async runTask(name: string, task: () => Promise<void>) {
+    if (this.isLoading) return;
+    this.isLoading = true;
+    this.log(`🚀 Starting ${name}...`);
+    try {
+      await task();
+      this.log(`✅ ${name} completed successfully!`, 'success');
+    } catch (error) {
+      console.error(error);
+      this.log(`❌ Error in ${name}: ${error}`, 'error');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // --- HELPER: DELETE COLLECTION ---
+  async deleteCollection(path: string, batchSize = 50): Promise<number> {
+    const q = query(collection(this.firestore, path), limit(batchSize));
+    const snapshot = await getDocs(q);
+
+    // Recursive delete via batches
+    if (snapshot.size === 0) return 0;
+
+    const batch = writeBatch(this.firestore);
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    return snapshot.size + await this.deleteCollection(path, batchSize);
+  }
+
+  // --- 1. CATALOG ---
+  async populateCatalog() {
+    await this.runTask('Catalog Seeding', async () => {
+      // Brands
+      const batch1 = writeBatch(this.firestore);
+      const brands = [
+        { id: 'brand_praxis', name: 'Praxis', slug: 'praxis', description: { en: 'Premium motorcycle tires engineered in Mexico', es: 'Llantas premium para motocicleta diseñadas en México' }, logoUrl: 'https://via.placeholder.com/200x80/00ACD8/FFFFFF?text=PRAXIS', countryOfOrigin: 'Mexico', website: 'https://praxis.com.mx', featured: true, active: true },
+        { id: 'brand_michelin', name: 'Michelin', slug: 'michelin', description: { en: 'French tire manufacturer known for innovation', es: 'Fabricante francés de llantas conocido por su innovación' }, logoUrl: 'https://via.placeholder.com/200x80/FFD700/000000?text=MICHELIN', countryOfOrigin: 'France', website: 'https://www.michelin.com', featured: true, active: true },
+        { id: 'brand_pirelli', name: 'Pirelli', slug: 'pirelli', description: { en: 'Italian tire excellence with motorsport heritage', es: 'Excelencia italiana en llantas con herencia en deportes de motor' }, logoUrl: 'https://via.placeholder.com/200x80/D02C2F/FFFFFF?text=PIRELLI', countryOfOrigin: 'Italy', website: 'https://www.pirelli.com', featured: true, active: true },
+        { id: 'brand_dunlop', name: 'Dunlop', slug: 'dunlop', description: { en: 'British tire brand with racing experience', es: 'Marca británica de llantas con experiencia en carreras' }, logoUrl: 'https://via.placeholder.com/200x80/93D500/000000?text=DUNLOP', countryOfOrigin: 'United Kingdom', website: 'https://www.dunlop.eu', featured: false, active: true },
+        { id: 'brand_bridgestone', name: 'Bridgestone', slug: 'bridgestone', description: { en: 'Japanese tire technology leader', es: 'Líder japonés en tecnología de llantas' }, logoUrl: 'https://via.placeholder.com/200x80/000000/FFFFFF?text=BRIDGESTONE', countryOfOrigin: 'Japan', website: 'https://www.bridgestone.com', featured: false, active: true }
+      ];
+      brands.forEach(b => {
+        const ref = doc(this.firestore, `brands/${b.id}`);
+        batch1.set(ref, { ...b, createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+      });
+      await batch1.commit();
+      this.log('  Brands created.');
+
+      // Categories
+      const batch2 = writeBatch(this.firestore);
+      const categories = [
+        { id: 'cat_sport', name: { en: 'Sport', es: 'Deportivas' }, slug: 'sport', description: { en: 'High-performance tires for sport motorcycles', es: 'Llantas de alto rendimiento para motocicletas deportivas' }, icon: '🏍️', active: true, order: 1 },
+        { id: 'cat_touring', name: { en: 'Touring', es: 'Turismo' }, slug: 'touring', description: { en: 'Long-lasting tires for comfort riding', es: 'Llantas duraderas para viajes cómodos' }, icon: '🛣️', active: true, order: 2 },
+        { id: 'cat_offroad', name: { en: 'Off-Road', es: 'Todo Terreno' }, slug: 'off-road', description: { en: 'Rugged tires for adventure', es: 'Llantas robustas para aventura' }, icon: '⛰️', active: true, order: 3 },
+        { id: 'cat_scooter', name: { en: 'Scooter', es: 'Scooter' }, slug: 'scooter', description: { en: 'Specialized tires for scooters', es: 'Llantas especializadas para scooters' }, icon: '🛴', active: true, order: 4 }
+      ];
+      categories.forEach(c => {
+        const ref = doc(this.firestore, `categories/${c.id}`);
+        batch2.set(ref, { ...c, createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+      });
+      await batch2.commit();
+      this.log('  Categories created.');
+
+      // Products
+      const batch3 = writeBatch(this.firestore);
+      const products = [
+        {
+          id: 'prod_praxis_sport', name: { en: 'Praxis Sport Pro', es: 'Praxis Sport Pro' }, slug: 'praxis-sport-pro',
+          brand: 'Praxis', brandId: 'brand_praxis', categoryId: 'cat_sport', sku: 'PRAX-120-70-17-SP',
+          price: 1850, compareAtPrice: 2100, stockQuantity: 15, inStock: true, featured: true, active: true,
+          specifications: { width: 120, aspectRatio: 70, diameter: 17, loadIndex: 58, speedRating: 'W' },
+          images: { main: 'https://via.placeholder.com/800x800/00ACD8/FFFFFF?text=Praxis+Sport+Pro', gallery: [] }
+        },
+        // ... (truncated product list for brevity, assumes identical to before)
+        {
+          id: 'prod_michelin_pilot', name: { en: 'Michelin Pilot Power', es: 'Michelin Pilot Power' }, slug: 'michelin-pilot-power',
+          brand: 'Michelin', brandId: 'brand_michelin', categoryId: 'cat_sport', sku: 'MICH-180-55-17-SP',
+          price: 2200, stockQuantity: 8, inStock: true, featured: true, active: true, bestSeller: true,
+          specifications: { width: 180, aspectRatio: 55, diameter: 17, loadIndex: 73, speedRating: 'W' },
+          images: { main: 'https://via.placeholder.com/800x800/FFD700/000000?text=Michelin+Pilot', gallery: [] }
+        },
+        {
+          id: 'prod_praxis_touring', name: { en: 'Praxis Touring Plus', es: 'Praxis Touring Plus' }, slug: 'praxis-touring-plus',
+          brand: 'Praxis', brandId: 'brand_praxis', categoryId: 'cat_touring', sku: 'PRAX-130-80-17-TR',
+          price: 1450, compareAtPrice: 1650, stockQuantity: 20, inStock: true, active: true, bestSeller: true,
+          specifications: { width: 130, aspectRatio: 80, diameter: 17, loadIndex: 65, speedRating: 'H' },
+          images: { main: 'https://via.placeholder.com/800x800/93D500/000000?text=Praxis+Touring', gallery: [] }
+        },
+        {
+          id: 'prod_pirelli_rally', name: { en: 'Pirelli Scorpion Rally', es: 'Pirelli Scorpion Rally' }, slug: 'pirelli-scorpion-rally',
+          brand: 'Pirelli', brandId: 'brand_pirelli', categoryId: 'cat_offroad', sku: 'PIR-110-80-19-OR',
+          price: 1650, compareAtPrice: 1900, stockQuantity: 10, inStock: true, featured: true, active: true,
+          specifications: { width: 110, aspectRatio: 80, diameter: 19, loadIndex: 59, speedRating: 'R' },
+          images: { main: 'https://via.placeholder.com/800x800/D02C2F/FFFFFF?text=Pirelli+Scorpion', gallery: [] }
+        },
+        {
+          id: 'prod_bridgestone_t32', name: { en: 'Bridgestone Battlax T32', es: 'Bridgestone Battlax T32' }, slug: 'bridgestone-battlax-t32',
+          brand: 'Bridgestone', brandId: 'brand_bridgestone', categoryId: 'cat_touring', sku: 'BRID-120-70-17-TR',
+          price: 1750, stockQuantity: 12, inStock: true, active: true,
+          specifications: { width: 120, aspectRatio: 70, diameter: 17, loadIndex: 58, speedRating: 'W' },
+          images: { main: 'https://via.placeholder.com/800x800/000000/FFFFFF?text=Bridgestone+T32', gallery: [] }
+        },
+        {
+          id: 'prod_dunlop_q5', name: { en: 'Dunlop Sportmax Q5', es: 'Dunlop Sportmax Q5' }, slug: 'dunlop-sportmax-q5',
+          brand: 'Dunlop', brandId: 'brand_dunlop', categoryId: 'cat_sport', sku: 'DUN-200-55-17-SP',
+          price: 2400, stockQuantity: 5, inStock: true, featured: true, active: true, bestSeller: true,
+          specifications: { width: 200, aspectRatio: 55, diameter: 17, loadIndex: 78, speedRating: 'W' },
+          images: { main: 'https://via.placeholder.com/800x800/93D500/000000?text=Dunlop+Q5', gallery: [] }
+        },
+        {
+          id: 'prod_praxis_city', name: { en: 'Praxis City Grip', es: 'Praxis City Grip' }, slug: 'praxis-city-grip',
+          brand: 'Praxis', brandId: 'brand_praxis', categoryId: 'cat_scooter', sku: 'PRAX-110-70-12-SC',
+          price: 850, stockQuantity: 30, inStock: true, active: true, bestSeller: true,
+          specifications: { width: 110, aspectRatio: 70, diameter: 12, loadIndex: 47, speedRating: 'L' },
+          images: { main: 'https://via.placeholder.com/800x800/00ACD8/FFFFFF?text=City+Grip', gallery: [] }
+        },
+        {
+          id: 'prod_michelin_city_pro', name: { en: 'Michelin City Pro', es: 'Michelin City Pro' }, slug: 'michelin-city-pro',
+          brand: 'Michelin', brandId: 'brand_michelin', categoryId: 'cat_scooter', sku: 'MICH-90-90-14-SC',
+          price: 750, compareAtPrice: 850, stockQuantity: 25, inStock: true, active: true,
+          specifications: { width: 90, aspectRatio: 90, diameter: 14, loadIndex: 46, speedRating: 'P' },
+          images: { main: 'https://via.placeholder.com/800x800/FFD700/000000?text=City+Pro', gallery: [] }
+        },
+        {
+          id: 'prod_pirelli_diablo', name: { en: 'Pirelli Diablo Rosso IV', es: 'Pirelli Diablo Rosso IV' }, slug: 'pirelli-diablo-rosso-iv',
+          brand: 'Pirelli', brandId: 'brand_pirelli', categoryId: 'cat_sport', sku: 'PIR-190-55-17-DR',
+          price: 2850, stockQuantity: 4, inStock: true, featured: true, active: true,
+          specifications: { width: 190, aspectRatio: 55, diameter: 17, loadIndex: 75, speedRating: 'W' },
+          images: { main: 'https://via.placeholder.com/800x800/D02C2F/000000?text=Diablo+Rosso+IV', gallery: [] }
+        },
+        {
+          id: 'prod_bridgestone_ax41', name: { en: 'Bridgestone Battlax AX41', es: 'Bridgestone Battlax AX41' }, slug: 'bridgestone-battlax-ax41',
+          brand: 'Bridgestone', brandId: 'brand_bridgestone', categoryId: 'cat_offroad', sku: 'BRID-150-70-18-AX',
+          price: 2100, stockQuantity: 10, inStock: true, active: true,
+          specifications: { width: 150, aspectRatio: 70, diameter: 18, loadIndex: 70, speedRating: 'Q' },
+          images: { main: 'https://via.placeholder.com/800x800/000000/FFFFFF?text=Battlax+AX41', gallery: [] }
+        }
+      ];
+
+      products.forEach(p => {
+        const ref = doc(this.firestore, `products/${p.id}`);
+        batch3.set(ref, {
+          ...p,
+          description: { en: 'High quality tire for testing.', es: 'Llanta de alta calidad para pruebas.' },
+          features: { en: ['Excellent Grip', 'Durable', 'High Performance'], es: ['Excelente agarre', 'Duradera', 'Alto Rendimiento'] },
+          createdAt: Timestamp.now(), updatedAt: Timestamp.now()
+        });
+      });
+      await batch3.commit();
+      this.log('  Products created.');
+      this.catalogSeeded = true;
+    });
+  }
+
+  async clearCatalog() {
+    await this.runTask('Clearing Catalog', async () => {
+      await this.deleteCollection('products');
+      await this.deleteCollection('categories');
+      await this.deleteCollection('brands');
+      this.catalogSeeded = false;
+    });
+  }
+
+  // --- 2. CUSTOMERS ---
+  async populateCustomers() {
+    await this.runTask('Customer Seeding', async () => {
+      const batch = writeBatch(this.firestore);
+      const names = ['Juan Pérez', 'María González', 'Carlos López', 'Ana Martínez', 'Pedro Sánchez', 'Laura Flores', 'Miguel Torres', 'Sofia Ramírez', 'Jorge Hernandez', 'Claudia Diaz'];
+
+      names.forEach((name, i) => {
+        const id = `cust_user_${i + 1}`;
+        const ref = doc(this.firestore, `customers/${id}`);
+        batch.set(ref, {
+          uid: id,
+          displayName: name,
+          email: `user${i + 1}@example.com`,
+          role: 'CUSTOMER',
+          photoURL: null,
+          isActive: true,
+          createdAt: Timestamp.now(),
+          lastLogin: Timestamp.now(),
+          phone: '+52 55 1234 5678',
+          shippingAddress: {
+            street: 'Av. Reforma', exteriorNumber: `${100 + i}`, city: 'Mexico City', state: 'CDMX', zipCode: '06600', country: 'Mexico'
+          },
+          stats: {
+            totalOrders: 0,
+            totalSpend: 0,
+            averageOrderValue: 0,
+            lastOrderDate: null
+          }
+        });
+      });
+
+      await batch.commit();
+      this.customersSeeded = true;
+    });
+  }
+
+  async clearCustomers() {
+    await this.runTask('Clearing Customers', async () => {
+      await this.deleteCollection('customers');
+      this.customersSeeded = false;
+    });
+  }
+
+  // --- 3. ORDERS ---
+  async populateOrders() {
+    await this.runTask('Order Seeding', async () => {
+      const batch = writeBatch(this.firestore);
+      const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+      const names = ['Juan Pérez', 'María González', 'Carlos López', 'Ana Martínez', 'Pedro Sánchez', 'Laura Flores', 'Miguel Torres', 'Sofia Ramírez', 'Jorge Hernandez', 'Claudia Diaz'];
+
+      // Track stats to update customers later
+      const customerStats: { [key: string]: { count: number, spend: number, lastDate: any } } = {};
+
+      // Initialize stats for all users to 0 first to clear previous random junk if we strictly wanted to, 
+      // but since we are just adding, let's just track additions. 
+      // Actually, better to reset them to 0 effectively or just overwrite. 
+      // let's assume we are overwriting the stats field completely.
+
+      for (let i = 1; i <= 20; i++) {
+        const orderId = `ord_00${i}`;
+        const ref = doc(this.firestore, `orders/${orderId}`);
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        const itemsCount = Math.floor(Math.random() * 3) + 1;
+
+        // Mock items
+        const items = [];
+        let subtotal = 0;
+        for (let j = 0; j < itemsCount; j++) {
+          const price = Math.floor(Math.random() * 1000) + 1000;
+          items.push({
+            productId: 'prod_mock_ref',
+            productName: 'Mock Tire Product',
+            sku: `SKU-${Math.floor(Math.random() * 1000)}`,
+            price: price,
+            quantity: 1,
+            subtotal: price,
+            productImage: 'https://via.placeholder.com/100'
+          });
+          subtotal += price;
+        }
+
+        const tax = subtotal * 0.16;
+        const total = subtotal + tax;
+
+        // Pick random customer
+        const userIdx = Math.floor(Math.random() * names.length);
+        const userName = names[userIdx];
+        const userEmail = `user${userIdx + 1}@example.com`;
+        const userId = `cust_user_${userIdx + 1}`;
+
+        // Update stats tracker
+        if (!customerStats[userId]) {
+          customerStats[userId] = { count: 0, spend: 0, lastDate: null };
+        }
+        customerStats[userId].count++;
+        customerStats[userId].spend += total;
+        customerStats[userId].lastDate = Timestamp.now(); // simplified, all "now"
+
+        batch.set(ref, {
+          id: orderId,
+          orderNumber: `ORD-${2024000 + i}`,
+          customer: {
+            id: userId,
+            name: userName,
+            email: userEmail,
+            phone: '555-555-5555'
+          },
+          items: items,
+          subtotal,
+          tax,
+          shippingCost: 0,
+          discount: 0,
+          total,
+          status: status,
+          paymentStatus: status === 'cancelled' ? 'failed' : 'paid',
+          shippingAddress: {
+            street: 'Calle Falsa 123', exteriorNumber: '123', city: 'Monterrey', state: 'NL', zipCode: '64000', country: 'Mexico'
+          },
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          history: [
+            { status: 'pending', timestamp: Timestamp.now(), updatedBy: 'system' },
+            { status: status, timestamp: Timestamp.now(), updatedBy: 'admin' }
+          ]
+        });
+      }
+      await batch.commit();
+
+      // Now update Customer Stats
+      const statsBatch = writeBatch(this.firestore);
+      let updatesCount = 0;
+
+      for (const [userId, stats] of Object.entries(customerStats)) {
+        const custRef = doc(this.firestore, `customers/${userId}`);
+        statsBatch.update(custRef, {
+          'stats.totalOrders': stats.count,
+          'stats.totalSpend': stats.spend,
+          'stats.lastOrderDate': stats.lastDate,
+          'stats.averageOrderValue': stats.spend / stats.count
+        });
+        updatesCount++;
+      }
+
+      if (updatesCount > 0) {
+        await statsBatch.commit();
+        this.log(`  Updated stats for ${updatesCount} customers.`);
+      }
+    });
+  }
+
+  async clearOrders() {
+    await this.runTask('Clearing Orders', async () => {
+      await this.deleteCollection('orders');
+    });
+  }
+
+  // --- 4. COUPONS ---
+  async populateCoupons() {
+    await this.runTask('Coupon Seeding', async () => {
+      const batch = writeBatch(this.firestore);
+      const coupons = [
+        { code: 'WELCOME10', type: 'percentage', value: 10, isActive: true },
+        { code: 'FLASH50', type: 'fixed_amount', value: 500, isActive: true },
+        { code: 'SUMMER20', type: 'percentage', value: 20, isActive: false }, // Inactive
+        { code: 'VIPSHIP', type: 'fixed_amount', value: 200, isActive: true },
+        { code: 'EXPIRED2023', type: 'percentage', value: 50, isActive: true, endDate: new Date('2023-01-01') } // Expired
+      ];
+
+      coupons.forEach((c, i) => {
+        const ref = doc(this.firestore, `coupons/cpn_mock_${i}`);
+        batch.set(ref, {
+          ...c,
+          startDate: Timestamp.now(),
+          endDate: c.endDate ? Timestamp.fromDate(c.endDate) : null,
+          usageLimit: 100,
+          usageCount: Math.floor(Math.random() * 50),
+          minPurchaseAmount: 0,
+          createdAt: Timestamp.now()
+        });
+      });
+      await batch.commit();
+    });
+  }
+
+  async clearCoupons() {
+    await this.runTask('Clearing Coupons', async () => {
+      await this.deleteCollection('coupons');
+    });
+  }
+
+  // --- 5. PRODUCT COSTS ---
+  async populateProductCosts() {
+    await this.runTask('Product Cost Seeding', async () => {
+      const productsSnapshot = await getDocs(collection(this.firestore, 'products'));
+      const batch = writeBatch(this.firestore);
+
+      let count = 0;
+      productsSnapshot.docs.forEach(doc => {
+        const product = doc.data();
+        const price = product['price'] || 1000;
+
+        // Calculate cost price with 35-45% margin
+        const marginPercent = 0.35 + (Math.random() * 0.10); // 35-45%
+        const costPrice = Math.round(price * (1 - marginPercent));
+
+        batch.update(doc.ref, {
+          costPrice: costPrice,
+          currency: 'MXN',
+          margin: Math.round(marginPercent * 100),
+          profitPerUnit: price - costPrice,
+          lastCostUpdate: Timestamp.now()
+        });
+        count++;
+      });
+
+      await batch.commit();
+      this.log(`  Added cost prices to ${count} products.`);
+      this.costsSeeded = true;
+    });
+  }
+
+  async clearProductCosts() {
+    await this.runTask('Clearing Product Costs', async () => {
+      const productsSnapshot = await getDocs(collection(this.firestore, 'products'));
+      const batch = writeBatch(this.firestore);
+
+      productsSnapshot.docs.forEach(doc => {
+        batch.update(doc.ref, {
+          costPrice: null,
+          currency: null,
+          margin: null,
+          profitPerUnit: null,
+          lastCostUpdate: null
+        });
+      });
+
+      await batch.commit();
+      this.costsSeeded = false;
+    });
+  }
+
+  // --- 6. EXPENSES ---
+  async populateExpenses() {
+    await this.runTask('Expense Seeding', async () => {
+      const batch = writeBatch(this.firestore);
+
+      const expenses = [
+        // Salaries
+        { category: 'SALARIES', amount: 45000, description: 'Nómina mensual - Equipo de ventas', vendor: 'Recursos Humanos', recurring: true, frequency: 'monthly' },
+        { category: 'SALARIES', amount: 35000, description: 'Nómina mensual - Equipo de almacén', vendor: 'Recursos Humanos', recurring: true, frequency: 'monthly' },
+
+        // Rent
+        { category: 'RENT', amount: 25000, description: 'Renta de bodega', vendor: 'Inmobiliaria del Centro', recurring: true, frequency: 'monthly' },
+        { category: 'RENT', amount: 15000, description: 'Renta de oficinas', vendor: 'Inmobiliaria del Centro', recurring: true, frequency: 'monthly' },
+
+        // Utilities
+        { category: 'UTILITIES', amount: 3500, description: 'Electricidad', vendor: 'CFE', recurring: true, frequency: 'monthly' },
+        { category: 'UTILITIES', amount: 1200, description: 'Agua', vendor: 'SAPAC', recurring: true, frequency: 'monthly' },
+        { category: 'UTILITIES', amount: 2800, description: 'Internet y telefonía', vendor: 'Telmex', recurring: true, frequency: 'monthly' },
+
+        // Marketing
+        { category: 'MARKETING', amount: 8500, description: 'Publicidad en redes sociales', vendor: 'Meta Ads', recurring: true, frequency: 'monthly' },
+        { category: 'MARKETING', amount: 12000, description: 'Campaña Google Ads', vendor: 'Google', recurring: false },
+
+        // Insurance
+        { category: 'INSURANCE', amount: 18000, description: 'Seguro de inventario', vendor: 'AXA Seguros', recurring: true, frequency: 'monthly' },
+
+        // Supplies
+        { category: 'SUPPLIES', amount: 4500, description: 'Material de empaque', vendor: 'Empaques del Norte', recurring: false },
+        { category: 'SUPPLIES', amount: 2200, description: 'Papelería y oficina', vendor: 'Office Depot', recurring: false },
+
+        // Maintenance
+        { category: 'MAINTENANCE', amount: 5500, description: 'Mantenimiento de montacargas', vendor: 'Servicio Industrial', recurring: false },
+
+        // Shipping
+        { category: 'SHIPPING', amount: 15000, description: 'Servicios de paquetería', vendor: 'Estafeta', recurring: true, frequency: 'monthly' },
+
+        // Professional Services
+        { category: 'PROFESSIONAL_SERVICES', amount: 8000, description: 'Servicios contables', vendor: 'Despacho Contable', recurring: true, frequency: 'monthly' }
+      ];
+
+      const now = new Date();
+      expenses.forEach((exp, i) => {
+        // Spread expenses across last 3 months
+        const daysAgo = Math.floor(Math.random() * 90);
+        const expenseDate = new Date(now);
+        expenseDate.setDate(expenseDate.getDate() - daysAgo);
+
+        const ref = doc(collection(this.firestore, 'expenses'));
+        batch.set(ref, {
+          ...exp,
+          date: Timestamp.fromDate(expenseDate),
+          createdAt: Timestamp.now(),
+          createdBy: 'seeder'
+        });
+      });
+
+      await batch.commit();
+      this.log(`  Created ${expenses.length} sample expenses.`);
+      this.expensesSeeded = true;
+    });
+  }
+
+  async clearExpenses() {
+    await this.runTask('Clearing Expenses', async () => {
+      await this.deleteCollection('expenses');
+      this.expensesSeeded = false;
+    });
+  }
+}

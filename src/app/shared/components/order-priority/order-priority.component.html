@@ -1,0 +1,94 @@
+<div class="order-priority-card">
+    <div class="card-header">
+        <div class="header-content">
+            <h3 class="card-title">
+                <i class="fas fa-flag"></i>
+                Priority & SLA
+            </h3>
+            <button class="btn btn-sm btn-light" (click)="togglePriorityForm()" *ngIf="!isLoading()">
+                <i class="fas" [ngClass]="showPriorityForm() ? 'fa-times' : 'fa-edit'"></i>
+                {{ showPriorityForm() ? 'Cancel' : (priority() ? 'Change' : 'Set Priority') }}
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading priority...
+        </div>
+
+        <!-- Priority Form -->
+        <div class="priority-form" *ngIf="showPriorityForm() && !isLoading()">
+            <div class="form-group">
+                <label for="prioritySelect">Select Priority Level</label>
+                <select id="prioritySelect" class="form-control" [(ngModel)]="selectedPriority">
+                    <option value="standard">Standard (72 hours)</option>
+                    <option value="express">Express (48 hours)</option>
+                    <option value="rush">Rush (24 hours)</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary btn-block" (click)="setPriority()" [disabled]="isUpdating()">
+                <i class="fas" [ngClass]="isUpdating() ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                {{ isUpdating() ? 'Saving...' : 'Save Priority' }}
+            </button>
+        </div>
+
+        <!-- Current Priority Display -->
+        <div *ngIf="!isLoading() && priority() && !showPriorityForm()" class="priority-display">
+            <!-- Priority Badge -->
+            <div class="priority-badge-container">
+                <div class="priority-badge" [ngClass]="getPriorityBadgeClass(priority()!.level)">
+                    <i class="fas fa-flag"></i>
+                    <span class="priority-label">{{ priority()!.level | titlecase }}</span>
+                </div>
+            </div>
+
+            <!-- SLA Information -->
+            <div class="sla-info">
+                <div class="sla-row">
+                    <span class="label">SLA Deadline:</span>
+                    <span class="value">{{ formatDate(priority()!.sla) }}</span>
+                </div>
+                <div class="sla-row">
+                    <span class="label">Order Age:</span>
+                    <span class="value">{{ priority()!.orderAge }} hours</span>
+                </div>
+            </div>
+
+            <!-- SLA Countdown -->
+            <div class="sla-countdown" [ngClass]="getSLAStatusClass()">
+                <div class="countdown-icon">
+                    <i class="fas" [ngClass]="{
+                        'fa-clock': !priority()!.isOverdue,
+                        'fa-exclamation-triangle': priority()!.isOverdue
+                    }"></i>
+                </div>
+                <div class="countdown-content">
+                    <div class="countdown-label">
+                        {{ priority()!.isOverdue ? 'Overdue' : 'Time Remaining' }}
+                    </div>
+                    <div class="countdown-time">
+                        {{ timeRemaining() }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Warning -->
+            <div class="overdue-warning" *ngIf="priority()!.isOverdue">
+                <i class="fas fa-exclamation-circle"></i>
+                <strong>This order is past its SLA deadline!</strong>
+                <p>Immediate action required to fulfill this order.</p>
+            </div>
+        </div>
+
+        <!-- No Priority Set -->
+        <div *ngIf="!isLoading() && !priority() && !showPriorityForm()" class="no-priority">
+            <i class="fas fa-flag"></i>
+            <p>No priority set for this order</p>
+            <small>Set a priority to enable SLA tracking</small>
+        </div>
+    </div>
+</div>

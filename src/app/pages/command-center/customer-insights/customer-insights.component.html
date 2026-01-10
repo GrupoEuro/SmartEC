@@ -1,0 +1,275 @@
+<div class="page-container">
+    <header class="page-header" id="ci-header">
+        <div class="header-content">
+            <div class="header-left">
+                <app-icon name="users" [size]="40" class="text-indigo-500"></app-icon>
+                <div class="header-text">
+                    <h1>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.TITLE' | translate }}</h1>
+                    <p>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+    </div>
+
+    <div *ngIf="!isLoading() && insightsData() as data" class="dashboard-grid">
+        <!-- KPI Cards -->
+        <div class="kpi-row" id="ci-clv">
+            <div class="metrics-card glass-panel">
+                <div class="metric-icon bg-blue-500/20 text-blue-400">
+                    <app-icon name="user-plus" [size]="24"></app-icon>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">New Customers (Period)</span>
+                    <span class="metric-value">{{ newCustomersInPeriod() }}</span>
+                    <span class="metric-trend positive" *ngIf="newCustomersInPeriod() > 0">Active Growth</span>
+                </div>
+            </div>
+
+            <div class="metrics-card glass-panel">
+                <div class="metric-icon bg-green-500/20 text-green-400">
+                    <app-icon name="dollar-sign" [size]="24"></app-icon>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Average CLV</span>
+                    <span class="metric-value">{{ data.avgCLV | currency }}</span>
+                    <span class="metric-trend neutral">Lifetime Value</span>
+                </div>
+            </div>
+
+            <div class="metrics-card glass-panel">
+                <div class="metric-icon bg-red-500/20 text-red-500">
+                    <app-icon name="user-minus" [size]="24"></app-icon>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">Churn Rate</span>
+                    <span class="metric-value">{{ data.churnRate | number:'1.1-1' }}%</span>
+                    <span class="metric-trend" [class.negative]="data.churnRate > 5">Based on Inactivity</span>
+                </div>
+            </div>
+
+            <div class="metrics-card glass-panel">
+                <div class="metric-icon bg-amber-500/20 text-amber-500">
+                    <app-icon name="alert-triangle" [size]="24"></app-icon>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-label">At-Risk Value</span>
+                    <span class="metric-value">{{ data.atRiskValue | currency }}</span>
+                    <span class="metric-trend negative">Potential Revenue Loss</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-grid">
+            <app-chart-card [title]="'Acquisition Trend'" [subtitle]="'New Customers over last 12 months'"
+                [type]="'bar'" [data]="acquisitionChartData()" [height]="300">
+            </app-chart-card>
+
+            <app-chart-card [title]="'Customer Segmentation'" [type]="'doughnut'" [data]="segmentChartData()"
+                [height]="300" [tableData]="segmentTableData()" [tableColumns]="segmentTableColumns">
+            </app-chart-card>
+        </div>
+
+        <!-- RFM and Retention -->
+        <div class="charts-grid-wide">
+            <div class="section-card glass-panel wide" style="position: relative;">
+                <div class="card-header" id="ci-rfm-analysis"
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1.5rem 1.5rem 0;">
+                    <div>
+                        <h3>RFM Analysis</h3>
+                        <p class="subtitle" style="color: #64748b; font-size: 0.875rem; margin: 0;">Recency vs Frequency
+                            vs Monetary Value</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;" id="ci-rfm-actions">
+                        <button class="btn-icon-subtle" (click)="toggleRFMTable()" [class.active]="showRFMTable()"
+                            title="View Data">
+                            <app-icon name="list" [size]="20"></app-icon>
+                        </button>
+                        <button class="btn-icon-subtle" (click)="toggleRFMInfo()" [class.active]="showRFMInfo()"
+                            title="Info">
+                            <app-icon name="info" [size]="20"></app-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="info-panel glass-panel" *ngIf="showRFMInfo()"
+                    style="margin: 0 1.5rem 1.5rem; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div class="info-grid"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; padding: 1rem;">
+                        <div class="info-item">
+                            <strong style="color: #10b981;">⭐ Champions:</strong>
+                            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0.25rem 0;">Bought recently, buy often
+                                and spend the most.</p>
+                        </div>
+                        <div class="info-item">
+                            <strong style="color: #3b82f6;">💎 Loyal:</strong>
+                            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0.25rem 0;">Spend good money and
+                                responsive to promotions.</p>
+                        </div>
+                        <div class="info-item">
+                            <strong style="color: #f59e0b;">🌱 New:</strong>
+                            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0.25rem 0;">Bought most recently, but
+                                not often.</p>
+                        </div>
+                        <div class="info-item">
+                            <strong style="color: #f43f5e;">⚠️ At Risk:</strong>
+                            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0.25rem 0;">Spent big money and
+                                purchased often but long time ago.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Table Panel (Replaces chart-card internal table) -->
+                <div class="table-panel glass-panel" *ngIf="showRFMTable()"
+                    style="margin: 0 1.5rem 1.5rem; background: rgba(30, 41, 59, 0.5); max-height: 300px; overflow-y: auto;">
+                    <table class="risk-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Segment</th>
+                                <th>Days Since</th>
+                                <th>Orders</th>
+                                <th>LTV</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of rfmTableData()">
+                                <td class="user-info">
+                                    <div class="name">{{ row.name }}</div>
+                                </td>
+                                <td>
+                                    <span class="risk-badge" [ngClass]="{
+                                        'safe': row.segment === 'Champion' || row.segment === 'Loyal',
+                                        'warning': row.segment === 'New' || row.segment === 'At Risk',
+                                        'critical': row.segment === 'Lost'
+                                    }">{{ row.segment }}</span>
+                                </td>
+                                <td>{{ row.recency }} days</td>
+                                <td>{{ row.frequency }}</td>
+                                <td class="spent">{{ row.monetary | currency }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="padding: 0 1.5rem 1.5rem;">
+                    <!-- Use app-metric-chart directly instead of wrapping in another card -->
+                    <app-metric-chart [data]="rfmChartData()" [type]="'scatter'" [options]="rfmChartOptions"
+                        [height]="350">
+                    </app-metric-chart>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cohorts -->
+        <div class="section-card glass-panel wide">
+            <div class="card-header" id="ci-retention"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>
+                    <app-icon name="grid" [size]="20" class="text-indigo-400"></app-icon>
+                    Retention Heatmap (Cohorts)
+                </h3>
+                <button class="btn-icon-subtle" (click)="toggleCohortInfo()" [class.active]="showCohortInfo()"
+                    title="Info">
+                    <app-icon name="info" [size]="20"></app-icon>
+                </button>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel glass-panel" *ngIf="showCohortInfo()"
+                style="margin-bottom: 1.5rem; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1); padding: 1rem; border-radius: 0.5rem;">
+                <p style="color: #cbd5e1; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                    <strong>Understanding Cohorts:</strong> This heatmap tracks user retention over time.
+                </p>
+                <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; color: #94a3b8;">
+                    <span>Color Intensity = Retention Rate</span>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                        <span>0%</span>
+                        <div
+                            style="width: 100px; height: 8px; background: linear-gradient(to right, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 1)); border-radius: 4px;">
+                        </div>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cohort-container">
+                <table class="cohort-table">
+                    <thead>
+                        <tr>
+                            <th class="sticky-col">Cohort</th>
+                            <th class="sticky-col-2">Users</th>
+                            <th *ngFor="let m of [0,1,2,3,4,5,6,7,8,9,10,11]">Month {{m}}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let cohort of data.cohorts">
+                            <td class="cohort-date sticky-col">{{ cohort.month }}</td>
+                            <td class="cohort-size sticky-col-2">{{ cohort.size }}</td>
+                            <td *ngFor="let pct of cohort.retention; let i = index"
+                                [style.background-color]="getRetentionColor(pct)"
+                                [title]="pct + '% Retention in Month ' + i">
+                                <span class="pct-text" [style.color]="pct > 50 ? '#0f172a' : '#e2e8f0'"
+                                    [style.opacity]="1">
+                                    {{ pct }}%
+                                </span>
+                            </td>
+                            <!-- Fill empty cells -->
+                            <td *ngFor="let i of [].constructor(12 - cohort.retention.length)" class="empty-cell">
+                                <span style="opacity: 0.1; font-size: 0.7rem;">-</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- At Risk Customers -->
+        <div class="section-card glass-panel wide" *ngIf="atRiskCustomers().length > 0">
+            <h3>
+                <app-icon name="alert-triangle" [size]="20" class="text-red-500"></app-icon>
+                High Value Customers At Risk
+            </h3>
+            <table class="risk-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Total Spent</th>
+                        <th>Last Order</th>
+                        <th>Risk Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let p of atRiskCustomers()">
+                        <td class="user-info">
+                            <div class="name">{{ p.name }}</div>
+                            <div class="email">{{ p.email }}</div>
+                        </td>
+                        <td class="spent">{{ p.totalSpent | currency }}</td>
+                        <td class="date">{{ p.lastOrderDate | date }}</td>
+                        <td>
+                            <div class="risk-badge" [ngClass]="getRiskLevelClass(p.churnRiskScore)">
+                                {{ p.churnRiskScore }}% Risk
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn-action">Contact</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <app-dashboard-diagnostics [logs]="[]" [buildVersion]="'v2.0-Reactive'"></app-dashboard-diagnostics>
+
+        <!-- Tour Trigger -->
+        <button (click)="startTour()" class="help-float-btn" title="Start Tour">
+            ?
+        </button>
+    </div>
+</div>

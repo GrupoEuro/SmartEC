@@ -1,0 +1,281 @@
+<div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+</div>
+
+<div *ngIf="!isLoading && order" class="order-detail-container">
+    <!-- Print Only Header -->
+    <div class="print-header">
+        <div class="print-brand">
+            <h1>IMPORTADORA EURO</h1>
+            <p>Distrubución de Llantas y Accesorios</p>
+        </div>
+        <div class="print-meta">
+            <h2>{{ 'ADMIN.ORDERS.DETAIL.INVOICE' | translate }}</h2>
+            <div class="meta-row">
+                <span>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}:</span>
+                <strong>#{{ order.orderNumber }}</strong>
+            </div>
+            <div class="meta-row">
+                <span>{{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}:</span>
+                <span>{{ $any(order.createdAt) | date:'mediumDate' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <app-admin-page-header icon="📦"
+        [title]="('ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate) + ' #' + order.orderNumber"
+        [subtitle]="($any(order.createdAt) | date:'medium') || ''">
+        <button class="btn-secondary" (click)="printOrder()">
+            🖨️ {{ 'ADMIN.ORDERS.DETAIL.PRINT' | translate }}
+        </button>
+    </app-admin-page-header>
+
+    <!-- New Layout Structure -->
+
+    <!-- Top Row: Context Cards (3 Col Grid) -->
+    <div class="info-grid">
+        <!-- Customer Info -->
+        <div class="card customer-card">
+            <h3>{{ 'ADMIN.ORDERS.DETAIL.CUSTOMER' | translate }}</h3>
+            <div class="info-row">
+                <span class="label">Name:</span>
+                <span class="value">
+                    <a *ngIf="order.customer.id" [routerLink]="['/admin/customers', order.customer.id]" class="link">
+                        {{ order.customer.name }} ↗
+                    </a>
+                    <span *ngIf="!order.customer.id">{{ order.customer.name }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="label">Email:</span>
+                <a [href]="'mailto:' + order.customer.email" class="value link">{{ order.customer.email }}</a>
+            </div>
+            <div class="info-row">
+                <span class="label">Phone:</span>
+                <span class="value">{{ order.customer.phone }}</span>
+            </div>
+        </div>
+
+        <!-- Shipping Address -->
+        <div class="card address-card">
+            <div class="card-header-flex">
+                <h3>{{ 'ADMIN.ORDERS.DETAIL.SHIPPING_ADDRESS' | translate }}</h3>
+                <button class="btn-icon-sm"
+                    (click)="copyToClipboard(order.shippingAddress.street + ', ' + order.shippingAddress.zipCode, 'Address')"
+                    title="{{ 'ADMIN.ORDERS.DETAIL.COPY' | translate }}">
+                    📋
+                </button>
+            </div>
+            <address>
+                {{ order.shippingAddress.street }} {{ order.shippingAddress.exteriorNumber }}
+                <span *ngIf="order.shippingAddress.interiorNumber">Int {{ order.shippingAddress.interiorNumber
+                    }}</span><br>
+                <span *ngIf="order.shippingAddress.colonia">{{ order.shippingAddress.colonia }}<br></span>
+                {{ order.shippingAddress.city }}, {{ order.shippingAddress.state }}<br>
+                {{ order.shippingAddress.zipCode }}<br>
+                {{ order.shippingAddress.country }}
+            </address>
+            <div class="references" *ngIf="order.shippingAddress.references">
+                <strong>Ref:</strong> {{ order.shippingAddress.references }}
+            </div>
+        </div>
+
+        <!-- Payment & Tracking (Redesigned) -->
+        <div class="card payment-tracking-card">
+
+            <!-- SECTION 1: PAYMENT -->
+            <div class="card-section">
+                <div class="section-header">
+                    💳 {{ 'ADMIN.ORDERS.DETAIL.PAYMENT' | translate }}
+                </div>
+                <div class="compact-grid">
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.STATUS_LABEL' | translate }}:</span>
+                    <span class="value">
+                        <span class="badge-mini" [ngClass]="'status-' + order.paymentStatus">
+                            {{ order.paymentStatus | uppercase }}
+                        </span>
+                    </span>
+
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.PAYMENT_METHOD' | translate }}:</span>
+                    <span class="value">
+                        {{ order.paymentMethod ? (order.paymentMethod | uppercase) :
+                        ('ADMIN.ORDERS.DETAIL.NOT_SPECIFIED' | translate) }}
+                    </span>
+
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.PAYMENT_DATE' | translate }}:</span>
+                    <span class="value">
+                        {{ $any(order.createdAt) | date:'shortDate' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- SECTION 2: SHIPPING/TRACKING -->
+            <div class="card-section">
+                <div class="section-header">
+                    🚚 {{ 'ADMIN.ORDERS.DETAIL.TRACKING' | translate }}
+                </div>
+                <div class="compact-grid">
+                    <!-- Shipping Status (derived from order status) -->
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.STATUS_LABEL' | translate }}:</span>
+                    <span class="value">
+                        <span class="badge-mini" [ngClass]="'status-' + order.status">
+                            {{ order.status | uppercase }}
+                        </span>
+                    </span>
+
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.CARRIER' | translate }}:</span>
+                    <span class="value">
+                        {{ order.carrier ? order.carrier : ('ADMIN.ORDERS.DETAIL.NOT_SPECIFIED' | translate) }}
+                    </span>
+
+                    <span class="label">{{ 'ADMIN.ORDERS.DETAIL.TRACKING_NUMBER' | translate }}:</span>
+                    <div class="value-group" *ngIf="order.trackingNumber">
+                        <span class="value font-mono sm">{{ order.trackingNumber }}</span>
+                        <button class="btn-icon-sm" (click)="copyToClipboard(order.trackingNumber!, 'Tracking Number')"
+                            title="{{ 'ADMIN.ORDERS.DETAIL.COPY' | translate }}">
+                            📋
+                        </button>
+                    </div>
+                    <span class="value text-warning" *ngIf="!order.trackingNumber">
+                        {{ 'ADMIN.ORDERS.DETAIL.NO_TRACKING' | translate }}
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Middle Section: Products (Full Width) -->
+    <div class="items-section">
+        <div class="card items-card">
+            <h3>{{ 'ADMIN.ORDERS.DETAIL.PRODUCTS' | translate }}</h3>
+            <div class="table-responsive" *ngIf="order.items.length > 0; else noItems">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'ADMIN.ORDERS.DETAIL.PRODUCT' | translate }}</th>
+                            <th>{{ 'ADMIN.ORDERS.DETAIL.SKU' | translate }}</th>
+                            <th class="text-right">{{ 'ADMIN.ORDERS.DETAIL.PRICE' | translate }}</th>
+                            <th class="text-center">{{ 'ADMIN.ORDERS.DETAIL.QTY' | translate }}</th>
+                            <th class="text-right">{{ 'ADMIN.ORDERS.DETAIL.TOTAL' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let item of order.items">
+                            <td>
+                                <div class="product-info">
+                                    <img [src]="item.productImage" alt="Product" class="product-thumb">
+                                    <div>
+                                        <div class="product-name">{{ item.productName }}</div>
+                                        <div class="product-brand">{{ item.brand }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="sku-text">{{ item.sku }}</td>
+                            <td class="text-right">{{ item.price | currency }}</td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-right font-bold">{{ item.subtotal | currency }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <ng-template #noItems>
+                <div class="empty-state">
+                    <p>{{ 'ADMIN.ORDERS.DETAIL.NO_ITEMS' | translate }}</p>
+                </div>
+            </ng-template>
+        </div>
+    </div>
+
+    <!-- Bottom Section: History & Actions (Grid) -->
+    <div class="bottom-layout">
+        <!-- History (Left) -->
+        <div class="history-column">
+            <div class="card history-card">
+                <h3>{{ 'ADMIN.ORDERS.DETAIL.HISTORY' | translate }}</h3>
+                <div class="timeline">
+                    <div class="timeline-item" *ngFor="let event of order.history">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="event-header">
+                                <span class="event-status" [ngClass]="getStatusClass(event.status)">
+                                    {{ 'ADMIN.ORDERS.STATUS.' + event.status.toUpperCase() | translate }}
+                                </span>
+                                <span class="event-date">{{ $any(event.timestamp) | date:'short' }}</span>
+                            </div>
+                            <p class="event-note" *ngIf="event.note">{{ event.note }}</p>
+                            <small class="event-user" *ngIf="event.updatedBy">By: {{ event.updatedBy }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary & Actions (Right) -->
+        <div class="summary-column">
+            <!-- Status Management -->
+            <div class="card action-card">
+                <h3>{{ 'ADMIN.ORDERS.DETAIL.UPDATE_STATUS' | translate }}</h3>
+                <form [formGroup]="statusForm" (ngSubmit)="onUpdateStatus()">
+                    <div class="form-group">
+                        <label>{{ 'ADMIN.ORDERS.DETAIL.STATUS_LABEL' | translate }}</label>
+                        <select formControlName="status" class="form-control">
+                            <option *ngFor="let s of availableStatuses" [value]="s">
+                                {{ 'ADMIN.ORDERS.STATUS.' + s.toUpperCase() | translate }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Tracking Fields (Conditional) -->
+                    <div class="tracking-inputs" *ngIf="statusForm.get('status')?.value === 'shipped'">
+                        <div class="form-group">
+                            <label>{{ 'ADMIN.ORDERS.DETAIL.CARRIER' | translate }}</label>
+                            <input type="text" formControlName="carrier" class="form-control"
+                                placeholder="DHL, FedEx, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ 'ADMIN.ORDERS.DETAIL.TRACKING_NUMBER' | translate }}</label>
+                            <input type="text" formControlName="trackingNumber" class="form-control"
+                                placeholder="TRK123456789">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ 'ADMIN.ORDERS.DETAIL.NOTE_LABEL' | translate }}</label>
+                        <textarea formControlName="note" class="form-control" rows="2"
+                            [placeholder]="'ADMIN.ORDERS.DETAIL.NOTE_PLACEHOLDER' | translate"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary full-width" [disabled]="statusForm.invalid || isUpdating">
+                        {{ isUpdating ? ('ADMIN.ORDERS.DETAIL.UPDATING' | translate) : ('ADMIN.ORDERS.DETAIL.BTN_UPDATE'
+                        | translate) }}
+                    </button>
+                </form>
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="card summary-card">
+                <h3>{{ 'ADMIN.ORDERS.DETAIL.SUMMARY' | translate }}</h3>
+                <div class="summary-row">
+                    <span>{{ 'ADMIN.ORDERS.DETAIL.SUBTOTAL' | translate }}</span>
+                    <span>{{ order.subtotal | currency }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>{{ 'ADMIN.ORDERS.DETAIL.SHIPPING' | translate }}</span>
+                    <span>{{ order.shippingCost === 0 ? ('ADMIN.ORDERS.DETAIL.FREE' | translate) : (order.shippingCost |
+                        currency) }}</span>
+                </div>
+                <div class="summary-row" *ngIf="order.discount > 0">
+                    <span>{{ 'ADMIN.ORDERS.DETAIL.DISCOUNT' | translate }}</span>
+                    <span class="text-success">-{{ order.discount | currency }}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>{{ 'ADMIN.ORDERS.DETAIL.TOTAL' | translate }}</span>
+                    <span>{{ order.total | currency }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

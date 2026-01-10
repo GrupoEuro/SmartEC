@@ -1,0 +1,355 @@
+.log-list-container {
+    padding: 2rem;
+    /* max-width removed for full-width */
+    margin: 0 auto;
+}
+
+/* Header */
+.header-actions {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    padding: 2rem;
+    border-radius: 12px 12px 0 0;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-actions::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shine 3s infinite;
+}
+
+@keyframes shine {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+.header-actions h1 {
+    color: white;
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.stats {
+    display: flex;
+    gap: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+}
+
+.total-logs,
+.page-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    backdrop-filter: blur(10px);
+}
+
+/* Table */
+.table-responsive {
+    background: white;
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table thead {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.admin-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s;
+}
+
+.admin-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.admin-table td {
+    padding: 1rem;
+    color: #212529;
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.timestamp-cell {
+    font-family: 'Courier New', monospace;
+    color: #6c757d;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.user-cell {
+    color: #0f3460;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.details-cell {
+    color: #495057;
+    max-width: 400px;
+    word-wrap: break-word;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem !important;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badg-ip {
+    display: inline-block;
+    padding: 0.35rem 0.5rem;
+    background: #f1f2f6;
+    color: #57606f;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-module {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-module[data-module="AUTH"] {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.badge-module[data-module="BANNER"] {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.badge-module[data-module="BLOG"] {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.badge-action {
+    background: #e0e0e0;
+    color: #424242;
+}
+
+.badge-action[data-action="CREATE"] {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.badge-action[data-action="UPDATE"] {
+    background: #bbdefb;
+    color: #1565c0;
+}
+
+.badge-action[data-action="DELETE"] {
+    background: #ffcdd2;
+    color: #c62828;
+}
+
+.badge-action[data-action="LOGIN"] {
+    background: #d1c4e9;
+    color: #5e35b1;
+}
+
+.badge-action[data-action="LOGOUT"] {
+    background: #b0bec5;
+    color: #37474f;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pagination-btn {
+    padding: 0.6rem 1.2rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(15, 52, 96, 0.3);
+}
+
+.pagination-btn:disabled {
+    background: #e0e0e0;
+    color: #9e9e9e;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.page-number {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #dee2e6;
+    background: white;
+    color: #495057;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.page-number:hover {
+    border-color: #0f3460;
+    color: #0f3460;
+}
+
+.page-number.active {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    color: white;
+    border-color: #0f3460;
+}
+
+/* Loading State */
+.loading-state {
+    text-align: center;
+    padding: 4rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 1rem;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #0f3460;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-state p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Error State */
+.error-state {
+    text-align: center;
+    padding: 3rem;
+    background: #fff5f5;
+    border: 2px solid #ffcdd2;
+    border-radius: 12px;
+    color: #c62828;
+    font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .log-list-container {
+        padding: 1rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .stats {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .admin-table {
+        font-size: 0.85rem;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .timestamp-cell {
+        font-size: 0.8rem;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+    }
+
+    .page-numbers {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+}

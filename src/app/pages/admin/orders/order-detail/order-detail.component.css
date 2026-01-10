@@ -1,0 +1,661 @@
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #64748b;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Layout Grid */
+/* Layout Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    margin-top: 2rem;
+    /* Added spacing from header */
+}
+
+@media (min-width: 1024px) {
+    .info-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* Ensure top cards stretch to equal height */
+    .info-grid .card {
+        height: 100%;
+    }
+
+    .bottom-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+    }
+}
+
+
+.items-section {
+    margin-bottom: 2rem;
+}
+
+/* Card Styles */
+.card {
+    background: #ffffff;
+    color: #1a1a2e;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+}
+
+/* Spacing for stacked cards in summary column */
+.summary-column .card {
+    margin-bottom: 1.5rem;
+}
+
+/* Card Header */
+.card h3 {
+    margin: 0 0 1.25rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 0.75rem;
+}
+
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+}
+
+.card-header-flex h3 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* Tracking / Payment Card Refined */
+.payment-tracking-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    /* Increased gap */
+    justify-content: center;
+    /* Center content vertically if card is tall */
+    height: 100%;
+}
+
+.card-section {
+    width: 100%;
+}
+
+.section-header {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.compact-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+    align-items: center;
+}
+
+.compact-grid .label {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.compact-grid .value {
+    font-weight: 500;
+    color: #1e293b;
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+.section-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 0.5rem 0;
+}
+
+/* Status Badges Mini */
+.badge-mini {
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.text-warning {
+    color: #b45309;
+    font-size: 0.85rem;
+}
+
+/* Info Rows & Typography */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.info-row .label {
+    color: #64748b;
+}
+
+.info-row .value {
+    font-weight: 500;
+    text-align: right;
+    color: #1e293b;
+}
+
+.font-mono {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.sm {
+    font-size: 0.8rem;
+}
+
+/* Address & Links */
+address {
+    font-style: normal;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #475569;
+}
+
+.references {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e2e8f0;
+    color: #64748b;
+}
+
+.link {
+    color: #2563eb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+/* Tables */
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.items-table th {
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f0f0f0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.items-table td {
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+    color: #334155;
+}
+
+.items-table tr:last-child td {
+    border-bottom: none;
+}
+
+.product-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.product-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.product-name {
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.2rem;
+}
+
+.product-brand {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.sku-text {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.font-bold {
+    font-weight: 600;
+}
+
+/* Timeline */
+.timeline {
+    position: relative;
+    padding-left: 1rem;
+    border-left: 2px solid #e2e8f0;
+    margin-left: 0.5rem;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+    padding-left: 1.5rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -1.45rem;
+    top: 0.25rem;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border: 3px solid #3b82f6;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.event-date {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.event-note {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.event-user {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Summary Box */
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    /* Reduced padding */
+    font-size: 0.9rem;
+    /* Slightly smaller font */
+    color: #475569;
+}
+
+.summary-row.total {
+    border-top: 1px solid #e2e8f0;
+    /* Thinner border */
+    margin-top: 0.75rem;
+    /* Reduced margin */
+    padding-top: 0.75rem;
+    /* Reduced padding */
+    font-weight: 700;
+    font-size: 1.1rem;
+    /* Reduced font size */
+    color: #0f172a;
+}
+
+.text-success {
+    color: #10b981;
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #334155;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.full-width {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* Status Badges */
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+/* Status Colors */
+.status-paid,
+.status-shipped,
+.status-delivered {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.status-pending,
+.status-processing {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.status-failed,
+.status-cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.status-refunded {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #cbd5e1;
+}
+
+/* Buttons */
+.btn-icon-sm {
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4b5563;
+}
+
+.btn-icon-sm:hover {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.tracking-inputs {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+}
+
+.value-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 0.75rem 1.5rem;
+    /* Increased padding */
+    border-radius: 8px;
+    /* Slightly more rounded */
+    font-weight: 600;
+    /* Bolder text */
+    font-size: 0.95rem;
+    /* Explicit size */
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background: #e2e8f0;
+}
+
+/* Responsive Table */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Empty State */
+.empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+}
+
+/* Print Header - Hidden by default */
+.print-header {
+    display: none;
+}
+
+/* 🖨️ PRINT STYLES */
+@media print {
+
+    /* Hide non-printable elements */
+    app-admin-sidebar,
+    app-admin-layout header,
+    .action-card,
+    .btn-secondary,
+    button {
+        display: none !important;
+    }
+
+    /* Print Header - Visible */
+    .print-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 2rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #000;
+    }
+
+    .print-brand h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        color: #000;
+    }
+
+    .print-brand p {
+        margin: 0.25rem 0 0;
+        font-size: 0.9rem;
+        color: #444;
+    }
+
+    .print-meta {
+        text-align: right;
+    }
+
+    .print-meta h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        color: #000;
+    }
+
+    .meta-row {
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    /* Reset Layout for Print */
+    .admin-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+
+    .order-detail-container {
+        padding: 0 !important;
+        max-width: 100%;
+    }
+
+    /* Grid Adjustments */
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .bottom-layout {
+        display: block;
+        /* Stack items */
+    }
+
+    .history-column {
+        display: none;
+        /* Hide history in invoice usually */
+    }
+
+    .summary-column {
+        width: 40%;
+        margin-left: auto;
+    }
+
+    /* Card Tweaks */
+    .card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        padding: 1rem;
+        break-inside: avoid;
+    }
+
+    /* Typography */
+    body {
+        font-family: 'Helvetica', 'Arial', sans-serif;
+        color: #000;
+        background: #fff;
+    }
+
+    h3 {
+        font-size: 1.1rem;
+        border-bottom: 1px solid #000;
+        margin-bottom: 1rem;
+    }
+
+    /* Table */
+    .items-table th {
+        color: #000;
+        border-bottom: 2px solid #000;
+        font-size: 0.8rem;
+    }
+
+    .items-table td {
+        border-bottom: 1px solid #eee;
+        padding: 0.5rem 0;
+        font-size: 0.9rem;
+    }
+
+    .status-badge,
+    .badge {
+        border: 1px solid #000;
+        color: #000 !important;
+        background: none !important;
+        padding: 2px 6px;
+    }
+}

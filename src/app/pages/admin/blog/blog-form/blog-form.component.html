@@ -1,0 +1,65 @@
+<app-admin-page-header 
+    icon="✍️" 
+    [title]="isEditing ? ('ADMIN.BLOG.EDIT_TITLE' | translate) : ('ADMIN.BLOG.NEW_TITLE' | translate)"
+    [showSaveCancel]="true"
+    [hasUnsavedChanges]="postForm.dirty"
+    [isFormInvalid]="postForm.invalid"
+    (onSave)="onSubmit()"
+    (onCancel)="onCancel()">
+</app-admin-page-header>
+
+<div class="form-container">
+    <form [formGroup]="postForm" (ngSubmit)="onSubmit()" class="admin-form">
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.TITLE' | translate }}</label>
+            <input type="text" formControlName="title" (change)="generateSlug()">
+        </div>
+
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.SLUG' | translate }}</label>
+            <input type="text" formControlName="slug">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>{{ 'ADMIN.BLOG.FORM.CATEGORY' | translate }}</label>
+                <select formControlName="category">
+                    <option value="Mantenimiento">{{ 'ADMIN.BLOG.CATEGORIES.MAINTENANCE' | translate }}</option>
+                    <option value="Novedades">{{ 'ADMIN.BLOG.CATEGORIES.NEWS' | translate }}</option>
+                    <option value="Consejos">{{ 'ADMIN.BLOG.CATEGORIES.TIPS' | translate }}</option>
+                    <option value="Tecnología">{{ 'ADMIN.BLOG.CATEGORIES.TECH' | translate }}</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>{{ 'ADMIN.BLOG.FORM.READ_TIME' | translate }}</label>
+                <input type="number" formControlName="readTime">
+            </div>
+        </div>
+
+        <!-- Tags Input -->
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.TAGS' | translate }}</label>
+            <input type="text" formControlName="tags">
+        </div>
+
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.EXCERPT' | translate }}</label>
+            <textarea formControlName="excerpt" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.CONTENT' | translate }}</label>
+            <textarea formControlName="content" rows="15" class="content-editor"></textarea>
+            <small>{{ 'ADMIN.BLOG.FORM.HTML_HINT' | translate }}</small>
+        </div>
+
+        <div class="form-group">
+            <label>{{ 'ADMIN.BLOG.FORM.COVER_IMAGE' | translate }}</label>
+            <input type="file" (change)="onFileSelected($event)" accept="image/*">
+            <div *ngIf="previewUrl" class="image-preview">
+                <img [src]="previewUrl" alt="Preview">
+            </div>
+        </div>
+    </form>
+</div>

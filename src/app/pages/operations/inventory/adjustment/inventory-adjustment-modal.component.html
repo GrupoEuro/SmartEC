@@ -1,0 +1,120 @@
+<div class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity"></div>
+
+    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Modal Panel -->
+        <div
+            class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+
+            <!-- Header -->
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">Adjust Stock</h3>
+                <button (click)="onCancel()" class="text-gray-400 hover:text-gray-500">
+                    <app-icon name="x" [size]="20"></app-icon>
+                </button>
+            </div>
+
+            <form [formGroup]="form" (ngSubmit)="onSubmit()">
+                <div class="px-4 py-5 sm:p-6 space-y-4">
+
+                    <!-- Product Summary -->
+                    <div class="flex items-center gap-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <div
+                            class="w-10 h-10 bg-white rounded flex items-center justify-center text-lg shadow-sm text-blue-600">
+                            <app-icon name="package" [size]="20"></app-icon>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ product?.name?.es }}</p>
+                            <p class="text-xs text-gray-500 font-mono">{{ product?.sku }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Balance Impact -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-3 rounded-lg border border-gray-200 text-center">
+                            <span class="block text-xs font-bold text-gray-400 uppercase">Current</span>
+                            <span class="block text-xl font-bold text-gray-900">{{ currentStock }}</span>
+                        </div>
+                        <div class="p-3 rounded-lg border bg-gray-50 text-center transition-colors duration-300"
+                            [ngClass]="{
+                                  'border-emerald-200 bg-emerald-50': predictedBalance > currentStock,
+                                  'border-red-200 bg-red-50': predictedBalance < currentStock
+                              }">
+                            <span class="block text-xs font-bold text-gray-400 uppercase">New Balance</span>
+                            <span class="block text-xl font-bold" [ngClass]="{
+                                       'text-emerald-700': predictedBalance > currentStock,
+                                       'text-red-700': predictedBalance < currentStock,
+                                       'text-gray-900': predictedBalance === currentStock
+                                   }">{{ predictedBalance }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Type Selector -->
+                    <div class="flex rounded-md shadow-sm" role="group">
+                        <label class="relative flex-1 cursor-pointer">
+                            <input type="radio" formControlName="type" value="IN" class="peer sr-only">
+                            <div
+                                class="px-4 py-2 text-sm font-medium text-center border border-gray-200 rounded-l-lg peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500 hover:bg-gray-50 transition-colors">
+                                + Add (Found)
+                            </div>
+                        </label>
+                        <label class="relative flex-1 cursor-pointer">
+                            <input type="radio" formControlName="type" value="OUT" class="peer sr-only">
+                            <div
+                                class="px-4 py-2 text-sm font-medium text-center border border-l-0 border-gray-200 rounded-r-lg peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-500 hover:bg-gray-50 transition-colors">
+                                - Remove (Loss)
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Quantity</label>
+                        <input type="number" formControlName="quantity" min="1"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+
+                    <!-- Reason -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Reason Code</label>
+                        <select formControlName="reason"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            <option value="">Select a reason...</option>
+                            <option *ngFor="let r of reasons" [value]="r.id">{{ r.label }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Notes -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Notes / Audit Log</label>
+                        <textarea formControlName="notes" rows="2"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                            placeholder="Explanation for this adjustment..."></textarea>
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                    <button type="submit" [disabled]="form.invalid || isSubmitting()"
+                        class="inline-flex w-full justify-center items-center rounded-md px-3 py-2 text-sm font-semibold text-white shadow-sm sm:ml-3 sm:w-auto transition-colors"
+                        [ngClass]="{
+                                'bg-emerald-600 hover:bg-emerald-500': form.get('type')?.value === 'IN',
+                                'bg-red-600 hover:bg-red-500': form.get('type')?.value === 'OUT',
+                                'opacity-50 cursor-not-allowed': form.invalid || isSubmitting()
+                            }">
+
+                        <app-icon *ngIf="isSubmitting()" name="loader" [size]="16" class="animate-spin mr-2"></app-icon>
+                        {{ isSubmitting() ? 'Adjusting...' : (form.get('type')?.value === 'IN' ? 'Add Stock' : 'Remove
+                        Stock') }}
+                    </button>
+                    <button type="button" (click)="onCancel()"
+                        class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

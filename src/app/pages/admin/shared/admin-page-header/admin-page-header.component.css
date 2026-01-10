@@ -1,0 +1,333 @@
+/* Sticky Page Header - Reusable Component */
+
+.page-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    color: white;
+    padding: 1.25rem 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    border-radius: 12px;
+    animation: slideDown 0.3s ease-out;
+    transition: all 0.3s ease;
+}
+
+/* Variant: Admin (Legacy Blue Gradient) */
+.header-admin {
+    background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Variant: Operations (Industrial Zinc) */
+.header-operations {
+    background: rgba(24, 24, 27, 0.95);
+    /* zinc-950 */
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #27272a;
+    /* zinc-800 */
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Title Section */
+.header-title-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.title-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.title-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.page-title-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.page-subtitle {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 400;
+}
+
+.keyboard-hints-inline {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.keyboard-hints-inline .hint {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: monospace;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.keyboard-hints-inline .hint:hover {
+    opacity: 1;
+}
+
+/* Actions Section */
+.page-actions-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.custom-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Compact Save Status */
+.save-status-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    min-width: 140px;
+}
+
+.save-status-compact.status-saving {
+    background: rgba(255, 193, 7, 0.25);
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.save-status-compact.status-saved {
+    background: rgba(76, 175, 80, 0.25);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+}
+
+.save-status-compact.status-error {
+    background: rgba(244, 67, 54, 0.25);
+    border: 1px solid rgba(244, 67, 54, 0.5);
+}
+
+/* Compact Undo/Redo */
+.undo-redo-compact {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn-compact {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn-compact:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.icon-btn-compact:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Compact Progress */
+.progress-compact {
+    position: relative;
+    width: 36px;
+    height: 36px;
+}
+
+.progress-compact svg {
+    transform: rotate(-90deg);
+}
+
+.progress-compact circle {
+    transition: stroke-dashoffset 0.5s ease;
+}
+
+.progress-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: white;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-cancel,
+.btn-save {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-cancel:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.btn-cancel:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-save:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4);
+}
+
+.btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .page-header-sticky {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-title-section {
+        width: 100%;
+    }
+
+    .page-actions-section {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-header-sticky {
+        padding: 1rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
+    .page-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .keyboard-hints-inline {
+        display: none;
+    }
+
+    .save-status-compact {
+        min-width: auto;
+        padding: 0.5rem;
+    }
+
+    .save-status-compact .status-text {
+        display: none;
+    }
+
+    .progress-compact {
+        display: none;
+    }
+
+    .action-buttons {
+        flex: 1;
+    }
+
+    .btn-cancel,
+    .btn-save {
+        flex: 1;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+}

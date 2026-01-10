@@ -1,0 +1,151 @@
+:host {
+    display: block;
+    height: 100%;
+}
+
+.app-chart-card-wrapper {
+    background: rgba(15, 23, 42, 0.85);
+    /* Deep dark slate, almost opaque */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    /* Slightly tighter radius */
+    padding: 1.25rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-chart-card-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    /* Removed large transform to keep it clean */
+    box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.3);
+}
+
+
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    /* Reduced from 1.5rem */
+}
+
+.header-text h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #f1f5f9;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon-subtle {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #64748b;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon-subtle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f1f5f9;
+}
+
+.btn-icon-subtle.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Data Panel (Scrollable Table) */
+.data-panel {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    max-height: 250px;
+    /* Limit height */
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.table-container {
+    padding: 0;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-table th {
+    background: rgba(30, 41, 59, 0.9);
+    position: sticky;
+    top: 0;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.data-table td {
+    color: #cbd5e1;
+}
+
+.data-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.empty-cell {
+    text-align: center;
+    color: #64748b;
+    padding: 2rem;
+}
+
+.chart-content {
+    flex: 1;
+    min-height: 0;
+    /* Important for flex child scrolling/sizing */
+    position: relative;
+    width: 100%;
+}

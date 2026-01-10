@@ -1,0 +1,133 @@
+<app-admin-page-header icon="📂"
+    [title]="isEditing ? ('ADMIN.CATEGORIES.EDIT_TITLE' | translate) : ('ADMIN.CATEGORIES.NEW_TITLE' | translate)"
+    [subtitle]="isEditing ? ('ADMIN.CATEGORIES.EDIT_SUBTITLE' | translate) : ('ADMIN.CATEGORIES.NEW_SUBTITLE' | translate)"
+    [showSaveCancel]="true" [isSaving]="isSubmitting" [isFormInvalid]="categoryForm.invalid"
+    [hasUnsavedChanges]="categoryForm.dirty" [confirmOnCancel]="false" (onSave)="onSubmit()" (onCancel)="onCancel()">
+</app-admin-page-header>
+
+<div class="form-container">
+    <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()">
+
+        <!-- Basic Information Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_BASIC' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nameEn">{{ 'ADMIN.CATEGORIES.FORM.NAME_EN' | translate }} *</label>
+                    <input type="text" id="nameEn" formControlName="nameEn"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_EN_PLACEHOLDER' | translate" class="form-control">
+                    <div class="error"
+                        *ngIf="categoryForm.get('nameEn')?.invalid && categoryForm.get('nameEn')?.touched">
+                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="nameEs">{{ 'ADMIN.CATEGORIES.FORM.NAME_ES' | translate }} *</label>
+                    <input type="text" id="nameEs" formControlName="nameEs"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_ES_PLACEHOLDER' | translate" class="form-control">
+                    <div class="error"
+                        *ngIf="categoryForm.get('nameEs')?.invalid && categoryForm.get('nameEs')?.touched">
+                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="slug">{{ 'ADMIN.CATEGORIES.FORM.SLUG' | translate }} *</label>
+                <input type="text" id="slug" formControlName="slug"
+                    [placeholder]="'ADMIN.CATEGORIES.FORM.SLUG_PLACEHOLDER' | translate" class="form-control">
+                <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.SLUG_HINT' | translate }}</small>
+                <div class="error" *ngIf="categoryForm.get('slug')?.invalid && categoryForm.get('slug')?.touched">
+                    {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Description Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_DESCRIPTION' | translate }}</h3>
+
+            <div class="form-group">
+                <label for="descriptionEn">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_EN' | translate }}</label>
+                <textarea id="descriptionEn" formControlName="descriptionEn" rows="3"
+                    [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                    class="form-control"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="descriptionEs">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_ES' | translate }}</label>
+                <textarea id="descriptionEs" formControlName="descriptionEs" rows="3"
+                    [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                    class="form-control"></textarea>
+            </div>
+        </div>
+
+        <!-- Visual & Organization Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_VISUAL' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="icon">{{ 'ADMIN.CATEGORIES.FORM.ICON' | translate }}</label>
+                    <input type="text" id="icon" formControlName="icon" placeholder="📁" class="form-control">
+                    <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.ICON_HINT' | translate }}</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="order">{{ 'ADMIN.CATEGORIES.FORM.ORDER' | translate }} *</label>
+                    <input type="number" id="order" formControlName="order" min="0" class="form-control">
+                </div>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label>{{ 'ADMIN.CATEGORIES.FORM.IMAGE' | translate }}</label>
+                <div class="image-upload-section">
+                    <div *ngIf="imagePreview" class="image-preview">
+                        <img [src]="imagePreview" alt="Category image">
+                        <button type="button" class="btn-remove-image" (click)="removeImage()">✕</button>
+                    </div>
+                    <div class="upload-area" *ngIf="!imagePreview">
+                        <input type="file" id="imageInput" accept="image/*" (change)="onImageSelected($event)"
+                            class="file-input">
+                        <label for="imageInput" class="upload-label">
+                            <span class="upload-icon">📷</span>
+                            <span>{{ 'ADMIN.CATEGORIES.FORM.UPLOAD_IMAGE' | translate }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hierarchy Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_HIERARCHY' | translate }}</h3>
+
+            <div class="form-group">
+                <label for="parentId">{{ 'ADMIN.CATEGORIES.FORM.PARENT_CATEGORY' | translate }}</label>
+                <select id="parentId" formControlName="parentId" class="form-control">
+                    <option [value]="null">{{ 'ADMIN.CATEGORIES.FORM.NO_PARENT' | translate }}</option>
+                    <option *ngFor="let parent of parentCategories" [value]="parent.id">
+                        {{ parent.name.en }} / {{ parent.name.es }}
+                    </option>
+                </select>
+                <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.PARENT_HINT' | translate }}</small>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_STATUS' | translate }}</h3>
+
+            <!-- Active Toggle -->
+            <div class="form-group">
+                <app-toggle-switch [control]="$any(categoryForm.get('active'))"
+                    [label]="'ADMIN.CATEGORIES.FORM.ACTIVE' | translate" icon="✅"
+                    [hint]="'ADMIN.CATEGORIES.FORM.ACTIVE_HINT' | translate">
+                </app-toggle-switch>
+            </div>
+        </div>
+    </form>
+</div>

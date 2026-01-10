@@ -1,0 +1,192 @@
+<div class="p-8 max-w-[1600px] mx-auto">
+    <div class="header mb-8">
+        <h1 class="text-4xl font-black text-white mb-2 tracking-tight">Theme Studio 🎨</h1>
+        <p class="text-slate-400 text-lg">
+            {{ 'DEV_TOOLS.THEME.SUBTITLE' | translate }}
+        </p>
+    </div>
+
+    <!-- Controls (Replaced above) -->
+
+    <!-- Live Preview Stage -->
+    <!-- Controls -->
+    <div class="mb-8 p-6 rounded-2xl bg-slate-800/50 backdrop-blur-xl border border-white/5 shadow-2xl">
+        <h3 class="text-sm uppercase tracking-wider text-slate-500 font-bold mb-4">Select Theme Context</h3>
+        <div class="flex gap-4 flex-wrap">
+            <button
+                class="px-6 py-3 rounded-lg font-bold transition-all duration-300 border border-slate-700/50 text-slate-400 bg-slate-900/50 hover:bg-slate-800 hover:text-white flex flex-col items-center gap-2 min-w-[120px]"
+                [ngClass]="{'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.1)]': currentTheme === 'default'}"
+                (click)="setTheme('default')">
+                <app-icon name="layout" [size]="20"></app-icon>
+                <span>Default</span>
+            </button>
+            <button
+                class="px-6 py-3 rounded-lg font-bold transition-all duration-300 border border-slate-700/50 text-slate-400 bg-slate-900/50 hover:bg-slate-800 hover:text-white flex flex-col items-center gap-2 min-w-[120px]"
+                [ngClass]="{'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.1)]': currentTheme === 'theme-ops'}"
+                (click)="setTheme('theme-ops')">
+                <app-icon name="truck" [size]="20"></app-icon>
+                <span>Operations</span>
+            </button>
+            <button
+                class="px-6 py-3 rounded-lg font-bold transition-all duration-300 border border-slate-700/50 text-slate-400 bg-slate-900/50 hover:bg-slate-800 hover:text-white flex flex-col items-center gap-2 min-w-[120px]"
+                [ngClass]="{'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.1)]': currentTheme === 'theme-command'}"
+                (click)="setTheme('theme-command')">
+                <app-icon name="activity" [size]="20"></app-icon>
+                <span>Command Center</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Live Preview Stage -->
+    <div class="border border-slate-700/50 rounded-2xl overflow-hidden flex h-[700px] shadow-2xl transition-all duration-500 mb-8"
+        [ngClass]="currentTheme">
+        <!-- Mock Sidebar -->
+        <aside class="mock-sidebar">
+            <div class="flex items-center gap-3 mb-8 px-2">
+                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-xl">⚡️</div>
+                <div class="font-bold text-lg tracking-tight">App Logo</div>
+            </div>
+
+            <div
+                class="mock-nav-item active px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors cursor-pointer opacity-80 hover:opacity-100">
+                <app-icon name="home" [size]="18"></app-icon>
+                <span>{{ 'NAVBAR.HOME' | translate }}</span>
+            </div>
+            <div
+                class="mock-nav-item px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors cursor-pointer opacity-80 hover:opacity-100 text-white/70">
+                <app-icon name="shopping-bag" [size]="18"></app-icon>
+                <span>{{ 'OPERATIONS.ORDERS.TITLE' | translate }}</span>
+            </div>
+            <div
+                class="mock-nav-item px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors cursor-pointer opacity-80 hover:opacity-100 text-white/70">
+                <app-icon name="users" [size]="18"></app-icon>
+                <span>{{ 'OPERATIONS.CUSTOMERS.TITLE' | translate }}</span>
+            </div>
+            <div
+                class="mock-nav-item px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors cursor-pointer opacity-80 hover:opacity-100 text-white/70">
+                <app-icon name="bar-chart-2" [size]="18"></app-icon>
+                <span>analytics</span>
+            </div>
+
+            <div class="mt-auto pt-4 border-t border-white/10">
+                <div
+                    class="mock-nav-item px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors cursor-pointer opacity-80 hover:opacity-100 text-white/70">
+                    <app-icon name="settings" [size]="18"></app-icon>
+                    <span>Settings</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mock Content -->
+        <main class="mock-content">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold" style="color: var(--theme-text-primary)">
+                        {{ 'OPERATIONS.DASHBOARD_TITLE' | translate }}
+                    </h2>
+                    <p style="color: var(--theme-text-secondary)">
+                        {{ 'OPERATIONS.DASHBOARD_SUBTITLE' | translate }}
+                    </p>
+                </div>
+                <button class="mock-btn flex items-center gap-2">
+                    <app-icon name="plus" [size]="18"></app-icon>
+                    {{ 'OPERATIONS.PROCUREMENT.NEW_PO' | translate }}
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Card 1: Performance -->
+                <div class="mock-card">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-bold" style="color: var(--theme-text-primary)">Revenue Trend</h3>
+                        <app-icon name="more-horizontal" [size]="20"
+                            style="color: var(--theme-text-secondary)"></app-icon>
+                    </div>
+
+                    <div class="h-48 rounded-lg flex items-end p-4 gap-4"
+                        style="background: var(--theme-bg-surface-soft, rgba(0,0,0,0.02))">
+                        <div class="flex-1 rounded-t bg-opacity-50 h-[40%]"
+                            style="background-color: var(--theme-primary)"></div>
+                        <div class="flex-1 rounded-t bg-opacity-70 h-[60%]"
+                            style="background-color: var(--theme-primary)"></div>
+                        <div class="flex-1 rounded-t h-[80%]" style="background-color: var(--theme-primary)"></div>
+                        <div class="flex-1 rounded-t bg-opacity-60 h-[50%]"
+                            style="background-color: var(--theme-primary)"></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Alerts -->
+                <div class="mock-card">
+                    <h3 class="font-bold mb-4" style="color: var(--theme-text-primary)">System Status</h3>
+
+                    <div class="space-y-3">
+                        <div class="p-3 rounded-lg flex items-center gap-3"
+                            style="background: var(--theme-badge-success-bg, rgba(16, 185, 129, 0.1)); color: var(--theme-badge-success-text, #10b981)">
+                            <app-icon name="check-circle" [size]="18"></app-icon>
+                            <span class="font-medium">All Systems Operational</span>
+                        </div>
+
+                        <div class="p-3 rounded-lg flex items-center gap-3"
+                            style="background: var(--theme-badge-warning-bg, rgba(245, 158, 11, 0.1)); color: var(--theme-badge-warning-text, #f59e0b)">
+                            <app-icon name="alert-triangle" [size]="18"></app-icon>
+                            <span class="font-medium">Inventory Sync Delayed (5m)</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t" style="border-color: var(--theme-border)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-mono" style="color: var(--theme-text-secondary)">Version
+                                2.4.0</span>
+                            <span class="text-xs px-2 py-1 rounded bg-slate-800 text-slate-400">PROD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Variable Inspector -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-primary)"></div>
+            <div class="font-bold text-white">Primary</div>
+            <div>--theme-primary</div>
+        </div>
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-bg-app)"></div>
+            <div class="font-bold text-white">App BG</div>
+            <div>--theme-bg-app</div>
+        </div>
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-bg-surface)"></div>
+            <div class="font-bold text-white">Surface</div>
+            <div>--theme-bg-surface</div>
+        </div>
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-nav-bg)"></div>
+            <div class="font-bold text-white">Nav BG</div>
+            <div>--theme-nav-bg</div>
+        </div>
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-border)"></div>
+            <div class="font-bold text-white">Border</div>
+            <div>--theme-border</div>
+        </div>
+        <div
+            class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-400 flex flex-col gap-2">
+            <div class="h-12 w-full rounded-lg border border-white/10 shadow-inner"
+                style="background-color: var(--theme-text-primary)"></div>
+            <div class="font-bold text-white">Text Primary</div>
+            <div>--theme-text-primary</div>
+        </div>
+    </div>

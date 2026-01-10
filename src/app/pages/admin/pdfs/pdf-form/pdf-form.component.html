@@ -1,0 +1,119 @@
+<app-admin-page-header icon="📚" [title]="isEditing ? '✏️ Edit PDF' : '➕ Add New PDF'" [showSaveCancel]="true"
+    [hasUnsavedChanges]="pdfForm.dirty" [isFormInvalid]="pdfForm.invalid" (onSave)="onSubmit()" (onCancel)="onCancel()">
+</app-admin-page-header>
+
+<div class="pdf-form-container">
+    <form [formGroup]="pdfForm" (ngSubmit)="onSubmit()" class="pdf-form">
+        <!-- Title Section -->
+        <div class="form-section">
+            <h2>📝 Title (Multilingual)</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="title_es">Title (Spanish) *</label>
+                    <input type="text" id="title_es" formControlName="title_es" class="form-control"
+                        placeholder="Título en español">
+                </div>
+                <div class="form-group">
+                    <label for="title_en">Title (English) *</label>
+                    <input type="text" id="title_en" formControlName="title_en" class="form-control"
+                        placeholder="Title in English">
+                </div>
+            </div>
+        </div>
+
+        <!-- Description Section -->
+        <div class="form-section">
+            <h2>📄 Description (Multilingual)</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="description_es">Description (Spanish) *</label>
+                    <textarea id="description_es" formControlName="description_es" class="form-control" rows="3"
+                        placeholder="Descripción en español"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="description_en">Description (English) *</label>
+                    <textarea id="description_en" formControlName="description_en" class="form-control" rows="3"
+                        placeholder="Description in English"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category and Tags -->
+        <div class="form-section">
+            <h2>🏷️ Category & Tags</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="category">Category *</label>
+                    <select id="category" formControlName="category" class="form-control">
+                        <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tags">Tags (comma separated)</label>
+                    <input type="text" id="tags" formControlName="tags" class="form-control"
+                        placeholder="tire, praxis, catalog">
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Control -->
+        <div class="form-section">
+            <h2>🔐 Access Control</h2>
+            <div class="toggle-switches-group">
+                <div class="form-group">
+                    <app-toggle-switch [control]="$any(pdfForm.get('isPublic'))" label="🌐 Public (Free Download)"
+                        icon="🌐" hint="Anyone can download without login">
+                    </app-toggle-switch>
+                </div>
+                <div class="form-group">
+                    <app-toggle-switch [control]="$any(pdfForm.get('requiresAuth'))" label="🔒 Requires Login" icon="🔒"
+                        hint="User must be logged in to download">
+                    </app-toggle-switch>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="form-section">
+            <h2>📎 PDF File</h2>
+            <div class="file-upload-area">
+                <label for="pdfFile" class="file-upload-label">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">
+                        <strong>{{ selectedPdfFile ? selectedPdfFile.name : 'Click to upload PDF' }}</strong>
+                        <span>{{ isEditing ? 'Leave empty to keep current file' : 'Required' }}</span>
+                    </div>
+                </label>
+                <input type="file" id="pdfFile" accept=".pdf" (change)="onPdfFileSelected($event)" class="file-input">
+                @if (pdfPreviewUrl && !selectedPdfFile) {
+                <div class="current-file">
+                    <span>Current file: </span>
+                    <a [href]="pdfPreviewUrl" target="_blank" class="file-link">View PDF</a>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Thumbnail Upload -->
+        <div class="form-section">
+            <h2>🖼️ Thumbnail (Optional)</h2>
+            <div class="file-upload-area">
+                <label for="thumbnail" class="file-upload-label">
+                    <div class="upload-icon">🖼️</div>
+                    <div class="upload-text">
+                        <strong>{{ selectedThumbnailFile ? selectedThumbnailFile.name : 'Click to upload thumbnail'
+                            }}</strong>
+                        <span>Optional - Recommended size: 400x300px</span>
+                    </div>
+                </label>
+                <input type="file" id="thumbnail" accept="image/*" (change)="onThumbnailSelected($event)"
+                    class="file-input">
+                @if (thumbnailPreviewUrl) {
+                <div class="thumbnail-preview">
+                    <img [src]="thumbnailPreviewUrl" alt="Thumbnail preview">
+                </div>
+                }
+            </div>
+        </div>
+    </form>
+</div>

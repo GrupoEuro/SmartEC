@@ -1,0 +1,79 @@
+/* Spinner for Loading State */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #ffd700;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Status Badges - mirroring dashboard styles */
+.status-badge {
+    @apply inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
+}
+
+.status-pending {
+    @apply bg-amber-900/30 text-amber-400 border border-amber-800/50;
+}
+
+.status-processing {
+    @apply bg-blue-900/30 text-blue-400 border border-blue-800/50;
+}
+
+.status-shipped {
+    @apply bg-emerald-900/30 text-emerald-400 border border-emerald-800/50;
+}
+
+.status-delivered {
+    @apply bg-emerald-900/30 text-emerald-400 border border-emerald-800/50;
+}
+
+.status-cancelled {
+    @apply bg-red-900/30 text-red-400 border border-red-800/50;
+}
+
+.status-refunded {
+    @apply bg-slate-800 text-slate-400 border border-slate-700;
+}
+
+/* Minimal responsive helpers if needed */
+.orders-table-wrapper {
+    overflow-x: auto;
+}
+
+/* Channel Badges */
+.channel-badge {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold uppercase;
+}
+
+.channel-web {
+    @apply bg-blue-900/20 text-blue-400 border border-blue-800/30;
+}
+
+.channel-pos {
+    @apply bg-purple-900/20 text-purple-400 border border-purple-800/30;
+}
+
+.channel-on-behalf {
+    @apply bg-amber-900/20 text-amber-400 border border-amber-800/30;
+}
+
+.channel-amazon {
+    @apply bg-orange-900/20 text-orange-400 border border-orange-800/30;
+}
+
+.channel-meli {
+    @apply bg-yellow-900/20 text-yellow-400 border border-yellow-800/30;
+}

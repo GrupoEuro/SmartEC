@@ -1,0 +1,219 @@
+<app-admin-page-header icon="🛒" [title]="'ADMIN.PRODUCTS.TITLE' | translate"
+    [subtitle]="'ADMIN.PRODUCTS.SUBTITLE' | translate">
+    <a routerLink="/admin/products/new" class="btn-primary">
+        ➕ {{ 'ADMIN.PRODUCTS.BTN_ADD' | translate }}
+    </a>
+</app-admin-page-header>
+
+<div class="products-container">
+    <!-- Filters and Search Section -->
+    <div class="filters-bar">
+        <div class="search-and-filters">
+            <!-- Search Bar -->
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                    [placeholder]="'ADMIN.PRODUCTS.SEARCH_PLACEHOLDER' | translate" class="search-input">
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="filter-controls">
+                <!-- Category Filter -->
+                <select [(ngModel)]="selectedCategory" (ngModelChange)="onFilterChange()" class="filter-select">
+                    <option value="">{{ 'ADMIN.PRODUCTS.ALL_CATEGORIES' | translate }}</option>
+                    <option *ngFor="let category of categories$ | async" [value]="category.id">
+                        {{ category.name.en }}
+                    </option>
+                </select>
+
+                <!-- Brand Filter -->
+                <select [(ngModel)]="selectedBrand" (ngModelChange)="onFilterChange()" class="filter-select">
+                    <option value="">{{ 'ADMIN.PRODUCTS.ALL_BRANDS' | translate }}</option>
+                    <option *ngFor="let brand of brands$ | async" [value]="brand.name">
+                        {{ brand.name }}
+                    </option>
+                </select>
+
+                <!-- Status Filter -->
+                <select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()" class="filter-select">
+                    <option value="">{{ 'ADMIN.PRODUCTS.ALL_STATUS' | translate }}</option>
+                    <option value="active">{{ 'ADMIN.PRODUCTS.STATUS_ACTIVE' | translate }}</option>
+                    <option value="inactive">{{ 'ADMIN.PRODUCTS.STATUS_INACTIVE' | translate }}</option>
+                </select>
+
+                <!-- Stock Filter -->
+                <select [(ngModel)]="selectedStockStatus" (ngModelChange)="onFilterChange()" class="filter-select">
+                    <option value="">{{ 'ADMIN.PRODUCTS.ALL_STOCK' | translate }}</option>
+                    <option value="in-stock">{{ 'ADMIN.PRODUCTS.STOCK_IN' | translate }}</option>
+                    <option value="low-stock">{{ 'ADMIN.PRODUCTS.STOCK_LOW' | translate }}</option>
+                    <option value="out-of-stock">{{ 'ADMIN.PRODUCTS.STOCK_OUT' | translate }}</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Export Button -->
+        <button class="btn-primary small icon" (click)="handleExport()"
+            [title]="'ADMIN.PRODUCTS.EXPORT_CSV' | translate">
+            📥 {{ 'ADMIN.PRODUCTS.EXPORT_CSV' | translate }}
+        </button>
+    </div>
+
+    <!-- Bulk Actions Toolbar -->
+    <div class="bulk-actions-toolbar" *ngIf="selectedCount > 0">
+        <span class="selected-count">
+            {{ 'ADMIN.PRODUCTS.SELECTED_COUNT' | translate: {count: selectedCount} }}
+        </span>
+        <div class="bulk-actions">
+            <button class="btn-bulk btn-activate" (click)="bulkActivate()">
+                {{ 'ADMIN.PRODUCTS.BULK_ACTIVATE' | translate }}
+            </button>
+            <button class="btn-bulk btn-deactivate" (click)="bulkDeactivate()">
+                {{ 'ADMIN.PRODUCTS.BULK_DEACTIVATE' | translate }}
+            </button>
+            <button class="btn-bulk btn-delete" (click)="bulkDelete()">
+                {{ 'ADMIN.PRODUCTS.BULK_DELETE' | translate }}
+            </button>
+        </div>
+    </div>
+
+    <div class="table-responsive" *ngIf="(displayedProducts$ | async) as products; else loading">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-col">
+                        <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll(products)"
+                            [title]="selectAll ? ('ADMIN.PRODUCTS.DESELECT_ALL' | translate) : ('ADMIN.PRODUCTS.SELECT_ALL' | translate)">
+                    </th>
+                    <th>{{ 'ADMIN.PRODUCTS.TH_IMAGE' | translate }}</th>
+                    <th class="sortable" (click)="onSortChange('name')">
+                        {{ 'ADMIN.PRODUCTS.TH_PRODUCT' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'name'">
+                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                        </span>
+                    </th>
+                    <th>{{ 'ADMIN.PRODUCTS.TH_SKU' | translate }}</th>
+                    <th>{{ 'ADMIN.PRODUCTS.TH_SIZE' | translate }}</th>
+                    <th class="sortable" (click)="onSortChange('price')">
+                        {{ 'ADMIN.PRODUCTS.TH_PRICE' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'price'">
+                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                        </span>
+                    </th>
+                    <th class="sortable" (click)="onSortChange('stock')">
+                        {{ 'ADMIN.PRODUCTS.TH_STOCK' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'stock'">
+                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                        </span>
+                    </th>
+                    <th>{{ 'ADMIN.PRODUCTS.TH_STATUS' | translate }}</th>
+                    <th>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let product of products">
+                    <td class="checkbox-col">
+                        <input type="checkbox" *ngIf="product.id" [checked]="isProductSelected(product.id)"
+                            (change)="toggleProductSelection(product.id)">
+                    </td>
+                    <td>
+                        <div class="product-image">
+                            <img *ngIf="product.images.main" [src]="product.images.main" [alt]="product.name.en">
+                            <span *ngIf="!product.images.main" class="no-image">{{ product.name.en.charAt(0) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="product-info">
+                            <strong>{{ product.name.en }}</strong>
+                            <span class="product-name-es">{{ product.name.es }}</span>
+                            <div class="product-badges">
+                                <span class="badge badge-featured" *ngIf="product.featured">
+                                    {{ 'ADMIN.PRODUCTS.BADGE_FEATURED' | translate }}
+                                </span>
+                                <span class="badge badge-new" *ngIf="product.newArrival">
+                                    {{ 'ADMIN.PRODUCTS.BADGE_NEW' | translate }}
+                                </span>
+                                <span class="badge badge-bestseller" *ngIf="product.bestSeller">
+                                    {{ 'ADMIN.PRODUCTS.BADGE_BESTSELLER' | translate }}
+                                </span>
+                            </div>
+                            <span class="product-brand">{{ product.brand }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <code class="sku-code">{{ product.sku }}</code>
+                    </td>
+                    <td>
+                        <span class="tire-size">
+                            {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
+                            product.specifications.diameter }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="price-info">
+                            <strong class="current-price">${{ product.price }}</strong>
+                            <span class="compare-price" *ngIf="product.compareAtPrice">
+                                <s>${{ product.compareAtPrice }}</s>
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="stock-info">
+                            <span class="stock-badge" [class.stock-in]="product.inStock && product.stockQuantity > 5"
+                                [class.stock-low]="product.inStock && product.stockQuantity <= 5"
+                                [class.stock-out]="!product.inStock || product.stockQuantity === 0">
+                                <span *ngIf="product.inStock && product.stockQuantity > 5">
+                                    {{ 'ADMIN.PRODUCTS.STOCK_IN' | translate }}
+                                </span>
+                                <span *ngIf="product.inStock && product.stockQuantity <= 5">
+                                    {{ 'ADMIN.PRODUCTS.STOCK_LOW' | translate }}
+                                </span>
+                                <span *ngIf="!product.inStock || product.stockQuantity === 0">
+                                    {{ 'ADMIN.PRODUCTS.STOCK_OUT' | translate }}
+                                </span>
+                            </span>
+                            <span class="stock-quantity">
+                                {{ product.stockQuantity }} {{ 'ADMIN.PRODUCTS.UNITS' | translate }}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge" [class.badge-active]="product.active"
+                            [class.badge-inactive]="!product.active">
+                            {{ product.active ? ('ADMIN.PRODUCTS.STATUS_ACTIVE' | translate) :
+                            ('ADMIN.PRODUCTS.STATUS_INACTIVE' | translate) }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon" [routerLink]="['/admin/products', product.id, 'edit']"
+                                [title]="'ADMIN.COMMON.EDIT' | translate">
+                                ✏️
+                            </button>
+                            <button class="btn-icon btn-danger" (click)="deleteProduct(product)"
+                                [title]="'ADMIN.COMMON.DELETE' | translate">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr *ngIf="products.length === 0">
+                    <td colspan="9" class="no-data">
+                        {{ searchTerm || selectedCategory || selectedBrand || selectedStatus || selectedStockStatus ?
+                        ('ADMIN.PRODUCTS.NO_RESULTS' | translate) : ('ADMIN.PRODUCTS.EMPTY' | translate) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+            (itemsPerPageChange)="onItemsPerPageChange($event)">
+        </app-pagination>
+    </div>
+
+    <ng-template #loading>
+        <div class="loading-state">
+            <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+        </div>
+    </ng-template>
+</div>

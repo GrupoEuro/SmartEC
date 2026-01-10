@@ -1,0 +1,134 @@
+<app-admin-page-header icon="🎟️" [title]="'ADMIN.COUPONS.TITLE' | translate"
+    [subtitle]="'ADMIN.COUPONS.SUBTITLE' | translate">
+    <a routerLink="/admin/coupons/new" class="btn-primary">
+        + {{ 'ADMIN.COUPONS.ADD_NEW' | translate }}
+    </a>
+</app-admin-page-header>
+
+<div class="list-container">
+    <div class="filters-bar">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" [formControl]="searchControl"
+                [placeholder]="'ADMIN.COUPONS.SEARCH_PLACEHOLDER' | translate">
+        </div>
+
+        <div class="filter-group">
+            <select [formControl]="statusFilter" class="filter-select">
+                <option value="all">{{ 'ADMIN.STATUS.ALL' | translate }}</option>
+                <option value="active">{{ 'ADMIN.STATUS.ACTIVE' | translate }}</option>
+                <option value="inactive">{{ 'ADMIN.STATUS.INACTIVE' | translate }}</option>
+            </select>
+
+            <select [formControl]="typeFilter" class="filter-select">
+                <option value="all">{{ 'ADMIN.CATALOG.ALL_CATEGORIES' | translate }}</option>
+                <!-- Reusing All string or adding generic -->
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed_amount">Fixed Amount ($)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th (click)="sort('code')" class="sortable">
+                        {{ 'ADMIN.COUPONS.TABLE.CODE' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'code' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'
+                            }}</span>
+                    </th>
+                    <th (click)="sort('value')" class="sortable text-right">
+                        {{ 'ADMIN.COUPONS.TABLE.DISCOUNT' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'value' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'
+                            }}</span>
+                    </th>
+                    <th (click)="sort('usageLimit')" class="sortable text-right">
+                        {{ 'ADMIN.COUPONS.TABLE.USAGE' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'usageLimit' ? (sortDirection === 'asc' ? '↑' : '↓') :
+                            '↕' }}</span>
+                    </th>
+                    <th (click)="sort('isActive')" class="sortable">
+                        {{ 'ADMIN.COUPONS.TABLE.STATUS' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'isActive' ? (sortDirection === 'asc' ? '↑' : '↓') :
+                            '↕' }}</span>
+                    </th>
+                    <th (click)="sort('startDate')" class="sortable">
+                        {{ 'ADMIN.COUPONS.TABLE.VALIDITY' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'startDate' ? (sortDirection === 'asc' ? '↑' : '↓') :
+                            '↕' }}</span>
+                    </th>
+                    <th class="actions-col">{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let coupon of paginatedCoupons" [class.expired]="isExpired(coupon)">
+                    <td class="font-mono primary-text">{{ coupon.code }}</td>
+                    <td class="text-right">
+                        <span class="discount-badge" [class.fixed]="coupon.type === 'fixed_amount'">
+                            {{ coupon.type === 'percentage' ? (coupon.value + '%') : (coupon.value | currency) }}
+                        </span>
+                    </td>
+                    <td class="text-right">
+                        <div class="progress-info ml-auto">
+                            <span class="usage-text">{{ coupon.usageCount }} / {{ coupon.usageLimit === 0 ? '∞' :
+                                coupon.usageLimit }}</span>
+                            <div class="progress-bar-sm" *ngIf="coupon.usageLimit > 0">
+                                <div class="fill" [style.width.%]="(coupon.usageCount / coupon.usageLimit) * 100"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <label class="switch-toggle"
+                            [title]="coupon.isActive ? ('ADMIN.COMMON.ACTIVE' | translate) : ('ADMIN.COMMON.INACTIVE' | translate)">
+                            <input type="checkbox" [checked]="coupon.isActive" (change)="toggleStatus(coupon)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td class="text-sm text-gray">
+                        <div class="date-range">
+                            <span>{{ $any(coupon.startDate) | date:'shortDate' }}</span>
+                            <span class="arrow">→</span>
+                            <span *ngIf="coupon.endDate">{{ $any(coupon.endDate) | date:'shortDate' }}</span>
+                            <span *ngIf="!coupon.endDate">∞</span>
+                        </div>
+                        <span class="expired-label" *ngIf="isExpired(coupon)">EXPIRED</span>
+                    </td>
+                    <td class="actions-cell">
+                        <button class="btn-icon danger" (click)="deleteCoupon(coupon)"
+                            [title]="'ADMIN.COMMON.DELETE' | translate">
+                            🗑️
+                        </button>
+                        <a [routerLink]="['/admin/coupons/edit', coupon.id]" class="btn-icon"
+                            [title]="'ADMIN.COMMON.EDIT' | translate">
+                            ✏️
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Empty State -->
+                <tr *ngIf="!isLoading && filteredCoupons.length === 0">
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-content">
+                            <span class="empty-icon">🎟️</span>
+                            <h3>{{ 'ADMIN.COUPONS.EMPTY_TITLE' | translate }}</h3>
+                            <p>{{ 'ADMIN.COUPONS.EMPTY_MSG' | translate }}</p>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Loading State -->
+                <tr *ngIf="isLoading">
+                    <td colspan="6" class="loading-state">
+                        {{ 'ADMIN.COMMON.LOADING' | translate }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <app-pagination [config]="{ currentPage: currentPage, itemsPerPage: pageSize, totalItems: filteredCoupons.length }"
+        (pageChange)="onPageChange($event)" (itemsPerPageChange)="pageSize = $event; currentPage = 1;">
+    </app-pagination>
+</div>

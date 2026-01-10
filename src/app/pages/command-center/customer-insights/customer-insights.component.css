@@ -1,0 +1,392 @@
+.page-container {
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    color: #e2e8f0;
+    /* slate-200 */
+}
+
+/* Header */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-text h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+    background: linear-gradient(to right, #ffffff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-text p {
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Grid Layout */
+.dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* KPI Cards Row */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+
+.glass-panel {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.metrics-card {
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metrics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.metric-icon {
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.metric-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.2;
+}
+
+.metric-trend {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    color: #94a3b8;
+}
+
+.metric-trend.positive {
+    color: #22c55e;
+}
+
+.metric-trend.negative {
+    color: #ef4444;
+}
+
+.metric-trend.neutral {
+    color: #64748b;
+}
+
+/* Charts Grids */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    /* Acquistion (wider) + Segments */
+    gap: 1.5rem;
+}
+
+.charts-grid-wide {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Section Cards (Cohorts & Tables) */
+.section-card {
+    padding: 1.5rem;
+}
+
+.section-card h3 {
+    font-size: 1.1rem;
+    color: #f8fafc;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Cohort Table */
+.cohort-container {
+    overflow-x: auto;
+    border-radius: 0.5rem;
+    position: relative;
+    /* Create context for sticky */
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.cohort-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8rem;
+    min-width: 800px;
+    /* Force scroll on small screens */
+}
+
+.cohort-table th {
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    color: #94a3b8;
+    font-weight: 600;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(4px);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.cohort-table td {
+    padding: 0.25rem;
+    vertical-align: middle;
+    text-align: center;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+    height: 40px;
+}
+
+/* Sticky First Columns */
+.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: rgba(15, 23, 42, 0.95);
+    /* Higher opacity to hide scroll */
+    border-right: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.sticky-col-2 {
+    position: sticky;
+    left: 80px;
+    /* Adjust based on date width */
+    z-index: 20;
+    background: rgba(15, 23, 42, 0.95);
+    border-right: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.cohort-table th.sticky-col,
+.cohort-table th.sticky-col-2 {
+    z-index: 30;
+    /* Header sticky cols above everything */
+}
+
+.cohort-date {
+    color: #e2e8f0;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 0 1rem !important;
+    text-align: left !important;
+    min-width: 80px;
+}
+
+.cohort-size {
+    color: #94a3b8;
+    padding: 0 1rem !important;
+    min-width: 60px;
+}
+
+.cohort-table .pct-text {
+    display: block;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.cohort-table td:not(.sticky-col):not(.sticky-col-2):hover {
+    transform: scale(1.1);
+    z-index: 5;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    cursor: default;
+}
+
+.empty-cell {
+    background: repeating-linear-gradient(45deg,
+            rgba(255, 255, 255, 0.02),
+            rgba(255, 255, 255, 0.02) 10px,
+            rgba(255, 255, 255, 0.04) 10px,
+            rgba(255, 255, 255, 0.04) 20px);
+}
+
+/* Risk Table */
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.risk-table th {
+    text-align: left;
+    padding: 1rem;
+    color: #94a3b8;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.risk-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+    color: #cbd5e1;
+}
+
+.user-info .name {
+    font-weight: 500;
+    color: #f8fafc;
+}
+
+.user-info .email {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.risk-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.risk-badge.critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.risk-badge.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.risk-badge.safe {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.btn-action {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-action:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+}
+
+/* Glassmorphic Icon Button (Info CTA) */
+.btn-icon-subtle {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 0.5rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    backdrop-filter: blur(8px);
+}
+
+.btn-icon-subtle:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(148, 163, 184, 0.3);
+    color: #e2e8f0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-icon-subtle:active {
+    transform: translateY(0);
+}
+
+.btn-icon-subtle.active {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.2);
+}

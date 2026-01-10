@@ -1,0 +1,305 @@
+<ng-template #loading>
+    <div class="h-full flex items-center justify-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+    </div>
+</ng-template>
+
+<div class="h-full flex flex-col" *ngIf="po(); else loading">
+
+    <!-- Admin Header -->
+    <app-admin-page-header iconName="ship"
+        [title]="(poId() === 'new' ? ('OPERATIONS.PROCUREMENT.NEW_PO' | translate) : (po()?.poNumber || ''))"
+        [subtitle]="'OPERATIONS.PROCUREMENT.SUBTITLE' | translate" variant="operations">
+
+        <div class="flex gap-3">
+            <button class="btn-glass hover:text-white text-zinc-300" routerLink="/operations/procurement">
+                Cancel
+            </button>
+            <ng-container *ngIf="po()?.status !== 'RECEIVED'">
+                <button class="btn-glass-success" (click)="receiveOrder()">
+                    <app-icon name="check-circle" [size]="18"></app-icon>
+                    <span>Receive Order</span>
+                </button>
+                <button class="btn-glass-primary" (click)="savePO()">
+                    <app-icon name="save" [size]="18"></app-icon>
+                    <span>Save Draft</span>
+                </button>
+            </ng-container>
+            <div *ngIf="po()?.status === 'RECEIVED'"
+                class="px-3 py-1.5 bg-green-100 text-green-800 rounded font-bold border border-green-200 flex items-center gap-2">
+                <app-icon name="lock" [size]="14"></app-icon> RECEIVED
+            </div>
+        </div>
+    </app-admin-page-header>
+
+    <div class="detail-container p-6 max-w-7xl mx-auto flex flex-col gap-6">
+        <div class="detail-layout grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
+
+            <!-- Left Column: Items & Invoices -->
+            <div class="main-content flex flex-col gap-6">
+
+                <!-- Drag & Drop Zone -->
+                <div *ngIf="po()?.status === 'DRAFT' || !po()?.status"
+                    class="drag-zone border-2 border-dashed border-zinc-600 rounded-xl p-12 text-center bg-zinc-800/50 hover:bg-zinc-800 hover:border-indigo-500 transition-all cursor-pointer"
+                    [ngClass]="{'border-amber-500': isDragging(), 'bg-amber-900/10': isDragging()}"
+                    (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+
+                    <div
+                        class="drag-icon w-12 h-12 rounded-full bg-zinc-700 shadow-sm flex items-center justify-center mx-auto mb-4 text-amber-500">
+                        <app-icon name="upload-cloud" [size]="24"></app-icon>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Import Invoice or Packing List</h3>
+                    <p class="text-zinc-500 mb-4">
+                        Drag <strong>XML</strong> (Mexico) or <strong>Excel/CSV</strong> (International) here.
+                    </p>
+
+                    <div *ngIf="isProcessing()" class="text-indigo-400 font-medium animate-pulse">
+                        Processing file...
+                    </div>
+                    <div *ngIf="errorMessage()" class="text-red-400 font-medium mt-2">
+                        {{ errorMessage() }}
+                    </div>
+                </div>
+
+                <!-- Attached Invoices -->
+                <div *ngIf="po()?.invoices?.length"
+                    class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
+                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                        <h3 class="font-semibold text-white">Attached Invoices</h3>
+                    </div>
+                    <div class="p-0">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-zinc-900/50 text-zinc-400 text-xs font-bold uppercase border-b border-zinc-700">
+                                    <th class="p-3">Invoice #</th>
+                                    <th class="p-3">UUID</th>
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-zinc-300">
+                                <tr *ngFor="let inv of po()?.invoices"
+                                    class="border-b border-zinc-800 last:border-0 hover:bg-zinc-700/30">
+                                    <td class="p-3 font-medium text-white">{{ inv.invoiceNumber }}</td>
+                                    <td class="p-3 text-xs text-zinc-500 font-mono">{{ inv.uuid }}</td>
+                                    <td class="p-3">{{ getDate(inv.date) | date:'mediumDate' }}</td>
+                                    <td class="p-3 text-right font-bold text-emerald-400">
+                                        {{ inv.totalAmount | currency:inv.currency }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
+                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                        <h3 class="font-semibold text-white">Line Items ({{ po()?.items?.length }})</h3>
+                    </div>
+                    <div class="p-0 overflow-x-auto">
+                        <table class="operations-table w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-zinc-900/50 text-zinc-400 text-xs font-bold uppercase border-b border-zinc-700">
+                                    <th class="p-3">Supplier SKU</th>
+                                    <th class="p-3 w-1/3">Internal Product (Mapped)</th>
+                                    <th class="p-3 text-right">Qty</th>
+                                    <th class="p-3 text-right">Unit Cost</th>
+                                    <th class="p-3 text-right">Total</th>
+                                    <th class="p-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-zinc-300">
+                                <!-- Item Row -->
+                                <tr *ngFor="let item of po()?.items; let i = index"
+                                    class="border-b border-zinc-700/50 hover:bg-zinc-700/30 transition-colors"
+                                    [ngClass]="{'bg-amber-900/10': !item.productId}">
+                                    <td class="p-3 text-sm text-zinc-500 font-mono">{{ item.sku }}</td>
+                                    <td class="p-2 relative group"
+                                        [ngClass]="{'bg-blue-900/10': focusedRowIndex() === i}">
+                                        <!-- Inline Smart Input -->
+                                        <div class="relative w-full">
+                                            <!-- Icon Helper -->
+                                            <div class="absolute left-2 top-1/2 -tranzinc-y-1/2 text-zinc-400 pointer-events-none transition-colors duration-200"
+                                                [class.text-emerald-500]="item.productId"
+                                                [class.text-blue-400]="focusedRowIndex() === i">
+                                                <app-icon [name]="item.productId ? 'check-circle' : 'search'"
+                                                    [size]="14"></app-icon>
+                                            </div>
+
+                                            <input type="text" [id]="'row-input-' + i"
+                                                [value]="item.productId ? item.productName : ''"
+                                                (focus)="onRowFocus(i, item.productId)" (blur)="onRowBlur()"
+                                                (input)="searchProducts($any($event.target).value)"
+                                                (keydown)="onRowKeydown($event, i)"
+                                                [placeholder]="item.productId ? '' : 'Type to search...'"
+                                                class="w-full text-sm border border-transparent rounded-md py-1.5 pl-8 pr-2 transition-all duration-200 outline-none
+                                                       focus:bg-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50" [ngClass]="{
+                                                    'text-white font-semibold bg-transparent': item.productId,
+                                                    'text-zinc-400 placeholder-zinc-600 bg-zinc-900/50': !item.productId
+                                                }" autocomplete="off">
+
+                                            <!-- Floating Autocomplete Dropdown -->
+                                            <div *ngIf="focusedRowIndex() === i && (inlineResults().length > 0 || inlineSearchTerm())"
+                                                class="absolute z-50 left-0 top-full mt-2 w-[480px] bg-zinc-800 rounded-xl shadow-2xl border border-zinc-600 overflow-hidden ring-1 ring-black/20 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+
+                                                <!-- Header/Context (Optional, if we want to show 'Creating...' or 'Results') -->
+                                                <div *ngIf="inlineResults().length === 0 && inlineSearchTerm()"
+                                                    class="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider bg-zinc-900/50 border-b border-zinc-700">
+                                                    No matches found
+                                                </div>
+
+                                                <!-- Results -->
+                                                <div *ngFor="let res of inlineResults(); let rIdx = index"
+                                                    class="group/item px-3 py-2.5 cursor-pointer flex items-center justify-between border-b border-zinc-700/50 last:border-0 hover:bg-zinc-700 transition-colors"
+                                                    [class.bg-zinc-700]="inlineSelectedIndex() === rIdx"
+                                                    (mousedown)="selectProduct(res, i)">
+
+                                                    <div class="flex flex-col gap-0.5">
+                                                        <span
+                                                            class="text-sm font-semibold text-zinc-200 group-hover/item:text-white transition-colors">
+                                                            {{ res.name.es }}
+                                                        </span>
+                                                        <div class="flex items-center gap-2">
+                                                            <span
+                                                                class="text-[10px] font-mono bg-zinc-900 text-zinc-400 px-1.5 rounded border border-zinc-700">{{
+                                                                res.sku }}</span>
+                                                            <span
+                                                                class="text-[10px] uppercase font-bold text-zinc-500 tracking-wide">{{
+                                                                res.brand }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        class="text-sm font-bold text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded-full border border-emerald-900/30">
+                                                        {{ res.price | currency:'MXN' }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Quick Create Option (Always Last) -->
+                                                <div *ngIf="inlineSearchTerm()"
+                                                    class="px-3 py-3 cursor-pointer bg-zinc-900/30 hover:bg-zinc-900 flex items-center gap-3 text-blue-400 border-t border-zinc-700 transition-colors"
+                                                    [class.bg-zinc-900]="inlineSelectedIndex() === inlineResults().length"
+                                                    (mousedown)="inlineCreateStub(i)">
+
+                                                    <div
+                                                        class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center shadow-sm text-blue-400">
+                                                        <app-icon name="plus" [size]="16"></app-icon>
+                                                    </div>
+
+                                                    <div class="flex flex-col">
+                                                        <span class="text-sm font-bold text-white">Create new
+                                                            product</span>
+                                                        <span class="text-xs text-zinc-500">"{{ inlineSearchTerm()
+                                                            }}"</span>
+                                                    </div>
+
+                                                    <div class="ml-auto flex items-center gap-1.5 opacity-60">
+                                                        <span
+                                                            class="text-[10px] font-bold bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">⌘</span>
+                                                        <span
+                                                            class="text-[10px] font-bold bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">ENTER</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- Old Button Removed -->
+                                    <td class="px-4 py-3 hidden">
+                                        <!-- Kept hidden to preserve column count if needed, or remove completely -->
+                                    </td>
+                                    <td class="text-right px-4">{{ item.quantityOrdered }}</td>
+                                    <td class="text-right text-zinc-500 px-4">{{ item.unitCost |
+                                        currency:po()?.currency
+                                        }}</td>
+                                    <td class="text-right font-medium text-white px-4">{{ item.totalCost |
+                                        currency:po()?.currency }}</td>
+                                    <td class="text-center px-4">
+                                        <button (click)="removeItem(i)"
+                                            class="text-zinc-500 hover:text-red-400 transition-colors p-2 hover:bg-zinc-700 rounded-full">
+                                            <app-icon name="trash-2" [size]="16"></app-icon>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="po()?.items?.length === 0">
+                                    <td colspan="6" class="p-12 text-center text-zinc-500 italic">
+                                        No items yet. Import XML or add manually.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Info & Totals -->
+            <div class="sidebar flex flex-col gap-6">
+
+                <!-- Financials -->
+                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
+                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                        <h3 class="font-semibold text-white">Financial Summary</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="flex justify-between text-sm text-zinc-400">
+                            <span>Subtotal</span>
+                            <span class="font-medium text-zinc-200">{{ po()?.subtotal | currency:po()?.currency
+                                }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm text-zinc-400">
+                            <span>Taxes</span>
+                            <span class="font-medium text-zinc-200">{{ po()?.taxTotal | currency:po()?.currency
+                                }}</span>
+                        </div>
+                        <div
+                            class="flex justify-between text-lg font-bold text-white pt-3 border-t border-zinc-700 mt-1">
+                            <span>Total</span>
+                            <span class="text-emerald-400">{{ po()?.grandTotal | currency:po()?.currency }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PO Info Form -->
+                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
+                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                        <h3 class="font-semibold text-white">Order Details</h3>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">PO
+                                Number</label>
+                            <input [(ngModel)]="po()!.poNumber"
+                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Supplier
+                                Name</label>
+                            <input [(ngModel)]="po()!.supplierName"
+                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+                        </div>
+                        <div class="space-y-1">
+                            <label
+                                class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Status</label>
+                            <div class="py-1">
+                                <span
+                                    class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                                    [ngClass]="'status-' + po()!.status">
+                                    {{ po()!.status }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label
+                                class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Notes</label>
+                            <textarea [(ngModel)]="po()!.notes" rows="4"
+                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

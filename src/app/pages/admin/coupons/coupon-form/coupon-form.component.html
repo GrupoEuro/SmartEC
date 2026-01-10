@@ -1,0 +1,122 @@
+<app-admin-page-header icon="🎟️"
+    [title]="(isEditMode ? 'ADMIN.COUPONS.EDIT_TITLE' : 'ADMIN.COUPONS.NEW_TITLE') | translate"
+    [subtitle]="(isEditMode ? 'ADMIN.COUPONS.EDIT_SUBTITLE' : 'ADMIN.COUPONS.NEW_SUBTITLE') | translate"
+    [showSaveCancel]="true" [isSaving]="isSaving" [isFormInvalid]="couponForm.invalid"
+    [hasUnsavedChanges]="couponForm.dirty" (onSave)="onSubmit()" (onCancel)="onCancel()">
+</app-admin-page-header>
+
+<div class="form-container">
+    <form [formGroup]="couponForm" class="coupon-form">
+
+        <!-- Basic Info Section -->
+        <!-- Basic Info Section -->
+        <!-- Basic Info Section -->
+        <div class="form-section">
+            <div class="section-header">
+                <h3><span class="section-icon">📝</span> {{ 'ADMIN.COUPONS.FORM.SECTION_BASIC' | translate }}</h3>
+                <div class="status-toggle-wrapper">
+                    <app-toggle-switch [control]="$any(couponForm.get('isActive'))"
+                        [label]="couponForm.get('isActive')?.value ? ('ADMIN.STATUS.ACTIVE' | translate) : ('ADMIN.STATUS.INACTIVE' | translate)">
+                    </app-toggle-switch>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group code-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.CODE' | translate }} <span class="required">*</span></label>
+                    <div class="input-group-append">
+                        <input type="text" formControlName="code" class="form-control code-input"
+                            [placeholder]="'ADMIN.COUPONS.FORM.CODE_PLACEHOLDER' | translate"
+                            [class.error]="couponForm.get('code')?.touched && couponForm.get('code')?.invalid">
+                        <button type="button" class="btn-generate" (click)="generateCode()"
+                            [title]="'ADMIN.COUPONS.FORM.GENERATE' | translate">
+                            🎲
+                        </button>
+                    </div>
+                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.CODE_HINT' | translate }}</small>
+                    <div class="error-msg"
+                        *ngIf="couponForm.get('code')?.hasError('required') && couponForm.get('code')?.touched">
+                        {{ 'ADMIN.COUPONS.FORM.CODE_REQUIRED' | translate }}
+                    </div>
+                    <div class="error-msg" *ngIf="couponForm.get('code')?.hasError('notUnique')">
+                        {{ 'ADMIN.COUPONS.FORM.CODE_EXISTS' | translate }}
+                    </div>
+                </div>
+
+                <div class="form-group description-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.DESCRIPTION' | translate }}</label>
+                    <textarea formControlName="description" class="form-control" rows="2"
+                        [placeholder]="'ADMIN.COUPONS.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
+                </div>
+
+                <div class="form-group type-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.TYPE' | translate }}</label>
+                    <div class="type-selector">
+                        <label class="radio-label">
+                            <input type="radio" formControlName="type" value="percentage">
+                            <span>{{ 'ADMIN.COUPONS.FORM.TYPE_PERCENTAGE' | translate }}</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" formControlName="type" value="fixed_amount">
+                            <span>{{ 'ADMIN.COUPONS.FORM.TYPE_FIXED' | translate }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group value-group">
+                <label>{{ 'ADMIN.COUPONS.FORM.VALUE' | translate }} <span class="required">*</span></label>
+                <div class="input-with-suffix">
+                    <input type="number" formControlName="value" class="form-control" min="0">
+                    <span class="suffix">{{ couponForm.get('type')?.value === 'percentage' ? '%' : 'MXN' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules & Limits -->
+        <div class="form-section">
+            <h3><span class="section-icon">⚖️</span> {{ 'ADMIN.COUPONS.FORM.SECTION_RULES' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE' | translate }}</label>
+                    <div class="input-with-prefix">
+                        <span class="prefix">$</span>
+                        <input type="number" formControlName="minPurchaseAmount" class="form-control" min="0">
+                    </div>
+                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE_HINT' | translate }}</small>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.USAGE_LIMIT' | translate }}</label>
+                    <input type="number" formControlName="usageLimit" class="form-control" min="0">
+                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.USAGE_LIMIT_HINT' | translate }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule -->
+        <div class="form-section">
+            <h3><span class="section-icon">📅</span> {{ 'ADMIN.COUPONS.FORM.SECTION_SCHEDULE' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.START_DATE' | translate }} <span class="required">*</span></label>
+                    <input type="date" formControlName="startDate" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.END_DATE' | translate }}</label>
+                    <input type="date" formControlName="endDate" class="form-control">
+                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.END_DATE_HINT' | translate }}</small>
+                </div>
+            </div>
+
+            <div class="error-banner" *ngIf="couponForm.hasError('dateRangeInvalid')">
+                {{ 'ADMIN.COUPONS.FORM.DATE_ERROR' | translate }}
+            </div>
+        </div>
+
+
+    </form>
+</div>

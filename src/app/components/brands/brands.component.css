@@ -1,0 +1,108 @@
+.brands-section {
+    padding: 100px 40px;
+    background: #000000;
+}
+
+.brands-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.brands-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--white);
+    margin-bottom: 60px;
+    text-align: center;
+    position: relative;
+    display: inline-block;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.brands-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 20%;
+    width: 60%;
+    height: 4px;
+    background: var(--primary-red);
+}
+
+.brands-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+}
+
+.brand-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 60px 40px;
+    border-radius: 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.brand-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--cyan);
+}
+
+.brand-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    margin-bottom: 24px;
+    line-height: 1;
+}
+
+.brand-logo.michelin {
+    color: #27509C;
+    /* Michelin Blue */
+}
+
+.brand-logo.praxis {
+    color: var(--cyan);
+}
+
+.brand-description {
+    color: #a0a0a0;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    max-width: 90%;
+}
+
+.brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.brand-feature {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.brand-feature::before {
+    content: '✓';
+    color: var(--cyan);
+    font-weight: bold;
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    .brands-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .brands-title {
+        font-size: 48px;
+    }
+}

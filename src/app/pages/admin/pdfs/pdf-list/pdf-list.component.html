@@ -1,0 +1,74 @@
+<app-admin-page-header icon="📚" [title]="'ADMIN.PDF_LIST.TITLE' | translate" subtitle="Manage downloadable resources">
+    <a routerLink="/admin/pdfs/new" class="btn-primary">{{ 'ADMIN.PDF_LIST.BTN_ADD' | translate }}</a>
+</app-admin-page-header>
+
+<div class="pdf-list-container">
+
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_THUMBNAIL' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_INFO' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_CATEGORY' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_METRICS' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_ACCESS' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_STATUS' | translate }}</th>
+                    <th>{{ 'ADMIN.PDF_LIST.TH_ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let pdf of pdfs$ | async">
+                    <td class="thumb-col">
+                        @if (pdf.thumbnailUrl) {
+                        <img [src]="pdf.thumbnailUrl" alt="Thumbnail" class="pdf-thumb">
+                        } @else {
+                        <div class="pdf-thumb-placeholder">📄</div>
+                        }
+                    </td>
+                    <td class="info-col">
+                        <div class="pdf-title">{{ pdf.title.en }}</div>
+                        <div class="pdf-subtitle">{{ pdf.title.es }}</div>
+                        <div class="pdf-meta-small">{{ 'ADMIN.PDF_LIST.CREATED' | translate }}: {{ pdf.createdAt |
+                            date:'shortDate' }}</div>
+                    </td>
+                    <td>
+                        <span class="category-badge">{{ getCategoryLabel(pdf.category) }}</span>
+                    </td>
+                    <td>
+                        <div class="metric-row">
+                            <span class="size-tag">{{ formatFileSize(pdf.fileSize) }}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="download-tag">⬇ {{ pdf.downloadCount }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        @if (pdf.isPublic) {
+                        <span class="access-badge public">🌐 {{ 'ADMIN.PDF_LIST.ACCESS_PUBLIC' | translate }}</span>
+                        } @else if (pdf.requiresAuth) {
+                        <span class="access-badge restricted">🔒 {{ 'ADMIN.PDF_LIST.ACCESS_LOGIN' | translate }}</span>
+                        } @else {
+                        <span class="access-badge private">🔐 {{ 'ADMIN.PDF_LIST.ACCESS_PRIVATE' | translate }}</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge" [class.active]="pdf.active">
+                            {{ pdf.active ? ('ADMIN.PDF_LIST.STATUS_ACTIVE' | translate) :
+                            ('ADMIN.PDF_LIST.STATUS_INACTIVE' | translate) }}
+                        </span>
+                    </td>
+                    <td class="actions">
+                        <a [routerLink]="['/admin/pdfs/edit', pdf.id]" class="btn-icon"
+                            [title]="'ADMIN.COMMON.EDIT' | translate">✏️</a>
+                        <button (click)="deletePDF(pdf)" class="btn-icon delete"
+                            [title]="'ADMIN.COMMON.DELETE' | translate">🗑️</button>
+                    </td>
+                </tr>
+                <tr *ngIf="(pdfs$ | async)?.length === 0">
+                    <td colspan="7" class="no-data">{{ 'ADMIN.PDF_LIST.EMPTY' | translate }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

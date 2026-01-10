@@ -1,0 +1,9 @@
+/* Customer Lookup Styles - Mostly Tailwind now */
+.badge-neutral {
+    @apply bg-slate-700 text-slate-300 border border-slate-600;
+}
+
+/* Responsive Table */
+.table-container {
+    overflow-x: auto;
+}

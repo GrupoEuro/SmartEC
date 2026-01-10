@@ -1,0 +1,118 @@
+<section class="distributor-section">
+    <div class="distributor-container">
+        <div class="distributor-info">
+            <div class="section-overline">{{ 'DISTRIBUTOR.OVERLINE' | translate }}</div>
+            <h2 class="section-title">{{ 'DISTRIBUTOR.TITLE' | translate }}</h2>
+            <p class="section-description">
+                {{ 'DISTRIBUTOR.DESCRIPTION' | translate }}
+            </p>
+
+            <div class="distributor-benefits">
+                <div class="benefit-item">
+                    <div class="benefit-icon">💰</div>
+                    <div class="benefit-text">
+                        <h3>{{ 'DISTRIBUTOR.BENEFIT_1_TITLE' | translate }}</h3>
+                        <p>{{ 'DISTRIBUTOR.BENEFIT_1_DESC' | translate }}</p>
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">📊</div>
+                    <div class="benefit-text">
+                        <h3>{{ 'DISTRIBUTOR.BENEFIT_2_TITLE' | translate }}</h3>
+                        <p>{{ 'DISTRIBUTOR.BENEFIT_2_DESC' | translate }}</p>
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">🎓</div>
+                    <div class="benefit-text">
+                        <h3>{{ 'DISTRIBUTOR.BENEFIT_3_TITLE' | translate }}</h3>
+                        <p>{{ 'DISTRIBUTOR.BENEFIT_3_DESC' | translate }}</p>
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">🚀</div>
+                    <div class="benefit-text">
+                        <h3>{{ 'DISTRIBUTOR.BENEFIT_4_TITLE' | translate }}</h3>
+                        <p>{{ 'DISTRIBUTOR.BENEFIT_4_DESC' | translate }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="distributor-form-container">
+            <h3>{{ 'DISTRIBUTOR.FORM.TITLE' | translate }}</h3>
+
+            <form (ngSubmit)="onSubmit(form)" #form="ngForm" novalidate>
+                <!-- Bot Protection (Hidden) -->
+                <div style="display: none; opacity: 0; position: absolute; left: -9999px;">
+                    <input type="text" name="b_check" [(ngModel)]="honeypot" tabindex="-1" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="name">{{ 'DISTRIBUTOR.FORM.NAME' | translate }}</label>
+                    <input type="text" id="name" [(ngModel)]="distributor.name" name="name" required
+                        [disabled]="isSubmitting">
+                </div>
+
+                <div class="form-group">
+                    <label for="business">{{ 'DISTRIBUTOR.FORM.BUSINESS' | translate }}</label>
+                    <input type="text" id="business" [(ngModel)]="distributor.business" name="business" required
+                        [disabled]="isSubmitting">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">{{ 'DISTRIBUTOR.FORM.EMAIL' | translate }}</label>
+                    <input type="email" id="email" [(ngModel)]="distributor.email" name="email" required
+                        [disabled]="isSubmitting">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">{{ 'DISTRIBUTOR.FORM.PHONE' | translate }}</label>
+                    <input type="tel" id="phone" [(ngModel)]="distributor.phone" name="phone" required
+                        [disabled]="isSubmitting">
+                </div>
+
+                <div class="form-group">
+                    <label for="state">{{ 'DISTRIBUTOR.FORM.STATE' | translate }}</label>
+                    <select id="state" [(ngModel)]="distributor.state" name="state" required [disabled]="isSubmitting">
+                        <option value="">{{ 'DISTRIBUTOR.FORM.STATE_PLACEHOLDER' | translate }}</option>
+                        <option *ngFor="let state of states" [value]="state.value">{{ state.label }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="volume">{{ 'DISTRIBUTOR.FORM.VOLUME' | translate }}</label>
+                    <select id="volume" [(ngModel)]="distributor.volume" name="volume" [disabled]="isSubmitting">
+                        <option value="">{{ 'DISTRIBUTOR.FORM.VOLUME_PLACEHOLDER' | translate }}</option>
+                        <option value="1-10">1-10</option>
+                        <option value="11-25">11-25</option>
+                        <option value="26-50">26-50</option>
+                        <option value="51-100">51-100</option>
+                        <option value="100+">100+</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="comments">{{ 'DISTRIBUTOR.FORM.COMMENTS' | translate }}</label>
+                    <textarea id="comments" [(ngModel)]="distributor.comments" name="comments"
+                        [placeholder]="'DISTRIBUTOR.FORM.COMMENTS_PLACEHOLDER' | translate"
+                        [disabled]="isSubmitting"></textarea>
+                </div>
+
+                <div class="form-messages" *ngIf="submitSuccess">
+                    <p class="success-message">✅ ¡Gracias! Tu solicitud ha sido enviada correctamente.</p>
+                </div>
+
+                <div class="form-messages" *ngIf="submitError">
+                    <p class="error-message">❌ Hubo un error. Por favor verifica tu conexión e inténtalo de nuevo.</p>
+                </div>
+
+                <button type="submit" class="form-submit" [disabled]="isSubmitting">
+                    {{ isSubmitting ? 'Enviando...' : ('DISTRIBUTOR.FORM.SUBMIT' | translate) }}
+                </button>
+            </form>
+        </div>
+    </div>
+</section>

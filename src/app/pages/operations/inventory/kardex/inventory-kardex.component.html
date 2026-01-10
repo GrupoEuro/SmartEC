@@ -1,0 +1,178 @@
+<div class="kardex-overlay" *ngIf="isOpen">
+    <!-- Backdrop -->
+    <div class="kardex-backdrop" (click)="onClose()"></div>
+
+    <!-- Drawer Panel -->
+    <div class="kardex-drawer">
+
+        <!-- Header -->
+        <div
+            class="px-6 py-5 border-b border-zinc-700 flex items-start justify-between bg-zinc-900/90 backdrop-blur-md sticky top-0 z-10">
+            <div class="flex flex-col gap-1.5">
+                <div class="flex items-center gap-2">
+                    <span
+                        class="bg-blue-900/30 text-blue-400 border border-blue-900/50 text-xs font-bold px-2 py-0.5 rounded tracking-wide">{{
+                        product?.sku }}</span>
+                    <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">{{ product?.brand }}</span>
+                </div>
+                <h2 class="text-xl font-bold text-white leading-tight">{{ product?.name?.es }}</h2>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button (click)="openAdjustment()" class="btn-glass-primary text-sm">
+                    <app-icon name="sliders" [size]="18"></app-icon>
+                    <span>{{ 'OPERATIONS.INVENTORY.KARDEX.ADJUST_BTN' | translate }}</span>
+                </button>
+                <button (click)="onClose()"
+                    class="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all active:scale-95">
+                    <app-icon name="x" [size]="24"></app-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- Unified Stats Dashboard -->
+        <div class="grid grid-cols-4 gap-4 p-6 bg-zinc-900 border-b border-zinc-800">
+            <!-- Physical Stock -->
+            <div class="flex flex-col p-3 bg-zinc-800 rounded-xl shadow-lg border border-zinc-700">
+                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Physical Stock</span>
+                <span class="text-2xl font-bold text-white">{{ currentBalance()?.quantity || product?.stockQuantity
+                    || 0 }}</span>
+            </div>
+
+            <!-- Reserved (New) -->
+            <div class="flex flex-col p-3 bg-zinc-800 rounded-xl shadow-lg border border-zinc-700">
+                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Reserved</span>
+                <span class="text-2xl font-bold text-amber-500">
+                    {{ currentBalance()?.reservedQuantity || 0 }}
+                </span>
+            </div>
+
+            <!-- Available (New) -->
+            <div
+                class="flex flex-col p-3 bg-blue-900/20 rounded-xl shadow-lg border border-blue-500/30 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-1 opacity-10">
+                    <app-icon name="check-circle" [size]="40" class="text-blue-400"></app-icon>
+                </div>
+                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Available</span>
+                <span class="text-2xl font-bold text-blue-400">
+                    {{ (currentBalance()?.availableQuantity ?? 0) }}
+                </span>
+            </div>
+
+            <!-- Value -->
+            <div class="flex flex-col p-3 bg-zinc-800 rounded-xl shadow-lg border border-zinc-700">
+                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Value</span>
+                <span class="text-lg font-bold text-emerald-400 truncate"
+                    [title]="currentBalance()?.totalValue | currency:'MXN'">
+                    {{ (currentBalance()?.totalValue || 0) | currency:'MXN':'symbol':'1.0-0' }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Filter / Tabs (Visual Only for now) -->
+        <div class="px-6 py-3 border-b border-zinc-800 flex items-center gap-4 text-sm font-medium text-zinc-500">
+            <button class="text-blue-400 border-b-2 border-blue-500 pb-3 -mb-3.5 px-1">All History</button>
+            <button class="hover:text-zinc-300 pb-3 -mb-3.5 px-1 transition-colors">Purchases</button>
+            <button class="hover:text-zinc-300 pb-3 -mb-3.5 px-1 transition-colors">Sales</button>
+            <button class="hover:text-zinc-300 pb-3 -mb-3.5 px-1 transition-colors">Adjustments</button>
+        </div>
+
+        <!-- Timeline Content -->
+        <div class="flex-1 overflow-y-auto bg-zinc-900 p-6 relative custom-scrollbar">
+
+            <div *ngIf="isLoading()"
+                class="absolute inset-0 flex items-center justify-center bg-zinc-900/80 backdrop-blur-[1px] z-10">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="text-sm font-medium text-zinc-500">Loading History...</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-0 border-l-2 border-zinc-800 ml-3 pl-8 pb-8">
+
+                <!-- Row -->
+                <div *ngFor="let row of history()" class="relative group pb-8 last:pb-0">
+
+                    <!-- Timeline Dot -->
+                    <div class="absolute -left-[41px] top-1.5 w-5 h-5 rounded-full border-[3px] border-zinc-900 shadow-sm flex items-center justify-center transition-all group-hover:scale-110 z-10"
+                        [ngClass]="{
+                             'bg-emerald-500': row.type === 'PURCHASE' || row.type === 'RETURN_IN' || row.type === 'INITIAL_LOAD' || row.type === 'RELEASE_STOCK',
+                             'bg-blue-500': row.type === 'SALE' || row.type === 'RETURN_OUT' || row.type === 'RESERVE_STOCK',
+                             'bg-amber-500': row.type === 'ADJUSTMENT'
+                         }">
+                    </div>
+
+                    <!-- Connect Line Highlight -->
+                    <div class="absolute -left-[33px] top-6 bottom-0 w-0.5 bg-zinc-800 group-last:hidden"></div>
+
+                    <!-- Card -->
+                    <div
+                        class="bg-zinc-800 rounded-xl border border-zinc-700 shadow-lg p-4 hover:shadow-xl transition-all hover:border-blue-500/50 group-hover:tranzinc-x-1 duration-200">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-0.5">
+                                    {{ row.formattedDate | date:'MMM d, y • h:mm a' }}
+                                </span>
+                                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                    {{ row.contextTitle }}
+
+                                    <!-- Status Badges -->
+                                    <span *ngIf="row.type === 'RESERVE_STOCK'"
+                                        class="px-1.5 py-0.5 rounded text-[10px] bg-amber-900/30 text-amber-400 border border-amber-500/30 uppercase">Reserved</span>
+                                    <span *ngIf="row.type === 'RELEASE_STOCK'"
+                                        class="px-1.5 py-0.5 rounded text-[10px] bg-zinc-700 text-zinc-400 border border-zinc-600 uppercase">Released</span>
+                                </h4>
+                                <p class="text-xs text-zinc-400 mt-0.5 line-clamp-1">{{ row.contextSubtitle }}</p>
+                            </div>
+
+                            <!-- Movement Pill -->
+                            <div class="px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 shadow-sm"
+                                [ngClass]="{
+                                     'bg-emerald-900/20 text-emerald-400 border border-emerald-500/20': row.quantityChange > 0,
+                                     'bg-red-900/20 text-red-400 border border-red-500/20': row.quantityChange < 0,
+                                     'bg-zinc-900/50 text-zinc-500 border border-zinc-700': row.quantityChange === 0
+                                 }">
+                                <span>{{ row.quantityChange > 0 ? '+' : '' }}{{ row.quantityChange }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Footer / Balance -->
+                        <div class="flex items-center justify-between pt-3 border-t border-zinc-700/50 border-dashed">
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-1 text-zinc-500" title="Unit Cost">
+                                    <app-icon name="dollar-sign" [size]="12"></app-icon>
+                                    <span class="text-xs font-mono">{{ row.unitCost | currency:'MXN' }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 bg-zinc-900/50 px-2 py-1 rounded">
+                                <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">{{
+                                    'OPERATIONS.INVENTORY.KARDEX.RUNNING_BAL' | translate }}</span>
+                                <span class="text-sm font-bold text-white">{{ row.runningBalance }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="history().length === 0 && !isLoading()" class="ml-[-2rem] text-center py-16">
+                    <div
+                        class="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-700 shadow-sm">
+                        <app-icon name="clock" class="text-zinc-600" [size]="32"></app-icon>
+                    </div>
+                    <h3 class="text-white font-bold mb-1">{{ 'OPERATIONS.INVENTORY.KARDEX.NO_HISTORY' | translate }}
+                    </h3>
+                    <p class="text-zinc-500 text-sm max-w-[200px] mx-auto">{{
+                        'OPERATIONS.INVENTORY.KARDEX.NO_HISTORY_DESC' |
+                        translate }}</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal remains same -->
+<!-- Adjustment Modal -->
+<app-inventory-adjustment-modal *ngIf="showAdjustmentModal()" [product]="product"
+    [currentStock]="currentBalance()?.quantity || product?.stockQuantity || 0" (close)="onAdjustmentClose($event)">
+</app-inventory-adjustment-modal>

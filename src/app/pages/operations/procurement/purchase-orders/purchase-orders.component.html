@@ -1,0 +1,69 @@
+<app-admin-page-header iconName="ship" [title]="'OPERATIONS.PROCUREMENT.TITLE' | translate"
+    [subtitle]="'OPERATIONS.PROCUREMENT.SUBTITLE' | translate" variant="operations">
+    <a routerLink="new" class="btn-glass-primary">
+        <app-icon name="plus" [size]="20"></app-icon>
+        <span>{{ 'OPERATIONS.PROCUREMENT.NEW_PO' | translate }}</span>
+    </a>
+</app-admin-page-header>
+
+<div class="list-container p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Main Table -->
+    <div class="operations-table-container" *ngIf="(orders$ | async) as orders">
+        <table class="operations-table w-full text-left border-collapse">
+            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase font-semibold">
+                <tr>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.PROCUREMENT.PO_NUMBER' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.PROCUREMENT.SUPPLIER' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.PROCUREMENT.DATE' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700">{{ 'OPERATIONS.PROCUREMENT.STATUS' | translate }}</th>
+                    <th class="p-4 border-b border-zinc-700 text-right">{{ 'OPERATIONS.PROCUREMENT.TOTAL' | translate
+                        }}</th>
+                    <th class="p-4 border-b border-zinc-700 text-center">{{ 'OPERATIONS.PROCUREMENT.ITEMS' | translate
+                        }}</th>
+                    <th class="p-4 border-b border-zinc-700 text-right">{{ 'OPERATIONS.PROCUREMENT.ACTIONS' | translate
+                        }}</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-300 text-sm">
+                <tr *ngFor="let po of orders" class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors">
+                    <td class="p-4 font-mono font-bold text-white">{{ po.poNumber }}</td>
+                    <td class="p-4">{{ po.supplierName || '-' }}</td>
+                    <td class="p-4 text-zinc-400">
+                        {{ getDate(po.createdAt) | date:'mediumDate' }}
+                    </td>
+                    <td class="p-4">
+                        <span class="status-badge px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                            [ngClass]="'status-' + po.status">
+                            {{ 'OPERATIONS.PROCUREMENT.STATUS_' + po.status | translate }}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right font-mono font-bold text-emerald-400">
+                        {{ po.grandTotal | currency:po.currency }}
+                    </td>
+                    <td class="p-4 text-center text-zinc-400">
+                        {{ po.items.length }}
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end">
+                            <a [routerLink]="[po.id]"
+                                class="btn-action flex items-center justify-center p-2 rounded-lg text-blue-400 hover:bg-zinc-700 hover:text-blue-300 transition-colors"
+                                [title]="'OPERATIONS.PROCUREMENT.VIEW_DETAILS' | translate">
+                                <app-icon name="eye" [size]="18"></app-icon>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr *ngIf="orders.length === 0">
+                    <td colspan="7" class="empty-state p-12 text-center text-zinc-500">
+                        <div class="empty-content flex flex-col items-center gap-4">
+                            <span class="empty-icon"><app-icon name="file-text" [size]="48"
+                                    class="text-zinc-600 opacity-50"></app-icon></span>
+                            <h3 class="text-white font-medium">{{ 'OPERATIONS.PROCUREMENT.NO_POS' | translate }}</h3>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

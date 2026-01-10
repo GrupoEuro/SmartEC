@@ -1,0 +1,271 @@
+<app-admin-page-header [icon]="getTypeIcon(request()?.type || '')" [title]="getRequestTitle()"
+    [subtitle]="'COMMAND_CENTER.APPROVALS.TYPES.' + (request()?.type || '') | translate">
+    <div class="approval-header-actions">
+        <button class="btn-back" (click)="goBack()">
+            <span class="btn-icon"><app-icon name="arrow-left" [size]="16"></app-icon></span>
+            {{ 'COMMAND_CENTER.APPROVALS.BACK' | translate }}
+        </button>
+    </div>
+</app-admin-page-header>
+
+<div class="approval-detail-container" *ngIf="!isLoading() && request()">
+    <div class="detail-grid">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Status Banner -->
+            <div class="status-banner" [class]="'status-' + request()!.status.toLowerCase()">
+                <div class="status-icon">
+                    <span *ngIf="request()!.status === 'PENDING'"><app-icon name="hourglass"
+                            [size]="24"></app-icon></span>
+                    <span *ngIf="request()!.status === 'APPROVED'"><app-icon name="check-circle"
+                            [size]="24"></app-icon></span>
+                    <span *ngIf="request()!.status === 'REJECTED'"><app-icon name="x-circle"
+                            [size]="24"></app-icon></span>
+                    <span *ngIf="request()!.status === 'CANCELLED'"><app-icon name="slash"
+                            [size]="24"></app-icon></span>
+                </div>
+                <div class="status-content">
+                    <h3>{{ 'COMMAND_CENTER.APPROVALS.' + request()!.status | translate }}</h3>
+                    <p *ngIf="request()!.autoApproved" class="auto-approved-badge">
+                        {{ 'COMMAND_CENTER.APPROVALS.AUTO_APPROVED' | translate }}
+                    </p>
+                </div>
+                <div class="priority-badge" [class]="'priority-' + request()!.priority.toLowerCase()">
+                    {{ 'COMMAND_CENTER.APPROVALS.PRIORITY.' + request()!.priority | translate }}
+                </div>
+            </div>
+
+            <!-- Request Details -->
+            <div class="detail-card">
+                <h3 class="card-title">{{ 'COMMAND_CENTER.APPROVALS.REQUEST_DETAILS' | translate }}</h3>
+                <div class="detail-content">
+                    <p class="description">{{ getRequestDescription() }}</p>
+
+                    <!-- Type-specific details -->
+                    <div class="data-grid" *ngIf="request()!.type === 'COUPON_CREATION'">
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.COUPON_CODE' | translate }}:</span>
+                            <span class="value">{{ getCouponData().code }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.DISCOUNT_TYPE' | translate }}:</span>
+                            <span class="value">{{ getCouponData().type }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.DISCOUNT_VALUE' | translate }}:</span>
+                            <span class="value">
+                                <ng-container *ngIf="getCouponData().type === 'percentage'">{{ getCouponData().value
+                                    }}%</ng-container>
+                                <ng-container *ngIf="getCouponData().type !== 'percentage'">${{ getCouponData().value
+                                    }}</ng-container>
+                            </span>
+                        </div>
+                        <div class="data-item" *ngIf="getCouponData().minPurchaseAmount">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.MIN_PURCHASE' | translate }}:</span>
+                            <span class="value">${{ getCouponData().minPurchaseAmount }}</span>
+                        </div>
+                        <div class="data-item" *ngIf="getCouponData().usageLimit">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.USAGE_LIMIT' | translate }}:</span>
+                            <span class="value">{{ getCouponData().usageLimit }}</span>
+                        </div>
+                    </div>
+
+                    <div class="data-grid" *ngIf="request()!.type === 'PRICE_CHANGE'">
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.PRODUCT' | translate }}:</span>
+                            <span class="value">{{ getPriceChangeData().productName }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">SKU:</span>
+                            <span class="value">{{ getPriceChangeData().productSku }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.CURRENT_PRICE' | translate }}:</span>
+                            <span class="value">${{ getPriceChangeData().currentPrice }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.NEW_PRICE' | translate }}:</span>
+                            <span class="value">${{ getPriceChangeData().newPrice }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.CHANGE_PERCENT' | translate }}:</span>
+                            <span class="value" [class.negative]="getPriceChangeData().changePercentage < 0">
+                                {{ getPriceChangeData().changePercentage > 0 ? '+' : '' }}{{
+                                getPriceChangeData().changePercentage.toFixed(1) }}%
+                            </span>
+                        </div>
+                        <div class="data-item full-width" *ngIf="getPriceChangeData().reason">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.REASON' | translate }}:</span>
+                            <span class="value">{{ getPriceChangeData().reason }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="notes-section" *ngIf="request()!.notes">
+                        <h4>{{ 'COMMAND_CENTER.APPROVALS.NOTES' | translate }}</h4>
+                        <p>{{ request()!.notes }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Details (if reviewed) -->
+            <div class="detail-card" *ngIf="request()!.reviewedBy">
+                <h3 class="card-title">{{ 'COMMAND_CENTER.APPROVALS.REVIEW_DETAILS' | translate }}</h3>
+                <div class="detail-content">
+                    <div class="data-grid">
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.REVIEWED_BY' | translate }}:</span>
+                            <span class="value">{{ request()!.reviewedBy!.name }}</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="label">{{ 'COMMAND_CENTER.APPROVALS.REVIEWED_AT' | translate }}:</span>
+                            <span class="value">{{ formatDate(request()!.reviewedAt) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="notes-section" *ngIf="request()!.reviewerNotes">
+                        <h4>{{ 'COMMAND_CENTER.APPROVALS.REVIEWER_NOTES' | translate }}</h4>
+                        <p>{{ request()!.reviewerNotes }}</p>
+                    </div>
+
+                    <div class="notes-section rejection" *ngIf="request()!.rejectionReason">
+                        <h4>{{ 'COMMAND_CENTER.APPROVALS.REJECTION_REASON' | translate }}</h4>
+                        <p>{{ request()!.rejectionReason }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-buttons" *ngIf="canApproveOrReject()">
+                <button class="btn-approve" (click)="openApproveModal()" [disabled]="isProcessing()">
+                    <span class="btn-icon"><app-icon name="check" [size]="16"></app-icon></span>
+                    {{ 'COMMAND_CENTER.APPROVALS.ACTIONS.APPROVE' | translate }}
+                </button>
+                <button class="btn-reject" (click)="openRejectModal()" [disabled]="isProcessing()">
+                    <span class="btn-icon"><app-icon name="x" [size]="16"></app-icon></span>
+                    {{ 'COMMAND_CENTER.APPROVALS.ACTIONS.REJECT' | translate }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Timeline -->
+            <div class="timeline-card">
+                <h3 class="card-title">{{ 'COMMAND_CENTER.APPROVALS.TIMELINE' | translate }}</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-dot created"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">{{ 'COMMAND_CENTER.APPROVALS.REQUEST_CREATED' | translate }}
+                            </div>
+                            <div class="timeline-meta">
+                                <div>{{ request()!.requestedBy.name }}</div>
+                                <div class="timeline-date">{{ formatDate(request()!.requestedAt) }}</div>
+                                <div class="timeline-ago">{{ getTimeAgo(request()!.requestedAt) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item" *ngIf="request()!.reviewedAt">
+                        <div class="timeline-dot" [class.approved]="request()!.status === 'APPROVED'"
+                            [class.rejected]="request()!.status === 'REJECTED'"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">
+                                {{ request()!.status === 'APPROVED' ?
+                                ('COMMAND_CENTER.APPROVALS.REQUEST_APPROVED' | translate) :
+                                ('COMMAND_CENTER.APPROVALS.REQUEST_REJECTED' | translate) }}
+                            </div>
+                            <div class="timeline-meta">
+                                <div>{{ request()!.reviewedBy!.name }}</div>
+                                <div class="timeline-date">{{ formatDate(request()!.reviewedAt) }}</div>
+                                <div class="timeline-ago">{{ getTimeAgo(request()!.reviewedAt) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requester Info -->
+            <div class="info-card">
+                <h3 class="card-title">{{ 'COMMAND_CENTER.APPROVALS.REQUESTER_INFO' | translate }}</h3>
+                <div class="info-content">
+                    <div class="info-item">
+                        <span class="label">{{ 'COMMAND_CENTER.APPROVALS.NAME' | translate }}:</span>
+                        <span class="value">{{ request()!.requestedBy.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">{{ 'COMMAND_CENTER.APPROVALS.EMAIL' | translate }}:</span>
+                        <span class="value">{{ request()!.requestedBy.email }}</span>
+                    </div>
+                    <div class="info-item" *ngIf="request()!.requestedBy.role">
+                        <span class="label">{{ 'COMMAND_CENTER.APPROVALS.ROLE' | translate }}:</span>
+                        <span class="value">{{ request()!.requestedBy.role }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading State -->
+<div class="loading-state" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal-overlay" *ngIf="showApproveModal()" (click)="closeApproveModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <h3>{{ 'COMMAND_CENTER.APPROVALS.APPROVE_REQUEST' | translate }}</h3>
+        <p>{{ 'COMMAND_CENTER.APPROVALS.APPROVE_CONFIRM_MESSAGE' | translate }}</p>
+
+        <div class="form-group">
+            <label>{{ 'COMMAND_CENTER.APPROVALS.REVIEWER_NOTES' | translate }} ({{ 'OPERATIONS.ORDERS.OPTIONAL' |
+                translate }})</label>
+            <textarea [(ngModel)]="reviewerNotes" rows="4"
+                [placeholder]="'COMMAND_CENTER.APPROVALS.NOTES_PLACEHOLDER' | translate"></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" (click)="closeApproveModal()" [disabled]="isProcessing()">
+                {{ 'COMMAND_CENTER.APPROVALS.ACTIONS.CANCEL' | translate }}
+            </button>
+            <button class="btn-confirm-approve" (click)="handleApprove()" [disabled]="isProcessing()">
+                <div class="btn-content" *ngIf="!isProcessing()">
+                    <app-icon name="check" [size]="16"></app-icon>
+                    <span>{{ 'COMMAND_CENTER.APPROVALS.ACTIONS.APPROVE' | translate }}</span>
+                </div>
+                <span *ngIf="isProcessing()">{{ 'COMMAND_CENTER.LABELS.PROCESSING' | translate }}...</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" *ngIf="showRejectModal()" (click)="closeRejectModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <h3>{{ 'COMMAND_CENTER.APPROVALS.REJECT_REQUEST' | translate }}</h3>
+        <p>{{ 'COMMAND_CENTER.APPROVALS.REJECT_CONFIRM_MESSAGE' | translate }}</p>
+
+        <div class="form-group">
+            <label>{{ 'COMMAND_CENTER.APPROVALS.REJECTION_REASON' | translate }} *</label>
+            <textarea [(ngModel)]="rejectionReason" rows="4" required
+                [placeholder]="'COMMAND_CENTER.APPROVALS.REJECTION_PLACEHOLDER' | translate"></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" (click)="closeRejectModal()" [disabled]="isProcessing()">
+                {{ 'COMMAND_CENTER.APPROVALS.ACTIONS.CANCEL' | translate }}
+            </button>
+            <button class="btn-confirm-reject" (click)="handleReject()"
+                [disabled]="isProcessing() || !rejectionReason.trim()">
+                <div class="btn-content" *ngIf="!isProcessing()">
+                    <app-icon name="x" [size]="16"></app-icon>
+                    <span>{{ 'COMMAND_CENTER.APPROVALS.ACTIONS.REJECT' | translate }}</span>
+                </div>
+                <span *ngIf="isProcessing()">{{ 'COMMAND_CENTER.LABELS.PROCESSING' | translate }}...</span>
+            </button>
+        </div>
+    </div>
+</div>

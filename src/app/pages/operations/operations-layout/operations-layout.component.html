@@ -1,0 +1,236 @@
+<div class="operations-layout theme-ops">
+    <aside class="sidebar bg-zinc-900 border-r border-zinc-800" [class.collapsed]="isSidebarCollapsed()">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <div class="header-content">
+                <h3>{{ 'OPERATIONS.TITLE' | translate }}</h3>
+                <button class="toggle-btn" (click)="toggleSidebar()">
+                    <app-icon [name]="isSidebarCollapsed() ? 'menu' : 'chevron-left'" [size]="20"></app-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-8 custom-scrollbar">
+
+            <!-- DASHBOARD -->
+            <div class="nav-group">
+                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
+                    [class.hidden]="isSidebarCollapsed()">DASHBOARD</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a routerLink="/operations/dashboard" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Overview' : ''">
+                            <app-icon name="layout-dashboard" [size]="20"
+                                class="group-hover:text-blue-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Overview</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- ORDER FULFILLMENT -->
+            <div class="nav-group">
+                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
+                    [class.hidden]="isSidebarCollapsed()">ORDER FULFILLMENT</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a routerLink="/operations/orders" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Order Queue' : ''">
+                            <app-icon name="shopping-cart" [size]="20"
+                                class="group-hover:text-blue-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Order Queue</span>
+                            <span
+                                class="ml-auto bg-blue-600/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full"
+                                *ngIf="!isSidebarCollapsed()">12</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- INVENTORY CONTROL -->
+            <div class="nav-group">
+                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
+                    [class.hidden]="isSidebarCollapsed()">INVENTORY CONTROL</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a routerLink="/operations/inventory" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Inventory Lookup' : ''">
+                            <app-icon name="search" [size]="20"
+                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Inventory Lookup</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a routerLink="/operations/cycle-counting" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Cycle Counting' : ''">
+                            <app-icon name="clipboard" [size]="20"
+                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Cycle Counting</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a routerLink="/operations/abc-analysis" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'ABC Analysis' : ''">
+                            <app-icon name="bar-chart-2" [size]="20"
+                                class="group-hover:text-emerald-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">ABC Analysis</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- OPERATIONS -->
+            <div class="nav-group">
+                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
+                    [class.hidden]="isSidebarCollapsed()">OPERATIONS</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a routerLink="/operations/warehouses" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Warehouses' : ''">
+                            <app-icon name="box" [size]="20"
+                                class="group-hover:text-purple-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Warehouses</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a routerLink="/operations/customers" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Customers' : ''">
+                            <app-icon name="users" [size]="20"
+                                class="group-hover:text-purple-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Customers</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a routerLink="/operations/promotions" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Promotions' : ''">
+                            <app-icon name="tag" [size]="20"
+                                class="group-hover:text-purple-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Promotions</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- PROCUREMENT -->
+            <div class="nav-group">
+                <div class="nav-group-label px-3 text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2"
+                    [class.hidden]="isSidebarCollapsed()">PROCUREMENT</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a routerLink="/operations/procurement" routerLinkActive="active"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group"
+                            [title]="isSidebarCollapsed() ? 'Purchase Orders' : ''">
+                            <app-icon name="file-text" [size]="20"
+                                class="group-hover:text-amber-400 transition-colors"></app-icon>
+                            <span class="font-medium text-sm whitespace-nowrap"
+                                [class.hidden]="isSidebarCollapsed()">Purchase Orders</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer">
+            @if (user$ | async; as user) {
+            <div class="user-profile" [title]="(userProfile$ | async)?.displayName || user.displayName || user.email">
+                <div class="user-avatar">
+                    @if (user.photoURL) {
+                    <img [src]="user.photoURL" [alt]="(userProfile$ | async)?.displayName || user.displayName">
+                    } @else {
+                    <div class="avatar-placeholder">
+                        <app-icon name="user" [size]="20"></app-icon>
+                    </div>
+                    }
+                </div>
+                <div class="user-info">
+                    <span class="user-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'User'
+                        }}</span>
+                    <span class="user-email">{{ user.email }}</span>
+                </div>
+            </div>
+            }
+            <button (click)="logout()" class="logout-btn" [title]="'OPERATIONS.LOGOUT' | translate">
+                <span class="icon"><app-icon name="log-out" [size]="20"></app-icon></span>
+                <span class="text">{{ 'OPERATIONS.LOGOUT' | translate }}</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="operations-content bg-zinc-950" [class.expanded]="isSidebarCollapsed()">
+        <header class="operations-header bg-zinc-800/80 backdrop-blur-md border-b border-zinc-700 text-white">
+            <div class="spacer"></div>
+
+            <div class="header-actions-group">
+                <!-- Language Switcher -->
+                <button (click)="toggleLanguage()"
+                    class="flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white hover:border-zinc-600 transition-all font-bold text-xs shadow-sm"
+                    [title]="'Switch Language' | translate">
+                    {{ languageService.currentLang() === 'es' ? 'EN' : 'ES' }}
+                </button>
+
+                @if (user$ | async; as user) {
+                <div class="user-menu-container">
+                    <button class="header-avatar" (click)="toggleUserMenu()"
+                        [title]="(userProfile$ | async)?.displayName || user.displayName || user.email">
+                        @if (user.photoURL) {
+                        <img [src]="user.photoURL"
+                            [alt]="(userProfile$ | async)?.displayName || user.displayName || 'User'">
+                        } @else {
+                        <div class="avatar-placeholder-sm">
+                            <app-icon name="user" [size]="16"></app-icon>
+                        </div>
+                        }
+                    </button>
+
+                    @if (isUserMenuOpen) {
+                    <div class="user-dropdown bg-zinc-800 border border-zinc-700 shadow-xl text-white">
+                        <div class="dropdown-header border-b border-zinc-700">
+                            <span class="d-name text-white">{{ (userProfile$ | async)?.displayName || user.displayName
+                                || 'User'
+                                }}</span>
+                            @if (userProfile$ | async; as profile) {
+                            <span class="d-role-badge bg-emerald-900/30 text-emerald-400">{{ profile.role }}</span>
+                            }
+                            <span class="d-email text-zinc-400">{{ user.email }}</span>
+                        </div>
+                        <div class="dropdown-divider bg-zinc-700"></div>
+                        <a routerLink="/" class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white">
+                            <span class="icon"><app-icon name="home" [size]="16"></app-icon></span>
+                            {{ 'OPERATIONS.GO_HOME' | translate }}
+                        </a>
+                        <button (click)="logout()" class="dropdown-item hover:bg-red-900/20 text-red-400">
+                            <span class="icon"><app-icon name="log-out" [size]="16"></app-icon></span>
+                            {{ 'OPERATIONS.LOGOUT' | translate }}
+                        </button>
+                    </div>
+                    }
+                </div>
+                }
+            </div>
+        </header>
+
+        <div class="content-wrapper">
+            <router-outlet></router-outlet>
+        </div>
+    </main>
+</div>

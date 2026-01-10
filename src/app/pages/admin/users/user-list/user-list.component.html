@@ -1,0 +1,107 @@
+<app-admin-page-header icon="👥" [title]="'ADMIN.USERS.TITLE' | translate"
+    [subtitle]="'ADMIN.USERS.SUBTITLE' | translate">
+    <button class="btn-primary" (click)="toggleInviteForm()">
+        <span class="icon">{{ showInviteForm ? '✕' : '+' }}</span>
+        {{ showInviteForm ? ('ADMIN.COMMON.CANCEL' | translate) : ('ADMIN.USERS.INVITE' | translate) }}
+    </button>
+</app-admin-page-header>
+
+<div class="user-list-container">
+
+    <!-- Invite Form -->
+    @if (showInviteForm) {
+    <div class="invite-panel">
+        <h3>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h3>
+        <form [formGroup]="inviteForm" (ngSubmit)="onInvite()">
+            <div class="form-group">
+                <label>{{ 'ADMIN.USERS.EMAIL' | translate }}</label>
+                <input type="email" formControlName="email" placeholder="colleague@example.com">
+            </div>
+
+            <div class="form-group">
+                <label>{{ 'ADMIN.USERS.ROLE' | translate }}</label>
+                <select formControlName="role">
+                    <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-submit" [disabled]="inviteForm.invalid || isSubmitting">
+                {{ isSubmitting ? ('ADMIN.COMMON.SAVING' | translate) : ('ADMIN.USERS.SEND_INVITE' | translate) }}
+            </button>
+        </form>
+    </div>
+    }
+
+    <!-- Users Table -->
+    <div class="table-container table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>{{ 'ADMIN.USERS.TABLE.USER' | translate }}</th>
+                    <th>{{ 'ADMIN.USERS.TABLE.ROLE' | translate }}</th>
+                    <th>{{ 'ADMIN.USERS.TABLE.STATUS' | translate }}</th>
+                    <th>{{ 'ADMIN.USERS.TABLE.LAST_LOGIN' | translate }}</th>
+                    <th>{{ 'ADMIN.USERS.TABLE.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (user of users$ | async; track user.uid) {
+                <tr [class.inactive]="!user.isActive">
+                    <td>
+                        <div class="user-cell">
+                            <div class="avatar-sm">
+                                @if (user.photoURL) {
+                                <img [src]="user.photoURL" alt="avatar">
+                                } @else {
+                                <span>{{ user.email.substring(0,2) | uppercase }}</span>
+                                }
+                            </div>
+                            <div class="user-text">
+                                @if (editingUserId === user.uid) {
+                                <input type="text" class="name-edit" [(ngModel)]="editingName"
+                                    (blur)="saveDisplayName(user)" (keyup.enter)="saveDisplayName(user)"
+                                    (keyup.escape)="cancelEdit()" autofocus>
+                                } @else {
+                                <span class="name editable" (click)="startEdit(user)"
+                                    [title]="'ADMIN.common.EDIT' | translate">
+                                    {{ user.displayName || 'Set Name' }}
+                                    <span class="edit-icon">✏️</span>
+                                </span>
+                                }
+                                <span class="email">{{ user.email }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <select class="role-select" [(ngModel)]="user.role"
+                            (ngModelChange)="updateRoleFromModel(user, $event)" [disabled]="!(isSuperAdmin$ | async)">
+                            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                        </select>
+                    </td>
+                    <td>
+                        <span class="status-badge" [class.active]="user.isActive" [class.inactive]="!user.isActive">
+                            {{ user.isActive ? ('ADMIN.USERS.STATUS.ACTIVE' | translate) :
+                            ('ADMIN.USERS.STATUS.INACTIVE' |
+                            translate) }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="date">{{ user.lastLogin ? (user.lastLogin.toDate() | date:'medium') : 'Never'
+                            }}</span>
+                    </td>
+                    <td>
+                        <button class="btn-icon" (click)="toggleStatus(user)"
+                            [title]="user.isActive ? ('ADMIN.USERS.ACTIONS.DEACTIVATE' | translate) : ('ADMIN.USERS.ACTIONS.ACTIVATE' | translate)">
+                            {{ user.isActive ? 'Ban 🚫' : 'Unban ✅' }}
+                        </button>
+                    </td>
+                </tr>
+                } @empty {
+                <tr>
+                    <td colspan="5" class="empty-state">{{ 'ADMIN.USERS.NO_USERS' | translate }}</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

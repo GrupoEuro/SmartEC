@@ -1,0 +1,88 @@
+<div class="w-full">
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="p-12 flex flex-col items-center justify-center text-zinc-500">
+        <app-icon name="loader" [size]="32" class="animate-spin mb-4"></app-icon>
+        <p>Loading History...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading() && entries().length === 0"
+        class="p-12 flex flex-col items-center justify-center text-zinc-500">
+        <div class="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
+            <app-icon name="list" [size]="24" class="text-zinc-600"></app-icon>
+        </div>
+        <h3 class="text-lg font-medium text-zinc-300">No Transactions Found</h3>
+        <p class="text-sm">No inventory movements recorded for this period.</p>
+    </div>
+
+    <!-- Data Table -->
+    <div *ngIf="!isLoading() && entries().length > 0" class="w-full">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-zinc-900/50 text-xs uppercase text-zinc-500 border-b border-zinc-800">
+                    <th class="p-4 font-medium w-48">Date / Time</th>
+                    <th class="p-4 font-medium w-40 text-center">Type</th>
+                    <th class="p-4 font-medium text-right w-24">Change</th>
+                    <th class="p-4 font-medium text-right w-24">Balance</th>
+                    <th class="p-4 font-medium w-32">Ref #</th>
+                    <th class="p-4 font-medium">Notes</th>
+                    <th class="p-4 font-medium w-32">User</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-800 text-sm">
+                <tr *ngFor="let entry of entries()" class="hover:bg-zinc-800/30 transition-colors group">
+                    <!-- Date -->
+                    <td class="p-4">
+                        <div class="font-medium text-zinc-300">
+                            {{ entry.date.toDate() | date:'mediumDate' }}
+                        </div>
+                        <div class="text-xs text-zinc-500 font-mono">
+                            {{ entry.date.toDate() | date:'shortTime' }}
+                        </div>
+                    </td>
+
+                    <!-- Type -->
+                    <td class="p-4 text-center">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wider shadow-sm"
+                            [ngClass]="getTypeColor(entry.type)">
+                            <app-icon [name]="getTypeIcon(entry.type)" [size]="12"></app-icon>
+                            {{ entry.type.replace('_', ' ') }}
+                        </span>
+                    </td>
+
+                    <!-- Change -->
+                    <td class="p-4 text-right font-mono font-bold">
+                        <span [ngClass]="{
+                            'text-emerald-400': entry.quantityChange > 0,
+                            'text-red-400': entry.quantityChange < 0,
+                            'text-zinc-500': entry.quantityChange === 0
+                        }">
+                            {{ entry.quantityChange > 0 ? '+' : '' }}{{ entry.quantityChange }}
+                        </span>
+                    </td>
+
+                    <!-- Balance -->
+                    <td class="p-4 text-right font-mono text-zinc-300 bg-zinc-900/30">
+                        {{ entry.balanceAfter }}
+                    </td>
+
+                    <!-- Ref -->
+                    <td class="p-4 font-mono text-xs text-blue-400 group-hover:underline cursor-pointer">
+                        {{ entry.referenceId?.substring(0,8) }}...
+                    </td>
+
+                    <!-- Notes -->
+                    <td class="p-4 text-zinc-400 italic truncate max-w-xs" [title]="entry.notes">
+                        {{ entry.notes || '-' }}
+                    </td>
+
+                    <!-- User -->
+                    <td class="p-4 text-xs text-zinc-500">
+                        {{ entry.userId === 'SYSTEM' ? 'System' : 'User ' + entry.userId.substring(0,4) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,436 @@
+<div class="settings-page">
+    <app-admin-page-header icon="⚙️" [title]="'SETTINGS.TITLE' | translate" [subtitle]="'SETTINGS.SUBTITLE' | translate"
+        [showKeyboardHints]="true" [showStatus]="true" [showUndoRedo]="true" [showProgress]="true"
+        [showSaveCancel]="true" [saveStatus]="saveStatus" [lastSaved]="lastSaved" [canUndo]="canUndo"
+        [canRedo]="canRedo" [progress]="getOverallProgress()" [isSaving]="isSaving"
+        [hasUnsavedChanges]="hasUnsavedChanges" [isFormInvalid]="settingsForm.invalid" (onSave)="onSubmit()"
+        (onCancel)="settingsForm.reset()" (onUndo)="undo()" (onRedo)="redo()">
+    </app-admin-page-header>
+
+    <!-- Content Container -->
+    <div class="form-container settings-container">
+
+        <!-- Tabs -->
+        <div class="settings-tabs">
+            <button type="button" class="tab-btn" [class.active]="activeTab === 'general'"
+                (click)="setActiveTab('general')">
+                🏢 {{ 'SETTINGS.TABS.GENERAL' | translate }}
+            </button>
+            <button type="button" class="tab-btn" [class.active]="activeTab === 'social'"
+                (click)="setActiveTab('social')">
+                🌐 {{ 'SETTINGS.TABS.SOCIAL' | translate }}
+            </button>
+            <button type="button" class="tab-btn" [class.active]="activeTab === 'hours'"
+                (click)="setActiveTab('hours')">
+                🕐 {{ 'SETTINGS.TABS.HOURS' | translate }}
+            </button>
+            <button type="button" class="tab-btn" [class.active]="activeTab === 'features'"
+                (click)="setActiveTab('features')">
+                ⚡ {{ 'SETTINGS.TABS.FEATURES' | translate }}
+            </button>
+        </div>
+
+        <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()" class="admin-form">
+
+            <!-- General Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'general'" formGroupName="general">
+                <div class="tab-progress-bar">
+                    <div class="progress-fill" [style.width.%]="getTabProgress('general')"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'SETTINGS.GENERAL.COMPANY' | translate }}</label>
+                    <input type="text" formControlName="companyName"
+                        [placeholder]="'SETTINGS.GENERAL.COMPANY_PLACEHOLDER' | translate">
+                    <small class="help-text">{{ 'SETTINGS.GENERAL.COMPANY_HELP' | translate }}</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            {{ 'SETTINGS.GENERAL.PHONE' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('general.phone')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('general.phone')">✗</span>
+                        </label>
+                        <div class="input-with-copy">
+                            <input type="text" formControlName="phone"
+                                [placeholder]="'SETTINGS.GENERAL.PHONE_PLACEHOLDER' | translate"
+                                (blur)="formatPhoneNumber($event, 'general.phone')">
+                            <button type="button" class="copy-btn"
+                                (click)="copyToClipboard(settingsForm.get('general.phone')?.value, 'phone')"
+                                [disabled]="!settingsForm.get('general.phone')?.value"
+                                [class.copied]="copiedField === 'phone'">
+                                <span *ngIf="copiedField !== 'phone'">📋</span>
+                                <span *ngIf="copiedField === 'phone'">✓</span>
+                            </button>
+                        </div>
+                        <small class="help-text">{{ 'SETTINGS.GENERAL.PHONE_HELP' | translate }}</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            {{ 'SETTINGS.GENERAL.WHATSAPP' | translate }}
+                            <span class="hint-icon" [title]="'SETTINGS.GENERAL.WHATSAPP_HINT' | translate">ℹ️</span>
+                            <span class="validation-icon" *ngIf="isFieldValid('general.whatsapp')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('general.whatsapp')">✗</span>
+                        </label>
+                        <div class="input-with-copy">
+                            <input type="text" formControlName="whatsapp"
+                                [placeholder]="'SETTINGS.GENERAL.WHATSAPP_PLACEHOLDER' | translate"
+                                (blur)="formatPhoneNumber($event, 'general.whatsapp')">
+                            <button type="button" class="copy-btn"
+                                (click)="copyToClipboard(settingsForm.get('general.whatsapp')?.value, 'whatsapp')"
+                                [disabled]="!settingsForm.get('general.whatsapp')?.value"
+                                [class.copied]="copiedField === 'whatsapp'">
+                                <span *ngIf="copiedField !== 'whatsapp'">📋</span>
+                                <span *ngIf="copiedField === 'whatsapp'">✓</span>
+                            </button>
+                        </div>
+                        <small class="help-text">{{ 'SETTINGS.GENERAL.WHATSAPP_HELP' | translate }}</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        {{ 'SETTINGS.GENERAL.EMAIL' | translate }}
+                        <span class="validation-icon" *ngIf="isFieldValid('general.email')">✓</span>
+                        <span class="validation-icon error" *ngIf="isFieldInvalid('general.email')">✗</span>
+                    </label>
+                    <div class="input-with-copy">
+                        <input type="email" formControlName="email"
+                            [placeholder]="'SETTINGS.GENERAL.EMAIL_PLACEHOLDER' | translate">
+                        <button type="button" class="copy-btn"
+                            (click)="copyToClipboard(settingsForm.get('general.email')?.value, 'email')"
+                            [disabled]="!settingsForm.get('general.email')?.value"
+                            [class.copied]="copiedField === 'email'">
+                            <span *ngIf="copiedField !== 'email'">📋</span>
+                            <span *ngIf="copiedField === 'email'">✓</span>
+                        </button>
+                    </div>
+                    <div class="email-suggestion"
+                        *ngIf="getEmailSuggestion(settingsForm.get('general.email')?.value) as suggestion">
+                        <span>{{ 'SETTINGS.GENERAL.EMAIL_SUGGESTION' | translate }}: </span>
+                        <button type="button" class="suggestion-btn" (click)="applySuggestion(suggestion)">
+                            {{ suggestion }}
+                        </button>
+                    </div>
+                    <small class="help-text">{{ 'SETTINGS.GENERAL.EMAIL_HELP' | translate }}</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        {{ 'SETTINGS.GENERAL.ADDRESS' | translate }}
+                        <span class="char-counter" [ngClass]="getCharCountClass(addressCharCount, maxAddressChars)">
+                            {{addressCharCount}}/{{maxAddressChars}}
+                        </span>
+                    </label>
+                    <textarea formControlName="address" rows="3"
+                        [placeholder]="'SETTINGS.GENERAL.ADDRESS_PLACEHOLDER' | translate"
+                        [maxlength]="maxAddressChars"></textarea>
+                    <small class="help-text">{{ 'SETTINGS.GENERAL.ADDRESS_HELP' | translate }}</small>
+                </div>
+            </div>
+
+            <!-- Social Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'social'" formGroupName="social">
+                <div class="tab-progress-bar">
+                    <div class="progress-fill" [style.width.%]="getTabProgress('social')"></div>
+                </div>
+
+                <!-- Bulk Toggle -->
+                <div class="bulk-toggle-section">
+                    <p class="bulk-toggle-label">{{ 'SETTINGS.SOCIAL.BULK_TOGGLE' | translate }}</p>
+                    <div class="bulk-toggle-buttons">
+                        <button type="button" class="bulk-btn" (click)="toggleAllSocialMedia(true)">
+                            👁️ {{ 'SETTINGS.SOCIAL.SHOW_ALL' | translate }}
+                        </button>
+                        <button type="button" class="bulk-btn" (click)="toggleAllSocialMedia(false)">
+                            🚫 {{ 'SETTINGS.SOCIAL.HIDE_ALL' | translate }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Facebook -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            Facebook {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.facebook')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.facebook')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="facebook"
+                                [placeholder]="'SETTINGS.SOCIAL.FACEBOOK_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.facebook')?.value)"
+                                [disabled]="!settingsForm.get('social.facebook')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showFacebook'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+
+                <!-- Instagram -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            Instagram {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.instagram')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.instagram')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="instagram"
+                                [placeholder]="'SETTINGS.SOCIAL.INSTAGRAM_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.instagram')?.value)"
+                                [disabled]="!settingsForm.get('social.instagram')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showInstagram'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+
+                <!-- LinkedIn -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            LinkedIn {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.linkedin')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.linkedin')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="linkedin"
+                                [placeholder]="'SETTINGS.SOCIAL.LINKEDIN_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.linkedin')?.value)"
+                                [disabled]="!settingsForm.get('social.linkedin')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showLinkedin'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+
+                <!-- Twitter/X -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            Twitter/X {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.twitter')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.twitter')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="twitter"
+                                [placeholder]="'SETTINGS.SOCIAL.TWITTER_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.twitter')?.value)"
+                                [disabled]="!settingsForm.get('social.twitter')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showTwitter'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+
+                <!-- YouTube -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            YouTube {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.youtube')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.youtube')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="youtube"
+                                [placeholder]="'SETTINGS.SOCIAL.YOUTUBE_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.youtube')?.value)"
+                                [disabled]="!settingsForm.get('social.youtube')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showYoutube'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+
+                <!-- TikTok -->
+                <div class="social-row">
+                    <div class="form-group flex-grow">
+                        <label>
+                            TikTok {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
+                            <span class="validation-icon" *ngIf="isFieldValid('social.tiktok')">✓</span>
+                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.tiktok')">✗</span>
+                        </label>
+                        <div class="input-with-button">
+                            <input type="text" formControlName="tiktok"
+                                [placeholder]="'SETTINGS.SOCIAL.TIKTOK_PLACEHOLDER' | translate">
+                            <button type="button" class="test-link-btn"
+                                (click)="openUrlInNewTab(settingsForm.get('social.tiktok')?.value)"
+                                [disabled]="!settingsForm.get('social.tiktok')?.value">
+                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group toggle-group">
+                        <app-toggle-switch [control]="$any(settingsForm.get('social.showTiktok'))"
+                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business Hours Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'hours'" formGroupName="businessHours">
+                <div class="hours-header">
+                    <div>
+                        <h3>{{ 'SETTINGS.HOURS.TITLE' | translate }}</h3>
+                        <p>{{ 'SETTINGS.HOURS.SUBTITLE' | translate }}</p>
+                    </div>
+
+                    <!-- Preset Templates -->
+                    <div class="preset-selector">
+                        <label>{{ 'SETTINGS.HOURS.PRESET_LABEL' | translate }}</label>
+                        <select (change)="applyPreset($event)" class="preset-dropdown">
+                            <option value="">{{ 'SETTINGS.HOURS.SELECT_PRESET' | translate }}</option>
+                            <option value="standard">🏢 {{ 'SETTINGS.HOURS.PRESET_STANDARD' | translate }}</option>
+                            <option value="retail">🛍️ {{ 'SETTINGS.HOURS.PRESET_RETAIL' | translate }}</option>
+                            <option value="restaurant">🍽️ {{ 'SETTINGS.HOURS.PRESET_RESTAURANT' | translate }}</option>
+                            <option value="24x7">🌐 {{ 'SETTINGS.HOURS.PRESET_24X7' | translate }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Toolbar -->
+                <div class="quick-actions">
+                    <button type="button" class="action-btn" (click)="copyMondayToWeekdays()"
+                        title="{{ 'SETTINGS.HOURS.COPY_TO_WEEKDAYS_HINT' | translate }}">
+                        📋 {{ 'SETTINGS.HOURS.COPY_TO_WEEKDAYS' | translate }}
+                    </button>
+                    <button type="button" class="action-btn" (click)="openSetAllSameModal()"
+                        title="{{ 'SETTINGS.HOURS.SET_ALL_SAME_HINT' | translate }}">
+                        ⚡ {{ 'SETTINGS.HOURS.SET_ALL_SAME' | translate }}
+                    </button>
+                    <button type="button" class="action-btn" (click)="resetToDefaults()"
+                        title="{{ 'SETTINGS.HOURS.RESET_HINT' | translate }}">
+                        🔄 {{ 'SETTINGS.HOURS.RESET' | translate }}
+                    </button>
+                </div>
+
+                <div class="hours-content-wrapper">
+                    <!-- Hours Grid -->
+                    <div class="hours-grid">
+                        <div class="hours-row" *ngFor="let day of daysOfWeek" [formGroupName]="day"
+                            [class.has-error]="hasTimeError(day)"
+                            [class.is-closed]="settingsForm.get('businessHours.' + day + '.closed')?.value">
+                            <div class="day-label">
+                                <span class="day-icon">{{ getDayIcon(day) }}</span>
+                                <span class="day-name">{{ getDayLabel(day) }}</span>
+                            </div>
+                            <div class="hours-inputs">
+                                <div class="time-input-group">
+                                    <div class="time-input">
+                                        <label>{{ 'SETTINGS.HOURS.OPEN' | translate }}</label>
+                                        <input type="time" formControlName="open"
+                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
+                                            (change)="validateTimeRange(day)">
+                                    </div>
+                                    <span class="time-separator">→</span>
+                                    <div class="time-input">
+                                        <label>{{ 'SETTINGS.HOURS.CLOSE' | translate }}</label>
+                                        <input type="time" formControlName="close"
+                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
+                                            (change)="validateTimeRange(day)">
+                                    </div>
+                                </div>
+                                <div class="closed-toggle">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" formControlName="closed" (change)="onClosedToggle(day)">
+                                        <span class="toggle-slider"></span>
+                                        <span class="toggle-label">{{ 'SETTINGS.HOURS.CLOSED' | translate }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="error-message" *ngIf="hasTimeError(day)">
+                                ⚠️ {{ 'SETTINGS.HOURS.INVALID_TIME_RANGE' | translate }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview Card -->
+                    <div class="hours-preview-card">
+                        <div class="preview-header">
+                            <h4>👁️ {{ 'SETTINGS.HOURS.PREVIEW_TITLE' | translate }}</h4>
+                            <p>{{ 'SETTINGS.HOURS.PREVIEW_SUBTITLE' | translate }}</p>
+                        </div>
+                        <div class="preview-content">
+                            <div class="preview-row" *ngFor="let day of daysOfWeek">
+                                <span class="preview-day">{{ getDayLabel(day) }}</span>
+                                <span class="preview-hours"
+                                    [class.closed]="settingsForm.get('businessHours.' + day + '.closed')?.value">
+                                    {{ getHoursPreview(day) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'features'" formGroupName="features">
+
+                <div class="form-group feature-card">
+                    <app-toggle-switch [control]="$any(settingsForm.get('features.maintenanceMode'))"
+                        [label]="'SETTINGS.FEATURES.MAINTENANCE' | translate" icon="🔧"
+                        [hint]="'SETTINGS.FEATURES.MAINTENANCE_HINT' | translate">
+                    </app-toggle-switch>
+                </div>
+
+                <hr class="divider">
+
+                <div class="form-group feature-card">
+                    <app-toggle-switch [control]="$any(settingsForm.get('features.enableChatWidget'))"
+                        [label]="'SETTINGS.FEATURES.CHAT' | translate" icon="💬">
+                    </app-toggle-switch>
+                </div>
+
+                <hr class="divider">
+
+                <div class="feature-section">
+                    <div class="form-group feature-card">
+                        <app-toggle-switch [control]="$any(settingsForm.get('features.showPromoBanner'))"
+                            [label]="'SETTINGS.FEATURES.PROMO' | translate" icon="📢">
+                        </app-toggle-switch>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1rem;"
+                        *ngIf="settingsForm.get('features.showPromoBanner')?.value">
+                        <label>{{ 'SETTINGS.FEATURES.PROMO_TEXT' | translate }}</label>
+                        <input type="text" formControlName="promoText"
+                            [placeholder]="'SETTINGS.FEATURES.PROMO_TEXT_PLACEHOLDER' | translate">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

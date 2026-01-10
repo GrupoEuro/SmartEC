@@ -1,0 +1,238 @@
+.list-container {
+    background: #ffffff;
+    color: #1a1a2e;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+}
+
+/* Filters Bar */
+.filters-bar {
+    padding: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.search-and-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 1.1rem;
+    color: #9ca3af;
+}
+
+.search-input {
+    padding: 0.6rem 0.75rem 0.6rem 2.2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    width: 450px;
+    max-width: 100%;
+    transition: all 0.2s;
+    background: #f9fafb;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #ffd700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+    background: white;
+}
+
+/* Button Styles */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #ffd700;
+    color: #1a1a1a;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.btn-primary:hover {
+    background: #fcc419;
+    transform: translateY(-1px);
+}
+
+.btn-primary.small {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.btn-primary.icon {
+    padding-left: 0.75rem;
+}
+
+/* Status Tabs */
+.status-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #4b5563;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.tab-btn.active {
+    background: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
+}
+
+.count-badge {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tab-btn.active .count-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Table Styles - handled by global .admin-table mostly */
+.table-container {
+    overflow-x: auto;
+}
+
+.customer-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.customer-cell .name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.customer-cell .email {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.price-text {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* Status Badges - Using standardized classes */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.status-pending {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+
+.status-processing {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.status-shipped {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.status-delivered {
+    background: #f0fdfa;
+    color: #0f766e;
+    border: 1px solid #99f6e4;
+}
+
+.status-cancelled {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.status-refunded {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.status-default {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.primary-text {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem !important;
+}
+
+.empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: #94a3b8;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+}

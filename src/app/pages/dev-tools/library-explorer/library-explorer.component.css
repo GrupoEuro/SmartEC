@@ -1,0 +1,30 @@
+/* CSS 3D Perspective Utils */
+.perspective-1000 {
+    perspective: 1000px;
+}
+
+.lib-card {
+    transform-style: preserve-3d;
+}
+
+/* Custom Scrollbar hide if needed, but page uses body scroll usually */
+
+/* Hover Shine Effect */
+.lib-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 24px;
+    background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.lib-card:hover::after {
+    transform: translateX(100%);
+}

@@ -1,0 +1,19 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "inventory_ledger",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "productId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "date",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

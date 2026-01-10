@@ -1,0 +1,464 @@
+.financial-dashboard {
+    padding: 2rem;
+    min-height: calc(100vh - 80px);
+}
+
+/* Header */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    font-size: 3rem;
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+}
+
+.header-text h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.header-text p {
+    margin: 0.25rem 0 0 0;
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-refresh {
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #0f172a;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 1.5rem;
+}
+
+.loading-overlay {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    cursor: wait;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(251, 191, 36, 0.2);
+    border-top-color: #fbbf24;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-state p {
+    color: #cbd5e1;
+    font-size: 1.125rem;
+}
+
+/* KPI Grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.chart-card {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.chart-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.chart-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Profitability Section */
+.profitability-section {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.profitability-section h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fbbf24;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+/* Profitability Table Polish */
+.profitability-table {
+    width: 100%;
+    border-collapse: collapse;
+    /* Better for borders */
+    border-spacing: 0;
+}
+
+.profitability-table thead th {
+    background: rgba(15, 23, 42, 0.95);
+    padding: 1rem;
+    text-align: right;
+    /* Default align right for headers matching numbers */
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    /* Show it's clickable */
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+
+/* First two columns are text, so left align */
+.profitability-table thead th:nth-child(1),
+.profitability-table thead th:nth-child(2) {
+    text-align: left;
+}
+
+.profitability-table thead th:hover {
+    color: #fbbf24;
+}
+
+.profitability-table td {
+    padding: 1rem;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    transition: all 0.2s;
+    text-align: right;
+    /* Numeric alignment */
+    font-feature-settings: "tnum";
+    /* Tabular numbers */
+    font-variant-numeric: tabular-nums;
+}
+
+/* Align text columns left */
+.profitability-table td.rank,
+.profitability-table td.product-name {
+    text-align: left;
+}
+
+.profitability-table tbody tr {
+    transition: transform 0.2s, background 0.2s;
+    border-left: 3px solid transparent;
+    /* Prepare for hover border */
+}
+
+.profitability-table tbody tr:hover {
+    background: rgba(251, 191, 36, 0.05);
+    border-left-color: #fbbf24;
+    /* Gold accent on hover */
+    transform: scale(1.002);
+    /* Subtle scale */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+    position: relative;
+}
+
+.profitability-table .rank {
+    font-weight: 700;
+    color: #64748b;
+    /* Muted rank color unless top 3? */
+    width: 50px;
+}
+
+/* Top 3 ranks get gold/silver/bronze colors logic handled in HTML or simple css fallback */
+.profitability-table tbody tr:nth-child(1) .rank {
+    color: #fbbf24;
+}
+
+/* Gold */
+.profitability-table tbody tr:nth-child(2) .rank {
+    color: #94a3b8;
+}
+
+/* Silverish */
+.profitability-table tbody tr:nth-child(3) .rank {
+    color: #b45309;
+}
+
+/* Bronzeish */
+
+.profitability-table .product-name {
+    font-weight: 500;
+    color: #f1f5f9;
+}
+
+.profitability-table .profit {
+    font-weight: 600;
+    color: #22c55e;
+}
+
+.profitability-table .margin {
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+/* Sort Indicator */
+.sortable span {
+    margin-left: 0.5rem;
+    color: #fbbf24;
+    display: inline-block;
+}
+
+.sortable.active {
+    color: #fbbf24;
+    border-bottom-color: #fbbf24;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .financial-dashboard {
+        padding: 1rem;
+    }
+
+    .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-refresh {
+        width: 100%;
+    }
+
+    .last-updated {
+        width: 100%;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+
+    .profitability-table {
+        font-size: 0.75rem;
+    }
+
+    .profitability-table th,
+    .profitability-table td {
+        white-space: nowrap;
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.kpi-grid,
+.charts-grid,
+.profitability-section {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+.kpi-grid {
+    animation-delay: 0.1s;
+}
+
+.charts-grid {
+    animation-delay: 0.2s;
+}
+
+.profitability-section {
+    animation-delay: 0.3s;
+}
+
+/* Scrollbar Polish */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+}
+
+
+/* Boston Matrix Polish */
+.btn-icon-subtle {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon-subtle:hover {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.btn-icon-subtle.active {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.2);
+}
+
+.matrix-info-panel {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+
+.info-item .icon {
+    font-size: 1.25rem;
+    min-width: 1.5rem;
+    text-align: center;
+    line-height: 1;
+}
+
+.info-item strong {
+    color: #fbbf24;
+}
+
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Table Row Highlight */
+.highlight-row {
+    background-color: rgba(251, 191, 36, 0.1);
+    /* Subtle warning/star color highlight */
+}
+
+/* Ensure chart container handles canvas scaling smoothly */
+.chart-content {
+    transition: all 0.3s ease;
+}

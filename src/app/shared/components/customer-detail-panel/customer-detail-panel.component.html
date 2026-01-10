@@ -1,0 +1,94 @@
+<div class="panel-overlay" *ngIf="isOpen" (click)="close()">
+    <div class="panel-content" (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="panel-header">
+            <h2>{{ 'OPERATIONS.CUSTOMERS.CUSTOMER_DETAILS' | translate }}</h2>
+            <button class="btn-close" (click)="close()" aria-label="Close">✕</button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="panel-body" *ngIf="isLoading">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>{{ 'OPERATIONS.CUSTOMERS.LOADING' | translate }}</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div class="panel-body" *ngIf="error && !isLoading">
+            <div class="error-state">
+                <span class="error-icon">⚠️</span>
+                <p>{{ error }}</p>
+                <button class="btn-secondary" (click)="loadCustomerData()">
+                    {{ 'OPERATIONS.CUSTOMERS.RETRY' | translate }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="panel-body" *ngIf="!isLoading && !error && customer">
+            <!-- Customer Profile -->
+            <div class="profile-section">
+                <div class="profile-header">
+                    <div class="avatar-large" *ngIf="!customer.photoURL">
+                        {{ (customer.displayName || customer.email || '?').charAt(0) | uppercase }}
+                    </div>
+                    <img *ngIf="customer.photoURL" [src]="customer.photoURL" class="avatar-large" alt="Avatar">
+                    <div class="profile-info">
+                        <h3>{{ customer.displayName || 'Guest' }}</h3>
+                        <p class="email">{{ customer.email }}</p>
+                        <p class="phone" *ngIf="customer.phone">📞 {{ customer.phone }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ customer.stats?.totalOrders || 0 }}</div>
+                        <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_ORDERS' | translate }}</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ formatCurrency(customer.stats?.totalSpend || 0) }}</div>
+                        <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_SPEND' | translate }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="section">
+                <h4>{{ 'OPERATIONS.CUSTOMERS.RECENT_ORDERS' | translate }}</h4>
+                <div class="orders-list" *ngIf="recentOrders.length > 0">
+                    <div class="order-item" *ngFor="let order of recentOrders" (click)="viewOrder(order.id!)">
+                        <div class="order-header">
+                            <span class="order-number">#{{ order.orderNumber }}</span>
+                            <span class="order-status" [ngClass]="getStatusBadgeClass(order.status)">
+                                {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                            </span>
+                        </div>
+                        <div class="order-details">
+                            <span class="order-date">{{ formatDate(order.createdAt) }}</span>
+                            <span class="order-total">{{ formatCurrency(order.total) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="empty-state-small" *ngIf="recentOrders.length === 0">
+                    <p>{{ 'OPERATIONS.CUSTOMERS.NO_ORDERS' | translate }}</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="panel-actions">
+                <button class="btn-primary full-width" (click)="viewFull()">
+                    <span class="icon">👁️</span>
+                    {{ 'OPERATIONS.CUSTOMERS.VIEW_FULL_DETAILS' | translate }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

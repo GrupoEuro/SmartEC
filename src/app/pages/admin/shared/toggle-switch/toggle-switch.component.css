@@ -1,0 +1,202 @@
+/* Toggle Switch Container */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.toggle-switch:hover {
+    background: #f8f9fa;
+}
+
+.toggle-input {
+    display: none;
+}
+
+.toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 56px;
+    height: 30px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Toggle Slider Background */
+.toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0;
+    border-radius: 30px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    pointer-events: none;
+    /* Allow clicks to pass through to label */
+}
+
+/* OFF Label inside switch */
+.toggle-slider::after {
+    content: 'OFF';
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #999;
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+}
+
+/* Slider Circle with Icon */
+.toggle-slider::before {
+    content: '✕';
+    position: absolute;
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #999;
+    font-weight: bold;
+}
+
+/* Ripple Effect */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.6;
+    }
+
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+.toggle-label::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: rgba(40, 167, 69, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+}
+
+.toggle-input:active+.toggle-label::after {
+    animation: ripple 0.6s ease-out;
+}
+
+/* CHECKED State */
+.toggle-input:checked+.toggle-label .toggle-slider {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.4),
+        0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* ON Label inside switch */
+.toggle-input:checked+.toggle-label .toggle-slider::after {
+    content: 'ON';
+    left: 8px;
+    right: auto;
+    color: white;
+}
+
+/* Slider Circle - Checked State */
+.toggle-input:checked+.toggle-label .toggle-slider::before {
+    content: '✓';
+    transform: translateX(26px);
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Disabled State */
+.toggle-input:disabled+.toggle-label {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle-input:disabled+.toggle-label .toggle-slider {
+    background-color: #f5f5f5;
+}
+
+/* Disabled State - Text Label */
+.toggle-input:disabled~.toggle-text {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #999;
+}
+
+.toggle-input:disabled~.toggle-text .toggle-icon {
+    opacity: 0.6;
+}
+
+
+/* Toggle Text Label */
+.toggle-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.toggle-icon {
+    font-size: 1.1rem;
+    transition: transform 0.2s;
+}
+
+.toggle-text:hover {
+    color: #1e293b;
+}
+
+.toggle-text:hover .toggle-icon {
+    transform: scale(1.1);
+}
+
+/* Focus States with Glow */
+.toggle-input:focus+.toggle-label .toggle-slider {
+    box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.15);
+}
+
+.toggle-input:checked:focus+.toggle-label .toggle-slider {
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.5),
+        0 0 0 4px rgba(40, 167, 69, 0.2);
+}
+
+/* Active/Pressed State */
+.toggle-input:active+.toggle-label .toggle-slider::before {
+    width: 28px;
+}
+
+/* Form Hint */
+.form-hint.checkbox-hint {
+    color: #6b7280;
+    font-size: 0.8125rem;
+    margin-left: 2rem;
+    line-height: 1.4;
+    display: block;
+    margin-top: 0.25rem;
+}

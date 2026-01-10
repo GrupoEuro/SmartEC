@@ -1,0 +1,113 @@
+<app-admin-page-header icon="🏷️" [title]="'ADMIN.BRANDS.TITLE' | translate"
+    [subtitle]="'ADMIN.BRANDS.SUBTITLE' | translate">
+    <a routerLink="/admin/brands/new" class="btn-primary">
+        ➕ {{ 'ADMIN.BRANDS.BTN_ADD' | translate }}
+    </a>
+</app-admin-page-header>
+
+<div class="brands-container">
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                [placeholder]="'ADMIN.BRANDS.SEARCH_PLACEHOLDER' | translate" class="search-input">
+        </div>
+
+        <div class="filter-group">
+            <select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()" class="filter-select">
+                <option value="">{{ 'ADMIN.PRODUCTS.FILTER_BY_STATUS' | translate }}</option>
+                <option value="active">{{ 'ADMIN.BRANDS.STATUS_ACTIVE' | translate }}</option>
+                <option value="inactive">{{ 'ADMIN.BRANDS.STATUS_INACTIVE' | translate }}</option>
+            </select>
+
+            <select [(ngModel)]="selectedFeatured" (ngModelChange)="onFilterChange()" class="filter-select">
+                <option value="">All Brands</option>
+                <option value="featured">Featured Only</option>
+                <option value="not-featured">Not Featured</option>
+            </select>
+        </div>
+
+        <button class="btn-export" (click)="exportToCSV()" [title]="'ADMIN.PRODUCTS.EXPORT_CSV' | translate">
+            📥 {{ 'ADMIN.PRODUCTS.EXPORT_CSV' | translate }}
+        </button>
+    </div>
+
+    <div class="table-responsive" *ngIf="(displayedBrands$ | async) as brands; else loading">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>{{ 'ADMIN.BRANDS.TH_LOGO' | translate }}</th>
+                    <th class="sortable" (click)="onSortChange('name')">
+                        {{ 'ADMIN.BRANDS.TH_NAME' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'name'">
+                            {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                    </th>
+                    <th class="sortable" (click)="onSortChange('country')">
+                        {{ 'ADMIN.BRANDS.TH_COUNTRY' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'country'">
+                            {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                        </span>
+                    </th>
+                    <th>{{ 'ADMIN.BRANDS.TH_WEBSITE' | translate }}</th>
+                    <th>{{ 'ADMIN.BRANDS.TH_STATUS' | translate }}</th>
+                    <th>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let brand of brands">
+                    <td>
+                        <div class="brand-logo">
+                            <img *ngIf="brand.logoUrl" [src]="brand.logoUrl" [alt]="brand.name">
+                            <span *ngIf="!brand.logoUrl" class="no-logo">{{ brand.name.charAt(0) }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <strong>{{ brand.name }}</strong>
+                        <span class="badge badge-featured" *ngIf="brand.featured">⭐ Featured</span>
+                    </td>
+                    <td>{{ brand.countryOfOrigin || '-' }}</td>
+                    <td>
+                        <a *ngIf="brand.website" [href]="brand.website" target="_blank" class="link-external">
+                            {{ brand.website }}
+                        </a>
+                        <span *ngIf="!brand.website">-</span>
+                    </td>
+                    <td>
+                        <span class="badge" [class.badge-active]="brand.active" [class.badge-inactive]="!brand.active">
+                            {{ brand.active ? ('ADMIN.BRANDS.STATUS_ACTIVE' | translate) :
+                            ('ADMIN.BRANDS.STATUS_INACTIVE' | translate) }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon" [routerLink]="['/admin/brands', brand.id, 'edit']"
+                                [title]="'ADMIN.COMMON.EDIT' | translate">
+                                ✏️
+                            </button>
+                            <button class="btn-icon btn-danger" (click)="deleteBrand(brand)"
+                                [title]="'ADMIN.COMMON.DELETE' | translate">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr *ngIf="brands.length === 0">
+                    <td colspan="6" class="no-data">{{ 'ADMIN.BRANDS.EMPTY' | translate }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <app-pagination *ngIf="paginationConfig.totalItems > 0" [config]="paginationConfig"
+            (pageChange)="onPageChange($event)" (itemsPerPageChange)="onItemsPerPageChange($event)">
+        </app-pagination>
+    </div>
+
+    <ng-template #loading>
+        <div class="loading-state">
+            <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+        </div>
+    </ng-template>
+</div>

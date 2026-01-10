@@ -1,0 +1,203 @@
+<header class="page-header">
+    <div class="header-content">
+        <div class="header-left">
+            <app-icon name="banknote" [size]="40" class="text-emerald-500"></app-icon>
+            <div class="header-text">
+                <h1>{{ 'COMMAND_CENTER.FINANCIALS.TITLE' | translate }}</h1>
+                <p>{{ 'COMMAND_CENTER.FINANCIALS.SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+
+    </div>
+</header>
+
+<div class="financial-dashboard">
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Empty State (Lazy Load) -->
+    <div *ngIf="!contextService.isInitialized()" class="empty-dashboard-state">
+        <div class="empty-state-content">
+            <div class="empty-icon-large">
+                <app-icon name="banknote" [size]="64"></app-icon>
+            </div>
+            <h2>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE' | translate }}</h2>
+            <p>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE_DESC' | translate }}</p>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div *ngIf="contextService.isInitialized() && !isLoading() && revenueCard() && profitCard() && marginCard() && aovCard()"
+        class="kpi-grid">
+        <app-kpi-card [card]="revenueCard()!"></app-kpi-card>
+        <app-kpi-card [card]="profitCard()!"></app-kpi-card>
+        <app-kpi-card [card]="marginCard()!"></app-kpi-card>
+        <app-kpi-card [card]="aovCard()!"></app-kpi-card>
+    </div>
+
+    <!-- Charts Grid -->
+    <div *ngIf="!isLoading()" class="charts-grid">
+        <!-- Revenue Trend -->
+        <app-chart-card [title]="'COMMAND_CENTER.FINANCIALS.CHARTS.REVENUE_TREND' | translate" [type]="'line'"
+            [data]="revenueTrendData()!" [height]="300" [tableData]="revenueTableData()"
+            [tableColumns]="revenueTableColumns">
+        </app-chart-card>
+
+        <!-- Margin Trend -->
+        <app-chart-card [title]="'COMMAND_CENTER.FINANCIALS.CHARTS.MARGIN_TREND' | translate" [type]="'line'"
+            [data]="marginTrendData()!" [format]="'percentage'" [height]="300" [tableData]="marginTableData()"
+            [tableColumns]="marginTableColumns">
+        </app-chart-card>
+
+        <!-- Top Products -->
+        <app-chart-card [title]="'COMMAND_CENTER.FINANCIALS.CHARTS.TOP_PRODUCTS' | translate" [type]="'bar'"
+            [data]="topProductsData()!" [height]="300" [tableData]="productTableData()"
+            [tableColumns]="productTableColumns">
+        </app-chart-card>
+
+        <!-- Category Performance -->
+        <app-chart-card [title]="'COMMAND_CENTER.FINANCIALS.CHARTS.CATEGORY_PERFORMANCE' | translate"
+            [type]="'doughnut'" [data]="categoryPerformanceData()!" [height]="300" [tableData]="categoryTableData()"
+            [tableColumns]="categoryTableColumns">
+        </app-chart-card>
+
+        <!-- Product Strategy Matrix -->
+        <div class="chart-card full-width">
+            <div class="card-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>{{ 'COMMAND_CENTER.FINANCIALS.CHARTS.PRODUCT_STRATEGY' | translate }}</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-icon-subtle" (click)="toggleBostonMatrixTable()"
+                        [class.active]="showBostonMatrixTable()" title="View Data">
+                        <app-icon name="list" [size]="20"></app-icon>
+                    </button>
+                    <button class="btn-icon-subtle" (click)="toggleBostonMatrixInfo()"
+                        [class.active]="showBostonMatrixInfo()" title="Info">
+                        <app-icon name="info" [size]="20"></app-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Collapsible Explanation -->
+            <div class="matrix-info-panel" *ngIf="showBostonMatrixInfo()">
+                <div class="info-grid">
+                    <div class="info-item stars">
+                        <span class="icon">⭐</span>
+                        <strong>{{ 'COMMAND_CENTER.FINANCIALS.MATRIX.STARS' | translate }}:</strong>
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.STARS_DESC' | translate }}
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.STARS_ACTION' | translate }}
+                    </div>
+                    <div class="info-item cows">
+                        <span class="icon">🐄</span>
+                        <strong>{{ 'COMMAND_CENTER.FINANCIALS.MATRIX.COWS' | translate }}:</strong>
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.COWS_DESC' | translate }}
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.COWS_ACTION' | translate }}
+                    </div>
+                    <div class="info-item questions">
+                        <span class="icon">❓</span>
+                        <strong>{{ 'COMMAND_CENTER.FINANCIALS.MATRIX.QUESTIONS' | translate }}:</strong>
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.QUESTIONS_DESC' | translate }}
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.QUESTIONS_ACTION' | translate }}
+                    </div>
+                    <div class="info-item dogs">
+                        <span class="icon">🐕</span>
+                        <strong>{{ 'COMMAND_CENTER.FINANCIALS.MATRIX.DOGS' | translate }}:</strong>
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.DOGS_DESC' | translate }}
+                        {{ 'COMMAND_CENTER.FINANCIALS.MATRIX.DOGS_ACTION' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collapsible Data Table -->
+            <div class="matrix-data-panel" *ngIf="showBostonMatrixTable()"
+                style="margin-bottom: 1.5rem; max-height: 300px; overflow-y: auto;">
+                <table class="profitability-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.PRODUCT' | translate }}</th>
+                            <th class="text-center">{{ 'COMMAND_CENTER.FINANCIALS.TABLE.QUADRANT' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.CATEGORY' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.REVENUE' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.GROWTH' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.SHARE' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let point of bostonMatrixPoints()"
+                            (mouseenter)="setHoveredProduct(point.productName)" (mouseleave)="setHoveredProduct(null)"
+                            [class.highlight-row]="hoveredProduct() === point.productName"
+                            style="cursor: pointer; transition: background-color 0.2s;">
+                            <td class="product-name" style="color: #f1f5f9;">{{ point.productName || 'Unknown' }}</td>
+                            <td class="text-center" style="font-size: 1.2rem;">
+                                <span *ngIf="point.quadrant === 'stars'"
+                                    [title]="('COMMAND_CENTER.FINANCIALS.MATRIX.STARS' | translate) + ' (' + ('COMMAND_CENTER.FINANCIALS.MATRIX.STARS_DESC' | translate) + ')'">⭐</span>
+                                <span *ngIf="point.quadrant === 'cows'"
+                                    [title]="('COMMAND_CENTER.FINANCIALS.MATRIX.COWS' | translate) + ' (' + ('COMMAND_CENTER.FINANCIALS.MATRIX.COWS_DESC' | translate) + ')'">🐄</span>
+                                <span *ngIf="point.quadrant === 'questions'"
+                                    [title]="('COMMAND_CENTER.FINANCIALS.MATRIX.QUESTIONS' | translate) + ' (' + ('COMMAND_CENTER.FINANCIALS.MATRIX.QUESTIONS_DESC' | translate) + ')'">❓</span>
+                                <span *ngIf="point.quadrant === 'dogs'"
+                                    [title]="('COMMAND_CENTER.FINANCIALS.MATRIX.DOGS' | translate) + ' (' + ('COMMAND_CENTER.FINANCIALS.MATRIX.DOGS_DESC' | translate) + ')'">🐕</span>
+                            </td>
+                            <td style="color: #94a3b8;">{{ 'CATEGORIES.' + (point.categoryName | uppercase) | translate
+                                }}</td>
+                            <td class="profit">{{ point.revenue | currency }}</td>
+                            <td [class.profit]="point.y > 0" [class.loss]="point.y < 0">{{ point.y }}%</td>
+                            <td>{{ point.x | number:'1.2-2' }}x</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="chart-content">
+                <app-metric-chart #matrixChart *ngIf="productStrategyData()" [data]="productStrategyData()!"
+                    [type]="'scatter'" [options]="bostonMatrixOptions()" [height]="400">
+                </app-metric-chart>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profitability Table -->
+    <div *ngIf="!isLoading() && profitabilityData().length > 0" class="profitability-section">
+        <h3>{{ 'COMMAND_CENTER.FINANCIALS.TOP_PERFORMERS' | translate }}</h3>
+        <div class="table-container" [class.loading-overlay]="isTableLoading()">
+            <table class="profitability-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.PRODUCT' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.FINANCIALS.TABLE.UNITS_SOLD' | translate }}</th>
+                        <th (click)="sortProfitability('revenue')" class="sortable"
+                            [class.active]="sortBy() === 'revenue'">
+                            {{ 'COMMAND_CENTER.FINANCIALS.TABLE.REVENUE' | translate }}
+                            <span *ngIf="sortBy() === 'revenue'">↓</span>
+                        </th>
+                        <th (click)="sortProfitability('profit')" class="sortable"
+                            [class.active]="sortBy() === 'profit'">
+                            {{ 'COMMAND_CENTER.FINANCIALS.TABLE.PROFIT' | translate }}
+                            <span *ngIf="sortBy() === 'profit'">↓</span>
+                        </th>
+                        <th (click)="sortProfitability('margin')" class="sortable"
+                            [class.active]="sortBy() === 'margin'">
+                            {{ 'COMMAND_CENTER.FINANCIALS.TABLE.MARGIN' | translate }}
+                            <span *ngIf="sortBy() === 'margin'">↓</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let item of profitabilityData()">
+                        <td class="rank">{{ item.rank }}</td>
+                        <td class="product-name">{{ item.productName }}</td>
+                        <td>{{ item.unitsSold }}</td>
+                        <td>{{ formatCurrency(item.totalRevenue) }}</td>
+                        <td class="profit">{{ formatCurrency(item.grossProfit) }}</td>
+                        <td class="margin">{{ formatPercentage(item.grossMargin) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <app-dashboard-diagnostics [logs]="[]" [buildVersion]="'v2.0-Reactive'"></app-dashboard-diagnostics>
+</div>

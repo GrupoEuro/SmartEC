@@ -1,0 +1,394 @@
+<app-admin-page-header iconName="bar-chart-2" [title]="'OPERATIONS.DASHBOARD_TITLE' | translate"
+    [subtitle]="'OPERATIONS.DASHBOARD_SUBTITLE' | translate" variant="operations">
+    <a routerLink="/operations/orders" class="btn-glass-primary">
+        <app-icon name="package" [size]="18" class="mr-2"></app-icon>
+        {{ 'OPERATIONS.DASHBOARD.GO_TO_ORDERS' | translate }}
+    </a>
+</app-admin-page-header>
+
+<div class="dashboard-container p-6 max-w-7xl mx-auto space-y-8">
+    <!-- Stats Cards -->
+    @if (!isLoading()) {
+    <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total Orders -->
+        <div
+            class="stat-card total bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-zinc-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-zinc-400 p-3 bg-zinc-700/30 rounded-lg"><app-icon name="clipboard-list"
+                        [size]="24"></app-icon></div>
+                <div class="stat-value text-3xl font-bold text-white">{{ stats().totalOrders }}</div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.TOTAL_ORDERS' | translate }}</div>
+        </div>
+
+        <!-- Pending Orders -->
+        <div
+            class="stat-card pending bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-amber-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-amber-500 p-3 bg-amber-500/10 rounded-lg"><app-icon name="clock"
+                        [size]="24"></app-icon></div>
+                <div class="stat-value text-3xl font-bold text-white">{{ stats().pendingOrders }}</div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.PENDING_ORDERS' | translate }}</div>
+            <a routerLink="/operations/orders" [queryParams]="{status: 'pending'}"
+                class="stat-action text-amber-500 hover:text-amber-400 text-sm font-medium mt-2 inline-block transition-colors">
+                {{ 'OPERATIONS.DASHBOARD.VIEW_ALL' | translate }} →
+            </a>
+        </div>
+
+        <!-- Processing Orders -->
+        <div
+            class="stat-card processing bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-blue-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-blue-500 p-3 bg-blue-500/10 rounded-lg"><app-icon name="settings"
+                        [size]="24"></app-icon></div>
+                <div class="stat-value text-3xl font-bold text-white">{{ stats().processingOrders }}</div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.PROCESSING_ORDERS' | translate }}</div>
+            <a routerLink="/operations/orders" [queryParams]="{status: 'processing'}"
+                class="stat-action text-blue-500 hover:text-blue-400 text-sm font-medium mt-2 inline-block transition-colors">
+                {{ 'OPERATIONS.DASHBOARD.VIEW_ALL' | translate }} →
+            </a>
+        </div>
+
+        <!-- Shipped Today -->
+        <div
+            class="stat-card shipped bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-emerald-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-emerald-500 p-3 bg-emerald-500/10 rounded-lg"><app-icon name="truck"
+                        [size]="24"></app-icon></div>
+                <div class="stat-value text-3xl font-bold text-white">{{ stats().shippedToday }}</div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.SHIPPED_TODAY' | translate }}</div>
+        </div>
+    </div>
+    }
+
+    <!-- New Metrics Widgets -->
+    @if (!isLoading()) {
+    <div class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+        <!-- SLA Compliance -->
+        <div
+            class="metric-card sla-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
+            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
+                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300"><app-icon
+                        name="clock" [size]="18" class="mr-2 text-emerald-400"></app-icon> SLA Compliance</h3>
+            </div>
+            <div class="metric-body p-6">
+                <div class="sla-gauge flex flex-col items-center justify-center mb-6">
+                    <div class="gauge-value text-4xl font-black mb-1" [style.color]="getSLAComplianceColor()">
+                        {{ slaStats().complianceRate }}%
+                    </div>
+                    <div class="gauge-label text-xs uppercase tracking-wider text-zinc-500 font-semibold">Compliance
+                        Rate</div>
+                </div>
+                <div class="sla-breakdown grid grid-cols-3 gap-2 border-t border-zinc-700 pt-4">
+                    <div class="sla-stat flex flex-col items-center text-center">
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">On Time:</span>
+                        <span class="stat-value text-lg font-bold text-emerald-400">{{ slaStats().onTime }}</span>
+                    </div>
+                    <div class="sla-stat flex flex-col items-center text-center">
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">Approaching:</span>
+                        <span class="stat-value text-lg font-bold text-amber-400">{{ slaStats().approaching }}</span>
+                    </div>
+                    <div class="sla-stat flex flex-col items-center text-center">
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">Overdue:</span>
+                        <span class="stat-value text-lg font-bold text-red-400">{{ slaStats().overdue }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Priority Distribution -->
+        <div
+            class="metric-card priority-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
+            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
+                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300"><app-icon
+                        name="flag" [size]="18" class="mr-2 text-amber-400"></app-icon> Priority Distribution</h3>
+            </div>
+            <div class="metric-body p-6">
+                <div class="priority-bars space-y-4">
+                    <div class="priority-bar">
+                        <div class="bar-label flex justify-between text-sm text-zinc-300 mb-1">
+                            <span>Rush</span>
+                            <span class="bar-value font-mono font-bold">{{ priorityStats().rush }}</span>
+                        </div>
+                        <div class="bar-track h-2 bg-zinc-700 rounded-full overflow-hidden">
+                            <div class="bar-fill bg-pink-500 h-full rounded-full transition-all duration-500"
+                                [style.width.%]="(priorityStats().rush / (priorityStats().standard + priorityStats().express + priorityStats().rush || 1)) * 100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="priority-bar">
+                        <div class="bar-label flex justify-between text-sm text-zinc-300 mb-1">
+                            <span>Express</span>
+                            <span class="bar-value font-mono font-bold">{{ priorityStats().express }}</span>
+                        </div>
+                        <div class="bar-track h-2 bg-zinc-700 rounded-full overflow-hidden">
+                            <div class="bar-fill bg-rose-500 h-full rounded-full transition-all duration-500"
+                                [style.width.%]="(priorityStats().express / (priorityStats().standard + priorityStats().express + priorityStats().rush || 1)) * 100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="priority-bar">
+                        <div class="bar-label flex justify-between text-sm text-zinc-300 mb-1">
+                            <span>Standard</span>
+                            <span class="bar-value font-mono font-bold">{{ priorityStats().standard }}</span>
+                        </div>
+                        <div class="bar-track h-2 bg-zinc-700 rounded-full overflow-hidden">
+                            <div class="bar-fill bg-indigo-500 h-full rounded-full transition-all duration-500"
+                                [style.width.%]="(priorityStats().standard / (priorityStats().standard + priorityStats().express + priorityStats().rush || 1)) * 100">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Workload -->
+        <div
+            class="metric-card workload-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
+            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
+                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300"><app-icon
+                        name="users" [size]="18" class="mr-2 text-blue-400"></app-icon> Staff Workload</h3>
+            </div>
+            <div class="metric-body p-6">
+                @if (staffWorkload().length > 0) {
+                <div class="workload-list space-y-3">
+                    @for (staff of staffWorkload(); track staff.staffName) {
+                    <div
+                        class="workload-item flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50">
+                        <div class="staff-name font-medium text-zinc-200 text-sm">{{ staff.staffName }}</div>
+                        <div class="workload-stats flex gap-2">
+                            <span
+                                class="workload-badge px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-zinc-700 text-zinc-300">{{
+                                staff.assignedOrders }} total</span>
+                            <span
+                                class="workload-badge px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-900/30 text-blue-400 border border-blue-800/30">{{
+                                staff.inProgress }} in progress</span>
+                            <span
+                                class="workload-badge px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-900/30 text-emerald-400 border border-emerald-800/30">{{
+                                staff.completed }} done</span>
+                        </div>
+                    </div>
+                    }
+                </div>
+                } @else {
+                <div
+                    class="empty-state flex flex-col items-center justify-center py-8 text-center text-zinc-500 text-sm">
+                    <p>No staff assignments yet</p>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Overdue Orders -->
+        <div
+            class="metric-card overdue-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
+            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
+                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300"><app-icon
+                        name="alert-triangle" [size]="18" class="mr-2 text-red-400"></app-icon> Overdue Orders</h3>
+            </div>
+            <div class="metric-body p-6">
+                @if (overdueOrders().length > 0) {
+                <div class="overdue-list space-y-3 mb-4">
+                    @for (order of overdueOrders(); track order.id) {
+                    <div
+                        class="overdue-item flex items-center justify-between p-3 bg-red-900/10 rounded-lg border border-red-900/20 group hover:border-red-500/30 transition-colors">
+                        <div class="order-info flex flex-col">
+                            <span class="order-number font-mono font-bold text-red-400 text-sm">{{ order.orderNumber
+                                }}</span>
+                            <span class="customer-name text-xs text-zinc-400">{{ order.customer.name }}</span>
+                        </div>
+                        <a [routerLink]="['/operations/orders', order.id]"
+                            class="btn-view-small px-3 py-1 bg-zinc-800 text-zinc-300 text-xs rounded hover:bg-zinc-700 transition-colors">
+                            View
+                        </a>
+                    </div>
+                    }
+                </div>
+                <a routerLink="/operations/orders" [queryParams]="{overdue: true}"
+                    class="view-all-overdue block text-center text-xs font-bold uppercase tracking-wider text-red-400 hover:text-red-300 mt-2">
+                    View All Overdue →
+                </a>
+                } @else {
+                <div class="empty-state success flex flex-col items-center justify-center py-8 text-center">
+                    <app-icon name="check-circle" [size]="32" class="mb-2 text-emerald-500/50"></app-icon>
+                    <p class="text-emerald-500/70 font-medium">No overdue orders!</p>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+    }
+
+
+    <!-- Charts Section -->
+    @if (!isLoading()) {
+    <div class="charts-section">
+        <h2 class="text-xl font-bold text-white mb-4">Performance Insights</h2>
+        <div class="charts-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- SLA Compliance Chart -->
+            <div class="chart-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700">
+                <div class="chart-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
+                    <h3 class="flex items-center text-sm font-semibold text-zinc-300"><app-icon name="pie-chart"
+                            [size]="18" class="mr-2"></app-icon> SLA Compliance</h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="slaChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Priority Distribution Chart -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3><app-icon name="pie-chart" [size]="18" class="mr-2"></app-icon> Priority Distribution</h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Order Trends Chart -->
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <h3><app-icon name="trending-up" [size]="18" class="mr-2"></app-icon> Order Trends (Last 7 Days)
+                    </h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+
+
+    <!-- Quick Actions -->
+    <div class="quick-actions-section">
+        <h2 class="text-xl font-bold text-white mb-4">{{ 'OPERATIONS.DASHBOARD.QUICK_ACTIONS' | translate }}</h2>
+        <div class="actions-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+            <a routerLink="/operations/orders"
+                class="action-card flex flex-col items-center text-center p-6 rounded-xl bg-zinc-800 border border-zinc-700 shadow-lg transition-all duration-300 hover:transform hover:-tranzinc-y-1 hover:shadow-xl hover:border-blue-500/50 hover:bg-zinc-800/80 group">
+                <div
+                    class="action-icon mb-4 p-4 rounded-full bg-zinc-900 text-blue-400 border border-zinc-700 group-hover:text-white group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors">
+                    <app-icon name="package" [size]="24"></app-icon>
+                </div>
+                <div class="action-content">
+                    <h3 class="text-lg font-bold text-white mb-2">{{ 'OPERATIONS.ORDERS.QUEUE' | translate }}</h3>
+                    <p class="text-sm text-zinc-400">{{ 'OPERATIONS.DASHBOARD.VIEW_PROCESS_ORDERS' | translate }}</p>
+                </div>
+            </a>
+
+            <a routerLink="/operations/customers"
+                class="action-card flex flex-col items-center text-center p-6 rounded-xl bg-zinc-800 border border-zinc-700 shadow-lg transition-all duration-300 hover:transform hover:-tranzinc-y-1 hover:shadow-xl hover:border-blue-500/50 hover:bg-zinc-800/80 group">
+                <div
+                    class="action-icon mb-4 p-4 rounded-full bg-zinc-900 text-blue-400 border border-zinc-700 group-hover:text-white group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors">
+                    <app-icon name="users" [size]="24"></app-icon>
+                </div>
+                <div class="action-content">
+                    <h3 class="text-lg font-bold text-white mb-2">{{ 'OPERATIONS.CUSTOMERS.LOOKUP' | translate }}</h3>
+                    <p class="text-sm text-zinc-400">{{ 'OPERATIONS.DASHBOARD.SEARCH_CUSTOMERS' | translate }}</p>
+                </div>
+            </a>
+
+            <a routerLink="/operations/inventory"
+                class="action-card flex flex-col items-center text-center p-6 rounded-xl bg-zinc-800 border border-zinc-700 shadow-lg transition-all duration-300 hover:transform hover:-tranzinc-y-1 hover:shadow-xl hover:border-blue-500/50 hover:bg-zinc-800/80 group">
+                <div
+                    class="action-icon mb-4 p-4 rounded-full bg-zinc-900 text-blue-400 border border-zinc-700 group-hover:text-white group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors">
+                    <app-icon name="bar-chart-2" [size]="24"></app-icon>
+                </div>
+                <div class="action-content">
+                    <h3 class="text-lg font-bold text-white mb-2">{{ 'OPERATIONS.INVENTORY.LOOKUP' | translate }}</h3>
+                    <p class="text-sm text-zinc-400">{{ 'OPERATIONS.DASHBOARD.CHECK_INVENTORY' | translate }}</p>
+                </div>
+            </a>
+
+            <a routerLink="/operations/promotions"
+                class="action-card flex flex-col items-center text-center p-6 rounded-xl bg-zinc-800 border border-zinc-700 shadow-lg transition-all duration-300 hover:transform hover:-tranzinc-y-1 hover:shadow-xl hover:border-blue-500/50 hover:bg-zinc-800/80 group">
+                <div
+                    class="action-icon mb-4 p-4 rounded-full bg-zinc-900 text-blue-400 border border-zinc-700 group-hover:text-white group-hover:bg-blue-600 group-hover:border-blue-500 transition-colors">
+                    <app-icon name="tag" [size]="24"></app-icon>
+                </div>
+                <div class="action-content">
+                    <h3 class="text-lg font-bold text-white mb-2">{{ 'OPERATIONS.PROMOTIONS.ACTIVE' | translate }}</h3>
+                    <p class="text-sm text-zinc-400">{{ 'OPERATIONS.DASHBOARD.VIEW_PROMOTIONS' | translate }}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    @if (recentOrders().length > 0) {
+    <div class="recent-orders-section mb-8">
+        <div class="section-header flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-white">{{ 'OPERATIONS.DASHBOARD.RECENT_ORDERS' | translate }}</h2>
+            <a routerLink="/operations/orders"
+                class="view-all-link text-blue-400 hover:text-blue-300 font-medium transition-colors">
+                {{ 'OPERATIONS.DASHBOARD.VIEW_ALL' | translate }} →
+            </a>
+        </div>
+
+        <div class="orders-table-wrapper bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700 shadow-lg">
+            <table class="orders-table w-full text-left border-collapse">
+                <thead class="bg-zinc-900/50">
+                    <tr>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</th>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.CUSTOMER' | translate }}</th>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.DATE' | translate }}</th>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</th>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
+                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
+                            {{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody class="text-zinc-300">
+                    @for (order of recentOrders(); track order.id) {
+                    <tr class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors">
+                        <td class="py-4 px-6">
+                            <span class="order-number font-mono font-bold text-white">{{ order.orderNumber }}</span>
+                        </td>
+                        <td class="py-4 px-6">{{ order.customer.name }}</td>
+                        <td class="py-4 px-6">{{ formatDate(order.createdAt) }}</td>
+                        <td class="py-4 px-6">
+                            <span class="total-amount font-bold text-emerald-400">{{ formatCurrency(order.total)
+                                }}</span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <!-- TODO: Refactor status badge to Tailwind completely or keep using shared component styles if available -->
+                            <span class="status-badge px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                                [ngClass]="getStatusBadgeClass(order.status)">
+                                {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <a [routerLink]="['/operations/orders', order.id]"
+                                class="btn-view text-blue-400 hover:text-blue-300 font-medium text-sm transition-colors">
+                                {{ 'OPERATIONS.ORDERS.VIEW_DETAILS' | translate }}
+                            </a>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    }
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+    <div class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'OPERATIONS.DASHBOARD.LOADING' | translate }}</p>
+    </div>
+    }
+</div>

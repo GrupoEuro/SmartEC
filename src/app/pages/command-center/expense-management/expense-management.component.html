@@ -1,0 +1,322 @@
+<div class="expense-management-page">
+
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <app-icon name="wallet" [size]="40" class="text-orange-500"></app-icon>
+                <div class="header-text">
+                    <h1>{{ 'COMMAND_CENTER.EXPENSES.TITLE' | translate }}</h1>
+                    <p>{{ 'COMMAND_CENTER.EXPENSES.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+
+            <div class="expense-header-actions">
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button [class.active]="viewMode === 'cards'" (click)="toggleView('cards')" title="Card View">
+                        <app-icon name="grid" [size]="20"></app-icon>
+                        <span class="view-label">Cards</span>
+                    </button>
+                    <button [class.active]="viewMode === 'table'" (click)="toggleView('table')" title="Table View">
+                        <app-icon name="list" [size]="20"></app-icon>
+                        <span class="view-label">Table</span>
+                    </button>
+                </div>
+
+                <!-- Export Dropdown -->
+                <div class="export-dropdown">
+                    <button class="btn-secondary">
+                        <app-icon name="download" [size]="16"></app-icon> Export ▼
+                    </button>
+                    <div class="dropdown-menu">
+                        <button (click)="exportToCSV(false)"><app-icon name="document" [size]="16"></app-icon> Export to
+                            CSV</button>
+                        <button (click)="exportToExcel(false)"><app-icon name="chart-bar" [size]="16"></app-icon> Export
+                            to Excel</button>
+                    </div>
+                </div>
+
+                <!-- Add Expense Button -->
+                <button class="btn-primary" (click)="openAddForm()">
+                    <app-icon name="plus" [size]="16"></app-icon> {{ 'COMMAND_CENTER.EXPENSES.ADD_EXPENSE' | translate
+                    }}
+                </button>
+            </div>
+        </div>
+    </header>
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+        <div class="filter-group search-group">
+            <label>{{ 'COMMAND_CENTER.EXPENSES.SEARCH' | translate }}</label>
+            <input type="text" [(ngModel)]="searchTerm" (input)="onSearch()"
+                [placeholder]="'COMMAND_CENTER.EXPENSES.SEARCH_PLACEHOLDER' | translate">
+        </div>
+        <div class="filter-group">
+            <label>{{ 'COMMAND_CENTER.EXPENSES.CATEGORY' | translate }}</label>
+            <select [(ngModel)]="selectedCategory" (change)="onCategoryChange()">
+                <option value="ALL">{{ 'COMMAND_CENTER.EXPENSES.ALL_CATEGORIES' | translate }}</option>
+                <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="summary-card">
+        <div class="summary-icon">
+            <app-icon name="trending-up" [size]="40" class="text-white"></app-icon>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-metrics">
+            <div class="summary-metric">
+                <span class="metric-label">{{ 'COMMAND_CENTER.EXPENSES.EXPENSES' | translate }}</span>
+                <div class="metric-value">{{ filteredExpenses().length }}</div>
+            </div>
+            <div class="metric-separator"></div>
+            <div class="summary-metric primary">
+                <span class="metric-label">{{ 'COMMAND_CENTER.EXPENSES.TOTAL_EXPENSES' | translate }}</span>
+                <div class="metric-value-large">{{ formatCurrency(getTotalExpenses()) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Expenses List (Cards View) -->
+    <div *ngIf="!isLoading() && viewMode === 'cards' && filteredExpenses().length > 0" class="expenses-list">
+        <div *ngFor="let expense of paginatedExpenses" class="expense-card">
+            <div class="expense-header">
+                <div class="expense-category">
+                    <span class="category-badge">{{ getCategoryName(expense.category) }}</span>
+                    <span *ngIf="expense.recurring" class="recurring-badge">
+                        <app-icon name="refresh-cw" [size]="14"></app-icon> {{ 'COMMAND_CENTER.EXPENSES.RECURRING' |
+                        translate }}
+                    </span>
+                </div>
+                <div class="expense-actions">
+                    <button class="btn-icon" (click)="openEditForm(expense)" title="Editar">
+                        <app-icon name="edit" [size]="16" class="text-blue-500"></app-icon>
+                    </button>
+                    <button class="btn-icon delete" (click)="deleteExpense(expense)" title="Eliminar">
+                        <app-icon name="trash" [size]="16" class="text-red-500"></app-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="expense-body">
+                <h3 class="expense-description">{{ expense.description }}</h3>
+                <div class="expense-details">
+                    <span class="expense-date">
+                        <app-icon name="calendar" [size]="14"></app-icon> {{ formatDate(expense.date) }}
+                    </span>
+                    <span *ngIf="expense.vendor" class="expense-vendor">
+                        <app-icon name="briefcase" [size]="14"></app-icon> {{ expense.vendor }}
+                    </span>
+                </div>
+                <p *ngIf="expense.notes" class="expense-notes">{{ expense.notes }}</p>
+            </div>
+            <div class="expense-footer">
+                <span class="expense-amount">{{ formatCurrency(expense.amount) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table View -->
+    <div *ngIf="!isLoading() && viewMode === 'table' && filteredExpenses().length > 0" class="table-view">
+        <!-- Bulk Actions Bar -->
+        <div *ngIf="selectedExpenses.size > 0" class="bulk-actions-bar">
+            <span class="selection-count">{{selectedExpenses.size}} selected</span>
+            <div class="bulk-actions">
+                <button class="btn-danger" (click)="deleteSelected()">
+                    <app-icon name="trash" [size]="16"></app-icon> Delete
+                </button>
+                <button class="btn-secondary" (click)="exportToCSV(true)">
+                    <app-icon name="document" [size]="16"></app-icon> CSV
+                </button>
+                <button class="btn-secondary" (click)="exportToExcel(true)">
+                    <app-icon name="chart-bar" [size]="16"></app-icon> Excel
+                </button>
+                <button class="btn-secondary" (click)="deselectAll()">✕ Clear</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table class="expenses-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-col">
+                            <input type="checkbox" [checked]="allSelected" (change)="toggleSelectAll($event)">
+                        </th>
+                        <th class="sortable" (click)="sortExpenses('date')">
+                            Date
+                            <span class="sort-indicator" *ngIf="sortBy === 'date'">
+                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                            </span>
+                        </th>
+                        <th class="sortable" (click)="sortExpenses('category')">
+                            Category
+                            <span class="sort-indicator" *ngIf="sortBy === 'category'">
+                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                            </span>
+                        </th>
+                        <th>Description</th>
+                        <th>Vendor</th>
+                        <th class="sortable amount-col" (click)="sortExpenses('amount')">
+                            Amount
+                            <span class="sort-indicator" *ngIf="sortBy === 'amount'">
+                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                            </span>
+                        </th>
+                        <th class="recurring-col">Recurring</th>
+                        <th class="actions-col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let expense of paginatedExpenses"
+                        [class.selected]="expense.id && selectedExpenses.has(expense.id)">
+                        <td class="checkbox-col">
+                            <input type="checkbox" *ngIf="expense.id" [checked]="selectedExpenses.has(expense.id)"
+                                (change)="toggleExpenseSelection(expense.id)">
+                        </td>
+                        <td class="date-col">{{ formatDate(expense.date) }}</td>
+                        <td><span class="category-badge">{{ getCategoryName(expense.category) }}</span></td>
+                        <td class="description-col">
+                            {{ expense.description }}
+                            <p *ngIf="expense.notes" class="table-notes">{{ expense.notes }}</p>
+                        </td>
+                        <td class="vendor-col">{{ expense.vendor || '-' }}</td>
+                        <td class="amount-col">{{ formatCurrency(expense.amount) }}</td>
+                        <td class="recurring-col">
+                            <span *ngIf="expense.recurring" class="recurring-badge">
+                                <app-icon name="refresh-cw" [size]="14"></app-icon>
+                            </span>
+                            <span *ngIf="!expense.recurring">-</span>
+                        </td>
+                        <td class="actions-col">
+                            <button class="btn-icon" (click)="openEditForm(expense)" title="Edit">
+                                <app-icon name="edit" [size]="16"></app-icon>
+                            </button>
+                            <button class="btn-icon delete" (click)="deleteExpense(expense)" title="Delete">
+                                <app-icon name="trash" [size]="16"></app-icon>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination (for both views) -->
+    <div *ngIf="!isLoading() && filteredExpenses().length > 0" class="pagination">
+        <div class="pagination-info">
+            Showing {{ (currentPage - 1) * pageSize + 1 }}-{{ getEndIndex() }}
+            of {{ filteredExpenses().length }} expenses
+        </div>
+        <div class="pagination-controls">
+            <button [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+                ← Previous
+            </button>
+            <span class="page-numbers">
+                Page {{ currentPage }} of {{ totalPages }}
+            </span>
+            <button [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
+                Next →
+            </button>
+        </div>
+        <div class="page-size-selector">
+            <select [(ngModel)]="pageSize" (change)="changePageSize(pageSize)">
+                <option [value]="10">10 per page</option>
+                <option [value]="20">20 per page</option>
+                <option [value]="50">50 per page</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading() && filteredExpenses().length === 0" class="empty-state">
+        <div class="empty-icon">
+            <app-icon name="wallet" [size]="48" class="text-gray-400"></app-icon>
+        </div>
+        <h3>{{ 'COMMAND_CENTER.EXPENSES.NO_EXPENSES' | translate }}</h3>
+        <p>{{ 'COMMAND_CENTER.EXPENSES.NO_EXPENSES_DESC' | translate }}</p>
+        <button class="btn-primary" (click)="openAddForm()">
+            <app-icon name="plus" [size]="16"></app-icon> {{ 'COMMAND_CENTER.EXPENSES.ADD_FIRST' | translate }}
+        </button>
+    </div>
+
+    <!-- Expense Form Modal -->
+    <div *ngIf="showForm()" class="modal-overlay" (click)="closeForm()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h2>{{ editingExpense() ? ('COMMAND_CENTER.EXPENSES.EDIT_EXPENSE' | translate) :
+                    ('COMMAND_CENTER.EXPENSES.ADD_EXPENSE' | translate) }}</h2>
+                <button class="btn-close" (click)="closeForm()">✕</button>
+            </div>
+            <form [formGroup]="expenseForm" (ngSubmit)="saveExpense()" class="expense-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.CATEGORY' | translate }} *</label>
+                        <select formControlName="category">
+                            <option *ngFor="let cat of categories" [value]="cat.value">{{ cat.label }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.AMOUNT' | translate }} *</label>
+                        <input type="number" formControlName="amount" min="0" step="0.01">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.DESCRIPTION' | translate }} *</label>
+                    <input type="text" formControlName="description">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.DATE' | translate }} *</label>
+                        <input type="date" formControlName="date">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.VENDOR' | translate }}</label>
+                        <input type="text" formControlName="vendor">
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" formControlName="recurring">
+                        {{ 'COMMAND_CENTER.EXPENSES.FORM.RECURRING' | translate }}
+                    </label>
+                </div>
+
+                <div *ngIf="expenseForm.get('recurring')?.value" class="form-group">
+                    <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.FREQUENCY' | translate }}</label>
+                    <select formControlName="frequency">
+                        <option value="monthly">{{ 'COMMAND_CENTER.EXPENSES.FORM.MONTHLY' | translate }}</option>
+                        <option value="quarterly">{{ 'COMMAND_CENTER.EXPENSES.FORM.QUARTERLY' | translate }}</option>
+                        <option value="yearly">{{ 'COMMAND_CENTER.EXPENSES.FORM.YEARLY' | translate }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'COMMAND_CENTER.EXPENSES.FORM.NOTES' | translate }}</label>
+                    <textarea formControlName="notes" rows="3"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" (click)="closeForm()">
+                        {{ 'COMMAND_CENTER.EXPENSES.FORM.CANCEL' | translate }}
+                    </button>
+                    <button type="submit" class="btn-primary" [disabled]="expenseForm.invalid">
+                        {{ 'COMMAND_CENTER.EXPENSES.FORM.SAVE' | translate }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+</div>

@@ -1,0 +1,217 @@
+<div class="customer-detail-page">
+    <!-- Admin Page Header -->
+    <app-admin-page-header iconName="user"
+        [title]="customer()?.displayName || customer()?.email || ('OPERATIONS.CUSTOMERS.LOADING' | translate)"
+        [subtitle]="customer()?.email || ''" variant="operations">
+        <button class="btn-glass mr-2" (click)="goBack()">
+            <app-icon name="arrow-left" [size]="16" class="mr-1"></app-icon>
+            {{ 'OPERATIONS.CUSTOMERS.BACK' | translate }}
+        </button>
+        <button class="btn-glass-primary" (click)="createOnBehalfOrder()">
+            <app-icon name="shopping-cart" [size]="16" class="mr-1"></app-icon>
+            {{ 'OPERATIONS.CUSTOMERS.CREATE_ORDER' | translate }}
+        </button>
+    </app-admin-page-header>
+
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading()">
+        <div class="spinner-large"></div>
+        <p>{{ 'OPERATIONS.CUSTOMERS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-container" *ngIf="error() && !isLoading()">
+        <span class="error-icon"><app-icon name="alert-triangle" [size]="48" class="text-red-500"></app-icon></span>
+        <h3>{{ error() }}</h3>
+        <button class="btn-glass" (click)="loadCustomerData()">
+            {{ 'OPERATIONS.CUSTOMERS.RETRY' | translate }}
+        </button>
+    </div>
+
+    <!-- Content -->
+    <div class="content" *ngIf="!isLoading() && !error() && customer()">
+        <!-- Header -->
+        <app-admin-page-header iconName="user" [title]="customer()!.displayName || customer()!.email"
+            [subtitle]="customer()!.email">
+            <button class="btn-glass-primary text-sm" (click)="createOnBehalfOrder()">
+                <app-icon name="plus" [size]="16" class="mr-2"></app-icon>
+                {{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}
+            </button>
+        </app-admin-page-header>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">
+                    <app-icon name="bar-chart-2" [size]="16" class="mr-2"></app-icon> {{
+                    'OPERATIONS.CUSTOMERS.TABS.OVERVIEW' | translate }}
+                </button>
+                <button class="tab" [class.active]="activeTab() === 'orders'" (click)="setTab('orders')">
+                    <app-icon name="package" [size]="16" class="mr-2"></app-icon> {{ 'OPERATIONS.CUSTOMERS.TABS.ORDERS'
+                    | translate }}
+                    <span class="tab-badge">{{ customer()?.stats?.totalOrders || 0 }}</span>
+                </button>
+                <button class="tab" [class.active]="activeTab() === 'activity'" (click)="setTab('activity')">
+                    <app-icon name="activity" [size]="16" class="mr-2"></app-icon> {{
+                    'OPERATIONS.CUSTOMERS.TABS.ACTIVITY' | translate }}
+                </button>
+                <button class="tab" [class.active]="activeTab() === 'insights'" (click)="setTab('insights')">
+                    <app-icon name="trending-up" [size]="16" class="mr-2"></app-icon> {{
+                    'OPERATIONS.CUSTOMERS.TABS.INSIGHTS' | translate }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Overview Tab -->
+            <div class="tab-pane" *ngIf="activeTab() === 'overview'">
+                <div class="overview-grid">
+                    <!-- Customer Info Card -->
+                    <div class="card">
+                        <h3 class="card-title">{{ 'OPERATIONS.CUSTOMERS.CUSTOMER_INFO' | translate }}</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.NAME' | translate }}</span>
+                                <span class="info-value">{{ customer()!.displayName || 'N/A' }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.EMAIL' | translate }}</span>
+                                <span class="info-value">{{ customer()!.email }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.PHONE' | translate }}</span>
+                                <span class="info-value">{{ customer()!.phone || 'N/A' }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">{{ 'OPERATIONS.CUSTOMERS.ACCOUNT_CREATED' | translate }}</span>
+                                <span class="info-value">{{ formatDate(customer()!.createdAt) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Cards -->
+                    <div class="stats-row">
+                        <div class="stat-card primary">
+                            <div class="stat-icon"><app-icon name="package" [size]="24"
+                                    class="text-blue-500"></app-icon></div>
+                            <div class="stat-content">
+                                <div class="stat-value">{{ customer()?.stats?.totalOrders || 0 }}</div>
+                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_ORDERS' | translate }}</div>
+                            </div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-icon"><app-icon name="dollar-sign" [size]="24"
+                                    class="text-green-500"></app-icon></div>
+                            <div class="stat-content">
+                                <div class="stat-value">{{ formatCurrency(customer()?.stats?.totalSpend || 0) }}</div>
+                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.TOTAL_SPEND' | translate }}</div>
+                            </div>
+                        </div>
+                        <div class="stat-card info">
+                            <div class="stat-icon"><app-icon name="bar-chart-2" [size]="24"
+                                    class="text-indigo-500"></app-icon></div>
+                            <div class="stat-content">
+                                <div class="stat-value">{{ formatCurrency(getAverageOrderValue()) }}</div>
+                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.AVG_ORDER_VALUE' | translate }}</div>
+                            </div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-icon"><app-icon name="calendar" [size]="24"
+                                    class="text-orange-500"></app-icon></div>
+                            <div class="stat-content">
+                                <div class="stat-value">{{ formatDate(customer()?.stats?.lastOrderDate) }}</div>
+                                <div class="stat-label">{{ 'OPERATIONS.CUSTOMERS.LAST_ORDER' | translate }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipping Address -->
+                    <div class="card" *ngIf="customer()!.shippingAddress">
+                        <h3 class="card-title">{{ 'OPERATIONS.CUSTOMERS.SHIPPING_ADDRESS' | translate }}</h3>
+                        <div class="address-content">
+                            <p>{{ customer()!.shippingAddress.street }}</p>
+                            <p *ngIf="customer()!.shippingAddress.interior">
+                                Int. {{ customer()!.shippingAddress.interior }}
+                            </p>
+                            <p>{{ customer()!.shippingAddress.city }}, {{ customer()!.shippingAddress.state }}</p>
+                            <p>CP {{ customer()!.shippingAddress.zipCode }}</p>
+                            <p *ngIf="customer()!.shippingAddress.references" class="text-muted">
+                                {{ customer()!.shippingAddress.references }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Tab -->
+            <div class="tab-pane" *ngIf="activeTab() === 'orders'">
+                <div class="orders-section">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</th>
+                                    <th>{{ 'OPERATIONS.ORDERS.DATE' | translate }}</th>
+                                    <th>{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</th>
+                                    <th>{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
+                                    <th>{{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let order of ordersDataSource.displayedData">
+                                    <td class="font-mono">#{{ order.orderNumber }}</td>
+                                    <td>{{ formatDate(order.createdAt) }}</td>
+                                    <td class="font-mono">{{ formatCurrency(order.total) }}</td>
+                                    <td>
+                                        <span class="status-badge" [ngClass]="getStatusBadgeClass(order.status)">
+                                            {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                                            (click)="viewOrder(order.id!)" title="View Order">
+                                            <app-icon name="eye" [size]="18"></app-icon>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="ordersDataSource.displayedData.length === 0">
+                                    <td colspan="5" class="empty-state">
+                                        <span class="empty-icon"><app-icon name="package" [size]="48"
+                                                class="text-gray-300"></app-icon></span>
+                                        <p>{{ 'OPERATIONS.CUSTOMERS.NO_ORDERS' | translate }}</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <app-pagination *ngIf="ordersDataSource.displayedData.length > 0"
+                        [config]="ordersDataSource.pagination" (pageChange)="ordersDataSource.setPage($event)"
+                        (itemsPerPageChange)="ordersDataSource.setItemsPerPage($event)">
+                    </app-pagination>
+                </div>
+            </div>
+
+            <!-- Activity Tab (Placeholder) -->
+            <div class="tab-pane" *ngIf="activeTab() === 'activity'">
+                <div class="placeholder-content">
+                    <span class="placeholder-icon"><app-icon name="activity" [size]="64"
+                            class="text-gray-300"></app-icon></span>
+                    <h3>{{ 'OPERATIONS.CUSTOMERS.ACTIVITY_COMING_SOON' | translate }}</h3>
+                    <p>{{ 'OPERATIONS.CUSTOMERS.ACTIVITY_DESC' | translate }}</p>
+                </div>
+            </div>
+
+            <!-- Insights Tab (Placeholder) -->
+            <div class="tab-pane" *ngIf="activeTab() === 'insights'">
+                <div class="placeholder-content">
+                    <span class="placeholder-icon"><app-icon name="trending-up" [size]="64"
+                            class="text-gray-300"></app-icon></span>
+                    <h3>{{ 'OPERATIONS.CUSTOMERS.INSIGHTS_COMING_SOON' | translate }}</h3>
+                    <p>{{ 'OPERATIONS.CUSTOMERS.INSIGHTS_DESC' | translate }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,175 @@
+<div class="product-detail-container" *ngIf="product$ | async as product; else loading">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a routerLink="/">{{ 'PRODUCT_DETAIL.BREADCRUMB_HOME' | translate }}</a>
+        <span class="separator">›</span>
+        <a routerLink="/catalog">{{ 'PRODUCT_DETAIL.BREADCRUMB_CATALOG' | translate }}</a>
+        <span class="separator">›</span>
+        <span class="current">{{ product.name.es }}</span>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="product-hero">
+        <!-- Image Gallery -->
+        <div class="hero-left">
+            <app-image-gallery [images]="getProductImages(product)" [productName]="product.name.es">
+            </app-image-gallery>
+        </div>
+
+        <!-- Product Info -->
+        <div class="hero-right">
+            <span class="product-brand-badge">{{ product.brand }}</span>
+            <h1 class="product-title">{{ product.name.es }}</h1>
+            <p class="product-sku">{{ 'PRODUCT_DETAIL.SKU' | translate }}: {{ product.sku }}</p>
+
+            <!-- Price -->
+            <div class="price-section">
+                <div class="price-main">
+                    <span class="current-price">${{ product.price }}</span>
+                    <span *ngIf="product.compareAtPrice" class="original-price">${{ product.compareAtPrice }}</span>
+                    <span *ngIf="product.compareAtPrice" class="discount-badge">
+                        -{{ ((product.compareAtPrice - product.price) / product.compareAtPrice * 100).toFixed(0) }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Stock Status -->
+            <div class="stock-status">
+                <span *ngIf="product.inStock" class="in-stock">
+                    ✓ {{ 'PRODUCT_DETAIL.IN_STOCK' | translate }}
+                </span>
+                <span *ngIf="!product.inStock" class="out-of-stock">
+                    ✗ {{ 'PRODUCT_DETAIL.OUT_OF_STOCK' | translate }}
+                </span>
+                <span *ngIf="product.inStock" class="stock-quantity">
+                    ({{ product.stockQuantity }} {{ 'PRODUCT_DETAIL.UNITS_AVAILABLE' | translate }})
+                </span>
+            </div>
+
+            <!-- Tire Size -->
+            <div class="tire-size-display">
+                <label>{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</label>
+                <div class="size-value">
+                    {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
+                    product.specifications.diameter }}
+                </div>
+            </div>
+
+            <!-- Key Specs -->
+            <div class="key-specs">
+                <div class="spec-item">
+                    <span class="spec-label">{{ 'PRODUCT_DETAIL.LOAD_INDEX' | translate }}</span>
+                    <span class="spec-value">{{ product.specifications.loadIndex }}</span>
+                </div>
+                <div class="spec-item">
+                    <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEED_RATING' | translate }}</span>
+                    <span class="spec-value">{{ product.specifications.speedRating }}</span>
+                </div>
+            </div>
+
+            <!-- Quantity Selector -->
+            <div class="quantity-section">
+                <label>{{ 'PRODUCT_DETAIL.QUANTITY' | translate }}</label>
+                <div class="quantity-controls">
+                    <button class="qty-btn" (click)="decrementQuantity()">−</button>
+                    <input type="number" [(ngModel)]="quantity" min="1" class="qty-input" />
+                    <button class="qty-btn" (click)="incrementQuantity()">+</button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-add-cart" (click)="addToCart(product)" [disabled]="!product.inStock">
+                    🛒 {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
+                </button>
+                <button class="btn-wishlist" (click)="addToWishlist(product)">
+                    ♡
+                </button>
+                <button class="btn-share" (click)="shareProduct()">
+                    ⤴
+                </button>
+            </div>
+
+            <!-- Badges -->
+            <div class="product-badges-info">
+                <span *ngIf="product.newArrival" class="info-badge badge-new">🆕 New Arrival</span>
+                <span *ngIf="product.bestSeller" class="info-badge badge-bestseller">🔥 Best Seller</span>
+                <span *ngIf="product.featured" class="info-badge badge-featured">⭐ Featured</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Specifications Table -->
+    <div class="specifications-section">
+        <h2 class="section-title">{{ 'PRODUCT_DETAIL.SPECIFICATIONS' | translate }}</h2>
+        <div class="specs-grid">
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_WIDTH' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.width }} mm</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_ASPECT_RATIO' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.aspectRatio }}%</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_DIAMETER' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.diameter }}"</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_LOAD_INDEX' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.loadIndex }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_SPEED_RATING' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.speedRating }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_CONSTRUCTION' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.construction }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_TUBELESS' | translate }}</span>
+                <span class="spec-value">{{ product.specifications.tubeless ? 'Yes' : 'No' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabbed Content -->
+    <div class="tabs-section">
+        <div class="tabs-header">
+            <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
+                {{ 'PRODUCT_DETAIL.TABS.OVERVIEW' | translate }}
+            </button>
+            <button class="tab-btn" [class.active]="activeTab === 'features'" (click)="setActiveTab('features')">
+                {{ 'PRODUCT_DETAIL.TABS.FEATURES' | translate }}
+            </button>
+        </div>
+
+        <div class="tabs-content">
+            <!-- Overview Tab -->
+            <div class="tab-panel" *ngIf="activeTab === 'overview'">
+                <h3>{{ 'PRODUCT_DETAIL.DESCRIPTION' | translate }}</h3>
+                <p class="description-text">{{ product.description.es }}</p>
+            </div>
+
+            <!-- Features Tab -->
+            <div class="tab-panel" *ngIf="activeTab === 'features'">
+                <h3>{{ 'PRODUCT_DETAIL.KEY_FEATURES' | translate }}</h3>
+                <ul class="features-list">
+                    <li *ngFor="let feature of product.features.es">{{ feature }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    <app-related-products *ngIf="relatedProducts$ | async as relatedProducts"
+        [products]="relatedProducts"></app-related-products>
+</div>
+
+<!-- Loading State -->
+<ng-template #loading>
+    <div class="loading-state">
+        <p>{{ 'PRODUCT_DETAIL.LOADING' | translate }}</p>
+    </div>
+</ng-template>

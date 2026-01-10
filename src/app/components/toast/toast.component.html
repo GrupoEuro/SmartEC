@@ -1,0 +1,18 @@
+@if (toastService.toasts().length > 0) {
+<div class="toast-container">
+    @for (toast of toastService.toasts(); track toast.id) {
+    <div class="toast" [class]="toast.type" (click)="toastService.remove(toast.id)">
+        <div class="toast-icon">
+            @switch (toast.type) {
+            @case ('success') { ✅ }
+            @case ('error') { ❌ }
+            @case ('warning') { ⚠️ }
+            @default { ℹ️ }
+            }
+        </div>
+        <div class="toast-message">{{ toast.message }}</div>
+        <button class="toast-close">×</button>
+    </div>
+    }
+</div>
+}

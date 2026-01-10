@@ -1,0 +1,82 @@
+/* Tree Diagram CSS */
+.tree {
+    @apply flex justify-center py-8;
+}
+
+.tree ul {
+    @apply pt-5 relative transition-all duration-500 flex;
+}
+
+.tree li {
+    @apply float-left text-center list-none relative px-5 pt-5 transition-all duration-500;
+}
+
+/* Connectors */
+.tree li::before,
+.tree li::after {
+    @apply content-[''] absolute top-0 w-1/2 h-5 border-t border-slate-600;
+}
+
+.tree li::before {
+    @apply right-1/2 border-r;
+}
+
+.tree li::after {
+    @apply right-auto left-1/2 border-l;
+}
+
+/* Remove connectors from single children */
+.tree li:only-child::after,
+.tree li:only-child::before {
+    @apply hidden;
+}
+
+.tree li:only-child {
+    @apply pt-0;
+}
+
+/* Remove space from the top of single children */
+.tree li:first-child::before,
+.tree li:last-child::after {
+    @apply border-0;
+}
+
+/* Add connector to parents */
+.tree li:last-child::before {
+    @apply border-r border-slate-600 rounded-tr-xl;
+}
+
+.tree li:first-child::after {
+    @apply border-l border-slate-600 rounded-tl-xl;
+}
+
+/* Downward connector from parent */
+.tree ul ul::before {
+    @apply content-[''] absolute top-0 left-1/2 border-l border-slate-600 w-0 h-5 transform -translate-x-1/2;
+}
+
+/* Node Styling */
+.tree-node {
+    @apply inline-flex flex-col items-center justify-center p-4 border border-slate-600 text-slate-300 no-underline rounded-lg transition-all duration-300 bg-slate-800/80 hover:border-indigo-500 hover:text-white hover:shadow-[0_0_15px_rgba(99,102,241,0.3)] z-10 relative min-w-[140px];
+}
+
+/* Node Variants */
+.tree-node.root {
+    @apply bg-indigo-500/10 border-indigo-500 text-indigo-300;
+}
+
+.tree-node.guard {
+    @apply bg-slate-800 border-slate-600 font-mono text-xs;
+}
+
+.tree-node.page {
+    @apply bg-emerald-500/10 border-emerald-500/30 text-emerald-400;
+}
+
+.tree-node.page-admin {
+    @apply bg-purple-500/10 border-purple-500/30 text-purple-400;
+}
+
+.tree-node.page-ops {
+    @apply bg-blue-500/10 border-blue-500/30 text-blue-400;
+}

@@ -1,0 +1,229 @@
+<app-admin-page-header icon="📋" [title]="'ADMIN.DISTRIBUTORS.TITLE' | translate"
+    [subtitle]="'ADMIN.DISTRIBUTORS.SUBTITLE' | translate">
+    <button class="btn-primary" (click)="exportToCSV()" [disabled]="filteredDistributors.length === 0">
+        <span class="icon">📥</span>
+        {{ 'ADMIN.DISTRIBUTORS.EXPORT' | translate }}
+    </button>
+</app-admin-page-header>
+
+<div class="distributors-container">
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+                [placeholder]="'ADMIN.DISTRIBUTORS.SEARCH_PLACEHOLDER' | translate" />
+        </div>
+
+        <div class="status-filters">
+            <button class="filter-btn" [class.active]="statusFilter === 'all'"
+                (click)="statusFilter = 'all'; applyFilters()">
+                {{ 'ADMIN.DISTRIBUTORS.FILTERS.ALL' | translate }} ({{ getStatusCount('all') }})
+            </button>
+            <button class="filter-btn" [class.active]="statusFilter === 'new'"
+                (click)="statusFilter = 'new'; applyFilters()">
+                {{ 'ADMIN.DISTRIBUTORS.FILTERS.NEW' | translate }} ({{ getStatusCount('new') }})
+            </button>
+            <button class="filter-btn" [class.active]="statusFilter === 'contacted'"
+                (click)="statusFilter = 'contacted'; applyFilters()">
+                {{ 'ADMIN.DISTRIBUTORS.FILTERS.CONTACTED' | translate }} ({{ getStatusCount('contacted') }})
+            </button>
+            <button class="filter-btn" [class.active]="statusFilter === 'pending'"
+                (click)="statusFilter = 'pending'; applyFilters()">
+                {{ 'ADMIN.DISTRIBUTORS.FILTERS.PENDING' | translate }} ({{ getStatusCount('pending') }})
+            </button>
+            <button class="filter-btn" [class.active]="statusFilter === 'converted'"
+                (click)="statusFilter = 'converted'; applyFilters()">
+                {{ 'ADMIN.DISTRIBUTORS.FILTERS.CONVERTED' | translate }} ({{ getStatusCount('converted') }})
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading) {
+    <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading distributor leads...</p>
+    </div>
+    } @else if (filteredDistributors.length === 0) {
+    <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>No distributor leads found</h3>
+        <p>{{ searchTerm || statusFilter !== 'all' ? 'Try adjusting your filters' : 'New leads will appear here' }}</p>
+    </div>
+    } @else {
+    <!-- Distributors Table -->
+    <div class="table-container table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Business</th>
+                    <th>Contact</th>
+                    <th>Location</th>
+                    <th>Volume</th>
+                    <th>Status</th>
+                    <th style="width: 100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (distributor of filteredDistributors; track distributor.id) {
+                <tr [class.expanded]="expandedRowId === distributor.id">
+                    <td class="expand-cell">
+                        <button class="expand-btn" (click)="toggleRow(distributor.id)"
+                            [class.expanded]="expandedRowId === distributor.id">
+                            ▶
+                        </button>
+                    </td>
+                    <td class="date-cell">{{ distributor.createdAt | adminDate }}</td>
+                    <td class="name-cell">{{ distributor.name }}</td>
+                    <td>{{ distributor.business }}</td>
+                    <td class="contact-cell">
+                        <div>{{ distributor.email }}</div>
+                        <div class="phone">{{ distributor.phone }}</div>
+                    </td>
+                    <td class="state-cell">
+                        <span class="state-code">{{ distributor.state || '-' }}</span>
+                        <span class="state-tooltip">{{ getStateName(distributor.state) }}</span>
+                    </td>
+                    <td>{{ distributor.volume || '-' }}</td>
+                    <td>
+                        <select class="status-select" [value]="distributor.status || 'new'"
+                            (change)="quickStatusChange(distributor, $any($event.target).value)"
+                            [class]="getStatusBadgeClass(distributor.status)">
+                            <option value="new">New</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="pending">Pending</option>
+                            <option value="converted">Converted</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </td>
+                    <td class="actions-cell">
+                        <button class="btn-icon" (click)="openEditModal(distributor)"
+                            [title]="'ADMIN.COMMON.EDIT' | translate">
+                            ✏️
+                        </button>
+                    </td>
+                </tr>
+                @if (expandedRowId === distributor.id) {
+                <tr class="details-row">
+                    <td colspan="9">
+                        <div class="details-content">
+                            <div class="comments-grid">
+                                <div class="detail-section">
+                                    <h4>Lead Comments:</h4>
+                                    <p class="lead-comments">{{ distributor.comments || 'No comments provided.' }}</p>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h4>Internal Notes:</h4>
+                                    <p class="internal-notes">{{ distributor.notes || 'No internal notes.' }}</p>
+                                </div>
+                            </div>
+
+                            @if (distributor.contactedBy) {
+                            <div class="detail-section">
+                                <h4>Contact History:</h4>
+                                <p class="contact-history">
+                                    Last contacted by <strong>{{ distributor.contactedBy }}</strong>
+                                    on {{ distributor.contactedAt | adminDate }}
+                                </p>
+                            </div>
+                            }
+                        </div>
+                    </td>
+                </tr>
+                }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="results-info">
+        Showing {{ filteredDistributors.length }} of {{ distributors.length }} leads
+    </div>
+    }
+</div>
+
+<!-- Edit Modal -->
+@if (showEditModal && editingDistributor) {
+<div class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Edit Lead Details</h2>
+            <button class="modal-close" (click)="closeEditModal()">✖</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Name:</label>
+                    <p>{{ editingDistributor.name }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Business:</label>
+                    <p>{{ editingDistributor.business }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Email:</label>
+                    <p>{{ editingDistributor.email }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Phone:</label>
+                    <p>{{ editingDistributor.phone }}</p>
+                </div>
+                <div class="info-item">
+                    <label>State:</label>
+                    <p>{{ editingDistributor.state }}</p>
+                </div>
+                <div class="info-item">
+                    <label>Volume:</label>
+                    <p>{{ editingDistributor.volume }}</p>
+                </div>
+                <div class="info-item full-width">
+                    <label>Submitted:</label>
+                    <p>{{ editingDistributor.createdAt | adminDate }}</p>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <label>Lead's Comments:</label>
+                <div class="readonly-field">{{ editingDistributor.comments }}</div>
+            </div>
+
+            <div class="form-section">
+                <label for="status">Status:</label>
+                <select id="status" [(ngModel)]="editForm.status" class="form-select">
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="pending">Pending</option>
+                    <option value="converted">Converted</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div class="form-section">
+                <label for="notes">Internal Notes:</label>
+                <textarea id="notes" [(ngModel)]="editForm.notes"
+                    placeholder="Add notes about this lead, follow-up actions, etc..." rows="5"
+                    class="form-textarea"></textarea>
+            </div>
+
+            @if (editingDistributor.contactedBy) {
+            <div class="contact-history-box">
+                <strong>Last Update:</strong>
+                {{ editingDistributor.contactedBy }} on {{ editingDistributor.contactedAt | adminDate }}
+            </div>
+            }
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeEditModal()">Cancel</button>
+            <button class="btn-primary" (click)="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+}

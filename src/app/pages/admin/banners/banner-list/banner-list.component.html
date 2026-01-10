@@ -1,0 +1,43 @@
+<app-admin-page-header icon="🖼️" [title]="'ADMIN.BANNERS.TITLE' | translate" subtitle="Manage homepage banners">
+    <a routerLink="/admin/banners/new" class="btn-primary">{{ 'ADMIN.BANNERS.BTN_ADD' | translate }}</a>
+</app-admin-page-header>
+
+<div class="banner-list-container">
+
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>{{ 'ADMIN.BANNERS.TH_IMAGE' | translate }}</th>
+                    <th>{{ 'ADMIN.BANNERS.TH_TITLE' | translate }}</th>
+                    <th>{{ 'ADMIN.BANNERS.TH_SUBTITLE' | translate }}</th>
+                    <th>{{ 'ADMIN.BANNERS.TH_ORDER' | translate }}</th>
+                    <th>{{ 'ADMIN.BANNERS.TH_STATUS' | translate }}</th>
+                    <th>{{ 'ADMIN.BANNERS.TH_ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let banner of banners$ | async">
+                    <td>
+                        <img [src]="banner.imageUrl" alt="Banner" class="banner-thumb">
+                    </td>
+                    <td>{{ banner.title }}</td>
+                    <td>{{ banner.subtitle }}</td>
+                    <td>{{ banner.order }}</td>
+                    <td>
+                        <span class="badge" [class.active]="banner.active">
+                            {{ banner.active ? ('ADMIN.BANNERS.STATUS_ACTIVE' | translate) :
+                            ('ADMIN.BANNERS.STATUS_INACTIVE' | translate) }}
+                        </span>
+                    </td>
+                    <td class="actions">
+                        <a [routerLink]="['/admin/banners/edit', banner.id]" class="btn-icon"
+                            [title]="'ADMIN.COMMON.EDIT' | translate">✏️</a>
+                        <button (click)="deleteBanner(banner)" class="btn-icon delete"
+                            [title]="'ADMIN.COMMON.DELETE' | translate">🗑️</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

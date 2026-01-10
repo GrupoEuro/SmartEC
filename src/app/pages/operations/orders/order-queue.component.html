@@ -1,0 +1,331 @@
+<app-admin-page-header iconName="truck" [title]="'OPERATIONS.ORDERS.QUEUE' | translate"
+    [subtitle]="paginationConfig.totalItems + ' ' + ('OPERATIONS.ORDERS.ORDERS' | translate)" variant="operations">
+    <div class="flex gap-2">
+        <app-help-context-button topicId="fulfillment-process"
+            tooltip="View Fulfillment Guide"></app-help-context-button>
+        <button class="btn-glass-primary text-sm" (click)="createOrder()">
+            <app-icon name="plus" [size]="16" class="mr-2"></app-icon>
+            {{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}
+        </button>
+    </div>
+</app-admin-page-header>
+
+<div class="order-queue-container p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Top Bar: Search, Date Filter, Export -->
+    <div
+        class="filters-bar flex flex-col xl:flex-row justify-between items-start xl:items-center bg-zinc-800 p-4 rounded-xl shadow-lg gap-4">
+        <div class="search-and-filters flex flex-1 w-full xl:w-auto gap-4 flex-wrap items-center">
+            <!-- Search -->
+            <div class="search-box relative w-full sm:w-64">
+                <span class="search-icon absolute left-3 top-2.5"><app-icon name="search" [size]="18"
+                        class="text-zinc-500"></app-icon></span>
+                <input type="text" [formControl]="searchControl"
+                    [placeholder]="'OPERATIONS.ORDERS.SEARCH_PLACEHOLDER' | translate"
+                    class="search-input w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+            </div>
+
+            <!-- Date Range Filter -->
+            <select [(ngModel)]="selectedDateRange" (ngModelChange)="onFilterChange()"
+                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                <option value="">{{ 'OPERATIONS.ORDERS.DATE_RANGE' | translate }}</option>
+                <option value="today">{{ 'OPERATIONS.ORDERS.TODAY' | translate }}</option>
+                <option value="this-week">{{ 'OPERATIONS.ORDERS.THIS_WEEK' | translate }}</option>
+                <option value="this-month">{{ 'OPERATIONS.ORDERS.THIS_MONTH' | translate }}</option>
+            </select>
+
+            <!-- Clear Filters -->
+            @if (selectedDateRange || searchControl.value) {
+            <button class="btn-clear-filters text-zinc-400 hover:text-white underline text-sm transition-colors"
+                (click)="clearFilters()">
+                {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
+            </button>
+            }
+        </div>
+
+        <!-- Phase 2B: New Filters -->
+        <!-- Phase 2B: New Filters -->
+        <div class="advanced-filters flex items-center gap-3 flex-wrap">
+            <!-- Priority Filter -->
+            <select [(ngModel)]="priorityFilter" (ngModelChange)="onFilterChange()"
+                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_PRIORITIES' | translate }}</option>
+                <option value="standard">{{ 'OPERATIONS.ORDERS.FILTERS.STANDARD' | translate }}</option>
+                <option value="express">{{ 'OPERATIONS.ORDERS.FILTERS.EXPRESS' | translate }}</option>
+                <option value="rush">{{ 'OPERATIONS.ORDERS.FILTERS.RUSH' | translate }}</option>
+            </select>
+
+            <!-- SLA Filter -->
+            <select [(ngModel)]="slaFilter" (ngModelChange)="onFilterChange()"
+                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_SLA' | translate }}</option>
+                <option value="on-time">{{ 'OPERATIONS.ORDERS.FILTERS.ON_TIME' | translate }}</option>
+                <option value="approaching">{{ 'OPERATIONS.ORDERS.FILTERS.APPROACHING' | translate }}</option>
+                <option value="overdue">{{ 'OPERATIONS.ORDERS.FILTERS.OVERDUE' | translate }}</option>
+            </select>
+
+            <!-- Channel Filter -->
+            <select [(ngModel)]="channelFilter" (ngModelChange)="onFilterChange()"
+                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
+                <option value="all">All Channels</option>
+                <option value="WEB">WEB</option>
+                <option value="POS">POS</option>
+                <option value="ON_BEHALF">Phone/Email</option>
+                <option value="AMAZON_MFN">Amazon MFN</option>
+                <option value="MELI_CLASSIC">MercadoLibre Classic</option>
+                <option value="AMAZON_FBA">Amazon FBA</option>
+                <option value="MELI_FULL">MercadoLibre Full</option>
+            </select>
+
+            <!-- Clear All Filters Button -->
+            @if (hasActiveFilters()) {
+            <button
+                class="btn-clear-all flex items-center gap-2 bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                (click)="clearFilters()">
+                <app-icon name="trash-2" [size]="14"></app-icon> {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
+            </button>
+            }
+
+            <!-- Export Button -->
+            <button class="btn-glass text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
+                <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.EXPORT_CSV' |
+                translate }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Filter Tabs -->
+    <div class="status-tabs-container mb-6 overflow-x-auto">
+        <div class="status-tabs flex gap-2 pb-2 min-w-max">
+            @for (tab of statusTabs(); track tab.id) {
+            <button
+                class="status-tab flex items-center gap-2 px-4 py-2.5 rounded-lg border border-transparent transition-all"
+                [class.bg-zinc-800]="currentStatus() !== tab.id" [class.text-zinc-400]="currentStatus() !== tab.id"
+                [class.hover:bg-zinc-700]="currentStatus() !== tab.id" [class.bg-blue-900]="currentStatus() === tab.id"
+                [class.bg-opacity-30]="currentStatus() === tab.id" [class.text-blue-400]="currentStatus() === tab.id"
+                [class.border-blue-500]="currentStatus() === tab.id"
+                [class.border-opacity-50]="currentStatus() === tab.id" (click)="setFilter(tab.id)">
+                <app-icon [name]="tab.icon" [size]="16" class="tab-icon"></app-icon>
+                <span class="tab-label font-medium text-sm">{{ tab.label | translate }}</span>
+                <span class="tab-count bg-zinc-900/50 px-2 py-0.5 rounded-full text-xs font-semibold">{{ tab.count
+                    }}</span>
+            </button>
+            }
+        </div>
+    </div>
+
+    <!-- Bulk Actions Toolbar -->
+    @if (selectedCount > 0) {
+    <div
+        class="bulk-actions-toolbar flex flex-col md:flex-row justify-between items-center bg-amber-900/10 border border-amber-500/30 p-4 rounded-xl mb-6 gap-4">
+        <span class="selected-count font-semibold text-amber-400">
+            {{ 'OPERATIONS.ORDERS.SELECTED_COUNT' | translate: {count: selectedCount} }}
+        </span>
+        <div class="bulk-actions flex flex-wrap gap-3">
+            <button class="btn-glass-primary" (click)="bulkPrint()">
+                <app-icon name="printer" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.BULK_PRINT_SLIPS' |
+                translate }}
+            </button>
+            <button class="btn-glass text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                (click)="bulkUpdateStatus('processing')">
+                <app-icon name="settings" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.BULK_UPDATE_STATUS'
+                | translate }}
+            </button>
+
+            <!-- Bulk Assignment -->
+            <div class="flex items-center gap-2">
+                <select [(ngModel)]="bulkAssignTo"
+                    class="bulk-assign-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 min-w-[150px]">
+                    <option value="">{{ 'OPERATIONS.ORDERS.BULK.ASSIGN_TO' | translate }}</option>
+                    @for (staff of availableStaff(); track staff.uid) {
+                    <option [value]="staff.uid">{{ staff.displayName || staff.email }}</option>
+                    }
+                </select>
+                <button class="btn-glass-success disabled:opacity-50 disabled:cursor-not-allowed" (click)="bulkAssign()"
+                    [disabled]="!bulkAssignTo()">
+                    <app-icon name="user" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.BULK.ASSIGN_ORDERS' |
+                    translate }}
+                </button>
+            </div>
+        </div>
+    </div>
+    }
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+    <div class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'OPERATIONS.ORDERS.LOADING' | translate }}</p>
+    </div>
+    } @else if (displayedOrders.length > 0) {
+    <!-- Orders Table -->
+    <div class="orders-table-wrapper bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700 shadow-lg">
+        <table class="operations-table w-full text-left border-collapse">
+            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase font-semibold">
+                <tr>
+                    <th class="p-4 border-b border-zinc-700 w-10 text-center">
+                        <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll($event)"
+                            [title]="selectAll ? 'Deselect All' : 'Select All'"
+                            class="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 rounded focus:ring-blue-600 focus:ring-2">
+                    </th>
+                    <th class="p-4 border-b border-zinc-700 cursor-pointer hover:text-white transition-colors sortable"
+                        (click)="onSortChange('orderNumber')">
+                        <div class="flex items-center gap-1">
+                            {{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}
+                            <span class="sort-indicator text-blue-500" *ngIf="sortField === 'orderNumber'">
+                                <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                            </span>
+                        </div>
+                    </th>
+                    <th class="p-4 border-b border-zinc-700 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            Channel
+                        </div>
+                    </th>
+                    <th class="col-customer sortable" (click)="onSortChange('customer')">
+                        {{ 'OPERATIONS.ORDERS.CUSTOMER' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'customer'">
+                            <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                [size]="14"></app-icon>
+                        </span>
+                    </th>
+                    <th class="col-date sortable" (click)="onSortChange('createdAt')">
+                        {{ 'OPERATIONS.ORDERS.DATE' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'createdAt'">
+                            <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                [size]="14"></app-icon>
+                        </span>
+                    </th>
+                    <th class="col-total sortable" (click)="onSortChange('total')">
+                        {{ 'OPERATIONS.ORDERS.TOTAL' | translate }}
+                        <span class="sort-indicator" *ngIf="sortField === 'total'">
+                            <app-icon [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                [size]="14"></app-icon>
+                        </span>
+                    </th>
+                    <th class="col-assigned">{{ 'OPERATIONS.ORDERS.TABLE.ASSIGNED_TO' | translate }}</th>
+                    <th class="col-priority">{{ 'OPERATIONS.ORDERS.TABLE.PRIORITY' | translate }}</th>
+                    <th class="col-sla">{{ 'OPERATIONS.ORDERS.TABLE.SLA_STATUS' | translate }}</th>
+                    <th class="col-status">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
+                    <th class="col-actions">{{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody class="text-zinc-300 text-sm">
+                @for (order of displayedOrders; track order.id) {
+                <tr [class.selected]="isSelected(order.id!)" (click)="toggleSelect(order.id!); $event.stopPropagation()"
+                    class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors cursor-pointer"
+                    [ngClass]="{'bg-blue-900/20': isSelected(order.id!)}">
+                    <td class="p-4 text-center" (click)="$event.stopPropagation()">
+                        <input type="checkbox" [checked]="isSelected(order.id!)" (change)="toggleSelect(order.id!)"
+                            class="w-4 h-4 text-blue-600 bg-zinc-700 border-zinc-600 rounded focus:ring-blue-600 focus:ring-2 cursor-pointer">
+                    </td>
+                    <td class="p-4">
+                        <span class="order-number font-mono font-bold text-white">{{ order.orderNumber }}</span>
+                    </td>
+                    <td class="p-4 text-center">
+                        @if (order.channel) {
+                        <span class="channel-badge" [ngClass]="getChannelBadgeConfig(order.channel).class">
+                            <app-icon [name]="getChannelBadgeConfig(order.channel).icon" [size]="12"></app-icon>
+                            {{ getChannelBadgeConfig(order.channel).label }}
+                        </span>
+                        } @else {
+                        <span class="channel-badge channel-web">
+                            <app-icon name="globe" [size]="12"></app-icon>
+                            WEB
+                        </span>
+                        }
+                    </td>
+                    <td class="p-4">
+                        <div class="customer-info flex flex-col">
+                            <span class="customer-name font-medium text-white">{{ order.customer.name }}</span>
+                            <span class="customer-email text-xs text-zinc-500">{{ order.customer.email }}</span>
+                        </div>
+                    </td>
+                    <td class="p-4">{{ formatDate(order.createdAt) }}</td>
+                    <td class="p-4">
+                        <span class="total-amount font-bold text-emerald-400">{{ formatCurrency(order.total) }}</span>
+                    </td>
+                    <td class="p-4">
+                        @if (order.assignedToName) {
+                        <span
+                            class="assigned-badge px-2.5 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-400 border border-blue-800/50">{{
+                            order.assignedToName }}</span>
+                        } @else {
+                        <span
+                            class="unassigned-badge px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-700 text-zinc-400">{{
+                            'OPERATIONS.ORDERS.UNASSIGNED' | translate }}</span>
+                        }
+                    </td>
+                    <td class="p-4">
+                        @if (order.priorityLevel) {
+                        <span class="priority-badge px-2.5 py-1 rounded-full text-xs font-medium capitalize" [ngClass]="{
+                                'bg-indigo-900/30 text-indigo-400': order.priorityLevel === 'standard',
+                                'bg-pink-900/30 text-pink-400': order.priorityLevel === 'express',
+                                'bg-red-900/30 text-red-400': order.priorityLevel === 'rush'
+                            }">
+                            {{ order.priorityLevel | titlecase }}
+                        </span>
+                        } @else {
+                        <span
+                            class="priority-badge priority-standard px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-900/30 text-indigo-400 capitalize">{{
+                            'OPERATIONS.ORDERS.FILTERS.STANDARD' |
+                            translate }}</span>
+                        }
+                    </td>
+                    <td class="p-4">
+                        @if (order.isOverdue) {
+                        <span class="sla-badge sla-overdue flex items-center gap-1 text-red-400 font-medium"><app-icon
+                                name="alert-triangle" [size]="14"></app-icon> {{ 'OPERATIONS.ORDERS.SLA.OVERDUE' |
+                            translate }}</span>
+                        } @else {
+                        <span class="sla-badge sla-ok flex items-center gap-1 text-emerald-400 font-medium"><app-icon
+                                name="check" [size]="14"></app-icon> {{ 'OPERATIONS.ORDERS.SLA.ON_TIME' | translate
+                            }}</span>
+                        }
+                    </td>
+                    <td class="p-4">
+                        <span class="status-badge px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                            [ngClass]="getStatusBadgeClass(order.status)">
+                            {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <div class="action-buttons flex gap-2">
+                            <a [routerLink]="['/operations/orders', order.id]"
+                                class="btn-action btn-view flex items-center justify-center h-8 w-8 rounded-lg bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 text-blue-400 transition-colors"
+                                [title]="'OPERATIONS.ORDERS.VIEW_DETAILS' | translate">
+                                <app-icon name="eye" [size]="18"></app-icon>
+                            </a>
+                            <button
+                                class="btn-action btn-print flex items-center justify-center h-8 w-8 rounded-lg bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 text-zinc-300 hover:text-white transition-colors"
+                                (click)="printPackingSlip(order.id!)"
+                                [title]="'OPERATIONS.ORDERS.PRINT_SLIP' | translate">
+                                <app-icon name="printer" [size]="18"></app-icon>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <app-pagination [config]="paginationConfig" [translationPrefix]="'OPERATIONS.ORDERS'"
+        (pageChange)="onPageChange($event)" (itemsPerPageChange)="onItemsPerPageChange($event)">
+    </app-pagination>
+    } @else {
+    <!-- Empty State -->
+    <div class="empty-state">
+        <span class="empty-icon"><app-icon name="package" [size]="48" class="text-gray-300"></app-icon></span>
+        <h3>{{ 'OPERATIONS.ORDERS.NO_ORDERS' | translate }}</h3>
+        <p>{{ 'OPERATIONS.ORDERS.NO_RESULTS' | translate }}</p>
+        @if (selectedDateRange || searchControl.value || currentStatus() !== 'all') {
+        <button class="btn-clear-filters" (click)="clearFilters()">
+            {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
+        </button>
+        }
+    </div>
+    }
+</div>

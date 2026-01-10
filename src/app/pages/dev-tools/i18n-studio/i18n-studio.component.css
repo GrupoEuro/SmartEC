@@ -1,0 +1,215 @@
+/* Main Container */
+.studio-container {
+    padding: 2rem;
+    color: #e2e8f0;
+    height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    margin-bottom: 2rem;
+    flex-shrink: 0;
+}
+
+.page-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+}
+
+.page-subtitle {
+    color: #94a3b8;
+    max-width: 600px;
+    font-size: 0.95rem;
+}
+
+/* Stats Row */
+.stats-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    /* Styles handled by .glass-panel utility */
+    padding: 1rem;
+    flex-shrink: 0;
+}
+
+.stat-badge {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    transition: transform 0.2s;
+}
+
+.stat-badge:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-badge.success {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.stat-badge.success .val {
+    color: #34d399;
+}
+
+.stat-badge.neutral {
+    border-color: rgba(96, 165, 250, 0.2);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.stat-badge .label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.stat-badge .val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+
+.btn-refresh {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 44px;
+    height: 44px;
+    border-radius: 0.5rem;
+    color: #cbd5e1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.btn-refresh:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    transform: rotate(180deg);
+}
+
+/* Table */
+.table-container {
+    flex: 1;
+    overflow: auto;
+    /* Styles handled by .glass-panel utility */
+}
+
+.trans-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.trans-table th {
+    background: rgba(15, 23, 42, 0.95);
+    position: sticky;
+    top: 0;
+    text-align: left;
+    padding: 1rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+.trans-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+    vertical-align: top;
+}
+
+/* Keys and Badges */
+.key-col {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.key-code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: #93c5fd;
+    font-size: 0.8rem;
+    background: rgba(59, 130, 246, 0.15);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.warning {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.warning td {
+    border-bottom-color: rgba(234, 179, 8, 0.15);
+}
+
+.warning:hover td {
+    background: rgba(234, 179, 8, 0.08);
+}
+
+.missing-badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    display: inline-block;
+}
+
+.alert-icon {
+    color: #f59e0b;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
+}
+
+.trans-text {
+    color: #e2e8f0;
+    line-height: 1.5;
+}
+
+/* Scrollbar styling */
+.table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

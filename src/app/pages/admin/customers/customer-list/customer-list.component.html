@@ -1,0 +1,107 @@
+<app-admin-page-header icon="👥" [title]="'ADMIN.CUSTOMERS.TITLE' | translate"
+    [subtitle]="'ADMIN.CUSTOMERS.SUBTITLE' | translate">
+</app-admin-page-header>
+
+<div class="list-container">
+    <div class="filters-bar">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" [formControl]="searchControl"
+                [placeholder]="'ADMIN.CUSTOMERS.SEARCH_PLACEHOLDER' | translate">
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th (click)="sort('displayName')" class="sortable">
+                        {{ 'ADMIN.CUSTOMERS.TABLE.CUSTOMER' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'displayName' ? (sortDirection === 'asc' ? '↑' : '↓')
+                            : '↕' }}</span>
+                    </th>
+                    <th (click)="sort('email')" class="sortable">
+                        {{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'
+                            }}</span>
+                    </th>
+                    <th (click)="sort('createdAt')" class="sortable">
+                        {{ 'ADMIN.CUSTOMERS.TABLE.JOINED' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'createdAt' ? (sortDirection === 'asc' ? '↑' : '↓') :
+                            '↕' }}</span>
+                    </th>
+                    <th (click)="sort('orders')" class="sortable text-right">
+                        {{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'orders' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'
+                            }}</span>
+                    </th>
+                    <th (click)="sort('spend')" class="sortable text-right">
+                        {{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}
+                        <span class="sort-icon">{{ sortColumn === 'spend' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'
+                            }}</span>
+                    </th>
+                    <th>Status</th> <!-- TODO: Translate -->
+                    <th class="actions-col">{{ 'ADMIN.CUSTOMERS.TABLE.ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let customer of paginatedCustomers">
+                    <td>
+                        <div class="user-info">
+                            <div class="avatar-placeholder-sm" *ngIf="!customer.photoURL"
+                                [style.background-color]="getItemsBgColor(customer.email)">
+                                {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase }}
+                            </div>
+                            <img *ngIf="customer.photoURL" [src]="customer.photoURL" class="avatar-sm">
+                            <span class="name">{{ customer.displayName || 'Guest' }}</span>
+                        </div>
+                    </td>
+                    <td>{{ customer.email }}</td>
+                    <td>{{ customer.createdAt | date:'mediumDate' }}</td>
+                    <td class="text-right">
+                        <span class="badge badge-neutral" *ngIf="customer.stats?.totalOrders">
+                            {{ customer.stats?.totalOrders || 0 }}
+                        </span>
+                        <span *ngIf="!customer.stats?.totalOrders">-</span>
+                    </td>
+                    <td class="text-right font-mono">
+                        {{ (customer.stats?.totalSpend || 0) | currency }}
+                    </td>
+                    <td>
+                        <span class="badge" [ngClass]="customer.isActive ? 'badge-success' : 'badge-danger'">
+                            {{ customer.isActive ? 'Active' : 'Inactive' }}
+                        </span>
+                    </td>
+                    <td class="actions-cell">
+                        <a [routerLink]="['/admin/customers', customer.uid]" class="btn-icon"
+                            [title]="'ADMIN.COMMON.VIEW' | translate">
+                            👁️
+                        </a>
+                    </td>
+                </tr>
+
+                <tr *ngIf="!isLoading && paginatedCustomers.length === 0">
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-content">
+                            <span class="empty-icon">👥</span>
+                            <h3>{{ 'ADMIN.CUSTOMERS.EMPTY' | translate }}</h3>
+                            <p>{{ 'ADMIN.CUSTOMERS.NO_RESULTS' | translate }}</p>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr *ngIf="isLoading">
+                    <td colspan="7" class="loading-state">
+                        {{ 'ADMIN.COMMON.LOADING' | translate }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <app-pagination
+        [config]="{ currentPage: currentPage, itemsPerPage: pageSize, totalItems: filteredCustomers.length }"
+        (pageChange)="onPageChange($event)" (itemsPerPageChange)="pageSize = $event; currentPage = 1;">
+    </app-pagination>
+</div>

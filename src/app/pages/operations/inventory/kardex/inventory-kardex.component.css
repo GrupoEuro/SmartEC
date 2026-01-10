@@ -1,0 +1,71 @@
+/* Robust Overlay Styles */
+.kardex-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    /* Ensure high z-index */
+    display: flex;
+    justify-content: flex-end;
+    /* Align drawer to right */
+    pointer-events: none;
+    /* Allow clicks through empty areas if needed (handled by backdrop) */
+}
+
+/* Backdrop */
+.kardex-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(17, 24, 39, 0.4);
+    /* gary-900/40 */
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+    /* Catch clicks */
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Drawer */
+.kardex-drawer {
+    position: relative;
+    /* Relative to flex container */
+    width: 100%;
+    max-width: 672px;
+    /* max-w-2xl */
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(16px);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Dark Mode Support (if class added) */
+:host-context(.dark) .kardex-drawer {
+    background: rgba(30, 41, 59, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+}

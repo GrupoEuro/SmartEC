@@ -1,0 +1,58 @@
+<div class="app-chart-card-wrapper">
+    <div class="card-header">
+        <div class="header-text">
+            <h3>{{ title }}</h3>
+            <p *ngIf="subtitle" class="subtitle">{{ subtitle }}</p>
+        </div>
+        <div class="card-actions">
+            <!-- Export -->
+            <button *ngIf="isTableVisible && tableData.length > 0" class="btn-icon-subtle" (click)="exportCSV()"
+                [title]="'COMMAND_CENTER.ACTIONS.EXPORT' | translate">
+                <app-icon name="download" [size]="18"></app-icon>
+            </button>
+
+            <!-- Table Toggle -->
+            <button *ngIf="!disableTable" class="btn-icon-subtle" (click)="toggleTable()"
+                [class.active]="isTableVisible"
+                [title]="(isTableVisible ? 'COMMAND_CENTER.ACTIONS.HIDE_DATA' : 'COMMAND_CENTER.ACTIONS.VIEW_DATA') | translate">
+                <app-icon name="list" [size]="20"></app-icon>
+            </button>
+        </div>
+    </div>
+
+    <!-- Data Table Panel (Collapsible) -->
+    <div class="data-panel" *ngIf="isTableVisible">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th *ngFor="let col of tableColumns">{{ col.label | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let row of tableData">
+                        <td *ngFor="let col of tableColumns">
+                            <ng-container *ngIf="col.format === 'category'; else defaultFormat">
+                                {{ 'CATEGORIES.' + (row[col.key] | uppercase) | translate }}
+                            </ng-container>
+                            <ng-template #defaultFormat>
+                                {{ formatValue(row[col.key], col.format) }}
+                            </ng-template>
+                        </td>
+                    </tr>
+                    <tr *ngIf="tableData.length === 0">
+                        <td [attr.colspan]="tableColumns.length" class="empty-cell">
+                            {{ 'COMMAND_CENTER.LABELS.NO_DATA' | translate }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Chart Content -->
+    <div class="chart-content">
+        <app-metric-chart [type]="type" [data]="$any(data)" [options]="options" [height]="height" [format]="format">
+        </app-metric-chart>
+    </div>
+</div>

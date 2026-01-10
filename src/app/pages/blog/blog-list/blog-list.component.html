@@ -1,0 +1,48 @@
+<section class="blog-hero">
+    <div class="hero-content">
+        <h1>{{ 'BLOG.HERO_TITLE' | translate }}</h1>
+        <p>{{ 'BLOG.HERO_DESC' | translate }}</p>
+    </div>
+</section>
+
+<section class="blog-grid-section">
+    <div class="blog-container">
+
+        <!-- Filter/Search Placeholder -->
+        <div class="blog-filters">
+            <button class="filter-btn active">{{ 'BLOG.FILTERS.ALL' | translate }}</button>
+            <button class="filter-btn">{{ 'BLOG.FILTERS.MAINTENANCE' | translate }}</button>
+            <button class="filter-btn">{{ 'BLOG.FILTERS.TECH' | translate }}</button>
+            <button class="filter-btn">{{ 'BLOG.FILTERS.TIPS' | translate }}</button>
+        </div>
+
+        <div class="blog-grid" *ngIf="posts$ | async as posts">
+            <article class="blog-card" *ngFor="let post of posts">
+                <div class="card-image-wrapper">
+                    <img [src]="post.coverImage" [alt]="post.title" class="card-image"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="placeholder-img" [style.background-color]="'var(--primary-dark)'"
+                        style="display: none;">
+                        <span>{{ post.category[0] }}</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="card-meta">
+                        <span class="category-tag">{{ post.category }}</span>
+                        <span class="read-time">{{ post.readTime }} {{ 'BLOG.READ_TIME' | translate }}</span>
+                    </div>
+                    <h2>{{ post.title }}</h2>
+                    <p>{{ post.excerpt }}</p>
+                    <div class="card-footer">
+                        <div class="author-mini">
+                            <div class="avatar-circle">{{ post.author.avatar }}</div>
+                            <span class="author-name">{{ post.author.name }}</span>
+                        </div>
+                        <a [routerLink]="['/blog', post.slug]" class="read-more-btn">{{ 'BLOG.READ_MORE' | translate
+                            }}</a>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>

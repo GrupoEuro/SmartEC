@@ -1,0 +1,139 @@
+<header class="page-header">
+    <div class="header-content">
+        <div class="header-left">
+            <app-icon name="command-center" [size]="40" class="text-blue-500"></app-icon>
+            <div class="header-text">
+                <h1>{{ 'COMMAND_CENTER.DASHBOARD' | translate }}</h1>
+                <p>{{ 'COMMAND_CENTER.DASHBOARD_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Actions Bar -->
+<div class="actions-bar" style="padding: 0 2rem; display: flex; justify-content: flex-end;">
+    <!-- Add future actions here -->
+</div>
+
+<div class="dashboard-container">
+    <!-- Global Loading State -->
+    <div *ngIf="isLoading()" class="loading-state" style="margin: 2rem; text-align: center; color: #94a3b8;">
+        <span style="font-size: 1.5rem;">⏳ {{ 'COMMAND_CENTER.LABELS.LOADING_SYSTEM' | translate }}</span>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-content">
+        <!-- Top Widgets Row (Compact Layout) -->
+        <div class="top-widgets-grid" id="cc-widgets">
+            <!-- Daily Briefing (Concierge) -->
+            <section class="widget-section">
+                <app-executive-briefing [briefing]="briefing()"></app-executive-briefing>
+            </section>
+
+            <!-- ApprovalStats Widget -->
+            <section class="widget-section">
+                <app-approval-stats></app-approval-stats>
+            </section>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <section class="kpi-section">
+            <div class="kpi-grid">
+                <!-- Loading skeleton for KPIs -->
+                <div *ngIf="isLoadingKPIs()" class="kpi-skeleton">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+                <!-- Actual KPI cards -->
+                <app-kpi-card *ngFor="let card of kpiCards()" [card]="card"></app-kpi-card>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <!-- Revenue Trend Chart -->
+            <ng-container *ngIf="isLoadingRevenue()">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>{{ 'COMMAND_CENTER.CHARTS.REVENUE_TREND' | translate }}</h3>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.CHARTS.LAST_7_DAYS' | translate }}</span>
+                    </div>
+                    <div class="chart-body">
+                        <div class="skeleton-chart"></div>
+                    </div>
+                </div>
+            </ng-container>
+            <app-chart-card *ngIf="!isLoadingRevenue() && revenueTrend()"
+                [title]="'COMMAND_CENTER.CHARTS.REVENUE_TREND' | translate"
+                [subtitle]="'COMMAND_CENTER.CHARTS.LAST_7_DAYS' | translate" [type]="'line'" [data]="revenueTrend()!"
+                [height]="300" [tableData]="revenueTableData()" [tableColumns]="revenueTableColumns">
+            </app-chart-card>
+
+            <!-- Order Distribution Chart -->
+            <ng-container *ngIf="isLoadingOrders()">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>{{ 'COMMAND_CENTER.CHARTS.ORDER_DISTRIBUTION' | translate }}</h3>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.LABELS.TOTAL' | translate }}</span>
+                    </div>
+                    <div class="chart-body">
+                        <div class="skeleton-chart"></div>
+                    </div>
+                </div>
+            </ng-container>
+            <app-chart-card *ngIf="!isLoadingOrders() && orderDistribution()"
+                [title]="'COMMAND_CENTER.CHARTS.ORDER_DISTRIBUTION' | translate"
+                [subtitle]="'COMMAND_CENTER.LABELS.TOTAL' | translate" [type]="'doughnut'" [data]="orderDistribution()!"
+                [height]="300" [tableData]="orderTableData()" [tableColumns]="orderTableColumns">
+            </app-chart-card>
+
+            <!-- Top Products Chart -->
+            <ng-container *ngIf="isLoadingProducts()">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>{{ 'COMMAND_CENTER.CHARTS.TOP_PRODUCTS' | translate }}</h3>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.CHARTS.TOP_3_BY_REVENUE' | translate }}</span>
+                    </div>
+                    <div class="chart-body">
+                        <div class="skeleton-chart"></div>
+                    </div>
+                </div>
+            </ng-container>
+            <app-chart-card *ngIf="!isLoadingProducts() && topProducts()"
+                [title]="'COMMAND_CENTER.CHARTS.TOP_PRODUCTS' | translate"
+                [subtitle]="'COMMAND_CENTER.CHARTS.TOP_3_BY_REVENUE' | translate" [type]="'bar'" [data]="topProducts()!"
+                [height]="300" [tableData]="productTableData()" [tableColumns]="productTableColumns">
+            </app-chart-card>
+
+            <!-- Customer Composition Chart -->
+            <ng-container *ngIf="isLoadingCustomers()">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>{{ 'COMMAND_CENTER.CHARTS.CUSTOMER_COMPOSITION' | translate }}</h3>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.LABELS.TOTAL' | translate }}</span>
+                    </div>
+                    <div class="chart-body">
+                        <div class="skeleton-chart"></div>
+                    </div>
+                </div>
+            </ng-container>
+            <app-chart-card *ngIf="!isLoadingCustomers() && customerComposition()"
+                [title]="'COMMAND_CENTER.CHARTS.CUSTOMER_COMPOSITION' | translate"
+                [subtitle]="'COMMAND_CENTER.LABELS.TOTAL' | translate" [type]="'doughnut'"
+                [data]="customerComposition()!" [height]="300" [tableData]="customerTableData()"
+                [tableColumns]="customerTableColumns">
+            </app-chart-card>
+        </section>
+    </div>
+
+    <!-- DEBUG FOOTER (Standardized) -->
+    <app-dashboard-diagnostics [logs]="errorLog()" [buildVersion]="buildVersion"></app-dashboard-diagnostics>
+
+    <!-- Help Trigger (Temporary Location for Testing) -->
+    <button (click)="startTour()" class="help-float-btn" title="Start Tour">
+        ?
+    </button>
+</div>

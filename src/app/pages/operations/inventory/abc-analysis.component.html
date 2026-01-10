@@ -1,0 +1,181 @@
+<div class="h-full flex flex-col bg-zinc-950 text-white">
+    <!-- Header -->
+    <header
+        class="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-xl bg-purple-600/20 flex items-center justify-center border border-purple-600/30 text-purple-400">
+                <app-icon name="bar-chart-2" [size]="24"></app-icon>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">ABC Analysis</h1>
+                <p class="text-xs text-zinc-400 font-medium">Pareto Inventory Classification</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <span *ngIf="lastUpdated()" class="text-xs text-zinc-500">
+                Last updated: {{ lastUpdated() | date:'mediumTime' }}
+            </span>
+            <button (click)="runAnalysis()" [disabled]="isLoading()"
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-purple-900/20 flex items-center gap-2">
+                <app-icon name="refresh-cw" [size]="18" [class.animate-spin]="isLoading()"></app-icon>
+                {{ isLoading() ? 'Analyzing...' : 'Run Analysis' }}
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4" *ngIf="stats() as s">
+            <!-- Class A -->
+            <div
+                class="p-4 bg-zinc-900 rounded-xl border-l-4 border-emerald-500 border-t border-r border-b border-zinc-800">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Class A</h3>
+                        <p class="text-xs text-zinc-400">Top Performers</p>
+                    </div>
+                    <span class="px-2 py-1 bg-emerald-900/30 text-emerald-400 rounded text-xs font-bold">{{
+                        s.a.percentRevenue | number:'1.0-0' }}% Rev</span>
+                </div>
+                <div class="flex items-end gap-2 mt-2">
+                    <span class="text-2xl font-bold text-white">{{ s.a.count }}</span>
+                    <span class="text-xs text-zinc-500 mb-1">Items ({{ s.a.percentCount | number:'1.0-1' }}%)</span>
+                </div>
+                <div class="mt-2 text-xs font-mono text-emerald-400">
+                    {{ formatCurrency(s.a.revenue) }}
+                </div>
+            </div>
+
+            <!-- Class B -->
+            <div
+                class="p-4 bg-zinc-900 rounded-xl border-l-4 border-blue-500 border-t border-r border-b border-zinc-800">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Class B</h3>
+                        <p class="text-xs text-zinc-400">Steady Sellers</p>
+                    </div>
+                    <span class="px-2 py-1 bg-blue-900/30 text-blue-400 rounded text-xs font-bold">{{ s.b.percentRevenue
+                        | number:'1.0-0' }}% Rev</span>
+                </div>
+                <div class="flex items-end gap-2 mt-2">
+                    <span class="text-2xl font-bold text-white">{{ s.b.count }}</span>
+                    <span class="text-xs text-zinc-500 mb-1">Items ({{ s.b.percentCount | number:'1.0-1' }}%)</span>
+                </div>
+                <div class="mt-2 text-xs font-mono text-blue-400">
+                    {{ formatCurrency(s.b.revenue) }}
+                </div>
+            </div>
+
+            <!-- Class C -->
+            <div
+                class="p-4 bg-zinc-900 rounded-xl border-l-4 border-amber-500 border-t border-r border-b border-zinc-800">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Class C</h3>
+                        <p class="text-xs text-zinc-400">Slow Movers</p>
+                    </div>
+                    <span class="px-2 py-1 bg-amber-900/30 text-amber-400 rounded text-xs font-bold">{{
+                        s.c.percentRevenue | number:'1.0-0' }}% Rev</span>
+                </div>
+                <div class="flex items-end gap-2 mt-2">
+                    <span class="text-2xl font-bold text-white">{{ s.c.count }}</span>
+                    <span class="text-xs text-zinc-500 mb-1">Items ({{ s.c.percentCount | number:'1.0-1' }}%)</span>
+                </div>
+                <div class="mt-2 text-xs font-mono text-amber-400">
+                    {{ formatCurrency(s.c.revenue) }}
+                </div>
+            </div>
+
+            <!-- Dead Stock -->
+            <div
+                class="p-4 bg-zinc-900 rounded-xl border-l-4 border-zinc-500 border-t border-r border-b border-zinc-800">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h3 class="font-bold text-zinc-400 text-lg">Dead Stock</h3>
+                        <p class="text-xs text-zinc-500">No sales > 90d</p>
+                    </div>
+                    <app-icon name="alert-triangle" [size]="16" class="text-zinc-500"></app-icon>
+                </div>
+                <div class="flex items-end gap-2 mt-2">
+                    <span class="text-2xl font-bold text-zinc-300">{{ s.d.count }}</span>
+                    <span class="text-xs text-zinc-600 mb-1">Items</span>
+                </div>
+                <div class="mt-2 text-xs font-mono text-zinc-500">
+                    Value: {{ formatCurrency(s.d.revenue) }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Table -->
+        <div class="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-xl">
+            <div class="px-6 py-4 border-b border-zinc-800 flex justify-between items-center">
+                <h2 class="font-bold text-white flex items-center gap-2">
+                    <app-icon name="list" [size]="18" class="text-zinc-400"></app-icon>
+                    Classified Inventory
+                </h2>
+                <div class="flex gap-2">
+                    <button class="text-xs text-purple-400 hover:text-purple-300 font-medium">Export CSV</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-zinc-900/50 text-xs uppercase text-zinc-500 border-b border-zinc-800">
+                            <th class="p-4 font-medium w-16 text-center">Class</th>
+                            <th class="p-4 font-medium">Product Name</th>
+                            <th class="p-4 font-medium">SKU</th>
+                            <th class="p-4 font-medium text-right">Revenue</th>
+                            <th class="p-4 font-medium text-right">% Contrib</th>
+                            <th class="p-4 font-medium text-right">Units Sold</th>
+                            <th class="p-4 font-medium text-right">Stock</th>
+                            <th class="p-4 font-medium text-right">Last Sale</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800 text-sm">
+                        <tr *ngFor="let product of analyzedProducts()" class="hover:bg-zinc-800/30 transition-colors">
+                            <td class="p-4 text-center">
+                                <span
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border mx-auto shadow-sm"
+                                    [ngClass]="{
+                                        'bg-emerald-900/20 text-emerald-400 border-emerald-500/20': product.class === 'A',
+                                        'bg-blue-900/20 text-blue-400 border-blue-500/20': product.class === 'B',
+                                        'bg-amber-900/20 text-amber-400 border-amber-500/20': product.class === 'C',
+                                        'bg-zinc-800 text-zinc-500 border-zinc-700': product.class === 'D'
+                                    }">
+                                    {{ product.class }}
+                                </span>
+                            </td>
+                            <td class="p-4 font-medium text-white">
+                                {{ product.name }}
+                            </td>
+                            <td class="p-4 text-zinc-400 font-mono text-xs">
+                                {{ product.sku }}
+                            </td>
+                            <td class="p-4 text-right font-mono text-zinc-300">
+                                {{ formatCurrency(product.revenue) }}
+                            </td>
+                            <td class="p-4 text-right font-mono text-zinc-400">
+                                {{ product.cumulativePercent | number:'1.1-1' }}%
+                            </td>
+                            <td class="p-4 text-right text-zinc-300">
+                                {{ product.units }}
+                            </td>
+                            <td class="p-4 text-right font-bold"
+                                [ngClass]="{'text-red-400': product.currentStock === 0, 'text-zinc-400': product.currentStock > 0}">
+                                {{ product.currentStock }}
+                            </td>
+                            <td class="p-4 text-right text-zinc-500">
+                                {{ product.lastSale | date:'shortDate' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>

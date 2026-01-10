@@ -1,0 +1,141 @@
+<app-admin-page-header icon="📊" [title]="'ADMIN.DASHBOARD.WELCOME' | translate"
+    [subtitle]="'ADMIN.DASHBOARD.SUBTITLE' | translate">
+</app-admin-page-header>
+
+<div class="dashboard-container">
+
+    @if (error) {
+    <div class="error-message">
+        <h3>{{ 'ADMIN.COMMON.ERROR' | translate }}</h3>
+        <p>{{ error }}</p>
+    </div>
+    }
+
+    @if (isLoading) {
+    <div class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+    </div>
+    } @else {
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e3f2fd;">👥</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.USERS' | translate }}</div>
+                <div class="stat-value">{{ stats.users }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">✍️</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.POSTS' | translate }}</div>
+                <div class="stat-value">{{ stats.posts }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">📚</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PDFS' | translate }}</div>
+                <div class="stat-value">{{ stats.pdfs }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">🖼️</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.BANNERS' | translate }}</div>
+                <div class="stat-value">{{ stats.banners }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fce4ec;">📋</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.DISTRIBUTORS' | translate }}</div>
+                <div class="stat-value">{{ stats.distributors }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f1f8e9;">📧</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.NEWSLETTER' | translate }}</div>
+                <div class="stat-value">{{ stats.newsletter }}</div>
+            </div>
+        </div>
+
+        <!-- Product Statistics -->
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e1f5fe;">🛒</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_TOTAL' | translate }}</div>
+                <div class="stat-value">{{ stats.products }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e8f5e9;">✅</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_ACTIVE' | translate }}</div>
+                <div class="stat-value">{{ stats.productsActive }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3e0;">⚠️</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_LOW_STOCK' | translate }}</div>
+                <div class="stat-value">{{ stats.productsLowStock }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #ffebee;">❌</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_OUT_STOCK' | translate }}</div>
+                <div class="stat-value">{{ stats.productsOutStock }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e5f5;">🏷️</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.SIDEBAR.BRANDS' | translate }}</div>
+                <div class="stat-value">{{ stats.brands }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: #e0f2f1;">📂</div>
+            <div class="stat-content">
+                <div class="stat-label">{{ 'ADMIN.SIDEBAR.CATEGORIES' | translate }}</div>
+                <div class="stat-value">{{ stats.categories }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-actions">
+        <h2>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</h2>
+        <div class="actions-grid">
+            <button class="action-btn" routerLink="/admin/blog/new">
+                <span class="icon">✍️</span>
+                <span class="text">{{ 'ADMIN.DASHBOARD.BLOG_DESC' | translate }}</span>
+            </button>
+            <button class="action-btn" routerLink="/admin/pdfs/new">
+                <span class="icon">📚</span>
+                <span class="text">{{ 'ADMIN.DASHBOARD.PDF_DESC' | translate }}</span>
+            </button>
+            <button class="action-btn" routerLink="/admin/banners/new">
+                <span class="icon">🖼️</span>
+                <span class="text">{{ 'ADMIN.DASHBOARD.BANNERS_DESC' | translate }}</span>
+            </button>
+            <button class="action-btn" routerLink="/admin/users">
+                <span class="icon">👥</span>
+                <span class="text">{{ 'ADMIN.SIDEBAR.USERS' | translate }}</span>
+            </button>
+        </div>
+    </div>
+    }
+</div>

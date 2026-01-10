@@ -1,0 +1,101 @@
+<div class="p-8 max-w-[1600px] mx-auto">
+
+    <div class="header mb-12">
+        <h1 class="text-4xl font-black text-white mb-2 tracking-tight flex items-center gap-3">
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500">Project
+                Vitality</span>
+            <span
+                class="text-lg bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-mono">v1.4.0</span>
+        </h1>
+        <p class="text-slate-400 text-lg">
+            metrics calculation based on source code analysis.
+        </p>
+    </div>
+
+    <!-- Key Metrics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+
+        <!-- Hours Card -->
+        <div
+            class="stat-card bg-slate-900/50 border border-slate-700/50 p-6 rounded-2xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <app-icon name="clock" [size]="64" class="text-emerald-500"></app-icon>
+            </div>
+            <div class="label text-slate-400 uppercase text-xs font-bold tracking-wider mb-2">Estimated Effort</div>
+            <div
+                class="value text-4xl font-black text-white mb-1 group-hover:scale-105 transition-transform origin-left">
+                {{ stats.estimatedHours | number }}h
+            </div>
+            <div class="sub text-emerald-400 text-sm font-mono">~{{ stats.devDays }} Dev Days</div>
+        </div>
+
+        <!-- LOC Card -->
+        <div
+            class="stat-card bg-slate-900/50 border border-slate-700/50 p-6 rounded-2xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <app-icon name="code" [size]="64" class="text-blue-500"></app-icon>
+            </div>
+            <div class="label text-slate-400 uppercase text-xs font-bold tracking-wider mb-2">Code Volume</div>
+            <div
+                class="value text-4xl font-black text-white mb-1 group-hover:scale-105 transition-transform origin-left">
+                {{ formattedLoc }}
+            </div>
+            <div class="sub text-blue-400 text-sm font-mono">Lines of TypeScript</div>
+        </div>
+
+        <!-- Components Card -->
+        <div
+            class="stat-card bg-slate-900/50 border border-slate-700/50 p-6 rounded-2xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <app-icon name="layers" [size]="64" class="text-purple-500"></app-icon>
+            </div>
+            <div class="label text-slate-400 uppercase text-xs font-bold tracking-wider mb-2">Architecture</div>
+            <div
+                class="value text-4xl font-black text-white mb-1 group-hover:scale-105 transition-transform origin-left">
+                {{ stats.components }}
+            </div>
+            <div class="sub text-purple-400 text-sm font-mono">Standalone Components</div>
+        </div>
+
+        <!-- Services Card -->
+        <div
+            class="stat-card bg-slate-900/50 border border-slate-700/50 p-6 rounded-2xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <app-icon name="zap" [size]="64" class="text-amber-500"></app-icon>
+            </div>
+            <div class="label text-slate-400 uppercase text-xs font-bold tracking-wider mb-2">Logic Layer</div>
+            <div
+                class="value text-4xl font-black text-white mb-1 group-hover:scale-105 transition-transform origin-left">
+                {{ stats.services }}
+            </div>
+            <div class="sub text-amber-400 text-sm font-mono">Injectable Services</div>
+        </div>
+
+    </div>
+
+    <!-- Tech Stack Distribution -->
+    <div class="bg-slate-900/50 border border-slate-700/50 rounded-2xl p-8 mb-12">
+        <h3 class="text-white font-bold mb-6 flex items-center gap-2">
+            <app-icon name="pie-chart" [size]="20" class="text-slate-400"></app-icon>
+            Codebase Composition
+        </h3>
+
+        <!-- Bars -->
+        <div class="flex h-4 rounded-full overflow-hidden mb-4">
+            <div *ngFor="let item of stats.techStack" [style.width.%]="item.pct" [style.background-color]="item.color"
+                class="h-full relative group transition-all duration-500 hover:brightness-110"
+                [title]="item.label + ': ' + item.pct + '%'">
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex gap-8">
+            <div *ngFor="let item of stats.techStack" class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full" [style.background-color]="item.color"></div>
+                <div class="text-sm font-medium text-slate-300">{{ item.label }}</div>
+                <div class="text-xs text-slate-500 font-mono">{{ item.pct }}%</div>
+            </div>
+        </div>
+    </div>
+
+</div>

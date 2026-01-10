@@ -1,0 +1,45 @@
+/* Mock Layout inside Preview - Using CSS Variables for Testing */
+.mock-sidebar {
+    width: 260px;
+    background-color: var(--theme-nav-bg, #1e293b);
+    color: white;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mock-nav-item.active {
+    background-color: var(--theme-nav-item-active, rgba(255, 255, 255, 0.1));
+    color: var(--theme-nav-item-active-text, #fff);
+    opacity: 1;
+}
+
+.mock-content {
+    flex: 1;
+    background-color: var(--theme-bg-app, #0f172a);
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.mock-card {
+    background-color: var(--theme-bg-surface, #1e293b);
+    border-radius: var(--theme-radius-lg, 1rem);
+    padding: 1.5rem;
+    box-shadow: var(--theme-shadow-card, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--theme-border, rgba(255, 255, 255, 0.05));
+}
+
+.mock-btn {
+    background-color: var(--theme-primary, #6366f1);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--theme-radius-md, 0.5rem);
+    border: none;
+    font-weight: 600;
+    transition: filter 0.2s;
+}
+
+.mock-btn:hover {
+    filter: brightness(110%);
+}

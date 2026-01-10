@@ -1,0 +1,36 @@
+<div class="gallery-container">
+    <!-- Main Image -->
+    <div class="main-image" (click)="openLightbox(selectedImageIndex)">
+        <img [src]="images[selectedImageIndex]" [alt]="productName" />
+        <div class="zoom-hint">🔍 Click to zoom</div>
+    </div>
+
+    <!-- Thumbnails -->
+    <div class="thumbnails" *ngIf="images.length > 1">
+        <button *ngFor="let image of images; let i = index" class="thumbnail" [class.active]="i === selectedImageIndex"
+            (click)="selectImage(i)">
+            <img [src]="image" [alt]="productName + ' - Image ' + (i + 1)" />
+        </button>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div class="lightbox-overlay" *ngIf="isLightboxOpen" (click)="closeLightbox()">
+    <div class="lightbox-content" (click)="$event.stopPropagation()">
+        <button class="lightbox-close" (click)="closeLightbox()">✕</button>
+
+        <button class="lightbox-nav lightbox-prev" (click)="previousImage()" *ngIf="images.length > 1">
+            ‹
+        </button>
+
+        <img [src]="images[selectedImageIndex]" [alt]="productName" />
+
+        <button class="lightbox-nav lightbox-next" (click)="nextImage()" *ngIf="images.length > 1">
+            ›
+        </button>
+
+        <div class="lightbox-counter" *ngIf="images.length > 1">
+            {{ selectedImageIndex + 1 }} / {{ images.length }}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,39 @@
+<app-admin-page-header icon="✍️" [title]="'ADMIN.BLOG.TITLE' | translate" subtitle="Manage blog content">
+    <a routerLink="/admin/blog/new" class="btn-primary">{{ 'ADMIN.BLOG.BTN_ADD' | translate }}</a>
+</app-admin-page-header>
+
+<div class="blog-list-container">
+
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>{{ 'ADMIN.BLOG.TH_COVER' | translate }}</th>
+                    <th>{{ 'ADMIN.BLOG.TH_TITLE' | translate }}</th>
+                    <th>{{ 'ADMIN.BLOG.TH_CATEGORY' | translate }}</th>
+                    <th>{{ 'ADMIN.BLOG.TH_DATE' | translate }}</th>
+                    <th>{{ 'ADMIN.BLOG.TH_ACTIONS' | translate }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let post of posts$ | async">
+                    <td>
+                        <img [src]="post.coverImage" alt="Cover" class="post-thumb">
+                    </td>
+                    <td class="post-title-cell">
+                        <div class="post-title">{{ post.title }}</div>
+                        <div class="post-slug">{{ post.slug }}</div>
+                    </td>
+                    <td><span class="badge">{{ post.category }}</span></td>
+                    <td>{{ post.date | date:'mediumDate' }}</td>
+                    <td class="actions">
+                        <a [routerLink]="['/admin/blog/edit', post.id]" class="btn-icon"
+                            [title]="'ADMIN.COMMON.EDIT' | translate">✏️</a>
+                        <button (click)="deletePost(post)" class="btn-icon delete"
+                            [title]="'ADMIN.COMMON.DELETE' | translate">🗑️</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

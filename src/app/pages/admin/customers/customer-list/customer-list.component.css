@@ -1,0 +1,137 @@
+/* Reusing structure from OrderList for consistency */
+.list-container {
+    background: #ffffff;
+    /* Explicit white since var(--bg-card) might be missing/transparent */
+    color: #1a1a2e;
+    /* Explicit dark text to override body white */
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+}
+
+.filters-bar {
+    padding: 1.25rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+    max-width: 350px;
+    width: 100%;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    color: #666;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #1e293b;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Specific overrides for this table if needed, otherwise relies on global .data-table */
+.data-table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.avatar-sm,
+.avatar-placeholder-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.avatar-placeholder-sm {
+    background: #e2e8f0;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-right {
+    text-align: right;
+}
+
+.font-mono {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #475569;
+}
+
+.badge-neutral {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #475569;
+    /* Explicit dark gray */
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem !important;
+}
+
+.empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+}

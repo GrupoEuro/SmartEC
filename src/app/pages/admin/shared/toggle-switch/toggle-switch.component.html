@@ -1,0 +1,11 @@
+<div class="toggle-switch">
+    <input type="checkbox" [id]="internalId" [formControl]="control" class="toggle-input">
+    <label [for]="internalId" class="toggle-label">
+        <span class="toggle-slider"></span>
+    </label>
+    <label [for]="internalId" class="toggle-text">
+        <span *ngIf="icon" class="toggle-icon">{{icon}}</span>
+        <span>{{label}}</span>
+    </label>
+</div>
+<small *ngIf="hint" class="form-hint checkbox-hint">{{hint}}</small>

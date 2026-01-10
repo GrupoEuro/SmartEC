@@ -1,0 +1,673 @@
+<div *ngIf="isLoading()" class="loading-container">
+    <div class="spinner"></div>
+    <p>{{ 'OPERATIONS.ORDERS.LOADING' | translate }}</p>
+</div>
+
+<div *ngIf="!isLoading() && order()" class="order-detail-container p-6 w-full max-w-7xl mx-auto">
+    <!-- Print Only Header -->
+    <div class="print-header hidden print:flex justify-between items-start pb-8 mb-8 border-b-2 border-black">
+        <div class="print-brand">
+            <h1 class="text-2xl font-bold text-black m-0">{{ getCompanyInfo().name }}</h1>
+            <p class="mt-1 text-sm text-gray-600 m-0">{{ getCompanyInfo().address }}</p>
+            <p class="text-sm text-gray-600 m-0">{{ getCompanyInfo().city }}</p>
+            <p class="text-sm text-gray-600 m-0">{{ getCompanyInfo().phone }} | {{ getCompanyInfo().email }}</p>
+        </div>
+        <div class="print-meta text-right">
+            <h2 class="text-2xl font-bold text-black mb-2 m-0">{{ 'OPERATIONS.ORDERS.PACKING_SLIP' | translate }}</h2>
+            <div class="mb-1">
+                <span class="text-gray-600">{{ 'OPERATIONS.ORDERS.ORDER' | translate }}:</span>
+                <strong class="text-black ml-2 font-mono">#{{ order()!.orderNumber }}</strong>
+            </div>
+            <div>
+                <span class="text-gray-600">{{ 'OPERATIONS.ORDERS.DATE' | translate }}:</span>
+                <span class="text-black ml-2">{{ formatShortDate(order()!.createdAt) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin-style Page Header -->
+    <app-admin-page-header iconName="package"
+        [title]="('OPERATIONS.ORDERS.ORDER' | translate) + ' #' + order()!.orderNumber"
+        [subtitle]="formatDate(order()!.createdAt)" variant="operations">
+
+        <!-- Order Tags -->
+        <div class="order-tags" *ngIf="(order()!.tags?.length ?? 0) > 0">
+            <span *ngFor="let tag of order()!.tags" class="tag" [class.tag-urgent]="tag === 'URGENT'"
+                [class.tag-vip]="tag === 'VIP'" [class.tag-wholesale]="tag === 'WHOLESALE'"
+                [class.tag-gift]="tag === 'GIFT'" [class.tag-international]="tag === 'INTERNATIONAL'">
+                {{ tag }}
+            </span>
+        </div>
+
+        <app-help-context-button topicId="fulfillment-process" tooltip="Fulfillment Process"></app-help-context-button>
+        <button class="btn-glass" (click)="printInvoice()">
+            <app-icon name="file-text" [size]="16" class="mr-1"></app-icon> {{ 'OPERATIONS.ORDERS.PRINT_INVOICE' |
+            translate }}
+        </button>
+        <button class="btn-glass" (click)="printPackingSlip()">
+            <app-icon name="printer" [size]="16" class="mr-1"></app-icon> {{ 'OPERATIONS.ORDERS.PRINT_PACKING_SLIP' |
+            translate }}
+        </button>
+    </app-admin-page-header>
+
+    <!-- Top Row: 2x2 Grid (Customer, Shipping, Channel, Payment/Tracking) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 mt-8">
+        <!-- Customer Info -->
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col">
+            <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
+                'OPERATIONS.ORDERS.CUSTOMER_INFO' | translate }}</h3>
+            <div class="space-y-3 flex-1">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-zinc-400">{{ 'OPERATIONS.ORDERS.NAME' | translate }}:</span>
+                    <span class="font-medium text-zinc-200 text-right">{{ order()!.customer.name }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-zinc-400">{{ 'OPERATIONS.ORDERS.EMAIL' | translate }}:</span>
+                    <a [href]="'mailto:' + order()!.customer.email"
+                        class="text-blue-400 hover:text-blue-300 text-right truncate ml-4">{{ order()!.customer.email
+                        }}</a>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-zinc-400">{{ 'OPERATIONS.ORDERS.PHONE' | translate }}:</span>
+                    <span class="font-medium text-zinc-200 text-right">{{ order()!.customer.phone }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipping Address -->
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col">
+            <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
+                'OPERATIONS.ORDERS.SHIPPING_ADDRESS' | translate }}</h3>
+            <address class="not-italic text-sm text-zinc-300 leading-relaxed">
+                {{ order()!.shippingAddress.street }} {{ order()!.shippingAddress.exteriorNumber }}
+                <span *ngIf="order()!.shippingAddress.interiorNumber">Int {{ order()!.shippingAddress.interiorNumber
+                    }}</span><br>
+                <span *ngIf="order()!.shippingAddress.colonia">{{ order()!.shippingAddress.colonia }}<br></span>
+                {{ order()!.shippingAddress.city }}, {{ order()!.shippingAddress.state }}<br>
+                {{ order()!.shippingAddress.zipCode }}<br>
+                {{ order()!.shippingAddress.country }}
+            </address>
+            <div class="mt-4 pt-4 border-t border-zinc-700/50 border-dashed text-sm text-zinc-400"
+                *ngIf="order()!.shippingAddress.references">
+                <strong class="text-zinc-300">{{ 'OPERATIONS.ORDERS.REFERENCES' | translate }}:</strong> {{
+                order()!.shippingAddress.references }}
+            </div>
+        </div>
+
+        <!-- Channel Information (NEW) -->
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col">
+            <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">Channel Information</h3>
+            <div class="space-y-4 flex-1">
+                <!-- Channel Badge -->
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-zinc-400">Channel:</span>
+                    <span class="channel-badge" [ngClass]="getChannelBadgeConfig(order()!.channel || 'WEB').class">
+                        <app-icon [name]="getChannelBadgeConfig(order()!.channel || 'WEB').icon" [size]="14"></app-icon>
+                        {{ getChannelBadgeConfig(order()!.channel || 'WEB').label }}
+                    </span>
+                </div>
+
+                <!-- External Order ID (for marketplace orders) -->
+                <div class="flex justify-between items-center text-sm" *ngIf="order()!.externalOrderId">
+                    <span class="text-zinc-400">External ID:</span>
+                    <span class="font-mono font-medium text-zinc-200 text-right">{{ order()!.externalOrderId }}</span>
+                </div>
+
+                <!-- Fulfillment Location -->
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-zinc-400">Fulfillment:</span>
+                    <span class="font-medium text-zinc-200 text-right">
+                        <span class="px-2 py-1 rounded text-xs font-semibold uppercase" [ngClass]="{
+                                'bg-blue-900/30 text-blue-400 border border-blue-800/50': getFulfillmentLocation() === 'MAIN',
+                                'bg-orange-900/30 text-orange-400 border border-orange-800/50': getFulfillmentLocation() === 'AMAZON_FBA',
+                                'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50': getFulfillmentLocation() === 'MELI_FULL'
+                            }">
+                            {{ getFulfillmentLocation() }}
+                        </span>
+                    </span>
+                </div>
+
+                <!-- ON_BEHALF specific metadata -->
+                <div *ngIf="order()!.channel === 'ON_BEHALF' && order()!.metadata"
+                    class="pt-3 border-t border-zinc-700/50">
+                    <div class="flex justify-between items-center text-sm mb-2">
+                        <span class="text-zinc-400">Source:</span>
+                        <span class="font-medium text-zinc-200 text-right capitalize">{{ order()!.metadata?.source ||
+                            'Phone' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm" *ngIf="order()!.metadata?.enteredBy">
+                        <span class="text-zinc-400">Entered By:</span>
+                        <span class="font-medium text-zinc-200 text-right">{{ order()!.metadata?.enteredBy }}</span>
+                    </div>
+                </div>
+
+                <!-- Marketplace specific metadata -->
+                <div *ngIf="(order()!.channel === 'AMAZON_MFN' || order()!.channel === 'AMAZON_FBA' || order()!.channel === 'MELI_CLASSIC' || order()!.channel === 'MELI_FULL') && order()!.externalOrderId"
+                    class="pt-3 border-t border-zinc-700/50">
+                    <div class="text-xs text-zinc-500 uppercase font-semibold mb-2">Marketplace Info</div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Marketplace ID:</span>
+                        <span class="font-mono text-xs text-zinc-200 text-right">{{ order()!.externalOrderId }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment & Tracking -->
+        <div
+            class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col justify-center gap-6">
+            <!-- Payment Section -->
+            <div class="w-full">
+                <div class="flex items-center gap-2 text-xs font-bold uppercase text-zinc-400 mb-2 tracking-wider">
+                    <app-icon name="credit-card" [size]="18"></app-icon> {{
+                    'OPERATIONS.ORDERS.PAYMENT' | translate }}
+                </div>
+                <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-center">
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}:</span>
+                    <span class="text-right">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
+                            [ngClass]="'status-' + order()!.paymentStatus">
+                            {{ order()!.paymentStatus }}
+                        </span>
+                    </span>
+
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.PAYMENT_METHOD' | translate }}:</span>
+                    <span class="text-sm font-medium text-zinc-200 text-right">
+                        {{ order()!.paymentMethod ? (order()!.paymentMethod | uppercase) : 'N/A' }}
+                    </span>
+
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}:</span>
+                    <span class="text-sm font-bold text-white text-right">{{ formatCurrency(order()!.total) }}</span>
+                </div>
+            </div>
+
+            <div class="h-px bg-zinc-700 w-full"></div>
+
+            <!-- Tracking Section -->
+            <div class="w-full">
+                <div class="flex items-center gap-2 text-xs font-bold uppercase text-zinc-400 mb-2 tracking-wider">
+                    <app-icon name="truck" [size]="18"></app-icon> {{ 'OPERATIONS.ORDERS.TRACKING'
+                    | translate }}
+                </div>
+                <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-center">
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}:</span>
+                    <span class="text-right">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
+                            [ngClass]="getStatusBadgeClass(order()!.status)">
+                            {{ order()!.status }}
+                        </span>
+                    </span>
+
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.CARRIER' | translate }}:</span>
+                    <span class="text-sm font-medium text-zinc-200 text-right">
+                        {{ order()!.carrier || 'N/A' }}
+                    </span>
+
+                    <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.TRACKING_NUMBER' | translate }}:</span>
+                    <span class="text-sm font-mono font-medium text-zinc-200 text-right"
+                        *ngIf="order()!.trackingNumber">
+                        {{ order()!.trackingNumber }}
+                    </span>
+                    <span class="text-sm text-amber-500 text-right" *ngIf="!order()!.trackingNumber">
+                        {{ 'OPERATIONS.ORDERS.NO_TRACKING' | translate }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Management Section (Assignment, Priority, Notes) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Order Assignment -->
+        <app-order-assignment [orderId]="order()!.id!" [orderCreatedAt]="order()!.createdAt">
+        </app-order-assignment>
+
+        <!-- Order Priority & SLA -->
+        <app-order-priority [orderId]="order()!.id!" [orderCreatedAt]="order()!.createdAt">
+        </app-order-priority>
+
+        <!-- Internal Notes (New Component) -->
+        <app-order-notes [orderId]="order()!.id!">
+        </app-order-notes>
+    </div>
+
+    <!-- Items to Pick Section (Full Width) -->
+    <div class="mb-8">
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700">
+            <div class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-zinc-700">
+                <h3 class="text-lg font-semibold text-white">{{ 'OPERATIONS.ORDERS.ITEMS_TO_PICK' | translate }}</h3>
+                <div class="flex flex-col gap-2 min-w-[200px] no-print">
+                    <span class="text-sm text-zinc-400 text-right">{{ pickedItems().size }} / {{ order()!.items.length
+                        }}</span>
+                    <div class="h-2 bg-zinc-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 transition-all duration-300"
+                            [style.width.%]="getProgressPercentage()"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                @for (item of order()!.items; track item.productId) {
+                <div class="grid grid-cols-[40px_80px_1fr_auto_auto] gap-4 items-center p-4 border-2 rounded-lg transition-all"
+                    [class.bg-emerald-900-10]="isItemPicked(item.productId)"
+                    [class.border-emerald-600]="isItemPicked(item.productId)"
+                    [class.border-zinc-700]="!isItemPicked(item.productId)"
+                    [class.bg-zinc-800]="!isItemPicked(item.productId)">
+                    <label class="relative cursor-pointer flex items-center justify-center w-6 h-6 no-print">
+                        <input type="checkbox" [checked]="isItemPicked(item.productId)"
+                            (change)="toggleItemPicked(item.productId)"
+                            class="peer opacity-0 absolute w-full h-full cursor-pointer z-10">
+                        <div
+                            class="w-6 h-6 border-2 border-zinc-500 rounded bg-zinc-800 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-colors flex items-center justify-center">
+                            <app-icon name="check" [size]="16"
+                                class="text-white opacity-0 peer-checked:opacity-100"></app-icon>
+                        </div>
+                    </label>
+                    <div class="w-20 h-20 rounded-lg overflow-hidden bg-zinc-700 border border-zinc-600">
+                        <img [src]="item.productImage" [alt]="item.productName" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <div class="font-medium text-white text-lg">{{ item.productName }}</div>
+                        <div class="text-sm text-zinc-400 font-mono">SKU: {{ item.sku }}</div>
+                        @if (item.brand) {
+                        <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{ item.brand }}</div>
+                        }
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-zinc-500 uppercase">{{ 'OPERATIONS.ORDERS.QTY' | translate }}</span>
+                        <span class="text-xl font-bold text-white">{{ item.quantity }}</span>
+                    </div>
+                    <div class="font-bold text-white text-right min-w-[100px]">
+                        {{ formatCurrency(item.subtotal) }}
+                    </div>
+                </div>
+                }
+            </div>
+
+            @if (allItemsPicked()) {
+            <div
+                class="mt-6 flex items-center justify-center gap-2 p-3 bg-emerald-900/30 border border-emerald-500/50 rounded-lg text-emerald-400 font-semibold no-print">
+                <app-icon name="check-circle" [size]="20"></app-icon>
+                {{ 'OPERATIONS.ORDERS.ALL_ITEMS_PICKED' | translate }}
+            </div>
+            }
+        </div>
+    </div>
+
+    <!-- Bottom Section: History & Actions (2-Column Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        <!-- History & Status Update (Left) -->
+        <div class="flex flex-col gap-6">
+            <!-- Order Timeline -->
+            <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 history-card">
+                <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
+                    'OPERATIONS.ORDERS.ORDER_TIMELINE' | translate }}</h3>
+                @if ((order()!.history?.length ?? 0) > 0) {
+                <div class="relative pl-4 border-l-2 border-zinc-700 ml-2 space-y-8">
+                    @for (entry of order()!.history; track $index) {
+                    <div class="relative pl-6">
+                        <div
+                            class="absolute -left-[23px] top-1 w-3.5 h-3.5 bg-zinc-800 border-2 border-blue-500 rounded-full z-10">
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
+                                    [ngClass]="getStatusBadgeClass(entry.status)">
+                                    {{ 'OPERATIONS.ORDERS.STATUS.' + entry.status.toUpperCase() | translate }}
+                                </span>
+                                <span class="text-xs text-zinc-500 font-medium">{{ formatDate(entry.timestamp)
+                                    }}</span>
+                            </div>
+                            @if (entry.note) {
+                            <p class="text-sm text-zinc-400 leading-relaxed my-1">{{ entry.note }}</p>
+                            }
+                            @if (entry.trackingNumber) {
+                            <div
+                                class="mt-2 p-3 bg-blue-900/20 border-l-2 border-blue-500 rounded text-sm text-zinc-300">
+                                <strong class="text-white">{{ entry.carrier }}:</strong> {{ entry.trackingNumber }}
+                            </div>
+                            }
+                        </div>
+                    </div>
+                    }
+                </div>
+                } @else {
+                <div
+                    class="text-center p-8 text-zinc-500 border border-dashed border-zinc-700 rounded-lg bg-zinc-800/50">
+                    <p>{{ 'OPERATIONS.ORDERS.NO_HISTORY' | translate }}</p>
+                </div>
+                }
+            </div>
+
+            <!-- Returns Information (for returned orders) -->
+            <div *ngIf="order()!.status === 'returned'"
+                class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700">
+                <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">
+                    Return Information
+                </h3>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-zinc-400">Return Reason:</span>
+                        <span
+                            class="inline-block px-2 py-1 rounded text-xs font-bold uppercase bg-red-900/30 text-red-400 border border-red-800/50">
+                            {{ (order()!.returnReason ?? '').replace('_', ' ') }}
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-zinc-400">Return Date:</span>
+                        <span class="text-sm font-medium text-white">{{ formatDate(order()!.returnDate ??
+                            order()!.createdAt) }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-zinc-400">Refund Amount:</span>
+                        <span class="text-sm font-bold text-emerald-400">{{ formatCurrency(order()!.refundAmount ?? 0)
+                            }}</span>
+                    </div>
+
+                    <div *ngIf="(order()!.restockFee ?? 0) > 0" class="flex justify-between items-center">
+                        <span class="text-sm text-zinc-400">Restocking Fee:</span>
+                        <span class="text-sm font-medium text-red-400">{{ formatCurrency(order()!.restockFee ?? 0)
+                            }}</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-zinc-400">Refund Status:</span>
+                        <span class="inline-block px-2 py-1 rounded text-xs font-bold uppercase" [ngClass]="{
+                            'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50': order()!.refundStatus === 'PROCESSED',
+                            'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50': order()!.refundStatus === 'PENDING'
+                        }">
+                            {{ order()!.refundStatus ?? 'PENDING' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partial Shipments (for multi-package orders) -->
+            <div *ngIf="(order()!.shipments?.length ?? 0) > 1"
+                class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700">
+                <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">
+                    Shipments ({{ order()!.shipments?.length ?? 0 }})
+                </h3>
+
+                <div class="space-y-4">
+                    <div *ngFor="let shipment of order()!.shipments ?? []; let i = index" class="shipment-item">
+                        <div class="shipment-header">
+                            <h4>Shipment {{ i + 1 }}</h4>
+                            <span
+                                class="inline-block px-2 py-1 rounded text-xs font-bold uppercase bg-blue-900/30 text-blue-400 border border-blue-800/50">
+                                {{ shipment.carrier }}
+                            </span>
+                        </div>
+
+                        <div class="shipment-items">
+                            <div *ngFor="let item of shipment.items" class="text-sm text-zinc-400">
+                                {{ item.quantity }}x {{ item.productName }}
+                            </div>
+                        </div>
+
+                        <div class="tracking">
+                            <span class="text-sm text-zinc-400">Tracking:</span>
+                            <span class="text-sm font-mono text-blue-400 ml-2">{{ shipment.trackingNumber }}</span>
+                        </div>
+
+                        <div class="dates">
+                            <span class="text-sm text-zinc-400">Shipped: {{ formatDate(shipment.shippedDate) }}</span>
+                            <span *ngIf="shipment.deliveredDate" class="text-sm text-zinc-400">
+                                Delivered: {{ formatDate(shipment.deliveredDate) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Status Update Card (Moved from right column) -->
+            <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 action-card no-print">
+                <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
+                    'OPERATIONS.ORDERS.STATUS_UPDATE' | translate }}</h3>
+
+                <!-- Current Status Display -->
+                <div
+                    class="flex items-center justify-between p-4 bg-zinc-700/30 rounded-lg border border-zinc-700 mb-6">
+                    <div class="text-sm text-zinc-400 font-medium">{{ 'OPERATIONS.ORDERS.CURRENT_STATUS' | translate
+                        }}:</div>
+                    <span class="text-lg font-bold px-4 py-1.5 rounded-full uppercase tracking-wide"
+                        [ngClass]="getStatusBadgeClass(order()!.status)">
+                        {{ 'OPERATIONS.ORDERS.STATUS.' + order()!.status.toUpperCase() | translate }}
+                    </span>
+                </div>
+
+                <!-- Progress Timeline -->
+                <div class="flex items-center justify-between relative mb-8 px-4">
+                    <div class="flex flex-col items-center z-10 relative group"
+                        [class.text-emerald-400]="isStatusCompleted('pending')"
+                        [class.text-zinc-500]="!isStatusCompleted('pending')">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors duration-300"
+                            [class.bg-emerald-500]="isStatusCompleted('pending')"
+                            [class.text-black]="isStatusCompleted('pending')"
+                            [class.bg-zinc-700]="!isStatusCompleted('pending')"
+                            [class.text-zinc-400]="!isStatusCompleted('pending')"
+                            [class.ring-2]="order()!.status === 'pending'"
+                            [class.ring-emerald-400]="order()!.status === 'pending'"
+                            [class.ring-offset-2]="order()!.status === 'pending'"
+                            [class.ring-offset-zinc-800]="order()!.status === 'pending'">1</div>
+                        <div class="text-xs font-bold uppercase tracking-wider">{{ 'OPERATIONS.ORDERS.STATUS.PENDING' |
+                            translate }}</div>
+                    </div>
+                    <div class="flex-1 h-1 bg-zinc-700 absolute left-0 top-4 w-full -z-0">
+                        <div class="h-full bg-emerald-500 transition-all duration-500"
+                            [style.width.%]="order()!.status === 'delivered' ? 100 : order()!.status === 'shipped' ? 66 : order()!.status === 'processing' ? 33 : 0">
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center z-10 relative group"
+                        [class.text-emerald-400]="isStatusCompleted('processing')"
+                        [class.text-zinc-500]="!isStatusCompleted('processing')">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors duration-300"
+                            [class.bg-emerald-500]="isStatusCompleted('processing')"
+                            [class.text-black]="isStatusCompleted('processing')"
+                            [class.bg-zinc-700]="!isStatusCompleted('processing')"
+                            [class.text-zinc-400]="!isStatusCompleted('processing')"
+                            [class.ring-2]="order()!.status === 'processing'"
+                            [class.ring-emerald-400]="order()!.status === 'processing'"
+                            [class.ring-offset-2]="order()!.status === 'processing'"
+                            [class.ring-offset-zinc-800]="order()!.status === 'processing'">2</div>
+                        <div class="text-xs font-bold uppercase tracking-wider">{{ 'OPERATIONS.ORDERS.STATUS.PROCESSING'
+                            | translate }}</div>
+                    </div>
+                    <div class="flex flex-col items-center z-10 relative group"
+                        [class.text-emerald-400]="isStatusCompleted('shipped')"
+                        [class.text-zinc-500]="!isStatusCompleted('shipped')">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors duration-300"
+                            [class.bg-emerald-500]="isStatusCompleted('shipped')"
+                            [class.text-black]="isStatusCompleted('shipped')"
+                            [class.bg-zinc-700]="!isStatusCompleted('shipped')"
+                            [class.text-zinc-400]="!isStatusCompleted('shipped')"
+                            [class.ring-2]="order()!.status === 'shipped'"
+                            [class.ring-emerald-400]="order()!.status === 'shipped'"
+                            [class.ring-offset-2]="order()!.status === 'shipped'"
+                            [class.ring-offset-zinc-800]="order()!.status === 'shipped'">3</div>
+                        <div class="text-xs font-bold uppercase tracking-wider">{{ 'OPERATIONS.ORDERS.STATUS.SHIPPED' |
+                            translate }}</div>
+                    </div>
+                    <div class="flex flex-col items-center z-10 relative group"
+                        [class.text-emerald-400]="isStatusCompleted('delivered')"
+                        [class.text-zinc-500]="!isStatusCompleted('delivered')">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors duration-300"
+                            [class.bg-emerald-500]="isStatusCompleted('delivered')"
+                            [class.text-black]="isStatusCompleted('delivered')"
+                            [class.bg-zinc-700]="!isStatusCompleted('delivered')"
+                            [class.text-zinc-400]="!isStatusCompleted('delivered')"
+                            [class.ring-2]="order()!.status === 'delivered'"
+                            [class.ring-emerald-400]="order()!.status === 'delivered'"
+                            [class.ring-offset-2]="order()!.status === 'delivered'"
+                            [class.ring-offset-zinc-800]="order()!.status === 'delivered'">4</div>
+                        <div class="text-xs font-bold uppercase tracking-wider">{{ 'OPERATIONS.ORDERS.STATUS.DELIVERED'
+                            | translate }}</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions or Final State Message -->
+                @if (availableStatuses().length > 0) {
+                <div class="space-y-4">
+                    <div class="text-xs font-bold uppercase text-zinc-400 tracking-wider mb-2">{{
+                        'OPERATIONS.ORDERS.QUICK_ACTIONS' | translate }}:</div>
+
+                    <div class="flex flex-wrap gap-3">
+                        @if (order()!.status === 'pending') {
+                        <button type="button"
+                            class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-blue-900/20"
+                            (click)="quickUpdateStatus('processing')">
+                            <app-icon name="settings" [size]="16"></app-icon>
+                            <span>{{ 'OPERATIONS.ORDERS.START_PROCESSING' | translate }}</span>
+                        </button>
+                        <button type="button"
+                            class="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-800 rounded-lg font-semibold transition-colors"
+                            (click)="quickUpdateStatus('cancelled')">
+                            <app-icon name="x-circle" [size]="16"></app-icon>
+                            <span>{{ 'OPERATIONS.ORDERS.CANCEL_ORDER' | translate }}</span>
+                        </button>
+                        }
+
+                        @if (order()!.status === 'processing') {
+                        <button type="button"
+                            class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-emerald-900/20"
+                            (click)="showShippingForm = true">
+                            <app-icon name="truck" [size]="16"></app-icon>
+                            <span>{{ 'OPERATIONS.ORDERS.SHIP_ORDER' | translate }}</span>
+                        </button>
+                        <button type="button"
+                            class="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-800 rounded-lg font-semibold transition-colors"
+                            (click)="quickUpdateStatus('cancelled')">
+                            <app-icon name="x-circle" [size]="16"></app-icon>
+                            <span>Cancel Order</span>
+                        </button>
+                        }
+
+                        @if (order()!.status === 'shipped') {
+                        <button type="button"
+                            class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-lg shadow-emerald-900/20"
+                            (click)="quickUpdateStatus('delivered')">
+                            <app-icon name="check-circle" [size]="16"></app-icon>
+                            <span>{{ 'OPERATIONS.ORDERS.MARK_AS_DELIVERED' | translate }}</span>
+                        </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Shipping Form -->
+                @if (showShippingForm) {
+                <form [formGroup]="statusForm" (ngSubmit)="updateStatus()"
+                    class="mt-6 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-zinc-300 mb-1">{{ 'OPERATIONS.ORDERS.CARRIER' |
+                            translate }} *</label>
+                        <input type="text" formControlName="carrier"
+                            class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none transition-colors"
+                            [placeholder]="'OPERATIONS.ORDERS.CARRIER_PLACEHOLDER' | translate">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-zinc-300 mb-1">{{
+                            'OPERATIONS.ORDERS.TRACKING_NUMBER' | translate }} *</label>
+                        <input type="text" formControlName="trackingNumber"
+                            class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none transition-colors"
+                            [placeholder]="'OPERATIONS.ORDERS.TRACKING_PLACEHOLDER' | translate">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-zinc-300 mb-1">{{ 'OPERATIONS.ORDERS.NOTES' |
+                            translate }} ({{ 'OPERATIONS.ORDERS.OPTIONAL' | translate
+                            }})</label>
+                        <textarea formControlName="notes"
+                            class="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none transition-colors"
+                            rows="2" [placeholder]="'OPERATIONS.ORDERS.NOTES_PLACEHOLDER' | translate"></textarea>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="submit"
+                            class="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            [disabled]="statusForm.invalid || isUpdating()">
+                            @if (isUpdating()) {
+                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin">
+                            </div>
+                            } @else {
+                            <app-icon name="truck" [size]="16"></app-icon>
+                            }
+                            {{ 'OPERATIONS.ORDERS.CONFIRM_SHIPMENT' | translate }}
+                        </button>
+                        <button type="button"
+                            class="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-lg font-medium transition-colors"
+                            (click)="showShippingForm = false">{{
+                            'OPERATIONS.ORDERS.ASSIGNMENT.CANCEL' | translate }}</button>
+                    </div>
+                </form>
+                }
+
+                <!-- Optional Notes -->
+                @if (!showShippingForm && order()!.status !== 'shipped') {
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-zinc-300 mb-1">{{ 'OPERATIONS.ORDERS.NOTES' |
+                        translate }} ({{ 'OPERATIONS.ORDERS.OPTIONAL' | translate
+                        }})</label>
+                    <textarea formControlName="notes"
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none transition-colors"
+                        rows="2" [placeholder]="'OPERATIONS.ORDERS.NOTES_PLACEHOLDER' | translate"></textarea>
+                </div>
+                }
+                } @else {
+                <!-- Final State Message -->
+                <div
+                    class="flex flex-col items-center justify-center text-center p-6 bg-zinc-700/20 rounded-lg border border-zinc-700 mt-6">
+                    <div class="mb-3">
+                        @if (order()!.status === 'delivered') {
+                        <span class="text-emerald-500"><app-icon name="check-circle" [size]="32"></app-icon></span>
+                        } @else if (order()!.status === 'cancelled') {
+                        <span class="text-red-500"><app-icon name="x-circle" [size]="32"></app-icon></span>
+                        } @else {
+                        <span class="text-blue-500"><app-icon name="info" [size]="32"></app-icon></span>
+                        }
+                    </div>
+                    <div>
+                        <strong class="block text-white mb-1">{{ 'OPERATIONS.ORDERS.ORDER_IN_FINAL_STATE' | translate
+                            }}</strong>
+                        <p class="text-sm text-zinc-400">{{ 'OPERATIONS.ORDERS.NO_FURTHER_CHANGES' | translate }}</p>
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Summary (Right) - Moved from bottom -->
+        <div class="summary-column">
+            <!-- Financial Summary -->
+            <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 summary-card">
+                <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
+                    'OPERATIONS.ORDERS.ORDER_SUMMARY' | translate }}</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between text-sm text-zinc-400">
+                        <span>{{ 'OPERATIONS.ORDERS.SUBTOTAL' | translate }}</span>
+                        <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.subtotal) }}</span>
+                    </div>
+                    @if (order()!.discount > 0) {
+                    <div class="flex justify-between text-sm text-emerald-400">
+                        <span>{{ 'OPERATIONS.ORDERS.DISCOUNT' | translate }}</span>
+                        <span>-{{ formatCurrency(order()!.discount) }}</span>
+                    </div>
+                    }
+                    <div class="flex justify-between text-sm text-zinc-400">
+                        <span>{{ 'OPERATIONS.ORDERS.SHIPPING' | translate }}</span>
+                        <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.shippingCost) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-zinc-400">
+                        <span>{{ 'OPERATIONS.ORDERS.TAX' | translate }}</span>
+                        <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.tax) }}</span>
+                    </div>
+                    <div class="flex justify-between text-base font-bold text-white pt-4 border-t border-zinc-700 mt-2">
+                        <span>{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</span>
+                        <span class="text-xl text-emerald-400 font-black tracking-tight">{{
+                            formatCurrency(order()!.total) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

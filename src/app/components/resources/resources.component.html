@@ -1,0 +1,65 @@
+<section class="resources-section">
+    <div class="resources-container">
+        <div class="header-content">
+            <div class="section-overline">{{ 'RESOURCES.OVERLINE' | translate }}</div>
+            <h2 class="section-title">{{ 'RESOURCES.TITLE' | translate }}</h2>
+            <p class="section-description">
+                {{ 'RESOURCES.DESCRIPTION' | translate }}
+            </p>
+        </div>
+
+        <div class="resources-grid">
+
+
+            <div class="resource-card">
+                <div class="resource-icon">📗</div>
+                <h3>{{ 'RESOURCES.CATALOG_PRAXIS' | translate }}</h3>
+                <p>{{ 'RESOURCES.CATALOG_PRAXIS_DESC' | translate }}</p>
+                <button class="resource-btn" (click)="downloadPDF('praxis')">
+                    <span>{{ 'RESOURCES.BTN_PDF' | translate }}</span>
+                    <span>↓</span>
+                </button>
+            </div>
+
+            <div class="resource-card">
+                <div class="resource-icon">📊</div>
+                <h3>{{ 'RESOURCES.SIZE_TABLE' | translate }}</h3>
+                <p>{{ 'RESOURCES.SIZE_TABLE_DESC' | translate }}</p>
+                <button class="resource-btn" (click)="downloadPDF('sizes')">
+                    <span>{{ 'RESOURCES.BTN_PDF' | translate }}</span>
+                    <span>↓</span>
+                </button>
+            </div>
+
+            <div class="resource-card">
+                <div class="resource-icon">🎨</div>
+                <h3>{{ 'RESOURCES.PROMO' | translate }}</h3>
+                <p>{{ 'RESOURCES.PROMO_DESC' | translate }}</p>
+                <button class="resource-btn" (click)="requestAccess('promo')">
+                    <span>{{ 'RESOURCES.BTN_ACCESS' | translate }}</span>
+                    <span>→</span>
+                </button>
+            </div>
+
+            <div class="resource-card">
+                <div class="resource-icon">📋</div>
+                <h3>{{ 'RESOURCES.TECH_SHEETS' | translate }}</h3>
+                <p>{{ 'RESOURCES.TECH_SHEETS_DESC' | translate }}</p>
+                <button class="resource-btn" (click)="downloadPDF('tech-sheets')">
+                    <span>{{ 'RESOURCES.BTN_PDF' | translate }}</span>
+                    <span>↓</span>
+                </button>
+            </div>
+
+            <div class="resource-card">
+                <div class="resource-icon">💼</div>
+                <h3>{{ 'RESOURCES.PRICE_LIST' | translate }}</h3>
+                <p>{{ 'RESOURCES.PRICE_LIST_DESC' | translate }}</p>
+                <button class="resource-btn" (click)="requestAccess('price-list')">
+                    <span>{{ 'RESOURCES.BTN_ACCESS' | translate }}</span>
+                    <span>→</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>

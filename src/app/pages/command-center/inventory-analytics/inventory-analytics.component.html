@@ -1,0 +1,369 @@
+<div class="inventory-analytics-container">
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <app-icon name="box" [size]="40" class="text-blue-500"></app-icon>
+                <div class="header-text">
+                    <h1>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TITLE' | translate }}</h1>
+                    <p>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+            <div class="inventory-header-actions">
+                <button class="btn-icon-subtle" (click)="exportToCSV()" [disabled]="isLoading()"
+                    [title]="'COMMAND_CENTER.INVENTORY_ANALYTICS.EXPORT' | translate">
+                    <app-icon name="download" [size]="20"></app-icon>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Empty State (Lazy Load) -->
+    <div *ngIf="!contextService.isInitialized()" class="empty-dashboard-state">
+        <div class="empty-state-content">
+            <div class="empty-icon-large">
+                <app-icon name="calendar" [size]="64"></app-icon>
+            </div>
+            <h2>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE' | translate }}</h2>
+            <p>{{ 'COMMAND_CENTER.LABELS.SELECT_DATE_RANGE_DESC' | translate }}</p>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="contextService.isInitialized() && !isLoading()" class="analytics-content">
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <app-icon name="chart-bar" [size]="24" class="text-indigo-400"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TOTAL_PRODUCTS' | translate }}</div>
+                    <div class="kpi-value">{{ inventoryMetrics()?.totalProducts ?? 0 }}</div>
+                </div>
+            </div>
+
+            <div class="kpi-card alert">
+                <div class="kpi-icon">
+                    <app-icon name="alert-triangle" [size]="24" class="text-amber-500"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.LOW_STOCK' | translate }}</div>
+                    <div class="kpi-value warning">{{ inventoryMetrics()?.lowStockProducts ?? 0 }}</div>
+                </div>
+            </div>
+
+            <div class="kpi-card alert">
+                <div class="kpi-icon">
+                    <app-icon name="x-circle" [size]="24" class="text-red-500"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.OUT_OF_STOCK' | translate }}</div>
+                    <div class="kpi-value danger">{{ inventoryMetrics()?.outOfStockProducts ?? 0 }}</div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <app-icon name="wallet" [size]="24" class="text-emerald-500"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.STOCK_VALUE' | translate }}</div>
+                    <div class="kpi-value">${{ (inventoryMetrics()?.totalStockValue ?? 0).toLocaleString('en-US',
+                        {minimumFractionDigits: 2}) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Efficiency Metrics Row -->
+        <h3 class="section-title">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.EFFICIENCY_METRICS' | translate }}</h3>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <app-icon name="trending-up" [size]="24" class="text-blue-400"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.GMROI' | translate }}</div>
+                    <div class="kpi-value text-success">{{ inventoryMetrics()?.gmroi ?? 0 }}x</div>
+                    <div class="kpi-subtext">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.GMROI_SUBTEXT' | translate }}</div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <app-icon name="lightning" [size]="24" class="text-yellow-400"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SELL_THROUGH' | translate }}</div>
+                    <div class="kpi-value">{{ inventoryMetrics()?.sellThroughRate ?? 0 }}%</div>
+                    <div class="kpi-subtext">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SELL_THROUGH_SUBTEXT' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card alert" *ngIf="(inventoryMetrics()?.deadStockCount ?? 0) > 0">
+                <div class="kpi-icon">
+                    <app-icon name="skull" [size]="24" class="text-gray-400"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DEAD_STOCK' | translate }}</div>
+                    <div class="kpi-value danger">{{ inventoryMetrics()?.deadStockCount ?? 0 }}</div>
+                    <div class="kpi-subtext">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DEAD_STOCK_SUBTEXT' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TURNOVER_RATE' | translate }}</div>
+                    <div class="kpi-value">{{ inventoryMetrics()?.averageTurnoverRate ?? 0 }}x</div>
+                    <div class="kpi-subtext">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TURNOVER_SUBTEXT' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="kpi-card alert" *ngIf="(inventoryMetrics()?.potentialLostRevenue ?? 0) > 0">
+                <div class="kpi-icon">
+                    <app-icon name="banknote" [size]="24" class="text-red-400"></app-icon>
+                </div>
+                <div class="kpi-content">
+                    <div class="kpi-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.OPPORTUNITY_COST' | translate }}</div>
+                    <div class="kpi-value danger">${{ (inventoryMetrics()?.potentialLostRevenue ?? 0) | number:'1.2-2'
+                        }}</div>
+                    <div class="kpi-subtext">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.OPPORTUNITY_SUBTEXT' | translate }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+            <!-- Stock Distribution Chart -->
+            <app-chart-card [title]="'COMMAND_CENTER.INVENTORY_ANALYTICS.STOCK_DISTRIBUTION' | translate"
+                [type]="'doughnut'" [data]="stockChartData" [options]="stockChartOptions" [height]="300"
+                [tableData]="stockTableData()" [tableColumns]="stockTableColumns">
+            </app-chart-card>
+
+            <!-- Turnover Rate Chart -->
+            <app-chart-card [title]="'COMMAND_CENTER.INVENTORY_ANALYTICS.TOP_TURNOVER' | translate" [type]="'bar'"
+                [data]="turnoverChartData" [options]="turnoverChartOptions" [height]="300"
+                [tableData]="turnoverTableData()" [tableColumns]="turnoverTableColumns">
+            </app-chart-card>
+        </div>
+
+        <!-- Stock Efficiency Matrix (New) -->
+        <div class="charts-row one-col">
+            <app-chart-card [title]="'COMMAND_CENTER.INVENTORY_ANALYTICS.EFFICIENCY_MATRIX' | translate"
+                [subtitle]="'COMMAND_CENTER.INVENTORY_ANALYTICS.EFFICIENCY_MATRIX_DESC' | translate" [type]="'scatter'"
+                [data]="efficiencyChartData" [options]="efficiencyChartOptions" [height]="400"
+                [tableData]="efficiencyTableData()" [tableColumns]="efficiencyTableColumns">
+            </app-chart-card>
+        </div>
+
+        <!-- Low Stock Alerts -->
+        <div class="alert-card" *ngIf="lowStockProducts().length > 0">
+            <div class="alert-header">
+                <div class="alert-title">
+                    <span class="alert-icon">
+                        <app-icon name="alert-triangle" [size]="24" class="text-amber-500"></app-icon>
+                    </span>
+                    <h2>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.LOW_STOCK_ALERTS' | translate }}</h2>
+                </div>
+                <span class="alert-count">{{ lowStockProducts().length }} {{
+                    'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCTS'
+                    | translate }}</span>
+            </div>
+            <div class="alert-grid">
+                <div *ngFor="let product of lowStockProducts()" class="alert-item">
+                    <div class="alert-item-header">
+                        <span class="product-name">{{ product.productName }}</span>
+                        <span class="stock-badge" [ngClass]="getStockStatusClass(product.stockQuantity)">
+                            {{ product.stockQuantity }} {{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.UNITS' | translate }}
+                        </span>
+                    </div>
+                    <div class="alert-item-details">
+                        <div class="detail-item">
+                            <span class="detail-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SALES_VELOCITY' |
+                                translate }}:</span>
+                            <span class="detail-value">{{ product.salesVelocity.toFixed(2) }}/{{
+                                'COMMAND_CENTER.INVENTORY_ANALYTICS.DAY' | translate }}</span>
+                        </div>
+                        <div class="detail-item" *ngIf="product.daysUntilStockout >= 0">
+                            <span class="detail-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DAYS_UNTIL_STOCKOUT' |
+                                translate }}:</span>
+                            <span class="detail-value" [ngClass]="getDaysUntilStockoutClass(product.daysUntilStockout)">
+                                {{ product.daysUntilStockout }} {{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DAYS' | translate
+                                }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reorder Recommendations -->
+        <div class="table-card" *ngIf="reorderRecommendations().length > 0">
+            <div class="table-header">
+                <div class="table-title">
+                    <span class="table-icon">
+                        <app-icon name="refresh-cw" [size]="24" class="text-blue-400"></app-icon>
+                    </span>
+                    <h2>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.REORDER_RECOMMENDATIONS' | translate }}</h2>
+                </div>
+                <span class="table-count">{{ reorderRecommendations().length }} {{
+                    'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCTS' | translate }}</span>
+            </div>
+            <div class="table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCT' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.CURRENT_STOCK' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SALES_VELOCITY' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.STOCKOUT_DATE' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SUGGESTED_ORDER' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.POTENTIAL_LOSS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let product of reorderRecommendations()">
+                            <td class="product-name">{{ product.productName }}</td>
+                            <td class="stock-quantity">
+                                <span class="stock-badge" [ngClass]="getStockStatusClass(product.stockQuantity)">
+                                    {{ product.stockQuantity }}
+                                </span>
+                            </td>
+
+                            <td class="velocity">{{ product.salesVelocity.toFixed(2) }}/{{
+                                'COMMAND_CENTER.INVENTORY_ANALYTICS.DAY' | translate }}</td>
+                            <td class="days-until-stockout">
+                                <div class="date-prediction" *ngIf="product.predictedStockoutDate">
+                                    <span class="date-value">{{ product.predictedStockoutDate }}</span>
+                                    <span class="days-remaining"
+                                        [ngClass]="getDaysUntilStockoutClass(product.daysUntilStockout)">
+                                        ({{ product.daysUntilStockout }} {{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DAYS' |
+                                        translate }})
+                                    </span>
+                                </div>
+                                <span *ngIf="!product.predictedStockoutDate">{{
+                                    'COMMAND_CENTER.INVENTORY_ANALYTICS.NO_DATA' | translate }}</span>
+                            </td>
+                            <td class="suggested-order">
+                                <span class="badge-pill info">
+                                    +{{ product.recommendedReorderQuantity || 0 | number:'1.0-0' }}
+                                </span>
+                            </td>
+                            <td class="revenue-loss text-danger">
+                                <span *ngIf="product.potentialRevenueLoss && product.potentialRevenueLoss > 0">
+                                    -${{ product.potentialRevenueLoss | number:'1.2-2' }}
+                                </span>
+                                <span *ngIf="!product.potentialRevenueLoss">-</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dead Stock Table (New State of the Art Feature) -->
+        <div class="table-card full-width" *ngIf="deadStockList().length > 0">
+            <div class="table-header">
+                <div class="table-title">
+                    <span class="table-icon">
+                        <app-icon name="skull" [size]="24" class="text-gray-400"></app-icon>
+                    </span>
+                    <h2>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.DEAD_STOCK_REPORT' | translate }}</h2>
+                </div>
+                <span class="table-count text-danger">{{ deadStockList().length }} {{
+                    'COMMAND_CENTER.INVENTORY_ANALYTICS.STAGNANT_PRODUCTS' | translate }}</span>
+            </div>
+            <div class="table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCT' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.STOCK' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.VALUE_EST' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.STATUS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let product of deadStockList()">
+                            <td class="product-name">
+                                <div>{{ product.productName }}</div>
+                                <small class="text-muted">{{ product.productId | slice:0:8 }}...</small>
+                            </td>
+                            <td class="stock-quantity">
+                                <span class="stock-badge danger">{{ product.stockQuantity }}</span>
+                            </td>
+                            <td>{{ product.stockValue | currency }}</td>
+                            <td>
+                                <span class="status-badge error">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.ZERO_SALES' |
+                                    translate }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Performers -->
+        <div class="table-card">
+            <div class="table-header">
+                <div class="table-title">
+                    <span class="table-icon">
+                        <app-icon name="trophy" [size]="24" class="text-yellow-500"></app-icon>
+                    </span>
+                    <h2>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TOP_PERFORMERS' | translate }}</h2>
+                </div>
+                <span class="table-count">{{ topPerformers().length }} {{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCTS'
+                    |
+                    translate }}</span>
+            </div>
+            <div class="table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.PRODUCT' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.STOCK' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SALES_VELOCITY' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TURNOVER_RATE' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let product of topPerformers(); let i = index">
+                            <td class="rank">{{ i + 1 }}</td>
+                            <td class="product-name">{{ product.productName }}</td>
+                            <td class="stock-quantity">{{ product.stockQuantity }}</td>
+                            <td class="velocity">{{ product.salesVelocity.toFixed(2) }}/{{
+                                'COMMAND_CENTER.INVENTORY_ANALYTICS.DAY' | translate }}</td>
+                            <td class="turnover">{{ product.turnoverRate.toFixed(2) }}%</td>
+                        </tr>
+                        <tr *ngIf="topPerformers().length === 0">
+                            <td colspan="5" class="no-data">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.NO_DATA' | translate
+                                }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="lowStockProducts().length === 0 && reorderRecommendations().length === 0 && topPerformers().length === 0"
+            class="empty-state">
+            <div class="empty-icon">
+                <app-icon name="box" [size]="48" class="text-gray-400"></app-icon>
+            </div>
+            <h3>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.NO_DATA' | translate }}</h3>
+            <p>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.NO_DATA_DESC' | translate }}</p>
+        </div>
+        <app-dashboard-diagnostics [logs]="[]" [buildVersion]="'v2.0-Reactive'"></app-dashboard-diagnostics>
+    </div>
+</div>

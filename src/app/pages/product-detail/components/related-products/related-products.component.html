@@ -1,0 +1,27 @@
+<div class="related-products-section" *ngIf="products.length > 0">
+    <h2 class="section-title">{{ 'PRODUCT_DETAIL.RELATED_PRODUCTS' | translate }}</h2>
+
+    <div class="products-grid">
+        <a *ngFor="let product of products" [routerLink]="['/product', product.id]" class="product-card">
+            <div class="product-image">
+                <img [src]="product.images.main" [alt]="product.name.es" />
+                <div class="product-badges">
+                    <span *ngIf="product.newArrival" class="badge badge-new">New</span>
+                    <span *ngIf="product.featured" class="badge badge-featured">Featured</span>
+                </div>
+            </div>
+            <div class="product-info">
+                <span class="product-brand">{{ product.brand }}</span>
+                <h3 class="product-name">{{ product.name.es }}</h3>
+                <p class="product-size">
+                    {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
+                    product.specifications.diameter }}
+                </p>
+                <div class="product-price">
+                    <span class="current-price">${{ product.price }}</span>
+                    <span *ngIf="product.compareAtPrice" class="original-price">${{ product.compareAtPrice }}</span>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>

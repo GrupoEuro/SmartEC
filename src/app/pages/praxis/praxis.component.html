@@ -1,0 +1,297 @@
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-text">
+            <div class="hero-badge">{{ 'PRAXIS_PAGE.HERO.BADGE' | translate }}</div>
+            <h1 class="hero-title" [innerHTML]="'PRAXIS_PAGE.HERO.TITLE' | translate"></h1>
+            <p class="hero-subtitle">{{ 'PRAXIS_PAGE.HERO.SUBTITLE' | translate }}</p>
+            <div class="hero-cta">
+                <button class="btn-hero-primary" (click)="openUrl('https://www.mercadolibre.com.mx/tienda/praxis')">{{
+                    'PRAXIS_PAGE.HERO.BTN_BUY' | translate }}</button>
+                <button class="btn-hero-secondary">{{ 'PRAXIS_PAGE.HERO.BTN_CONTACT' | translate }}</button>
+            </div>
+        </div>
+
+        <!-- Visual removed, now is hero background -->
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="stats-container">
+        <div class="stat-item">
+            <div class="stat-number">10+</div>
+            <div class="stat-label">{{ 'PRAXIS_PAGE.STATS.YEARS' | translate }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">500K+</div>
+            <div class="stat-label">{{ 'PRAXIS_PAGE.STATS.CLIENTS' | translate }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">98%</div>
+            <div class="stat-label">{{ 'PRAXIS_PAGE.STATS.RECOMMENDATION' | translate }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">{{ 'PRAXIS_PAGE.STATS.SUPPORT' | translate }}</div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="features-header">
+        <h2>{{ 'PRAXIS_PAGE.FEATURES.TITLE' | translate }}</h2>
+        <p>{{ 'PRAXIS_PAGE.FEATURES.DESCRIPTION' | translate }}</p>
+    </div>
+
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🛡️</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_1_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_1_DESC' | translate }}</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_2_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_2_DESC' | translate }}</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">♻️</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_3_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_3_DESC' | translate }}</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🔇</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_4_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_4_DESC' | translate }}</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">⛽</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_5_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_5_DESC' | translate }}</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🌧️</div>
+            <h3>{{ 'PRAXIS_PAGE.FEATURES.CARD_6_TITLE' | translate }}</h3>
+            <p>{{ 'PRAXIS_PAGE.FEATURES.CARD_6_DESC' | translate }}</p>
+        </div>
+    </div>
+</section>
+
+<!-- Technology Section -->
+<section class="tech-section">
+    <div class="tech-container">
+        <div class="tech-visual">
+            <div class="tech-image">
+                <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="techGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#006BB8;stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:#FF9933;stop-opacity:0.8" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="200" cy="200" r="150" fill="none" stroke="url(#techGrad)" stroke-width="8"
+                        stroke-dasharray="10,5" />
+                    <circle cx="200" cy="200" r="120" fill="none" stroke="#006BB8" stroke-width="4" />
+                    <circle cx="200" cy="200" r="90" fill="none" stroke="#FF9933" stroke-width="4" />
+                    <text x="200" y="190" text-anchor="middle" fill="#fff" font-size="48" font-weight="bold"
+                        font-family="Aero Matics, Arial">TECH</text>
+                    <text x="200" y="220" text-anchor="middle" fill="#006BB8" font-size="24"
+                        font-family="Aero Matics, Arial">ADVANCED</text>
+                </svg>
+            </div>
+        </div>
+
+        <div class="tech-content">
+            <h2>{{ 'PRAXIS_PAGE.TECH.TITLE' | translate }}</h2>
+            <p>{{ 'PRAXIS_PAGE.TECH.DESCRIPTION' | translate }}</p>
+
+            <ul class="tech-list">
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_1' | translate }}</li>
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_2' | translate }}</li>
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_3' | translate }}</li>
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_4' | translate }}</li>
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_5' | translate }}</li>
+                <li>{{ 'PRAXIS_PAGE.TECH.LIST_6' | translate }}</li>
+            </ul>
+
+            <button class="btn-hero-primary">{{ 'PRAXIS_PAGE.TECH.BTN_MORE' | translate }}</button>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="testimonials-section">
+    <div class="testimonials-header">
+        <h2>{{ 'PRAXIS_PAGE.TESTIMONIALS.TITLE' | translate }}</h2>
+    </div>
+
+    <div class="testimonials-grid">
+        <div class="testimonial-card">
+            <div class="testimonial-stars">★★★★★</div>
+            <p class="testimonial-text">{{ 'PRAXIS_PAGE.TESTIMONIALS.TEXT_1' | translate }}</p>
+            <div class="testimonial-author">
+                <div class="author-avatar">JM</div>
+                <div class="author-info">
+                    <h4>{{ 'PRAXIS_PAGE.TESTIMONIALS.AUTHOR_1' | translate }}</h4>
+                    <p>{{ 'PRAXIS_PAGE.TESTIMONIALS.INFO_1' | translate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="testimonial-card">
+            <div class="testimonial-stars">★★★★★</div>
+            <p class="testimonial-text">{{ 'PRAXIS_PAGE.TESTIMONIALS.TEXT_2' | translate }}</p>
+            <div class="testimonial-author">
+                <div class="author-avatar">AL</div>
+                <div class="author-info">
+                    <h4>{{ 'PRAXIS_PAGE.TESTIMONIALS.AUTHOR_2' | translate }}</h4>
+                    <p>{{ 'PRAXIS_PAGE.TESTIMONIALS.INFO_2' | translate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="testimonial-card">
+            <div class="testimonial-stars">★★★★★</div>
+            <p class="testimonial-text">{{ 'PRAXIS_PAGE.TESTIMONIALS.TEXT_3' | translate }}</p>
+            <div class="testimonial-author">
+                <div class="author-avatar">RC</div>
+                <div class="author-info">
+                    <h4>{{ 'PRAXIS_PAGE.TESTIMONIALS.AUTHOR_3' | translate }}</h4>
+                    <p>{{ 'PRAXIS_PAGE.TESTIMONIALS.INFO_3' | translate }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Certifications Section -->
+<section class="certifications-section">
+    <div class="certifications-header">
+        <h2>{{ 'PRAXIS_PAGE.CERTIFICATIONS.TITLE' | translate }}</h2>
+        <p>{{ 'PRAXIS_PAGE.CERTIFICATIONS.DESCRIPTION' | translate }}</p>
+    </div>
+
+    <div class="certifications-carousel">
+        <div class="certifications-track">
+            <div class="certification-card">
+                <div class="cert-icon">🏆</div>
+                <h3>DOT</h3>
+                <p>Departamento de Transporte de EE.UU.</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">✓</div>
+                <h3>ECE</h3>
+                <p>Comisión Económica para Europa</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">🛡️</div>
+                <h3>ISO 9001</h3>
+                <p>Gestión de Calidad</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">⚡</div>
+                <h3>INMETRO</h3>
+                <p>Instituto Nacional de Metrología</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">🌟</div>
+                <h3>CCC</h3>
+                <p>Certificación China Obligatoria</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">✅</div>
+                <h3>GSO</h3>
+                <p>Organización de Normalización del Golfo</p>
+            </div>
+            <!-- Duplicate for infinite loop -->
+            <div class="certification-card">
+                <div class="cert-icon">🏆</div>
+                <h3>DOT</h3>
+                <p>Departamento de Transporte de EE.UU.</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">✓</div>
+                <h3>ECE</h3>
+                <p>Comisión Económica para Europa</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">🛡️</div>
+                <h3>ISO 9001</h3>
+                <p>Gestión de Calidad</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">⚡</div>
+                <h3>INMETRO</h3>
+                <p>Instituto Nacional de Metrología</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">🌟</div>
+                <h3>CCC</h3>
+                <p>Certificación China Obligatoria</p>
+            </div>
+            <div class="certification-card">
+                <div class="cert-icon">✅</div>
+                <h3>GSO</h3>
+                <p>Organización de Normalización del Golfo</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="cta-content">
+        <h2>{{ 'PRAXIS_PAGE.CTA.TITLE' | translate }}</h2>
+        <p>{{ 'PRAXIS_PAGE.CTA.DESCRIPTION' | translate }}</p>
+        <div class="cta-buttons-group">
+            <button class="cta-button cta-primary"
+                (click)="openUrl('https://www.mercadolibre.com.mx/tienda/praxis', '_blank')">
+                <span>🛒</span> {{ 'PRAXIS_PAGE.CTA.BTN_BUY' | translate }}
+            </button>
+            <button class="cta-button cta-secondary" (click)="openUrl('https://wa.me/5214442004677', '_blank')">
+                <span>💬</span> {{ 'PRAXIS_PAGE.CTA.BTN_WHATSAPP' | translate }}
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-brand">
+            <div class="footer-logo">IMPORTADORA EURO</div>
+            <p>{{ 'PRAXIS_PAGE.FOOTER.BRAND_DESC' | translate }}</p>
+        </div>
+
+        <div class="footer-section">
+            <h4>{{ 'PRAXIS_PAGE.FOOTER.PRODUCTS_TITLE' | translate }}</h4>
+            <ul>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.PROD_1' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.PROD_2' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.PROD_3' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.PROD_4' | translate }}</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h4>{{ 'PRAXIS_PAGE.FOOTER.CONTACT_TITLE' | translate }}</h4>
+            <ul>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.LOCATIONS' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.WHATSAPP' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.EMAIL' | translate }}</a></li>
+                <li><a href="#">{{ 'PRAXIS_PAGE.FOOTER.PHONE' | translate }}</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>{{ 'PRAXIS_PAGE.FOOTER.COPYRIGHT' | translate }}</p>
+    </div>
+</footer>

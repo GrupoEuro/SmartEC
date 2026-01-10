@@ -1,0 +1,146 @@
+
+> importadora-euro@0.0.0 build
+> ng build
+
+- Building...
+
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ERROR [n [FirebaseError]: Type does not match the expected instance. Did you pass a reference from a different Firestore SDK?] {
+  code: 'invalid-argument',
+  customData: undefined,
+  toString: [Function (anonymous)]
+}
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+ App Version: Blue/Black Theme & Auth Fix v4 
+Access denied - Redirecting to login
+Browser bundles        
+Initial chunk files     | Names                      |  Raw size | Estimated transfer size
+chunk-CB5U4GLZ.js       | -                          | 588.74 kB |               108.93 kB
+chunk-HSFUOZQH.js       | -                          | 152.33 kB |                45.48 kB
+main-3O4VQATA.js        | main                       | 139.92 kB |                24.66 kB
+chunk-KIWUW6PT.js       | -                          | 110.77 kB |                28.17 kB
+chunk-UB57UAZY.js       | -                          |  41.08 kB |                 8.25 kB
+polyfills-FFHMD2TL.js   | polyfills                  |  33.71 kB |                11.02 kB
+chunk-7N4IOCDB.js       | -                          |  23.20 kB |                 6.45 kB
+chunk-DTTMAFC2.js       | -                          |  22.48 kB |                 7.27 kB
+chunk-6NKQF3DP.js       | -                          |  10.98 kB |                 2.77 kB
+chunk-FEKUBXIA.js       | -                          |   2.90 kB |                 1.11 kB
+styles-4V5WO5AC.css     | styles                     |   1.05 kB |               364 bytes
+chunk-RFIJHCEG.js       | -                          | 803 bytes |               803 bytes
+chunk-I44SVHDD.js       | -                          | 637 bytes |               637 bytes
+
+                        | Initial total              |   1.10 MB |               245.89 kB
+
+Lazy chunk files        | Names                      |  Raw size | Estimated transfer size
+chunk-NGDNKW3T.js       | -                          |  73.09 kB |                21.71 kB
+chunk-3F5DSHNA.js       | admin-routes               |  26.77 kB |                 5.91 kB
+chunk-R4CVT6M7.js       | distributor-list-component |  22.51 kB |                 5.71 kB
+chunk-B3DMAXXU.js       | pdf-form-component         |  13.15 kB |                 3.59 kB
+chunk-WOYENB52.js       | user-list-component        |  11.67 kB |                 3.47 kB
+chunk-UAONP6X7.js       | admin-log-list-component   |  10.45 kB |                 3.02 kB
+chunk-USEN5NUY.js       | pdf-library-component      |   9.63 kB |                 2.99 kB
+chunk-QFNTVGKV.js       | blog-detail-component      |   8.91 kB |                 2.73 kB
+chunk-DYL76ITO.js       | pdf-list-component         |   8.87 kB |                 2.80 kB
+chunk-Z5PC65B6.js       | blog-form-component        |   7.97 kB |                 2.64 kB
+chunk-NT3EJW5X.js       | blog-list-component        |   7.31 kB |                 2.23 kB
+chunk-JIAIOYCX.js       | banner-form-component      |   7.07 kB |                 2.29 kB
+chunk-PBMH62D3.js       | blog-list-component        |   4.95 kB |                 1.79 kB
+chunk-5O4YBXMI.js       | banner-list-component      |   4.86 kB |                 1.74 kB
+chunk-5RYFORPK.js       | privacy-component          |   2.06 kB |               736 bytes
+...and 5 more lazy chunks files. Use "--verbose" to show all the files.
+
+
+Server bundles         
+Initial chunk files     | Names                      |  Raw size
+chunk-GW4D5WYX.mjs      | -                          |   1.27 MB |                        
+server.mjs              | server                     |   1.06 MB |                        
+chunk-4LDB674R.mjs      | -                          | 299.61 kB |                        
+polyfills.server.mjs    | polyfills.server           | 262.30 kB |                        
+chunk-AQTCNAZZ.mjs      | -                          | 164.47 kB |                        
+chunk-B54KRFNF.mjs      | -                          | 140.09 kB |                        
+chunk-54H6HI2A.mjs      | -                          | 109.86 kB |                        
+chunk-52T24YML.mjs      | -                          |  41.15 kB |                        
+chunk-JVADXONV.mjs      | -                          |  23.26 kB |                        
+chunk-K25L6NRY.mjs      | -                          |  22.16 kB |                        
+chunk-3I4G5SP6.mjs      | -                          |  11.04 kB |                        
+chunk-WE77W7MO.mjs      | -                          |   3.00 kB |                        
+chunk-3CVZQN5Z.mjs      | -                          |   2.75 kB |                        
+render-utils.server.mjs | render-utils.server        |   1.52 kB |                        
+chunk-7Q5AGZGR.mjs      | -                          |   1.18 kB |                        
+chunk-5B47S7JW.mjs      | -                          | 838 bytes |                        
+chunk-B7AN2CQL.mjs      | -                          | 671 bytes |                        
+main.server.mjs         | main.server                | 468 bytes |                        
+
+Lazy chunk files        | Names                      |  Raw size
+chunk-3KAKEPCY.mjs      | -                          |  73.14 kB |                        
+chunk-NJXPCJBH.mjs      | admin-routes               |  26.89 kB |                        
+chunk-DC3U5FFY.mjs      | distributor-list-component |  22.61 kB |                        
+chunk-XJA3B237.mjs      | pdf-form-component         |  13.25 kB |                        
+chunk-KFVE4VLB.mjs      | xhr2                       |  11.79 kB |                        
+chunk-WLEMGHY5.mjs      | user-list-component        |  11.75 kB |                        
+chunk-6CWG3IKQ.mjs      | admin-log-list-component   |  10.52 kB |                        
+chunk-MWHD2KTN.mjs      | pdf-library-component      |   9.73 kB |                        
+chunk-TKHW5WJW.mjs      | blog-detail-component      |   9.01 kB |                        
+chunk-LWG4IIRY.mjs      | pdf-list-component         |   8.97 kB |                        
+chunk-MTIOIMMS.mjs      | blog-form-component        |   8.07 kB |                        
+chunk-47L53SQ6.mjs      | blog-list-component        |   7.41 kB |                        
+chunk-VU32OJHC.mjs      | banner-form-component      |   7.17 kB |                        
+chunk-UWJAIMCY.mjs      | blog-list-component        |   5.04 kB |                        
+chunk-Z2BEMGVL.mjs      | banner-list-component      |   4.96 kB |                        
+...and 6 more lazy chunks files. Use "--verbose" to show all the files.
+
+Prerendered 18 static routes.
+Output location: /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/dist/importadora-euro
+
+Application bundle generation complete. [50.736 seconds]
+
+▲ [WARNING] Module 'crypto-js' used by 'src/app/core/services/pdf.service.ts' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module '@grpc/grpc-js' used by 'node_modules/@angular/fire/node_modules/@firebase/firestore/dist/index.node.mjs' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module '@grpc/proto-loader' used by 'node_modules/@angular/fire/node_modules/@firebase/firestore/dist/index.node.mjs' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+
+▲ [WARNING] Module 'undici' used by 'node_modules/@angular/fire/node_modules/@firebase/storage/dist/node-esm/index.node.esm.js' is not ESM
+
+  CommonJS or AMD dependencies can cause optimization bailouts.
+  For more information see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+

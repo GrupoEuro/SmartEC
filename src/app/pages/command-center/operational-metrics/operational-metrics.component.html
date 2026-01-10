@@ -1,0 +1,206 @@
+<div class="operational-metrics-container">
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <app-icon name="settings" [size]="40" class="text-gray-500"></app-icon>
+                <div class="header-text">
+                    <h1>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TITLE' | translate }}</h1>
+                    <p>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Actions Bar -->
+    <div class="metrics-header-actions">
+        <button class="btn-icon-subtle" (click)="refresh()" [disabled]="isLoading()"
+            [title]="'COMMAND_CENTER.ACTIONS.REFRESH' | translate">
+            <app-icon name="refresh-cw" [size]="20" [class.spin]="isLoading()"></app-icon>
+        </button>
+    </div>
+
+    <div class="metrics-content">
+        <!-- KPI Section -->
+        <div class="kpi-grid">
+            <!-- Loading Skeletons for KPIs -->
+            <ng-container *ngIf="isLoading()">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </ng-container>
+
+            <!-- Actual KPI Cards -->
+            <ng-container *ngIf="!isLoading()">
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <app-icon name="clock" [size]="24" class="text-blue-500"></app-icon>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.KPI.AVG_FULFILLMENT_TIME' |
+                            translate
+                            }}</div>
+                        <div class="kpi-value">{{ formatHours(orderMetrics()?.averageFulfillmentTime ?? 0) }}</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <app-icon name="box" [size]="24" class="text-indigo-500"></app-icon>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.KPI.ORDERS_TODAY' | translate }}
+                        </div>
+                        <div class="kpi-value">{{ orderMetrics()?.ordersToday ?? 0 }}</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card" [ngClass]="getSLAClass(slaMetrics()?.complianceRate ?? 0)">
+                    <div class="kpi-icon">
+                        <app-icon name="check-circle" [size]="24"
+                            [class.text-green-500]="(slaMetrics()?.complianceRate ?? 0) >= 95"></app-icon>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.KPI.SLA_COMPLIANCE' | translate }}
+                        </div>
+                        <div class="kpi-value">{{ (slaMetrics()?.complianceRate ?? 0).toFixed(1) }}%</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card alert">
+                    <div class="kpi-icon">
+                        <app-icon name="alert-triangle" [size]="24" class="text-amber-500"></app-icon>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.KPI.PENDING_ORDERS' | translate }}
+                        </div>
+                        <div class="kpi-value">{{ orderMetrics()?.pendingOrders ?? 0 }}</div>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+
+        <!-- Charts Row 1: Trends -->
+        <div class="charts-row">
+            <!-- Fulfillment Trend -->
+            <div class="chart-wrapper">
+                <div *ngIf="isLoading()" class="chart-skeleton">
+                    <div class="skeleton-chart"></div>
+                </div>
+                <app-chart-card *ngIf="!isLoading()"
+                    [title]="'COMMAND_CENTER.OPERATIONAL_METRICS.CHARTS.FULFILLMENT_TREND' | translate" [type]="'line'"
+                    [data]="fulfillmentTrendData()" [height]="300" [tableData]="fulfillmentTableData()"
+                    [tableColumns]="fulfillmentTableColumns">
+                </app-chart-card>
+            </div>
+
+            <!-- SLA Trend -->
+            <div class="chart-wrapper">
+                <div *ngIf="isLoading()" class="chart-skeleton">
+                    <div class="skeleton-chart"></div>
+                </div>
+                <app-chart-card *ngIf="!isLoading()"
+                    [title]="'COMMAND_CENTER.OPERATIONAL_METRICS.CHARTS.SLA_TREND' | translate" [type]="'line'"
+                    [data]="slaTrendData()" [height]="300" [tableData]="slaTableData()"
+                    [tableColumns]="slaTableColumns">
+                </app-chart-card>
+            </div>
+        </div>
+
+        <!-- Charts Row 2: Distribution & Performance -->
+        <div class="charts-row">
+            <!-- Order Status -->
+            <div class="chart-wrapper">
+                <div *ngIf="isLoading()" class="chart-skeleton">
+                    <div class="skeleton-chart"></div>
+                </div>
+                <app-chart-card *ngIf="!isLoading()"
+                    [title]="'COMMAND_CENTER.OPERATIONAL_METRICS.CHARTS.ORDER_STATUS' | translate" [type]="'doughnut'"
+                    [data]="statusChartData()" [height]="300" [tableData]="statusTableData()"
+                    [tableColumns]="statusTableColumns">
+                </app-chart-card>
+            </div>
+
+            <!-- Staff Performance -->
+            <div class="chart-wrapper">
+                <div *ngIf="isLoading()" class="chart-skeleton">
+                    <div class="skeleton-chart"></div>
+                </div>
+                <app-chart-card *ngIf="!isLoading()"
+                    [title]="'COMMAND_CENTER.OPERATIONAL_METRICS.CHARTS.STAFF_PERFORMANCE' | translate" [type]="'bar'"
+                    [data]="staffChartData()" [height]="300" [tableData]="staffTableData()"
+                    [tableColumns]="staffTableColumns">
+                </app-chart-card>
+            </div>
+        </div>
+
+        <!-- Staff Leaderboard -->
+        <div class="table-card" *ngIf="!isLoading() && staffPerformance() && staffPerformance().length > 0">
+            <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.STAFF_LEADERBOARD' | translate }}</h3>
+                <button class="btn-primary small" (click)="exportStaffData()">
+                    <app-icon name="download" [size]="16"></app-icon>
+                    {{ 'COMMAND_CENTER.ACTIONS.EXPORT' | translate }}
+                </button>
+            </div>
+            <div class="table-container">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.RANK' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.STAFF' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.ORDERS_PROCESSED' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.AVG_TIME' | translate }}</th>
+                            <th>{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.TABLE.ACTIVE_ORDERS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let staff of staffPerformance()">
+                            <td class="rank">
+                                <span class="rank-badge" [class.top]="staff.rank === 1">{{ staff.rank }}</span>
+                            </td>
+                            <td class="staff-name">{{ staff.staffName }}</td>
+                            <td class="orders">{{ staff.ordersProcessed }}</td>
+                            <td class="time">{{ formatHours(staff.averageProcessingTime) }}</td>
+                            <td class="active">{{ staff.activeOrders }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table Skeleton -->
+        <div class="table-card" *ngIf="isLoading()">
+            <div class="table-header">
+                <h3>Loading Leaderboard...</h3>
+            </div>
+            <div class="kpi-skeleton" style="padding: 1rem;">
+                <div class="skeleton-card" style="height: 40px;"></div>
+                <div class="skeleton-card" style="height: 40px;"></div>
+                <div class="skeleton-card" style="height: 40px;"></div>
+            </div>
+        </div>
+
+        <!-- SLA Details -->
+        <div class="sla-details" *ngIf="!isLoading()">
+            <div class="sla-card">
+                <div class="sla-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.SLA.AT_RISK' | translate }}</div>
+                <div class="sla-value warning">{{ slaMetrics()?.atRiskOrders ?? 0 }}</div>
+            </div>
+            <div class="sla-card">
+                <div class="sla-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.SLA.OVERDUE' | translate }}</div>
+                <div class="sla-value danger">{{ slaMetrics()?.overdueOrders ?? 0 }}</div>
+            </div>
+            <div class="sla-card">
+                <div class="sla-label">{{ 'COMMAND_CENTER.OPERATIONAL_METRICS.SLA.AVG_RESPONSE_TIME' | translate }}
+                </div>
+                <div class="sla-value">{{ formatHours(slaMetrics()?.averageResponseTime ?? 0) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnostics -->
+    <app-dashboard-diagnostics [logs]="logs()" [buildVersion]="buildVersion">
+    </app-dashboard-diagnostics>
+</div>

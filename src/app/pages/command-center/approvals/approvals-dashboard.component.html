@@ -1,0 +1,103 @@
+<header class="page-header">
+    <div class="header-content">
+        <div class="header-left">
+            <app-icon name="check-circle" [size]="40" class="text-green-500"></app-icon>
+            <div class="header-text">
+                <h1>{{ 'COMMAND_CENTER.APPROVALS.TITLE' | translate }}</h1>
+                <p>{{ 'COMMAND_CENTER.APPROVALS.PENDING' | translate }} ({{ pendingCount() }})</p>
+            </div>
+        </div>
+
+
+    </div>
+</header>
+
+<div class="approvals-container">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card" [class.active]="selectedStatus === 'PENDING'" (click)="loadByStatus('PENDING')">
+            <div class="stat-icon pending">
+                <app-icon name="clock" [size]="24"></app-icon>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ pendingCount() }}</div>
+                <div class="stat-label">{{ 'COMMAND_CENTER.APPROVALS.PENDING' | translate }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card" [class.active]="selectedStatus === 'APPROVED'" (click)="loadByStatus('APPROVED')">
+            <div class="stat-icon approved">
+                <app-icon name="check-circle" [size]="24"></app-icon>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ approvedCount() }}</div>
+                <div class="stat-label">{{ 'COMMAND_CENTER.APPROVALS.APPROVED' | translate }}</div>
+            </div>
+        </div>
+
+        <div class="stat-card" [class.active]="selectedStatus === 'REJECTED'" (click)="loadByStatus('REJECTED')">
+            <div class="stat-icon rejected">
+                <app-icon name="x-circle" [size]="24"></app-icon>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">{{ rejectedCount() }}</div>
+                <div class="stat-label">{{ 'COMMAND_CENTER.APPROVALS.REJECTED' | translate }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label>Tipo</label>
+            <select [(ngModel)]="selectedType" (change)="onFilterChange()">
+                <option value="ALL">{{ 'COMMAND_CENTER.APPROVALS.ALL' | translate }}</option>
+                <option value="COUPON_CREATION">{{ 'COMMAND_CENTER.APPROVALS.TYPES.COUPON_CREATION' | translate }}
+                </option>
+                <option value="FLASH_SALE">{{ 'COMMAND_CENTER.APPROVALS.TYPES.FLASH_SALE' | translate }}</option>
+                <option value="PRICE_CHANGE">{{ 'COMMAND_CENTER.APPROVALS.TYPES.PRICE_CHANGE' | translate }}</option>
+                <option value="BULK_DISCOUNT">{{ 'COMMAND_CENTER.APPROVALS.TYPES.BULK_DISCOUNT' | translate }}</option>
+                <option value="PROMOTION_CREATION">{{ 'COMMAND_CENTER.APPROVALS.TYPES.PROMOTION_CREATION' | translate }}
+                </option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Prioridad</label>
+            <select [(ngModel)]="selectedPriority" (change)="onFilterChange()">
+                <option value="ALL">{{ 'COMMAND_CENTER.APPROVALS.ALL' | translate }}</option>
+                <option value="URGENT">{{ 'COMMAND_CENTER.APPROVALS.PRIORITY.URGENT' | translate }}</option>
+                <option value="HIGH">{{ 'COMMAND_CENTER.APPROVALS.PRIORITY.HIGH' | translate }}</option>
+                <option value="NORMAL">{{ 'COMMAND_CENTER.APPROVALS.PRIORITY.NORMAL' | translate }}</option>
+                <option value="LOW">{{ 'COMMAND_CENTER.APPROVALS.PRIORITY.LOW' | translate }}</option>
+            </select>
+        </div>
+
+        <div class="filter-group search-group">
+            <label>Buscar</label>
+            <input type="text" [(ngModel)]="searchTerm" (input)="onFilterChange()"
+                placeholder="Buscar por nombre, email..." />
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>{{ 'COMMAND_CENTER.LABELS.LOADING' | translate }}</p>
+    </div>
+
+    <!-- Approval Requests List -->
+    <div *ngIf="!isLoading()" class="requests-list">
+        <div *ngIf="filteredRequests().length === 0" class="empty-state">
+            <div class="empty-icon">
+                <app-icon name="document" [size]="48" class="text-gray-400"></app-icon>
+            </div>
+            <h3>{{ 'COMMAND_CENTER.APPROVALS.NO_PENDING' | translate }}</h3>
+            <p>No hay solicitudes que coincidan con los filtros seleccionados</p>
+        </div>
+
+        <app-approval-card *ngFor="let request of filteredRequests()" [request]="request"
+            (approve)="handleApprove($event)" (reject)="handleReject($event)" (viewDetails)="handleViewDetails($event)">
+        </app-approval-card>
+    </div>
+</div>

@@ -1,0 +1,104 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+    (click)="close.emit()">
+    <div class="bg-[#18181b] border border-[#27272a] rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-zinc-800">
+            <h2 class="text-xl font-bold text-white">{{ modalTitle }}</h2>
+            <button class="text-zinc-400 hover:text-white transition-colors" (click)="close.emit()">
+                <app-icon name="x" [size]="24"></app-icon>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="p-6 space-y-6">
+
+            <!-- Title -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-zinc-400">Title</label>
+                <input type="text" formControlName="title"
+                    class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder-zinc-600"
+                    placeholder="e.g. Implement User Authentication">
+            </div>
+
+            <!-- Description -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-zinc-400">Description</label>
+                <textarea formControlName="description" rows="5"
+                    class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder-zinc-600 resize-none"
+                    placeholder="Describe the task details..."></textarea>
+            </div>
+
+            <!-- Row: Type, Priority, Status -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-zinc-400">Type</label>
+                    <div class="relative">
+                        <select formControlName="type"
+                            class="w-full appearance-none bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <option value="feature">Feature</option>
+                            <option value="bug">Bug</option>
+                            <option value="task">Task</option>
+                            <option value="improvement">Improvement</option>
+                        </select>
+                        <div
+                            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-zinc-500">
+                            <app-icon name="chevron-down" [size]="16"></app-icon>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-zinc-400">Priority</label>
+                    <div class="relative">
+                        <select formControlName="priority"
+                            class="w-full appearance-none bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                        <div
+                            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-zinc-500">
+                            <app-icon name="chevron-down" [size]="16"></app-icon>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-zinc-400">Status</label>
+                    <div class="relative">
+                        <select formControlName="status"
+                            class="w-full appearance-none bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <option value="backlog">Backlog</option>
+                            <option value="todo">To Do</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="done">Done</option>
+                        </select>
+                        <div
+                            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-zinc-500">
+                            <app-icon name="chevron-down" [size]="16"></app-icon>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 p-6 border-t border-zinc-800 bg-zinc-900/50">
+            <button type="button" (click)="close.emit()"
+                class="px-4 py-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors font-medium">
+                Cancel
+            </button>
+            <button type="button" (click)="onSubmit()" [disabled]="form.invalid || isSubmitting"
+                class="btn-primary text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <span *ngIf="!isSubmitting">Save Task</span>
+                <span *ngIf="isSubmitting">Saving...</span>
+            </button>
+        </div>
+    </div>
+</div>

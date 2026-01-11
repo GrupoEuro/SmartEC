@@ -78,10 +78,11 @@ export const devToolsRoutes: Routes = [
                 data: { title: 'Theme Playground' }
             },
 
+
             {
-                path: 'doc-generator',
-                loadComponent: () => import('./xml-generator/xml-generator.component').then(m => m.XmlGeneratorComponent),
-                data: { title: 'Document Generator' }
+                path: 'backlog',
+                loadComponent: () => import('./backlog-manager/backlog-manager.component').then(m => m.BacklogManagerComponent),
+                data: { title: 'Backlog Manager' }
             }
         ]
     }

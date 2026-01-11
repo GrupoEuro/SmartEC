@@ -1,10 +1,11 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
-import { ABCClassification } from '../../../core/models/abc-analysis.model';
-import { Timestamp } from '@angular/fire/firestore';
+import { OrderService } from '../../../core/services/order.service';
+import { ProductService } from '../../../core/services/product.service';
+import { firstValueFrom, forkJoin, take } from 'rxjs';
 
 interface AnalysisProduct {
   id: string;
@@ -12,7 +13,7 @@ interface AnalysisProduct {
   sku: string;
   revenue: number;
   units: number;
-  lastSale: Date;
+  lastSale: Date | null;
   currentStock: number;
   class?: 'A' | 'B' | 'C' | 'D';
   cumulativePercent?: number;
@@ -21,11 +22,13 @@ interface AnalysisProduct {
 @Component({
   selector: 'app-abc-analysis',
   standalone: true,
-  imports: [CommonModule, AppIconComponent],
-  templateUrl: './abc-analysis.component.html',
+  imports: [CommonModule, AppIconComponent, TranslateModule, FormsModule],
+  templateUrl: './abc-analysis.component.html', // Fixed URL
   styleUrls: ['./abc-analysis.component.css']
 })
 export class AbcAnalysisComponent {
+  private orderService = inject(OrderService);
+  private productService = inject(ProductService);
 
   isLoading = signal(false);
   lastUpdated = signal<Date | null>(null);
@@ -52,27 +55,87 @@ export class AbcAnalysisComponent {
     return {
       count: classProducts.length,
       revenue,
-      percentCount: (classProducts.length / products.length) * 100 || 0,
-      percentRevenue: (revenue / totalRevenue) * 100 || 0
+      percentCount: products.length > 0 ? (classProducts.length / products.length) * 100 : 0,
+      percentRevenue: totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0
     };
   }
 
   constructor() {
-    this.runAnalysis(); // Auto-run on load for now
+    this.runAnalysis();
   }
 
-  runAnalysis() {
+  async runAnalysis() {
     this.isLoading.set(true);
+    console.log('Starting ABC Analysis...');
 
-    // Simulate API delay
-    setTimeout(() => {
-      const data = this.generateDummyData();
-      const classified = this.performParetoAnalysis(data);
+    try {
+      // Fetch Products and Orders concurrently
+      console.log('Fetching data...');
+      const [products, orders] = await firstValueFrom(
+        forkJoin([
+          this.productService.getProducts().pipe(take(1)),
+          this.orderService.getOrders().pipe(take(1))
+        ])
+      );
+
+      console.log(`Fetched ${products?.length} products and ${orders?.length} orders.`);
+
+      // Process Data
+      const analysisData = this.processData(products, orders);
+      console.log(`Processed ${analysisData.length} analysis items.`);
+
+      const classified = this.performParetoAnalysis(analysisData);
+      console.log('Classification complete.');
 
       this.analyzedProducts.set(classified);
       this.lastUpdated.set(new Date());
+
+    } catch (error) {
+      console.error('Error running ABC Analysis:', error);
+    } finally {
       this.isLoading.set(false);
-    }, 800);
+      console.log('Analysis finished.');
+    }
+  }
+
+  private processData(products: any[], orders: any[]): AnalysisProduct[] {
+    const productMap = new Map<string, AnalysisProduct>();
+
+    // 1. Initialize map with all products (to catch those with 0 sales)
+    products.forEach(p => {
+      productMap.set(p.id, {
+        id: p.id,
+        name: p.name?.es || p.name?.en || 'Unknown Product',
+        sku: p.sku || 'N/A',
+        revenue: 0,
+        units: 0,
+        lastSale: null,
+        currentStock: p.stockQuantity || 0
+      });
+    });
+
+    // 2. Aggregate Sales from Orders
+    // Filter orders? Maybe exclude cancelled/refunded?
+    const validOrders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'refunded');
+
+    validOrders.forEach(order => {
+      const orderDate = this.getDateFromTimestamp(order.createdAt);
+
+      order.items?.forEach((item: any) => {
+        const prod = productMap.get(item.productId);
+        if (prod) {
+          prod.revenue += (item.price || 0) * (item.quantity || 0);
+          prod.units += (item.quantity || 0);
+
+          // Update last sale date
+          if (!prod.lastSale || orderDate > prod.lastSale) {
+            prod.lastSale = orderDate;
+          }
+        }
+      });
+    });
+
+    return Array.from(productMap.values());
   }
 
   private performParetoAnalysis(products: AnalysisProduct[]): AnalysisProduct[] {
@@ -83,14 +146,22 @@ export class AbcAnalysisComponent {
     let runningRevenue = 0;
 
     return sorted.map(p => {
-      // Check for Dead Stock (No sales in 90 days)
-      const daysSinceSale = (new Date().getTime() - p.lastSale.getTime()) / (1000 * 3600 * 24);
-      if (daysSinceSale > 90) {
+      // Check for Dead Stock (e.g., No sales > 90 days AND has stock)
+      // Or just strictly by Revenue contribution?
+      // Standard ABC:
+      // A: Top 80% Revenue
+      // B: Next 15% (80-95%)
+      // C: Bottom 5% (95-100%)
+      // D: Dead Stock (No sales in X days? Or 0 Revenue?)
+
+      // Let's implement Hybrid: If 0 Revenue, it's D. 
+      // If it has revenue, check Pareto.
+      if (p.revenue === 0) {
         return { ...p, class: 'D', cumulativePercent: 100 };
       }
 
       runningRevenue += p.revenue;
-      const cumulativePercent = (runningRevenue / totalRevenue) * 100;
+      const cumulativePercent = totalRevenue > 0 ? (runningRevenue / totalRevenue) * 100 : 0;
 
       let classification: 'A' | 'B' | 'C' = 'C';
       if (cumulativePercent <= 80) classification = 'A';
@@ -100,37 +171,10 @@ export class AbcAnalysisComponent {
     });
   }
 
-  private generateDummyData(): AnalysisProduct[] {
-    const products: AnalysisProduct[] = [];
-    const count = 50; // Generate 50 items
-
-    for (let i = 0; i < count; i++) {
-      // Skew revenue generation to create Pareto distribution
-      // First few items get huge revenue, tail gets small revenue
-      let revenueBase = 0;
-      if (i < 5) revenueBase = 50000 + Math.random() * 50000; // Top 10%
-      else if (i < 15) revenueBase = 10000 + Math.random() * 20000; // Next 20%
-      else revenueBase = Math.random() * 5000; // Tail
-
-      products.push({
-        id: `p_${i}`,
-        name: `Product ${i + 1} - ${this.getRandomTyreName()}`,
-        sku: `SKU-${1000 + i}`,
-        revenue: revenueBase,
-        units: Math.floor(revenueBase / 2000), // Avg price approx 2000
-        lastSale: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 100), // Random last 100 days
-        currentStock: Math.floor(Math.random() * 50)
-      });
-    }
-    return products;
-  }
-
-  private getRandomTyreName(): string {
-    const brands = ['Michelin', 'Pirelli', 'Bridgestone', 'Dunlop', 'Continental'];
-    const models = ['Pilot Sport', 'Diablo Rosso', 'Battlax', 'RoadSmart', 'ContiMotion'];
-    const sizes = ['120/70', '180/55', '190/50', '160/60'];
-
-    return `${brands[Math.floor(Math.random() * brands.length)]} ${models[Math.floor(Math.random() * models.length)]} ${sizes[Math.floor(Math.random() * sizes.length)]}`;
+  private getDateFromTimestamp(timestamp: any): Date {
+    if (!timestamp) return new Date();
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate();
+    return new Date(timestamp);
   }
 
   formatCurrency(amount: number): string {

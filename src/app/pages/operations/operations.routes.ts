@@ -42,6 +42,10 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./inventory/inventory-lookup.component').then(m => m.InventoryLookupComponent)
             },
             {
+                path: 'inventory/locator',
+                loadComponent: () => import('../admin/warehouse/product-locator/product-locator.component').then(m => m.ProductLocatorComponent)
+            },
+            {
                 path: 'inventory/kardex/:productId',
                 loadComponent: () => import('./inventory/kardex-page.component').then(m => m.KardexPageComponent)
             },

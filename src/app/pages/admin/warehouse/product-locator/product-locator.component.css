@@ -1,0 +1,281 @@
+.path-animation {
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+@keyframes path-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* 3D path elevation */
+[data-view-mode="isometric"] .path-3d {
+    transform: translateZ(25px);
+    filter: drop-shadow(0 4px 10px rgba(168, 85, 247, 0.7));
+}
+
+.animated-path {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: path-draw 1.5s ease-in-out forwards;
+}
+
+.animate-fade-in-right {
+    animation: fadeInRight 0.5s ease-out;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out forwards;
+}
+
+/* ============================================ */
+/* Enhanced 3D Transform Support for Isometric */
+/* ============================================ */
+
+.map-canvas-container {
+    perspective: 3500px;
+    /* Enhanced from 2500px for more dramatic depth */
+    perspective-origin: center 35%;
+    /* Lower angle for better viewing */
+    transform-style: preserve-3d;
+    will-change: transform;
+    /* GPU acceleration hint */
+}
+
+/* Smooth transitions for view mode toggle */
+.map-canvas-container>div {
+    transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+    will-change: transform;
+    transform-style: preserve-3d;
+}
+
+/* Rack structure enhancements with directional lighting */
+.rack-structure {
+    position: relative;
+    transition:
+        filter 0.3s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        opacity 0.3s ease;
+    transform-style: preserve-3d;
+}
+
+/* Directional lighting gradient - simulates light from top-left */
+.rack-structure::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.18) 0%,
+            rgba(255, 255, 255, 0) 45%,
+            rgba(0, 0, 0, 0.12) 100%);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+[data-view-mode="isometric"] .rack-structure::before {
+    opacity: 1;
+}
+
+/* Enhanced hover effect with pronounced glow and scale */
+.rack-structure:hover {
+    filter: drop-shadow(0 0 25px rgba(147, 51, 234, 0.8)) brightness(1.25) !important;
+    transform: translateZ(40px) scale(1.12) !important;
+    /* Increased from 20px, 1.05 */
+    z-index: 9999 !important;
+}
+
+/* Hover also brightens the directional light */
+.rack-structure:hover::before {
+    opacity: 1.5 !important;
+}
+
+/* Atmospheric depth - items further away fade slightly */
+[data-view-mode="isometric"] .rack-structure {
+    transform-style: preserve-3d;
+    opacity: var(--rack-opacity, 1);
+    transform: translateZ(0);
+    /* GPU layer only in isometric */
+}
+
+/* Zones in isometric view - subtle recess effect */
+[data-view-mode="isometric"] .zone-rect {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    transform: translateZ(-5px);
+}
+
+/* Bins (green dots) with depth */
+[data-view-mode="isometric"] .bin-indicator {
+    transform: translateZ(15px);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+/* Enhanced bin hover effects */
+.bin-indicator:hover {
+    transform: scale(2) !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 1) !important;
+    z-index: 1000 !important;
+    filter: brightness(1.3);
+}
+
+/* Obstacles with depth */
+[data-view-mode="isometric"] .obstacle-element {
+    transform: translateZ(5px);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* Doors slight elevation */
+[data-view-mode="isometric"] .door-element {
+    transform: translateZ(8px);
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3));
+}
+
+/* Smooth animation for all 3D elements - performance boost */
+* {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Ensure children preserve 3D context */
+[style*="transform-style: preserve-3d"]>* {
+    transform-style: preserve-3d;
+}
+
+/* Add subtle pulse to selected/highlighted racks */
+@keyframes rack-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(147, 51, 234, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(147, 51, 234, 0.8);
+    }
+}
+
+.rack-highlighted {
+    animation: rack-pulse 2s ease-in-out infinite;
+}
+
+/* ============================================ */
+/* Capacity-Based Hover Colors */
+/* ============================================ */
+
+/* Low Capacity (0-33%) - Green */
+.capacity-low {
+    background-color: rgba(16, 185, 129, 0.25) !important;
+    /* emerald-500 */
+    border-color: #10b981 !important;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6) !important;
+}
+
+.capacity-low:hover {
+    filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)) brightness(1.3) !important;
+    transform: translateZ(25px) scale(1.08) !important;
+    z-index: 9999 !important;
+}
+
+/* Medium Capacity (34-66%) - Yellow */
+.capacity-medium {
+    background-color: rgba(234, 179, 8, 0.25) !important;
+    /* yellow-500 */
+    border-color: #eab308 !important;
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.6) !important;
+}
+
+.capacity-medium:hover {
+    filter: drop-shadow(0 0 25px rgba(234, 179, 8, 0.8)) brightness(1.3) !important;
+    transform: translateZ(25px) scale(1.08) !important;
+    z-index: 9999 !important;
+}
+
+/* High Capacity (67-100%) - Red */
+.capacity-high {
+    background-color: rgba(239, 68, 68, 0.25) !important;
+    /* red-500 */
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6) !important;
+}
+
+.capacity-high:hover {
+    filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.8)) brightness(1.3) !important;
+    transform: translateZ(25px) scale(1.08) !important;
+    z-index: 9999 !important;
+}
+
+/* Fade in animation for capacity badge */
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.2s ease-out;
+}
+
+/* ============================================ */
+/* 3D Floor Grid */
+/* ============================================ */
+
+.floor-grid-svg {
+    transition: opacity 0.5s ease;
+}
+
+.floor-element {
+    transform: translateZ(-15px);
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+    transition: all 0.5s ease;
+}
+
+/* Floor fades in when switching to isometric */
+@keyframes floor-fade-in {
+    from {
+        opacity: 0;
+        transform: translateZ(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateZ(-15px);
+    }
+}

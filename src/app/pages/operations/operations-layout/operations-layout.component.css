@@ -1,6 +1,8 @@
 .operations-layout {
     display: flex;
     min-height: 100vh;
+    background: radial-gradient(circle at top center, #18181b 0%, #09090b 100%);
+    /* zinc-900 to zinc-950 */
 }
 
 .sidebar {
@@ -179,46 +181,49 @@
     display: none;
 }
 
-.logout-btn {
+/* Logout Link - Subtle style matching sidebar links */
+.logout-link {
     width: 100%;
     padding: 0.75rem;
     background: transparent;
-    border: 1px solid #ff4444;
-    color: #ff4444;
+    border: none;
+    color: #888;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
-    font-weight: 600;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+}
+
+.logout-link:hover {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+}
+
+.logout-link .icon {
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
 }
 
-.logout-btn:hover {
-    background: #ff4444;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(255, 68, 68, 0.3);
+.sidebar.collapsed .logout-link {
+    justify-content: center;
+    padding: 0.75rem;
 }
 
-.sidebar.collapsed .logout-btn {
-    border: none;
-    padding: 0.5rem;
-    position: relative;
-}
-
-.sidebar.collapsed .logout-btn .text {
+.sidebar.collapsed .logout-link .text {
     display: none;
-}
-
-.sidebar.collapsed .logout-btn .icon {
-    font-size: 1.2rem;
 }
 
 /* Tooltips */
 .sidebar.collapsed .nav-item:hover::after,
-.sidebar.collapsed .logout-btn:hover::after {
+.sidebar.collapsed .logout-link:hover::after,
+.sidebar.collapsed .section-header:hover::after {
     content: attr(title);
     position: absolute;
     left: 100%;
@@ -237,7 +242,8 @@
 }
 
 .sidebar.collapsed .nav-item:hover::before,
-.sidebar.collapsed .logout-btn:hover::before {
+.sidebar.collapsed .logout-link:hover::before,
+.sidebar.collapsed .section-header:hover::before {
     content: '';
     position: absolute;
     left: 100%;

@@ -1,0 +1,10 @@
+/* Cursor styles */
+.cursor-grab {
+    cursor: grab;
+}
+
+.cursor-grabbing {
+    cursor: grabbing;
+}
+
+/* Grid background simulation in TS/HTML via inline styles */

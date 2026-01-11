@@ -44,22 +44,24 @@ import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.c
             <app-icon name="activity" [size]="18"></app-icon>
             Project Vitality
           </a>
+
+          <a routerLink="/dev-tools/backlog"
+             routerLinkActive="active"
+             class="nav-item">
+            <app-icon name="list" [size]="18"></app-icon>
+            Backlog Manager
+          </a>
           
           <a routerLink="/dev-tools/data" 
              routerLinkActive="active"
              class="nav-item">
             <app-icon name="database" [size]="18"></app-icon>
-            Reset Database
+            Data Seeder
           </a>
 
 
 
-          <a routerLink="/dev-tools/doc-generator" 
-             routerLinkActive="active"
-             class="nav-item">
-            <app-icon name="file-text" [size]="18"></app-icon>
-            Document Generator
-          </a>
+
 
           <a routerLink="/dev-tools/database" 
              routerLinkActive="active"

@@ -359,6 +359,21 @@
         "DASHBOARD_TITLE": "Tablero de Operaciones",
         "DASHBOARD_SUBTITLE": "Resumen de actividad y acciones rápidas",
         "LOGOUT": "Cerrar Sesión",
+        "SIDEBAR": {
+            "FULFILLMENT": "Cumplimiento de Pedidos",
+            "ORDER_QUEUE": "Cola de Pedidos",
+            "INVENTORY": "Inventario y Logística",
+            "LOOKUP": "Consulta de Inventario",
+            "LOCATOR": "Localizador de Productos",
+            "CYCLE_COUNTS": "Conteo Cíclico",
+            "ABC_ANALYSIS": "Análisis ABC",
+            "WAREHOUSES": "Almacenes",
+            "COMMERCIAL": "Comercial",
+            "CUSTOMERS": "Clientes",
+            "PROMOTIONS": "Promociones",
+            "PROCUREMENT": "Compras",
+            "PURCHASE_ORDERS": "Órdenes de Compra"
+        },
         "DASHBOARD": {
             "TOTAL_ORDERS": "Total de Pedidos",
             "PENDING_ORDERS": "Pedidos Pendientes",
@@ -1314,6 +1329,17 @@
         }
     },
     "ADMIN": {
+        "WAREHOUSES": {
+            "TITLE": "Almacenes",
+            "LOCATOR": "Buscador Visual",
+            "SUBTITLE": "Gestiona ubicaciones físicas y pools de inventario virtual",
+            "CREATE_NEW": "Agregar Almacén",
+            "NO_DATA": "No se encontraron almacenes. Crea el primero.",
+            "WIZARD": {
+                "TITLE": "Crear Almacén",
+                "SUBTITLE": "Configura los detalles de la ubicación de almacenamiento"
+            }
+        },
         "GO_HOME": "Ir al Sitio Web",
         "STATUS": {
             "ALL": "Todos",
@@ -1324,23 +1350,23 @@
         "SIDEBAR": {
             "TITLE": "Admin",
             "DASHBOARD": "Tablero",
-            "BANNERS": "Banners",
-            "BRANDS": "Marcas",
-            "CATALOG_OVERVIEW": "Resumen del Catálogo",
-            "CATEGORIES": "Categorías",
-            "PRODUCTS": "Productos",
-            "ORDERS": "Pedidos",
-            "SECTION_ECOMMERCE": "E-Commerce",
-            "SECTION_CONTENT": "Contenido",
             "SECTION_BUSINESS": "Negocios",
-            "SECTION_SYSTEM": "Sistema",
+            "DISTRIBUTORS": "Distribuidores",
+            "CUSTOMERS": "Clientes",
+            "SECTION_ECOMMERCE": "E-Commerce",
+            "PRODUCTS": "Productos",
+            "CATEGORIES": "Categorías",
+            "BRANDS": "Marcas",
+            "ORDERS": "Historial de Ventas",
+            "SECTION_CONTENT": "Contenido",
+            "BANNERS": "Banners",
             "BLOG": "Blog",
             "PDF_LIBRARY": "Biblioteca PDF",
-            "USERS": "Usuarios",
+            "SECTION_SYSTEM": "Sistema",
             "STAFF": "Equipo",
-            "CUSTOMERS": "Clientes",
+            "USERS": "Usuarios",
+            "SETTINGS": "Configuración del Sitio",
             "LOGS": "Registros de Actividad",
-            "DISTRIBUTORS": "Distribuidores",
             "LOGOUT": "Cerrar Sesión"
         },
         "DASHBOARD": {

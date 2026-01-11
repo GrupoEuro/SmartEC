@@ -27,7 +27,7 @@ export class DataSeederService {
     private firestore = inject(Firestore);
 
     // Version identifier for tracking seed data schema
-    private readonly SEED_VERSION = 'v3.0.0-praxis-live-history';
+    private readonly SEED_VERSION = 'v4.0.0-warehouse-3d';
 
     constructor() { }
 
@@ -191,6 +191,32 @@ export class DataSeederService {
         await this.deleteCollection('inventory_balances'); // Clear inventory
         await this.deleteCollection('inventory_ledger'); // Clear kardex
         this.log('[Seeder] Database Cleared.', onLog);
+    }
+
+    // --- WAREHOUSE DATA CLEANUP ---
+    private async clearWarehouseData(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Clearing warehouse data...', onLog);
+
+        const collections = [
+            'warehouses',
+            'warehouse_zones',
+            'warehouse_structures',
+            'warehouse_locations',
+            'warehouse_doors',
+            'warehouse_obstacles',
+            'warehouse_scale_markers'
+        ];
+
+        let totalDeleted = 0;
+        for (const collectionName of collections) {
+            const deleted = await this.deleteCollection(collectionName);
+            if (deleted > 0) {
+                this.log(`[Seeder] Deleted ${deleted} documents from ${collectionName}`, onLog);
+                totalDeleted += deleted;
+            }
+        }
+
+        this.log(`[Seeder] Warehouse data cleared. Total: ${totalDeleted} documents deleted.`, onLog);
     }
 
     // --- 0. LOCATIONS ---
@@ -764,6 +790,547 @@ export class DataSeederService {
         this.log('[Seeder] ========================================', onLog);
     }
 
+    // --- 3.5 WAREHOUSE LAYOUT (The Wow Factor v4.0) ---
+    async populateWarehouseLayout(onLog?: (message: string) => void): Promise<void> {
+        // Step 1: Clear existing warehouse data first
+        await this.clearWarehouseData(onLog);
+
+        this.log('[Seeder] Generating Professional Warehouse Layout (v4.0)...', onLog);
+        const batch = writeBatch(this.firestore);
+
+        // ========================================
+        // 1. CREATE WAREHOUSES (Physical + Virtual)
+        // ========================================
+        const warehouses = [
+            {
+                id: 'MAIN',
+                name: 'Almacén Principal',
+                code: 'MAIN',
+                type: 'physical',
+                address: 'Av. Industrial 2450, Zona Franca, Montevideo',
+                isActive: true,
+                totalArea: 5000, // sq meters
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            {
+                id: 'VIRTUAL_FBA',
+                name: 'Amazon FBA Virtual',
+                code: 'VFBA',
+                type: 'virtual',
+                isActive: true,
+                processType: 'fba-reserved',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            {
+                id: 'VIRTUAL_MELI',
+                name: 'MercadoLibre Full Virtual',
+                code: 'VMELI',
+                type: 'virtual',
+                isActive: true,
+                processType: 'fba-reserved',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            {
+                id: 'VIRTUAL_RETURNS',
+                name: 'Returns Processing',
+                code: 'VRET',
+                type: 'virtual',
+                isActive: true,
+                processType: 'returns',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            }
+        ];
+
+        this.log(`[Seeder] Created ${warehouses.length} warehouses (1 Physical, ${warehouses.length - 1} Virtual)`, onLog);
+
+        // ========================================
+        // 2. MAIN WAREHOUSE LAYOUT (1200x900 Canvas)
+        // ========================================
+        const warehouseId = 'MAIN';
+
+        // --- ZONES (6 Professional Zones) ---
+        const zones = [
+            {
+                id: 'zone_receiving',
+                warehouseId,
+                name: 'Receiving / Inbound',
+                code: 'REC',
+                type: 'receiving',
+                color: '#10b981', // Emerald Green
+                x: 20, y: 750, width: 350, height: 120,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_picking',
+                warehouseId,
+                name: 'Picking Zone (Fast-Moving)',
+                code: 'PICK',
+                type: 'racking',
+                color: '#3b82f6', // Blue
+                x: 20, y: 50, width: 500, height: 650,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_reserve',
+                warehouseId,
+                name: 'Reserve Storage',
+                code: 'RSV',
+                type: 'racking',
+                color: '#8b5cf6', // Purple
+                x: 540, y: 250, width: 350, height: 450,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_bulk',
+                warehouseId,
+                name: 'Bulk / Pallet Storage',
+                code: 'BULK',
+                type: 'bulk-stack',
+                color: '#f59e0b', // Amber
+                x: 910, y: 50, width: 270, height: 450,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_packing',
+                warehouseId,
+                name: 'Packing / Staging',
+                code: 'PACK',
+                type: 'packing',
+                color: '#14b8a6', // Teal
+                x: 540, y: 750, width: 640, height: 120,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_office',
+                warehouseId,
+                name: 'Office / Quality Control',
+                code: 'OFC',
+                type: 'staging',
+                color: '#6b7280', // Gray
+                x: 910, y: 520, width: 270, height: 200,
+                createdAt: Timestamp.now()
+            }
+        ];
+
+        zones.forEach(z => {
+            batch.set(doc(this.firestore, `warehouse_zones/${z.id}`), z);
+        });
+
+        this.log(`[Seeder] Created ${zones.length} operational zones`, onLog);
+
+        // --- DOORS (6 Realistic Doors) ---
+        const doors = [
+            {
+                id: 'door_inbound_1',
+                warehouseId,
+                name: 'Dock 1 (Inbound)',
+                type: 'inbound',
+                x: 50, y: 870, width: 80, height: 15,
+                rotation: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'door_inbound_2',
+                warehouseId,
+                name: 'Dock 2 (Inbound)',
+                type: 'inbound',
+                x: 150, y: 870, width: 80, height: 15,
+                rotation: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'door_outbound_1',
+                warehouseId,
+                name: 'Shipping Door 1',
+                type: 'outbound',
+                x: 600, y: 870, width: 80, height: 15,
+                rotation: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'door_outbound_2',
+                warehouseId,
+                name: 'Shipping Door 2',
+                type: 'outbound',
+                x: 750, y: 870, width: 80, height: 15,
+                rotation: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'door_personnel',
+                warehouseId,
+                name: 'Personnel Entry',
+                type: 'inbound',
+                x: 1165, y: 650, width: 15, height: 50,
+                rotation: 90,
+                active: true,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'door_emergency',
+                warehouseId,
+                name: 'Emergency Exit',
+                type: 'emergency',
+                x: 0, y: 400, width: 15, height: 60,
+                rotation: 0,
+                active: true,
+                createdAt: Timestamp.now()
+            }
+        ];
+
+        doors.forEach(d => {
+            batch.set(doc(this.firestore, `warehouse_doors/${d.id}`), d);
+        });
+
+        this.log(`[Seeder] Created ${doors.length} doors and access points`, onLog);
+
+        // --- OBSTACLES (5 Realistic Obstacles) ---
+        const obstacles = [
+            {
+                id: 'obs_office',
+                warehouseId,
+                name: 'Office Structure',
+                type: 'office',
+                x: 920, y: 530, width: 250, height: 180,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'obs_qc',
+                warehouseId,
+                name: 'Quality Control Area',
+                type: 'equipment',
+                x: 540, y: 720, width: 120, height: 20,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'obs_loading_equipment',
+                warehouseId,
+                name: 'Loading Equipment Zone',
+                type: 'equipment',
+                x: 380, y: 760, width: 140, height: 40,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'obs_pillar_1',
+                warehouseId,
+                name: 'Support Column A',
+                type: 'pillar',
+                x: 530, y: 100, width: 20, height: 20,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'obs_pillar_2',
+                warehouseId,
+                name: 'Support Column B',
+                type: 'pillar',
+                x: 530, y: 600, width: 20, height: 20,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            }
+        ];
+
+        obstacles.forEach(o => {
+            batch.set(doc(this.firestore, `warehouse_obstacles/${o.id}`), o);
+        });
+
+        this.log(`[Seeder] Created ${obstacles.length} obstacles and restricted areas`, onLog);
+
+        // --- SCALE MARKERS (Real-world measurements) ---
+        const scaleMarkers = [];
+        const pixelsPerMeter = 24; // Scale: 1 meter = 24 pixels approx
+        const canvasWidth = 1200;
+        const canvasHeight = 900;
+
+        // Horizontal markers (bottom edge) - every 10 meters
+        for (let meters = 0; meters <= 50; meters += 10) {
+            const xPos = meters * pixelsPerMeter;
+            if (xPos <= canvasWidth) {
+                scaleMarkers.push({
+                    id: `scale_h_${meters}`,
+                    warehouseId,
+                    type: 'scale_marker',
+                    orientation: 'horizontal',
+                    x: xPos,
+                    y: canvasHeight - 10,
+                    label: `${meters}m`,
+                    createdAt: Timestamp.now()
+                });
+            }
+        }
+
+        // Vertical markers (left edge) - every 10 meters  
+        for (let meters = 0; meters <= 35; meters += 10) {
+            const yPos = canvasHeight - (meters * pixelsPerMeter);
+            if (yPos >= 0) {
+                scaleMarkers.push({
+                    id: `scale_v_${meters}`,
+                    warehouseId,
+                    type: 'scale_marker',
+                    orientation: 'vertical',
+                    x: 5,
+                    y: yPos,
+                    label: `${meters}m`,
+                    createdAt: Timestamp.now()
+                });
+            }
+        }
+
+        scaleMarkers.forEach(marker => {
+            batch.set(doc(this.firestore, `warehouse_scale_markers/${marker.id}`), marker);
+        });
+
+        this.log(`[Seeder] Created ${scaleMarkers.length} scale markers for measurement reference`, onLog);
+
+        // ========================================
+        // 3. RACKS/STRUCTURES (72 Total)
+        // ========================================
+        const structures: any[] = [];
+
+        // --- PICKING ZONE RACKS: 6 rows × 8 cols = 48 racks ---
+        this.log('[Seeder] Generating Picking Zone racks (48)...', onLog);
+        const pickingRows = 6;
+        const pickingCols = 8;
+        const pickingStartX = 35;
+        const pickingStartY = 70;
+        const pickingSpacingX = 60;
+        const pickingSpacingY = 100;
+
+        for (let r = 0; r < pickingRows; r++) {
+            for (let c = 0; c < pickingCols; c++) {
+                const structId = `rack_pick_${r}_${c}`;
+                const rackLetter = String.fromCharCode(65 + r); // A-F
+                const rackNumber = c + 1; // 1-8
+
+                structures.push({
+                    id: structId,
+                    warehouseId,
+                    zoneId: 'zone_picking',
+                    name: `Rack ${rackLetter}-${rackNumber}`,
+                    code: `${rackLetter}-${rackNumber}`,
+                    type: 'standard-rack',
+                    x: pickingStartX + (c * pickingSpacingX),
+                    y: pickingStartY + (r * pickingSpacingY),
+                    width: 45,
+                    height: 18,
+                    rotation: 0,
+                    bays: 3, // 3 horizontal sections
+                    levels: 5, // 5 vertical shelves
+                    totalLocations: 15,
+                    active: true,
+                    createdAt: Timestamp.now()
+                });
+            }
+        }
+
+        // --- RESERVE STORAGE RACKS: 4 rows × 4 cols = 16 racks ---
+        this.log('[Seeder] Generating Reserve Storage racks (16)...', onLog);
+        const reserveRows = 4;
+        const reserveCols = 4;
+        const reserveStartX = 560;
+        const reserveStartY = 270;
+        const reserveSpacingX = 75;
+        const reserveSpacingY = 100;
+
+        for (let r = 0; r < reserveRows; r++) {
+            for (let c = 0; c < reserveCols; c++) {
+                const structId = `rack_reserve_${r}_${c}`;
+                const rackNum = (r * reserveCols) + c + 1; // R-1 through R-16
+
+                structures.push({
+                    id: structId,
+                    warehouseId,
+                    zoneId: 'zone_reserve',
+                    name: `Reserve R-${rackNum}`,
+                    code: `R-${rackNum}`,
+                    type: 'standard-rack',
+                    x: reserveStartX + (c * reserveSpacingX),
+                    y: reserveStartY + (r * reserveSpacingY),
+                    width: 45,
+                    height: 18,
+                    rotation: 0,
+                    bays: 2, // 2 horizontal sections
+                    levels: 6, // 6 vertical shelves (taller)
+                    totalLocations: 12,
+                    active: true,
+                    createdAt: Timestamp.now()
+                });
+            }
+        }
+
+        // --- BULK STORAGE: 2 rows × 4 cols = 8 floor stacks ---
+        this.log('[Seeder] Generating Bulk Storage positions (8)...', onLog);
+        const bulkRows = 2;
+        const bulkCols = 4;
+        const bulkStartX = 925;
+        const bulkStartY = 70;
+        const bulkSpacingX = 60;
+        const bulkSpacingY = 200;
+
+        for (let r = 0; r < bulkRows; r++) {
+            for (let c = 0; c < bulkCols; c++) {
+                const structId = `bulk_${r}_${c}`;
+                const bulkNum = (r * bulkCols) + c + 1; // B-1 through B-8
+
+                structures.push({
+                    id: structId,
+                    warehouseId,
+                    zoneId: 'zone_bulk',
+                    name: `Bulk B-${bulkNum}`,
+                    code: `B-${bulkNum}`,
+                    type: 'floor-stack',
+                    x: bulkStartX + (c * bulkSpacingX),
+                    y: bulkStartY + (r * bulkSpacingY),
+                    width: 50,
+                    height: 50,
+                    rotation: 0,
+                    bays: 1,
+                    levels: 1, // Floor stack is single level
+                    totalLocations: 1,
+                    active: true,
+                    createdAt: Timestamp.now()
+                });
+            }
+        }
+
+        // Save all structures
+        structures.forEach(struct => {
+            batch.set(doc(this.firestore, `warehouse_structures/${struct.id}`), struct);
+        });
+
+        await batch.commit();
+        this.log(`[Seeder] Created ${structures.length} storage structures (48 picking + 16 reserve + 8 bulk)`, onLog);
+
+        // ========================================
+        // 4. BINS/LOCATIONS & PRODUCT ASSIGNMENT
+        // ========================================
+        this.log('[Seeder] Generating storage bins and assigning products...', onLog);
+
+        // Fetch all products
+        const productsSnap = await getDocs(collection(this.firestore, 'products'));
+        const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+        if (products.length === 0) {
+            this.log('[Seeder] WARNING: No products found. Bins will be empty.', onLog);
+        }
+
+        const locBatch = writeBatch(this.firestore);
+        let locCount = 0;
+        let occupiedCount = 0;
+        let prodIndex = 0;
+
+        // Create Bins for each rack
+        for (const rack of structures) {
+            const isPickingZone = rack.zoneId === 'zone_picking';
+            const isReserveZone = rack.zoneId === 'zone_reserve';
+            const isBulkZone = rack.zoneId === 'zone_bulk';
+
+            // Different occupancy rates per zone
+            let occupancyRate = 0.65; // Default 65%
+            if (isPickingZone) occupancyRate = 0.70; // 70% in picking
+            if (isReserveZone) occupancyRate = 0.60; // 60% in reserve
+            if (isBulkZone) occupancyRate = 0.80; // 80% in bulk
+
+            for (let bay = 1; bay <= rack.bays; bay++) {
+                for (let level = 1; level <= rack.levels; level++) {
+                    const locId = `${rack.id}_B${bay}_L${level}`;
+                    const binCode = `${rack.code}-${String(bay).padStart(2, '0')}-${level}`;
+
+                    // Assign product based on occupancy rate
+                    let assignedProduct = null;
+                    if (products.length > 0 && Math.random() < occupancyRate) {
+                        assignedProduct = products[prodIndex % products.length];
+                        prodIndex++;
+
+                        // Skip products with 0 stock
+                        if ((assignedProduct.stockQuantity || 0) <= 0) {
+                            assignedProduct = null;
+                        }
+                    }
+
+                    const quantity = assignedProduct
+                        ? (assignedProduct.inventory?.MAIN?.stock || Math.floor(Math.random() * 25) + 5)
+                        : 0;
+
+                    const utilization = assignedProduct ? Math.floor(Math.random() * 40) + 60 : 0; // 60-100%
+
+                    const loc = {
+                        id: locId,
+                        warehouseId,
+                        zoneId: rack.zoneId,
+                        structureId: rack.id,
+                        name: `Bin ${binCode}`,
+                        code: binCode,
+                        barcode: `LOC-${binCode}`,
+                        bay,
+                        level,
+                        position: 1,
+                        status: assignedProduct ? 'full' : 'empty',
+                        currentUtilization: utilization,
+
+                        // Enhanced 3D positioning data
+                        width: 30,
+                        height: 20,
+                        depth: 40,
+                        maxWeight: isBulkZone ? 1000 : 200, // kg
+                        maxVolume: isBulkZone ? 2.0 : 0.5, // cubic meters
+
+                        // Product assignment
+                        productId: assignedProduct?.id || null,
+                        productName: assignedProduct?.name?.es || null,
+                        productSku: assignedProduct?.sku || null,
+                        quantity,
+
+                        createdAt: Timestamp.now()
+                    };
+
+                    locBatch.set(doc(this.firestore, `warehouse_locations/${locId}`), loc);
+                    locCount++;
+                    if (assignedProduct) occupiedCount++;
+
+                    // Commit in batches of 500
+                    if (locCount % 500 === 0) {
+                        await locBatch.commit();
+                        this.log(`[Seeder] Created ${locCount} bins...`, onLog);
+                    }
+                }
+            }
+        }
+
+        await locBatch.commit();
+
+        const occupancyPercentage = Math.round((occupiedCount / locCount) * 100);
+
+        // ========================================
+        // 5. FINAL SUMMARY
+        // ========================================
+        this.log('[Seeder] ========================================', onLog);
+        this.log('[Seeder] 🎉 WAREHOUSE LAYOUT COMPLETE!', onLog);
+        this.log('[Seeder] ========================================', onLog);
+        this.log(`[Seeder] Version: ${this.SEED_VERSION}`, onLog);
+        this.log(`[Seeder] Canvas: 1200×900 pixels (Professional Layout)`, onLog);
+        this.log(`[Seeder] Warehouses: ${warehouses.length} (1 Physical + ${warehouses.length - 1} Virtual)`, onLog);
+        this.log(`[Seeder] Zones: ${zones.length} operational zones`, onLog);
+        this.log(`[Seeder] Doors: ${doors.length} access points`, onLog);
+        this.log(`[Seeder] Obstacles: ${obstacles.length} restricted areas`, onLog);
+        this.log(`[Seeder] Structures: ${structures.length} total (48 picking + 16 reserve + 8 bulk)`, onLog);
+        this.log(`[Seeder] Bins: ${locCount} storage locations`, onLog);
+        this.log(`[Seeder] Occupancy: ${occupiedCount}/${locCount} (${occupancyPercentage}%)`, onLog);
+        this.log(`[Seeder] Products Distributed: ${products.length > 0 ? 'Yes' : 'No products available'}`, onLog);
+        this.log('[Seeder] ========================================', onLog);
+    }
+
     // --- 4. INVENTORY BALANCES ---
     async populateInventoryBalances(config: SeederConfig = DEFAULT_CONFIG, onLog?: (message: string) => void): Promise<void> {
         this.log('[Seeder] Creating inventory balances...', onLog);
@@ -1295,7 +1862,8 @@ export class DataSeederService {
     }
 
     // Stub methods for other collections to prevent errors if UI calls them directly
-    async populateCoupons() {
+    async populateCoupons(onLog?: (message: string) => void) {
+        this.log('[Seeder] Seeding Coupons...', onLog);
         const batch = writeBatch(this.firestore);
         const couponsRef = collection(this.firestore, 'coupons');
         let count = 0;
@@ -1373,7 +1941,7 @@ export class DataSeederService {
         }
 
         await batch.commit();
-        this.log(`[Seeder] Created ${count} coupons`);
+        this.log(`[Seeder] Created ${count} coupons`, onLog);
     }
     async populateProductCosts() { }
     async populateOperationsData() { }
@@ -1404,15 +1972,21 @@ export class DataSeederService {
             this.log('[Seeder] Step 6: Inventory Ledger', onLog);
             await this.populateInventoryLedger(config, onLog);
 
-            // Inventory and Order enhancements
-            this.log('[Seeder] Step 7: Inventory Enhancements', onLog);
+            // Inventory enhancements
+            this.log('[Seeder] Step 7: Inventory Enhancements (Adjustments, Transfers)', onLog);
             await this.populateInventoryEnhancements(config, onLog);
 
-            this.log('[Seeder] Step 8: Order Enhancements', onLog);
+            this.log('[Seeder] Step 8: Warehouse Layout (Zones, Racks, Bins)', onLog);
+            await this.populateWarehouseLayout(onLog);
+
+            this.log('[Seeder] Step 9: Coupons', onLog);
+            await this.populateCoupons(onLog);
+
+            this.log('[Seeder] Step 10: Order Enhancements (Returns, Notes)', onLog);
             await this.enhanceOrders(config, onLog);
 
             // Save seed metadata
-            this.log('[Seeder] Step 9: Saving Metadata', onLog);
+            this.log('[Seeder] Step 11: Saving Metadata', onLog);
             await this.saveSeedMetadata(config, onLog);
 
             this.log('[Seeder] seedAll Complete!', onLog);

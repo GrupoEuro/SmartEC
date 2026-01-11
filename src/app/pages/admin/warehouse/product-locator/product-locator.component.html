@@ -1,0 +1,395 @@
+<div class="h-[calc(100vh-64px)] flex flex-col bg-zinc-950 text-white overflow-hidden">
+    <!-- Header / Search -->
+    <div class="p-6 bg-zinc-900 border-b border-zinc-800 flex items-center gap-6 z-20 shadow-xl relative">
+
+        <!-- Warehouse Selector -->
+        <div *ngIf="availableWarehouses().length > 1" class="flex items-center gap-2">
+            <app-icon name="home" [size]="18" class="text-zinc-500"></app-icon>
+            <select [(ngModel)]="selectedWarehouseId" (ngModelChange)="switchWarehouse($event)"
+                class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                <option *ngFor="let wh of availableWarehouses()" [value]="wh.id">{{ wh.name }}</option>
+            </select>
+        </div>
+
+        <div class="flex-1 max-w-2xl flex gap-2">
+            <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="search()"
+                placeholder="Find a product (e.g. 'Michelin', '205/55')"
+                class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder-zinc-600">
+            <button (click)="search()" class="btn-glass-primary px-6 text-lg font-bold min-w-[120px]">
+                <app-icon name="search" class="mr-2"></app-icon>
+                Find
+            </button>
+        </div>
+
+        <!-- Notification Toast -->
+        <div *ngIf="notification()" class="absolute top-full mt-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+            <div class="px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2" [ngClass]="{
+                    'bg-zinc-800 text-zinc-300 border border-zinc-700': notification()?.type === 'info',
+                    'bg-rose-900 text-rose-200 border border-rose-700': notification()?.type === 'error',
+                    'bg-emerald-900 text-emerald-200 border border-emerald-700': notification()?.type === 'success'
+                 }">
+                <app-icon [name]="notification()?.type === 'error' ? 'alert-triangle' : 'info'" [size]="18"></app-icon>
+                {{ notification()?.message }}
+            </div>
+        </div>
+
+        <div *ngIf="foundProduct()" class="flex-1 flex items-center gap-4 animate-fade-in-right">
+            <div
+                class="bg-emerald-900/30 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3 min-w-[300px]">
+                <div class="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center">
+                    <app-icon name="package" [size]="24" class="text-purple-400"></app-icon>
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs text-emerald-500 font-bold uppercase tracking-wider">{{ foundProduct().sku ||
+                        'Found Item' }}</div>
+                    <div class="font-bold text-white max-w-[200px] truncate">{{ foundProduct().name?.es }}</div>
+                    <div *ngIf="foundLocation()" class="text-xs text-zinc-400 mt-1">
+                        Qty: <span class="text-white font-bold">{{ foundLocation()?.quantity || 0 }}</span> units
+                    </div>
+                </div>
+            </div>
+            <div>
+                <app-icon name="arrow-right" class="text-zinc-600"></app-icon>
+            </div>
+            <div class="bg-purple-900/30 border border-purple-500/30 rounded-lg px-4 py-3">
+                <div class="text-xs text-purple-300 uppercase tracking-widest font-bold">Location</div>
+                <div class="text-2xl font-mono font-bold text-white">{{ foundLocation()?.code || 'Scanning...' }}</div>
+                <button *ngIf="foundLocation()" (click)="calculatePath(foundLocation()!)"
+                    class="mt-2 text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                    <app-icon name="navigation" [size]="12"></app-icon>
+                    Re-trace Path
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Bar -->
+        <div *ngIf="totalBinsCount() > 0" class="flex items-center gap-6 text-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span class="text-zinc-400">Capacity:</span>
+                <span class="font-bold text-white">{{ occupiedBinsCount() }}/{{ totalBinsCount() }}</span>
+                <span class="text-emerald-400 font-bold">({{ occupancyRate() }}%)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <app-icon name="package" [size]="16" class="text-zinc-400"></app-icon>
+                <span class="text-zinc-400">Products:</span>
+                <span class="font-bold text-white">{{ uniqueProductsCount() }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Canvas (ENLARGED) -->
+    <div class="flex-1 bg-zinc-950 relative overflow-hidden flex items-center justify-center">
+
+        <!-- Zoom Controls -->
+        <div class="absolute top-4 right-4 z-50 flex flex-col gap-2">
+            <div class="flex flex-col gap-2 bg-zinc-900/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+                <button (click)="zoomIn()"
+                    class="w-10 h-10 rounded bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Zoom In">
+                    <app-icon name="plus" [size]="20"></app-icon>
+                </button>
+                <button (click)="zoomOut()"
+                    class="w-10 h-10 rounded bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Zoom Out">
+                    <app-icon name="minus" [size]="20"></app-icon>
+                </button>
+                <!-- Separator -->
+                <div class="h-px bg-zinc-700 my-1"></div>
+                <!-- Reset button with distinct purple styling -->
+                <button (click)="resetZoom()"
+                    class="w-10 h-10 rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition-all hover:scale-110 shadow-lg shadow-purple-500/50"
+                    title="Reset Zoom">
+                    <app-icon name="maximize" [size]="18"></app-icon>
+                </button>
+            </div>
+
+            <!-- Camera Controls (Isometric Only) -->
+            <div *ngIf="viewMode() === 'isometric'"
+                class="flex flex-col gap-2 bg-purple-900/90 backdrop-blur-sm rounded-lg p-2 shadow-lg animate-fade-in">
+                <div class="text-xs text-purple-300 font-bold text-center mb-1 px-2">CAMERA</div>
+                <button (click)="rotateCamera('x', 5)"
+                    class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Tilt Up">
+                    <app-icon name="arrow-up" [size]="18"></app-icon>
+                </button>
+                <button (click)="rotateCamera('x', -5)"
+                    class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Tilt Down">
+                    <app-icon name="arrow-down" [size]="18"></app-icon>
+                </button>
+                <button (click)="rotateCamera('z', 5)"
+                    class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Rotate Left">
+                    <app-icon name="rotate-ccw" [size]="18"></app-icon>
+                </button>
+                <button (click)="rotateCamera('z', -5)"
+                    class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Rotate Right">
+                    <app-icon name="rotate-cw" [size]="18"></app-icon>
+                </button>
+                <button (click)="resetCamera()"
+                    class="w-10 h-10 rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition-all hover:scale-110"
+                    title="Reset Camera">
+                    <app-icon name="target" [size]="18"></app-icon>
+                </button>
+            </div>
+            <!-- View Mode Toggle -->
+            <button (click)="toggleViewMode()"
+                class="w-10 h-10 rounded-lg bg-zinc-900/90 border border-zinc-700 hover:border-purple-500 text-zinc-300 hover:text-white transition-all flex items-center justify-center"
+                [title]="viewMode() === 'top' ? 'Switch to Isometric View' : 'Switch to Top View'">
+                <app-icon [name]="viewMode() === 'top' ? 'box' : 'layout'" [size]="20"></app-icon>
+            </button>
+        </div>
+
+        <!-- Legend Panel -->
+        <div *ngIf="zones().length > 0"
+            class="absolute top-4 left-4 z-50 bg-zinc-900/90 backdrop-blur border border-zinc-700 rounded-lg p-4 min-w-[200px]">
+            <div class="font-bold text-sm mb-3 text-zinc-300">Map Legend</div>
+            <div class="space-y-2 text-xs">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 border-2 border-emerald-500 bg-emerald-500/20"></div>
+                    <span class="text-zinc-400">Inbound Door</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 border-2 border-rose-500 bg-rose-500/20"></div>
+                    <span class="text-zinc-400">Outbound Door</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div
+                        class="w-4 h-4 bg-[repeating-linear-gradient(45deg,#27272a,#27272a_4px,#3f3f46_4px,#3f3f46_8px)]">
+                    </div>
+                    <span class="text-zinc-400">Obstacle</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-zinc-400">Occupied Bin</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 bg-zinc-950 relative overflow-hidden flex items-center justify-center">
+
+            <!-- Empty State (No warehouse data) -->
+            <div *ngIf="zones().length === 0 && structures().length === 0" class="text-center p-12 animate-fade-in">
+                <div class="text-6xl mb-4">📦</div>
+                <h3 class="text-2xl font-bold mb-2">No Warehouse Layout Found</h3>
+                <p class="text-zinc-500 mb-6">Seed warehouse data to see the map visualization.</p>
+                <a routerLink="/dev-tools/data-seeder" class="btn-glass-primary inline-flex items-center gap-2">
+                    <app-icon name="database"></app-icon>
+                    Go to Data Seeder
+                </a>
+            </div>
+
+            <!-- Map Content (when data exists) -->
+            <div *ngIf="zones().length > 0 || structures().length > 0">
+                <!-- Background Grid -->
+                <div class="absolute inset-0 opacity-20 pointer-events-none"
+                    style="background-image: radial-gradient(#4b5563 1px, transparent 1px); background-size: 20px 20px;">
+                </div>
+
+                <!-- 3D Floor Grid (Isometric Mode) -->
+                <svg *ngIf="viewMode() === 'isometric'"
+                    class="absolute top-0 left-0 w-full h-full pointer-events-none floor-grid-svg"
+                    [attr.viewBox]="'0 0 1200 900'" style="z-index: 0;">
+                    <defs>
+                        <pattern id="floorGrid" width="100" height="100" patternUnits="userSpaceOnUse">
+                            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(100,116,139,0.25)"
+                                stroke-width="1.5" />
+                        </pattern>
+                    </defs>
+                    <rect x="0" y="0" width="1200" height="900" fill="url(#floorGrid)" class="floor-element" />
+                </svg>
+
+                <div class="relative transition-transform duration-500 ease-out"
+                    [style.transform]="'scale(' + scale() + ') ' + getViewTransform()"
+                    style="width: 800px; height: 600px; transform-style: preserve-3d;">
+
+                    <!-- Path Animation Layer calling SVG -->
+                    <svg *ngIf="showPath()" class="absolute top-0 left-0 pointer-events-none path-svg-3d"
+                        [attr.viewBox]="'0 0 800 600'" style="width: 800px; height: 600px; z-index: 100;">
+                        <defs>
+                            <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:rgb(168,85,247);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:rgb(236,72,153);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <path [attr.d]="pathString" fill="none" stroke="url(#pathGradient)" stroke-width="5"
+                            stroke-dasharray="10,5" class="animated-path path-3d" />
+                    </svg>
+
+                    <!-- Zones -->
+                    <div *ngFor="let zone of zones()"
+                        class="absolute border-2 rounded-lg bg-opacity-10 transition-all duration-300 zone-rect"
+                        [attr.data-view-mode]="viewMode()" [style.left.px]="zone.x" [style.top.px]="zone.y"
+                        [style.width.px]="zone.width" [style.height.px]="zone.height" [style.borderColor]="zone.color"
+                        [style.backgroundColor]="zone.color + '10'"
+                        [ngClass]="{'opacity-20': foundLocation() && foundLocation()?.zoneId !== zone.id}">
+
+                        <div class="absolute -top-6 left-0 text-xs font-bold uppercase tracking-wider opacity-50"
+                            [style.color]="zone.color">
+                            {{ zone.name }}
+                        </div>
+                    </div>
+
+                    <!-- Obstacles -->
+                    <div *ngFor="let ob of obstacles()"
+                        class="absolute border border-zinc-700 bg-[repeating-linear-gradient(45deg,#27272a,#27272a_10px,#3f3f46_10px,#3f3f46_20px)] transition-all duration-300 obstacle-element"
+                        [attr.data-view-mode]="viewMode()" [style.left.px]="ob.x" [style.top.px]="ob.y"
+                        [style.width.px]="ob.width" [style.height.px]="ob.height">
+                    </div>
+
+                    <!-- Doors -->
+                    <div *ngFor="let door of doors()"
+                        class="absolute border-2 transition-all duration-300 flex items-center justify-center font-bold text-xs door-element"
+                        [attr.data-view-mode]="viewMode()" [style.left.px]="door.x" [style.top.px]="door.y"
+                        [style.width.px]="door.width" [style.height.px]="door.height" [ngClass]="{
+                        'border-emerald-500 bg-emerald-500/20 text-emerald-400': door.type === 'inbound',
+                        'border-rose-500 bg-rose-500/20 text-rose-400': door.type === 'outbound',
+                        'border-amber-500 bg-amber-500/20 text-amber-400': door.type === 'dock'
+                    }">
+                        {{ door.name || (door.type === 'inbound' ? 'IN' : 'OUT') }}
+                    </div>
+
+                    <!-- Racks -->
+                    <div *ngFor="let struct of structures()"
+                        class="absolute border transition-all duration-300 transform cursor-pointer group rack-structure"
+                        [attr.data-view-mode]="viewMode()" [style.left.px]="struct.x" [style.top.px]="struct.y"
+                        [style.width.px]="struct.width" [style.height.px]="struct.height"
+                        [style.z-index]="viewMode() === 'isometric' ? getRackDepth(struct) : 'auto'"
+                        [style.filter]="viewMode() === 'isometric' ? getRackShadow(struct) : ''"
+                        [style.--rack-opacity]="viewMode() === 'isometric' ? getRackAtmosphericOpacity(struct) : 1"
+                        (mouseenter)="onRackHover(struct.id!)" (mouseleave)="onRackLeave()"
+                        (click)="onRackClick(struct)" [ngClass]="{
+                    'bg-zinc-800 border-zinc-700 opacity-50': !foundLocation() || foundLocation()?.structureId !== struct.id,
+                    'bg-purple-600 border-white shadow-[0_0_30px_rgba(168,85,247,0.6)] z-20 scale-105 rack-highlighted': foundLocation()?.structureId === struct.id || selectedRack()?.id === struct.id,
+                    'border-zinc-500 opacity-70': hoveredRack() === struct.id && foundLocation()?.structureId !== struct.id && selectedRack()?.id !== struct.id,
+                    'capacity-low': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'low',
+                    'capacity-medium': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'medium',
+                    'capacity-high': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'high'
+                 }">
+                        <!-- Rack Label (visible on hover or when zoomed) -->
+                        <div
+                            class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            {{ struct.code }}
+                        </div>
+                        <!-- Capacity Badge (visible on hover) -->
+                        <div *ngIf="hoveredRack() === struct.id"
+                            class="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap animate-fade-in-up"
+                            [ngClass]="{
+                                'bg-emerald-500/90 text-white': getRackCapacityColor(struct.id!) === 'low',
+                                'bg-yellow-500/90 text-black': getRackCapacityColor(struct.id!) === 'medium',
+                                'bg-red-500/90 text-white': getRackCapacityColor(struct.id!) === 'high'
+                            }">
+                            {{ getRackOccupancy(struct.id!) }}% Full
+                        </div>
+                    </div>
+
+                    <!-- Occupied Bins (Hotspots) - LARGER & PULSING -->
+                    <div *ngFor="let bin of occupiedBins()"
+                        class="absolute w-3 h-3 rounded-full bg-emerald-500 cursor-pointer hover:scale-150 transition-transform shadow-[0_0_10px_#10b981] animate-pulse bin-indicator"
+                        [attr.data-view-mode]="viewMode()"
+                        [style.left.px]="(getStructureForBin(bin)?.x || 0) + (bin.bay * 10) + 5"
+                        [style.top.px]="(getStructureForBin(bin)?.y || 0) + (bin.level * 4) + 5"
+                        (click)="onBinClick(bin)"
+                        [title]="(bin.productName || 'Product') + ' • ' + (bin.quantity || 0) + ' units • ' + (bin.code || '')">
+                    </div>
+
+                    <!-- Path Animation Layer calling SVG -->
+                    <svg class="absolute top-0 left-0 w-[2000px] h-[2000px] pointer-events-none z-30"
+                        style="overflow: visible;">
+                        <path *ngIf="showPath()" [attr.d]="pathString" fill="none" stroke="#a855f7" stroke-width="4"
+                            stroke-linecap="round" stroke-dasharray="10 10"
+                            class="path-animation filter drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">
+                        </path>
+
+                        <!-- Start Point -->
+                        <circle *ngIf="showPath()" [attr.cx]="pathCoordinates()[0].x" [attr.cy]="pathCoordinates()[0].y"
+                            r="8" fill="#fff" />
+
+                        <!-- End Point -->
+                        <circle *ngIf="showPath()" [attr.cx]="pathCoordinates()[2].x" [attr.cy]="pathCoordinates()[2].y"
+                            r="8" fill="#fff" class="animate-ping" />
+                    </svg>
+
+                    <!-- Entrance Label -->
+                    <div *ngIf="doors().length > 0"
+                        class="absolute top-[800px] left-[20px] bg-emerald-600 text-white text-xs px-2 py-1 rounded">
+                        ENTRANCE
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rack Details Sidebar -->
+    <div *ngIf="selectedRack()"
+        class="absolute top-0 right-0 h-full w-96 bg-zinc-900/95 backdrop-blur-xl border-l border-zinc-700 shadow-2xl z-50 animate-slide-in-right flex flex-col">
+
+        <!-- Header -->
+        <div class="p-6 border-b border-zinc-800">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-white">{{ selectedRack()?.name }}</h3>
+                <button (click)="closeSidebar()" class="text-zinc-400 hover:text-white transition-colors">
+                    <app-icon name="x" [size]="24"></app-icon>
+                </button>
+            </div>
+            <div class="text-sm text-zinc-400 mb-3">{{ selectedRack()?.code }}</div>
+
+            <!-- Occupancy Bar -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-zinc-400">Occupancy</span>
+                    <span class="text-white font-bold">{{ rackOccupancy().occupied }}/{{ rackOccupancy().total }}
+                        bins</span>
+                </div>
+                <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300"
+                        [style.width.%]="rackOccupancy().percentage"></div>
+                </div>
+                <div class="text-right text-xs text-emerald-400 font-bold">{{ rackOccupancy().percentage }}%</div>
+            </div>
+        </div>
+
+        <!-- Products List -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-3">
+            <div class="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-4">Products in this rack</div>
+
+            <div *ngIf="binsInSelectedRack().length === 0" class="text-center py-12 text-zinc-600">
+                <app-icon name="inbox" [size]="48" class="mx-auto mb-3 opacity-50"></app-icon>
+                <div class="text-sm">No products in this rack</div>
+            </div>
+
+            <div *ngFor="let bin of binsInSelectedRack()" (click)="navigateToBin(bin)"
+                class="bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-all duration-200 group">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded bg-zinc-900 flex items-center justify-center flex-shrink-0">
+                        <app-icon name="package" [size]="20" class="text-purple-400"></app-icon>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-emerald-400 font-bold mb-1">{{ bin.productSku }}</div>
+                        <div class="text-sm font-bold text-white truncate mb-2">{{ bin.productName }}</div>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="text-zinc-400">
+                                Bin: <span class="text-white font-mono">{{ bin.code }}</span>
+                            </div>
+                            <div class="text-zinc-400">
+                                Qty: <span class="text-white font-bold">{{ bin.quantity || 0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <app-icon name="navigation" [size]="16" class="text-purple-400"></app-icon>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Stats -->
+        <div class="p-4 border-t border-zinc-800 bg-zinc-950/50">
+            <div class="text-xs text-zinc-500 text-center">
+                Click any item to navigate
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -6,6 +6,7 @@ import { LanguageService } from '../../../core/services/language.service';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { OPERATIONS_NAVIGATION_CONFIG } from '../../../core/config/operations-navigation.config';
 
 @Component({
     selector: 'app-operations-layout',
@@ -21,28 +22,66 @@ export class OperationsLayoutComponent {
     user$ = this.authService.user$;
     userProfile$ = this.authService.userProfile$;
 
-    // Reorganized sections - Fulfillment & Inventory focused
-    sections = {
-        fulfillment: true,   // Order Fulfillment (expanded by default)
-        inventory: true,     // Inventory Control (expanded by default)
-        warehouse: false,    // Warehouse Management
-        customers: false,    // Customer Management
-        procurement: false,  // Procurement & Suppliers
-        promotions: false    // Promotions & Coupons
-    };
+    // Source of Truth
+    navigationItems = OPERATIONS_NAVIGATION_CONFIG;
+    expandedSections = new Set<string>();
 
     constructor(
         public authService: AuthService,
         public languageService: LanguageService,
         private router: Router
-    ) { }
-
-    toggleSidebar() {
-        this.isSidebarCollapsed.update(val => !val);
+    ) {
+        this.initSidebarState();
     }
 
-    toggleSection(section: keyof typeof this.sections) {
-        this.sections[section] = !this.sections[section];
+    private initSidebarState() {
+        // Restore sidebar collapse state
+        const collapsedState = localStorage.getItem('ops-sidebar-collapsed');
+        if (collapsedState) {
+            this.isSidebarCollapsed.set(collapsedState === 'true');
+        }
+
+        // Restore expanded sections
+        try {
+            const savedSections = localStorage.getItem('ops-expanded-sections');
+            if (savedSections) {
+                this.expandedSections = new Set(JSON.parse(savedSections));
+            } else {
+                // Default: Expand all for operations
+                this.navigationItems.forEach(item => {
+                    if (item.children) {
+                        this.expandedSections.add(item.id);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to parse sidebar state', e);
+        }
+    }
+
+    isExpanded(itemId: string): boolean {
+        return this.expandedSections.has(itemId);
+    }
+
+    toggleSection(itemId: string) {
+        if (this.expandedSections.has(itemId)) {
+            this.expandedSections.delete(itemId);
+        } else {
+            this.expandedSections.add(itemId);
+        }
+        this.saveState();
+    }
+
+    toggleSidebar() {
+        this.isSidebarCollapsed.update(val => {
+            const newState = !val;
+            localStorage.setItem('ops-sidebar-collapsed', newState.toString());
+            return newState;
+        });
+    }
+
+    private saveState() {
+        localStorage.setItem('ops-expanded-sections', JSON.stringify(Array.from(this.expandedSections)));
     }
 
     toggleUserMenu() {

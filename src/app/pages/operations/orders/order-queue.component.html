@@ -86,10 +86,8 @@
             }
 
             <!-- Export Button -->
-            <button class="btn-glass text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
-                <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.EXPORT_CSV' |
-                translate }}
+            <button class="btn-glass" (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
+                <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.EXPORT_CSV' | translate }}
             </button>
         </div>
     </div>

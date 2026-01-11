@@ -3,137 +3,58 @@
         <!-- Sidebar Navigation -->
         <div class="sidebar-header">
             <div class="header-content">
-                <h3>Admin</h3>
+                <h3>Admin <span class="text-xs text-zinc-500 font-mono">{{ adminVersion }}</span></h3>
                 <button class="toggle-btn" (click)="toggleSidebar()">
                     <app-icon [name]="isSidebarCollapsed ? 'menu' : 'chevron-left'" [size]="20"></app-icon>
                 </button>
             </div>
         </div>
         <nav class="sidebar-nav">
-            <!-- Dashboard (Always visible) -->
-            <a routerLink="/admin/dashboard" routerLinkActive="active" [title]="'ADMIN.SIDEBAR.DASHBOARD' | translate">
-                <span class="icon">📊</span>
-                <span class="text">{{ 'ADMIN.SIDEBAR.DASHBOARD' | translate }}</span>
-            </a>
+            <!-- Dynamic Sections -->
+            <ng-container *ngFor="let item of navigationItems">
 
-            <!-- E-COMMERCE Section -->
-            <div class="nav-section">
-                <button class="section-header" (click)="toggleSection('ecommerce')"
-                    [class.collapsed]="!sections.ecommerce" [title]="'ADMIN.SIDEBAR.SECTION_ECOMMERCE' | translate">
-                    <span class="section-icon">📦</span>
-                    <span class="section-title">{{ 'ADMIN.SIDEBAR.SECTION_ECOMMERCE' | translate }}</span>
-                    <span class="toggle-icon">{{ sections.ecommerce ? '▼' : '▶' }}</span>
-                </button>
-                <div class="section-items" [class.expanded]="sections.ecommerce">
-                    <a routerLink="/admin/catalog-overview" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.CATALOG_OVERVIEW' | translate">
-                        <span class="icon">🗂️</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.CATALOG_OVERVIEW' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/orders" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.ORDERS' | translate">
-                        <span class="icon">📦</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.ORDERS' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/brands" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.BRANDS' | translate">
-                        <span class="icon">🏷️</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.BRANDS' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/categories" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.CATEGORIES' | translate">
-                        <span class="icon">📂</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.CATEGORIES' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/products" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.PRODUCTS' | translate">
-                        <span class="icon">🛒</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.PRODUCTS' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/kits" routerLinkActive="active" title="Kits">
-                        <span class="icon">🎁</span>
-                        <span class="text">Kits</span>
-                    </a>
-                    <a routerLink="/admin/coupons" routerLinkActive="active"
-                        [title]="'ADMIN.COUPONS.TITLE' | translate">
-                        <span class="icon">🎟️</span>
-                        <span class="text">{{ 'ADMIN.COUPONS.TITLE' | translate }}</span>
-                    </a>
-                </div>
-            </div>
+                <!-- Single Link (No Children) -->
+                <a *ngIf="!item.children" [routerLink]="item.route" routerLinkActive="active"
+                    [title]="item.title | translate" class="sidebar-link">
+                    <app-icon [name]="item.icon" [size]="20" class="nav-icon"></app-icon>
+                    <span class="text">{{ item.title | translate }}</span>
 
-            <!-- CONTENT Section -->
-            <div class="nav-section">
-                <button class="section-header" (click)="toggleSection('content')" [class.collapsed]="!sections.content"
-                    [title]="'ADMIN.SIDEBAR.SECTION_CONTENT' | translate">
-                    <span class="section-icon">📝</span>
-                    <span class="section-title">{{ 'ADMIN.SIDEBAR.SECTION_CONTENT' | translate }}</span>
-                    <span class="toggle-icon">{{ sections.content ? '▼' : '▶' }}</span>
-                </button>
-                <div class="section-items" [class.expanded]="sections.content">
-                    <a routerLink="/admin/banners" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.BANNERS' | translate">
-                        <span class="icon">🖼️</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.BANNERS' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/blog" routerLinkActive="active" [title]="'ADMIN.SIDEBAR.BLOG' | translate">
-                        <span class="icon">✍️</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.BLOG' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/pdfs" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.PDF_LIBRARY' | translate">
-                        <span class="icon">📚</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.PDF_LIBRARY' | translate }}</span>
-                    </a>
-                </div>
-            </div>
+                    <span *ngIf="item.badge" class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                        [ngClass]="item.badge.color || 'bg-red-500'">
+                        {{ item.badge.text }}
+                    </span>
+                </a>
 
-            <!-- BUSINESS Section -->
-            <div class="nav-section">
-                <button class="section-header" (click)="toggleSection('business')"
-                    [class.collapsed]="!sections.business">
-                    <span class="section-icon">👥</span>
-                    <span class="section-title">{{ 'ADMIN.SIDEBAR.SECTION_BUSINESS' | translate }}</span>
-                    <span class="toggle-icon">{{ sections.business ? '▼' : '▶' }}</span>
-                </button>
-                <div class="section-items" [class.expanded]="sections.business">
-                    <a routerLink="/admin/distributors" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.DISTRIBUTORS' | translate">
-                        <span class="icon">📋</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.DISTRIBUTORS' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/customers" routerLinkActive="active"
-                        [title]="'ADMIN.SIDEBAR.CUSTOMERS' | translate">
-                        <span class="icon">👥</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.CUSTOMERS' | translate }}</span>
-                    </a>
-                </div>
-            </div>
+                <!-- Section with Children -->
+                <div *ngIf="item.children" class="nav-section">
+                    <button class="section-header" (click)="toggleSection(item.id)"
+                        [class.collapsed]="!isExpanded(item.id)" [title]="item.title | translate">
 
-            <!-- SYSTEM Section -->
-            <div class="nav-section">
-                <button class="section-header" (click)="toggleSection('system')" [class.collapsed]="!sections.system"
-                    [title]="'ADMIN.SIDEBAR.SECTION_SYSTEM' | translate">
-                    <span class="section-icon">⚙️</span>
-                    <span class="section-title">{{ 'ADMIN.SIDEBAR.SECTION_SYSTEM' | translate }}</span>
-                    <span class="toggle-icon">{{ sections.system ? '▼' : '▶' }}</span>
-                </button>
-                <div class="section-items" [class.expanded]="sections.system">
-                    <a routerLink="/admin/users" routerLinkActive="active" [title]="'ADMIN.SIDEBAR.STAFF' | translate"
-                        *appHasRole="['SUPER_ADMIN']">
-                        <span class="icon">🛡️</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.STAFF' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/settings" routerLinkActive="active" [title]="'SETTINGS.TITLE' | translate">
-                        <span class="icon">⚙️</span>
-                        <span class="text">{{ 'SETTINGS.TITLE' | translate }}</span>
-                    </a>
-                    <a routerLink="/admin/logs" routerLinkActive="active" [title]="'ADMIN.SIDEBAR.LOGS' | translate">
-                        <span class="icon">📊</span>
-                        <span class="text">{{ 'ADMIN.SIDEBAR.LOGS' | translate }}</span>
-                    </a>
+                        <app-icon [name]="item.icon" [size]="20" class="section-icon"></app-icon>
+                        <span class="section-title">{{ item.title | translate }}</span>
+                        <span class="toggle-icon">
+                            <app-icon [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'" [size]="16">
+                            </app-icon>
+                        </span>
+                    </button>
+
+                    <div class="section-items" [class.expanded]="isExpanded(item.id)">
+                        <ng-container *ngFor="let child of item.children">
+                            <a *ngIf="child.roles ? hasRole(child.roles) : true" [routerLink]="child.route"
+                                routerLinkActive="active" [title]="child.title | translate" class="child-link">
+                                <app-icon [name]="child.icon" [size]="18" class="icon"></app-icon>
+                                <span class="text">{{ child.title | translate }}</span>
+
+                                <span *ngIf="child.badge"
+                                    class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                                    [ngClass]="child.badge.color">
+                                    {{ child.badge.text }}
+                                </span>
+                            </a>
+                        </ng-container>
+                    </div>
                 </div>
-            </div>
+            </ng-container>
         </nav>
         <div class="sidebar-footer">
             @if (user$ | async; as user) {
@@ -153,8 +74,8 @@
                 </div>
             </div>
             }
-            <button (click)="logout()" class="logout-btn" [title]="'ADMIN.SIDEBAR.LOGOUT' | translate">
-                <span class="icon">🚪</span>
+            <button (click)="logout()" class="logout-link" [title]="'ADMIN.SIDEBAR.LOGOUT' | translate">
+                <app-icon name="log-out" [size]="20" class="logout-icon"></app-icon>
                 <span class="text">{{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}</span>
             </button>
         </div>

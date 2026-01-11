@@ -1,0 +1,207 @@
+<div class="max-w-3xl mx-auto p-6">
+    <!-- Header -->
+    <div class="mb-8">
+        <button class="flex items-center text-zinc-400 hover:text-white transition-colors mb-4"
+            (click)="currentStep() === 1 ? router.navigate(['/admin/warehouses']) : prevStep()">
+            <app-icon name="arrow-left" class="w-4 h-4 mr-2"></app-icon>
+            {{ 'COMMON.BACK' | translate }}
+        </button>
+        <h1 class="text-3xl font-bold text-white">{{ 'ADMIN.WAREHOUSES.WIZARD.TITLE' | translate }}</h1>
+        <p class="text-zinc-400 mt-2">{{ 'ADMIN.WAREHOUSES.WIZARD.SUBTITLE' | translate }}</p>
+    </div>
+
+    <!-- Wizard Steps -->
+    <div class="relative mb-12">
+        <div class="absolute top-1/2 left-0 w-full h-1 bg-zinc-800 -translate-y-1/2"></div>
+        <div class="relative flex justify-between">
+            <!-- Step 1 Indicator -->
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10 bg-zinc-900"
+                    [ngClass]="currentStep() >= 1 ? 'border-purple-500 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]' : 'border-zinc-700 text-zinc-600'">
+                    <app-icon name="layout" class="w-5 h-5"></app-icon>
+                </div>
+                <span class="text-sm font-medium"
+                    [ngClass]="currentStep() >= 1 ? 'text-purple-400' : 'text-zinc-600'">Type</span>
+            </div>
+
+            <!-- Step 2 Indicator -->
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10 bg-zinc-900"
+                    [ngClass]="currentStep() >= 2 ? 'border-purple-500 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]' : 'border-zinc-700 text-zinc-600'">
+                    <app-icon name="file-text" class="w-5 h-5"></app-icon>
+                </div>
+                <span class="text-sm font-medium"
+                    [ngClass]="currentStep() >= 2 ? 'text-purple-400' : 'text-zinc-600'">Details</span>
+            </div>
+
+            <!-- Step 3 Indicator -->
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10 bg-zinc-900"
+                    [ngClass]="currentStep() >= 3 ? 'border-purple-500 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]' : 'border-zinc-700 text-zinc-600'">
+                    <app-icon name="check" class="w-5 h-5"></app-icon>
+                </div>
+                <span class="text-sm font-medium"
+                    [ngClass]="currentStep() >= 3 ? 'text-purple-400' : 'text-zinc-600'">Confirm</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step Content -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()"
+        class="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-2xl p-8 shadow-xl">
+
+        <!-- STEP 1: Type Selection -->
+        <div *ngIf="currentStep() === 1" class="space-y-6 animate-fade-in-up">
+            <h2 class="text-xl font-semibold text-white">Select Warehouse Type</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Physical Card -->
+                <div (click)="selectType('physical')"
+                    class="cursor-pointer group relative p-6 rounded-xl border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 hover:border-purple-500/50 transition-all duration-300">
+                    <div
+                        class="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-400 group-hover:scale-110 transition-transform">
+                        <app-icon name="warehouse" class="w-6 h-6"></app-icon>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Physical Warehouse</h3>
+                    <p class="text-sm text-zinc-400">Real storage location with zones, racks, and bins. Requires address
+                        and layout mapping.</p>
+                </div>
+
+                <!-- Virtual Card -->
+                <div (click)="selectType('virtual')"
+                    class="cursor-pointer group relative p-6 rounded-xl border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 hover:border-purple-500/50 transition-all duration-300">
+                    <div
+                        class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4 text-blue-400 group-hover:scale-110 transition-transform">
+                        <app-icon name="cloud" class="w-6 h-6"></app-icon>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Virtual Warehouse</h3>
+                    <p class="text-sm text-zinc-400">Logical storage for processes like Returns, In-Transit, or
+                        Dropshipping. Limitless capacity.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Details -->
+        <div *ngIf="currentStep() === 2" class="space-y-6 animate-fade-in-up">
+            <h2 class="text-xl font-semibold text-white">Basic Information</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Name -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Warehouse Name</label>
+                    <input type="text" formControlName="name"
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                        placeholder="e.g. Main Distribution Center">
+                </div>
+
+                <!-- Code -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Warehouse Code</label>
+                    <input type="text" formControlName="code"
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
+                        placeholder="e.g. W-GDL-01">
+                    <p class="text-xs text-zinc-500">Unique identifier, uppercase only.</p>
+                </div>
+            </div>
+
+            <!-- Conditional Fields -->
+            <div *ngIf="selectedType() === 'physical'" class="space-y-6 pt-4 border-t border-zinc-800">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <app-icon name="map-pin" class="w-4 h-4 text-emerald-400"></app-icon>
+                    Location Details
+                </h3>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Full Address</label>
+                    <input type="text" formControlName="address"
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all"
+                        placeholder="Street, Number, City, State, Zip">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Total Area (m²)</label>
+                    <input type="number" formControlName="totalArea"
+                        class="w-full md:w-1/3 bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all">
+                </div>
+            </div>
+
+            <div *ngIf="selectedType() === 'virtual'" class="space-y-6 pt-4 border-t border-zinc-800">
+                <h3 class="text-lg font-medium text-white flex items-center gap-2">
+                    <app-icon name="settings-2" class="w-4 h-4 text-blue-400"></app-icon>
+                    Process Configuration
+                </h3>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-zinc-400">Process Type</label>
+                    <select formControlName="processType"
+                        class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all cursor-pointer">
+                        <option value="general">General Storage</option>
+                        <option value="returns">Returns Processing</option>
+                        <option value="damaged">Damaged / Quarantine</option>
+                        <option value="in-transit">In Transit</option>
+                        <option value="cross-docking">Cross Docking</option>
+                        <option value="fba-reserved">Amazon FBA Reserved</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-6">
+                <button type="button" (click)="nextStep()" [disabled]="form.invalid"
+                    class="btn-glass-primary px-8 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next Step
+                    <app-icon name="arrow-right" class="w-4 h-4"></app-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Confirm -->
+        <div *ngIf="currentStep() === 3" class="space-y-8 animate-fade-in-up">
+            <div class="text-center">
+                <div
+                    class="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-400">
+                    <app-icon name="check" class="w-8 h-8"></app-icon>
+                </div>
+                <h2 class="text-2xl font-bold text-white">Review & Create</h2>
+                <p class="text-zinc-400 mt-2">Please verify the details before creating the warehouse.</p>
+            </div>
+
+            <div class="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700 space-y-4">
+                <div class="flex justify-between items-center py-2 border-b border-zinc-700/50">
+                    <span class="text-zinc-400">Type</span>
+                    <span class="text-white font-medium capitalize flex items-center gap-2">
+                        <app-icon [name]="selectedType() === 'physical' ? 'warehouse' : 'cloud'"
+                            class="w-4 h-4 text-purple-400"></app-icon>
+                        {{ selectedType() }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-zinc-700/50">
+                    <span class="text-zinc-400">Name</span>
+                    <span class="text-white font-medium">{{ form.get('name')?.value }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-zinc-700/50">
+                    <span class="text-zinc-400">Code</span>
+                    <span class="text-white font-medium font-mono">{{ form.get('code')?.value }}</span>
+                </div>
+
+                <div *ngIf="selectedType() === 'physical'"
+                    class="flex justify-between items-center py-2 border-b border-zinc-700/50">
+                    <span class="text-zinc-400">Address</span>
+                    <span class="text-white font-medium text-right max-w-[50%] truncate">{{ form.get('address')?.value
+                        }}</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4 pt-4">
+                <button type="button" (click)="prevStep()"
+                    class="px-6 py-2 text-zinc-400 hover:text-white transition-colors">
+                    Back
+                </button>
+                <button type="submit" [disabled]="isSubmitting()"
+                    class="btn-glass-primary px-8 flex items-center gap-2">
+                    <app-icon *ngIf="isSubmitting()" name="loader" class="w-4 h-4 animate-spin"></app-icon>
+                    {{ isSubmitting() ? 'Creating...' : 'Create Warehouse' }}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

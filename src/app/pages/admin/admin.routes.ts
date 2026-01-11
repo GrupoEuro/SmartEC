@@ -155,6 +155,22 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
+                path: 'warehouses',
+                loadComponent: () => import('./warehouse/warehouse-list/warehouse-list.component').then(m => m.WarehouseListComponent)
+            },
+            {
+                path: 'warehouses/new',
+                loadComponent: () => import('./warehouse/warehouse-wizard/warehouse-wizard.component').then(m => m.WarehouseWizardComponent)
+            },
+            {
+                path: 'warehouses/locator',
+                loadComponent: () => import('./warehouse/product-locator/product-locator.component').then(m => m.ProductLocatorComponent)
+            },
+            {
+                path: 'warehouses/:id',
+                loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent)
+            },
+            {
                 path: 'settings',
                 loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent),
                 canActivate: [roleGuard],

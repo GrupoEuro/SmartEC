@@ -13,161 +13,67 @@
         <!-- Navigation Menu -->
         <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6 custom-scrollbar">
 
-            <!-- DASHBOARD (Always Visible) -->
-            <div class="nav-group mb-2">
-                <a routerLink="/operations/dashboard" routerLinkActive="active-nav-item"
-                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden"
-                    [title]="isSidebarCollapsed() ? 'Overview' : ''">
-                    <app-icon name="layout-dashboard" [size]="20"
-                        class="group-hover:text-blue-400 transition-colors relative z-10"></app-icon>
-                    <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                        [class.hidden]="isSidebarCollapsed()">{{ 'OPERATIONS.DASHBOARD.TITLE' | translate }}</span>
-                </a>
-            </div>
+            <!-- Dynamic Navigation Loop -->
+            <ng-container *ngFor="let item of navigationItems">
 
-            <!-- ORDER FULFILLMENT -->
-            <div class="nav-section">
-                <button
-                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
-                    (click)="toggleSection('fulfillment')" [class.collapsed]="!sections.fulfillment"
-                    [title]="isSidebarCollapsed() ? 'Order Fulfillment' : ''">
-                    <span [class.hidden]="isSidebarCollapsed()">ORDER FULFILLMENT</span>
-                    <app-icon [name]="sections.fulfillment ? 'chevron-down' : 'chevron-right'" [size]="14"
-                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
-                    <app-icon name="shopping-bag" [size]="20" class="section-icon"
-                        *ngIf="isSidebarCollapsed()"></app-icon>
-                </button>
-
-                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
-                    [class.expanded]="sections.fulfillment" [style.height]="sections.fulfillment ? 'auto' : '0'"
-                    [class.opacity-0]="!sections.fulfillment" [class.opacity-100]="sections.fulfillment"
-                    [class.hidden]="isSidebarCollapsed() && !sections.fulfillment">
-                    <a routerLink="/operations/orders" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Order Queue' : ''">
-                        <app-icon name="shopping-bag" [size]="18"
+                <!-- Single Item (No Children) -->
+                <div *ngIf="!item.children" class="nav-group mb-2">
+                    <a [routerLink]="item.route" routerLinkActive="active-nav-item"
+                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden"
+                        [title]="isSidebarCollapsed() ? (item.title | translate) : ''">
+                        <app-icon [name]="item.icon" [size]="20"
                             class="group-hover:text-blue-400 transition-colors relative z-10"></app-icon>
                         <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Order Queue</span>
-                        <span
-                            class="ml-auto bg-blue-600/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full relative z-10"
-                            *ngIf="!isSidebarCollapsed()">12</span>
+                            [class.hidden]="isSidebarCollapsed()">{{ item.title | translate }}</span>
+
+                        <!-- Badge -->
+                        <span *ngIf="item.badge && !isSidebarCollapsed()"
+                            class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                            [ngClass]="item.badge.color || 'bg-blue-600'">
+                            {{ item.badge.text }}
+                        </span>
                     </a>
                 </div>
-            </div>
 
-            <!-- INVENTORY & LOGISTICS -->
-            <div class="nav-section">
-                <button
-                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
-                    (click)="toggleSection('inventory')" [class.collapsed]="!sections.inventory"
-                    [title]="isSidebarCollapsed() ? 'Inventory & Logistics' : ''">
-                    <span [class.hidden]="isSidebarCollapsed()">INVENTORY & LOGISTICS</span>
-                    <app-icon [name]="sections.inventory ? 'chevron-down' : 'chevron-right'" [size]="14"
-                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
-                    <app-icon name="box" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
-                </button>
+                <!-- Section with Children -->
+                <div *ngIf="item.children" class="nav-section">
+                    <button
+                        class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                        (click)="toggleSection(item.id)" [class.collapsed]="!isExpanded(item.id)"
+                        [title]="isSidebarCollapsed() ? (item.title | translate) : ''">
+                        <span [class.hidden]="isSidebarCollapsed()">{{ item.title | translate }}</span>
+                        <app-icon [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'" [size]="14"
+                            class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
+                        <app-icon [name]="item.icon" [size]="20" class="section-icon"
+                            *ngIf="isSidebarCollapsed()"></app-icon>
+                    </button>
 
-                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
-                    [class.expanded]="sections.inventory" [style.height]="sections.inventory ? 'auto' : '0'"
-                    [class.opacity-0]="!sections.inventory" [class.opacity-100]="sections.inventory"
-                    [class.hidden]="isSidebarCollapsed() && !sections.inventory">
-                    <a routerLink="/operations/inventory" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Inventory Lookup' : ''">
-                        <app-icon name="search" [size]="18"
-                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Inventory Lookup</span>
-                    </a>
-                    <a routerLink="/operations/cycle-counting" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Cycle Counting' : ''">
-                        <app-icon name="refresh-cw" [size]="18"
-                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Cycle Counting</span>
-                    </a>
-                    <a routerLink="/operations/abc-analysis" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'ABC Analysis' : ''">
-                        <app-icon name="bar-chart-2" [size]="18"
-                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">ABC Analysis</span>
-                    </a>
-                    <a routerLink="/operations/warehouses" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Warehouses' : ''">
-                        <app-icon name="layers" [size]="18"
-                            class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Warehouses</span>
-                    </a>
+                    <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
+                        [class.expanded]="isExpanded(item.id)" [style.height]="isExpanded(item.id) ? 'auto' : '0'"
+                        [class.opacity-0]="!isExpanded(item.id)" [class.opacity-100]="isExpanded(item.id)"
+                        [class.hidden]="isSidebarCollapsed() && !isExpanded(item.id)">
+
+                        <ng-container *ngFor="let child of item.children">
+                            <a [routerLink]="child.route" routerLinkActive="active-nav-item"
+                                class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
+                                [title]="isSidebarCollapsed() ? (child.title | translate) : ''">
+                                <app-icon [name]="child.icon" [size]="18"
+                                    class="group-hover:text-emerald-400 transition-colors relative z-10"></app-icon>
+                                <span class="font-medium text-sm whitespace-nowrap relative z-10"
+                                    [class.hidden]="isSidebarCollapsed()">{{ child.title | translate }}</span>
+
+                                <!-- Child Badge -->
+                                <span *ngIf="child.badge && !isSidebarCollapsed()"
+                                    class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                                    [ngClass]="child.badge.color || 'bg-blue-600'">
+                                    {{ child.badge.text }}
+                                </span>
+                            </a>
+                        </ng-container>
+                    </div>
                 </div>
-            </div>
 
-            <!-- COMMERCIAL -->
-            <div class="nav-section">
-                <button
-                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
-                    (click)="toggleSection('customers')" [class.collapsed]="!sections.customers"
-                    [title]="isSidebarCollapsed() ? 'Commercial' : ''">
-                    <span [class.hidden]="isSidebarCollapsed()">COMMERCIAL</span>
-                    <app-icon [name]="sections.customers ? 'chevron-down' : 'chevron-right'" [size]="14"
-                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
-                    <app-icon name="users" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
-                </button>
-
-                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
-                    [class.expanded]="sections.customers" [style.height]="sections.customers ? 'auto' : '0'"
-                    [class.opacity-0]="!sections.customers" [class.opacity-100]="sections.customers"
-                    [class.hidden]="isSidebarCollapsed() && !sections.customers">
-                    <a routerLink="/operations/customers" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Customers' : ''">
-                        <app-icon name="users" [size]="18"
-                            class="group-hover:text-purple-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Customers</span>
-                    </a>
-                    <a routerLink="/operations/promotions" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Promotions' : ''">
-                        <app-icon name="tag" [size]="18"
-                            class="group-hover:text-purple-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Promotions</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- PROCUREMENT -->
-            <div class="nav-section">
-                <button
-                    class="section-header w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
-                    (click)="toggleSection('procurement')" [class.collapsed]="!sections.procurement"
-                    [title]="isSidebarCollapsed() ? 'Procurement' : ''">
-                    <span [class.hidden]="isSidebarCollapsed()">PROCUREMENT</span>
-                    <app-icon [name]="sections.procurement ? 'chevron-down' : 'chevron-right'" [size]="14"
-                        class="toggle-icon" [class.hidden]="isSidebarCollapsed()"></app-icon>
-                    <app-icon name="truck" [size]="20" class="section-icon" *ngIf="isSidebarCollapsed()"></app-icon>
-                </button>
-
-                <div class="section-items overflow-hidden transition-all duration-300 ease-in-out"
-                    [class.expanded]="sections.procurement" [style.height]="sections.procurement ? 'auto' : '0'"
-                    [class.opacity-0]="!sections.procurement" [class.opacity-100]="sections.procurement"
-                    [class.hidden]="isSidebarCollapsed() && !sections.procurement">
-                    <a routerLink="/operations/procurement" routerLinkActive="active-nav-item"
-                        class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all group relative overflow-hidden ml-2"
-                        [title]="isSidebarCollapsed() ? 'Purchase Orders' : ''">
-                        <app-icon name="truck" [size]="18"
-                            class="group-hover:text-amber-400 transition-colors relative z-10"></app-icon>
-                        <span class="font-medium text-sm whitespace-nowrap relative z-10"
-                            [class.hidden]="isSidebarCollapsed()">Purchase Orders</span>
-                    </a>
-                </div>
-            </div>
+            </ng-container>
 
         </nav>
 
@@ -191,7 +97,7 @@
                 </div>
             </div>
             }
-            <button (click)="logout()" class="logout-btn" [title]="'OPERATIONS.LOGOUT' | translate">
+            <button (click)="logout()" class="logout-link" [title]="'OPERATIONS.LOGOUT' | translate">
                 <span class="icon"><app-icon name="log-out" [size]="20"></app-icon></span>
                 <span class="text">{{ 'OPERATIONS.LOGOUT' | translate }}</span>
             </button>

@@ -82,7 +82,8 @@
     overflow-x: hidden;
 }
 
-.sidebar-nav a {
+/* Dynamic Sidebar Classes */
+.sidebar-link {
     color: #ccc;
     text-decoration: none;
     padding: 0.75rem;
@@ -92,17 +93,42 @@
     align-items: center;
     gap: 12px;
     white-space: nowrap;
+    margin-bottom: 0.25rem;
 }
 
-.sidebar-nav a:hover,
-.sidebar-nav a.active {
+.sidebar-link:hover,
+.sidebar-link.active {
     background-color: #ffd700;
-    /* Praxis Yellow */
     color: #000;
     font-weight: bold;
 }
 
-.sidebar-nav a .icon {
+.child-link {
+    color: #ccc;
+    text-decoration: none;
+    padding: 0.6rem 0.75rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.child-link:hover,
+.child-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.child-link.active {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.nav-icon,
+.section-icon {
     font-size: 1.2rem;
     width: 24px;
     text-align: center;
@@ -111,21 +137,22 @@
     justify-content: center;
 }
 
-.sidebar.collapsed .sidebar-nav a .text {
+/* Hide text when collapsed */
+.sidebar.collapsed .sidebar-link .text,
+.sidebar.collapsed .child-link .text {
     opacity: 0;
     width: 0;
     display: none;
 }
 
-.sidebar.collapsed .sidebar-nav a {
+.sidebar.collapsed .sidebar-link {
     justify-content: center;
-    padding: 0.75rem;
     position: relative;
-    /* For tooltip positioning */
 }
 
-/* Tooltip styles for collapsed sidebar */
-.sidebar.collapsed .sidebar-nav a:hover::after {
+/* Consolidated Tooltips for dynamic links */
+.sidebar.collapsed .sidebar-link:hover::after,
+.sidebar.collapsed .section-header:hover::after {
     content: attr(title);
     position: absolute;
     left: 100%;
@@ -143,17 +170,16 @@
     pointer-events: none;
 }
 
-/* Tooltip arrow */
-.sidebar.collapsed .sidebar-nav a:hover::before {
+.sidebar.collapsed .sidebar-link:hover::before,
+.sidebar.collapsed .section-header:hover::before {
     content: '';
     position: absolute;
     left: 100%;
     top: 50%;
     transform: translateY(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: transparent #333 transparent transparent;
-    margin-left: 0px;
+    border: 5px solid transparent;
+    border-right-color: #333;
+    margin-left: 0;
     z-index: 1000;
     pointer-events: none;
 }
@@ -273,45 +299,48 @@
     display: none;
 }
 
-.logout-btn {
+/* Logout Link - Subtle style matching sidebar links */
+.logout-link {
     width: 100%;
     padding: 0.75rem;
     background: transparent;
-    border: 1px solid #ff4444;
-    color: #ff4444;
+    border: none;
+    color: #888;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
-    font-weight: 600;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* Matches sidebar-link gap */
+    font-size: 0.95rem;
+}
+
+.logout-link:hover {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+}
+
+.logout-link .logout-icon {
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
 }
 
-.logout-btn:hover {
-    background: #ff4444;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(255, 68, 68, 0.3);
+.sidebar.collapsed .logout-link {
+    justify-content: center;
+    padding: 0.75rem;
 }
 
-.sidebar.collapsed .logout-btn {
-    border: none;
-    padding: 0.5rem;
-    position: relative;
-}
-
-.sidebar.collapsed .logout-btn .text {
+.sidebar.collapsed .logout-link .text {
     display: none;
 }
 
-.sidebar.collapsed .logout-btn .icon {
-    font-size: 1.2rem;
-}
-
-/* Tooltip for logout button */
-.sidebar.collapsed .logout-btn:hover::after {
+/* Tooltip for logout link */
+.sidebar.collapsed .logout-link:hover::after {
     content: attr(title);
     position: absolute;
     left: 100%;
@@ -329,7 +358,7 @@
     pointer-events: none;
 }
 
-.sidebar.collapsed .logout-btn:hover::before {
+.sidebar.collapsed .logout-link:hover::before {
     content: '';
     position: absolute;
     left: 100%;

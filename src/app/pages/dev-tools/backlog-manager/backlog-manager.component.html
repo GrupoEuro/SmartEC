@@ -1,0 +1,28 @@
+<div class="backlog-container p-6 max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white mb-2">Project Backlog</h1>
+            <p class="text-zinc-400 text-sm">Manage tasks, bugs, and feature requests.</p>
+        </div>
+        <button class="btn-primary flex items-center gap-2" (click)="openCreateForm()">
+            <app-icon name="plus" [size]="18"></app-icon>
+            New Item
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Stats / Quick Filters (Optional Future) -->
+        <!-- <div class="lg:col-span-1 space-y-4"> ... </div> -->
+
+        <!-- List View -->
+        <div class="lg:col-span-4">
+            <app-backlog-list (editItem)="openEditForm($event)"></app-backlog-list>
+        </div>
+    </div>
+
+    <!-- Form Modal/Slide-over -->
+    <app-backlog-form *ngIf="isFormOpen()" [item]="editingItem()" (close)="closeForm()" (saved)="handleSave()">
+    </app-backlog-form>
+</div>

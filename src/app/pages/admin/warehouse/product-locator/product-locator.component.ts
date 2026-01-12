@@ -120,13 +120,38 @@ export class ProductLocatorComponent {
 
     loadMapData(id: string) {
         this.warehouseService.getZones(id).subscribe(z => this.zones.set(z));
-        this.warehouseService.getStructures(id).subscribe(s => this.structures.set(s));
+        this.warehouseService.getStructures(id).subscribe(s => {
+            this.structures.set(s);
+            console.log(`[Locator] Loaded ${s.length} storage structures`);
+
+            // Validate after structures are loaded
+            setTimeout(() => {
+                const validation = this.validateCoordinates();
+                if (!validation.valid) {
+                    console.warn('[Locator] Coordinate validation issues:', validation.issues);
+                    this.showNotification(
+                        `Layout issues detected: ${validation.issues[0]}. Try regenerating warehouse data.`,
+                        'error'
+                    );
+                } else {
+                    console.log('[Locator] ✅ All coordinates validated successfully');
+                }
+            }, 500); // Wait for bins to load
+        });
         this.warehouseService.getObstacles(id).subscribe(o => this.obstacles.set(o as Obstacle[]));
         this.warehouseService.getDoors(id).subscribe(d => this.doors.set(d as Door[]));
 
         // BROWSE MODE: Load all occupied bins to show "hotspots"
         this.warehouseService.getOccupiedLocations(id).subscribe(bins => {
             this.occupiedBins.set(bins);
+            console.log(`[Locator] Loaded ${bins.length} occupied bins`);
+
+            // Group bins by structure to see distribution
+            const binsByStructure: { [key: string]: number } = {};
+            bins.forEach(bin => {
+                binsByStructure[bin.structureId] = (binsByStructure[bin.structureId] || 0) + 1;
+            });
+            console.log('[Locator] Bins per structure:', binsByStructure);
         });
     }
 
@@ -275,18 +300,31 @@ export class ProductLocatorComponent {
      */
     getBinPosition(bin: StorageLocation): { x: number, y: number } {
         const rack = this.getStructureForBin(bin);
-        if (!rack) return { x: 0, y: 0 };
+        if (!rack) {
+            console.warn('[Locator] Bin has no rack:', bin.code, bin.structureId);
+            return { x: -1000, y: -1000 }; // Position off-screen
+        }
+
+        // Validate bay and level are within bounds
+        if (bin.bay < 1 || bin.bay > rack.bays) {
+            console.warn(`[Locator] Invalid bay for bin ${bin.code}: bay=${bin.bay}, rack has ${rack.bays} bays`);
+            return { x: -1000, y: -1000 }; // Position off-screen
+        }
+        if (bin.level < 1 || bin.level > rack.levels) {
+            console.warn(`[Locator] Invalid level for bin ${bin.code}: level=${bin.level}, rack has ${rack.levels} levels`);
+            return { x: -1000, y: -1000 }; // Position off-screen
+        }
 
         const bayWidth = rack.width / rack.bays;
         const levelHeight = rack.height / rack.levels;
-        const binSize = 3; // From CSS: w-3 h-3 (12px in Tailwind)
+        const binSize = 2.5; // From CSS: w-2.5 h-2.5 (10px in Tailwind)
 
         // Center bin within bay/level cell
         // CRITICAL: bay and level are 1-indexed in data, convert to 0-indexed
-        return {
-            x: rack.x + ((bin.bay - 1) * bayWidth) + (bayWidth / 2) - (binSize / 2),
-            y: rack.y + ((bin.level - 1) * levelHeight) + (levelHeight / 2) - (binSize / 2)
-        };
+        const x = rack.x + ((bin.bay - 1) * bayWidth) + (bayWidth / 2) - (binSize / 2);
+        const y = rack.y + ((bin.level - 1) * levelHeight) + (levelHeight / 2) - (binSize / 2);
+
+        return { x, y };
     }
 
     /**
@@ -436,5 +474,41 @@ export class ProductLocatorComponent {
         const maxDepth = 2100000; // Max possible depth in our warehouse
         const fadeAmount = (depth / maxDepth) * 0.25; // Fade up to 25%
         return Math.max(0.75, 1 - fadeAmount); // Min opacity 0.75
+    }
+
+    /**
+     * Validate coordinate system integrity
+     * Checks for orphaned bins and out-of-bounds positions
+     */
+    validateCoordinates(): { valid: boolean; issues: string[] } {
+        const issues: string[] = [];
+        const racks = this.structures();
+        const bins = this.occupiedBins();
+
+        // Check for orphaned bins (referencing non-existent racks)
+        const rackIds = new Set(racks.map(r => r.id));
+        const orphanedBins = bins.filter(bin => !rackIds.has(bin.structureId));
+        if (orphanedBins.length > 0) {
+            issues.push(`Found ${orphanedBins.length} orphaned bins (rack deleted but bin remains)`);
+        }
+
+        // Check for out-of-bounds racks
+        const outOfBoundsRacks = racks.filter(r =>
+            r.x < 0 || r.y < 0 || r.x + r.width > 800 || r.y + r.height > 600
+        );
+        if (outOfBoundsRacks.length > 0) {
+            issues.push(`Found ${outOfBoundsRacks.length} racks outside 800×600 canvas`);
+        }
+
+        // Check for bins positioned outside canvas (after getBinPosition calculation)
+        const outOfBoundsBins = bins.filter(bin => {
+            const pos = this.getBinPosition(bin);
+            return pos.x < 0 || pos.y < 0 || pos.x > 800 || pos.y > 600;
+        });
+        if (outOfBoundsBins.length > 0) {
+            issues.push(`Found ${outOfBoundsBins.length} bins positioned outside canvas`);
+        }
+
+        return { valid: issues.length === 0, issues };
     }
 }

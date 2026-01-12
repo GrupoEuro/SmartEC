@@ -52,7 +52,7 @@ import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.c
             Backlog Manager
           </a>
           
-          <a routerLink="/dev-tools/data" 
+          <a routerLink="/dev-tools/data-seeder" 
              routerLinkActive="active"
              class="nav-item">
             <app-icon name="database" [size]="18"></app-icon>

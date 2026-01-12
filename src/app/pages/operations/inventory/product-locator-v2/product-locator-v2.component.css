@@ -1,0 +1,257 @@
+/* ========================================
+   Path Animation
+   ======================================== */
+
+.path-animation {
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+/* ========================================
+   Fade In Animations
+   ======================================== */
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-fade-in-right {
+    animation: fadeInRight 0.5s ease-out;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   Warehouse Container & Levels
+   ======================================== */
+
+.warehouse-container {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.level-container {
+    transition: opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-style: preserve-3d;
+}
+
+/* Exploded View Animation States */
+.level-container.exploded {
+    transform: translateY(var(--level-offset, 0px));
+    opacity: var(--level-opacity, 1);
+}
+
+.level-container:not(.active-level) {
+    transition: opacity 0.3s ease-out;
+}
+
+/* ========================================
+   Layer Selector - Glowing Badge Effect
+   ======================================== */
+
+.layer-badge-glow {
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+/* ========================================
+   Rack Hover Effects
+   ======================================== */
+
+.rack-hover {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rack-hover:hover {
+    transform: scale(1.05) translateZ(10px);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+    border-color: #a855f7 !important;
+    z-index: 100;
+}
+
+/* Capacity Color States */
+.capacity-low {
+    background-color: rgba(16, 185, 129, 0.25) !important;
+    border-color: #10b981 !important;
+}
+
+.capacity-medium {
+    background-color: rgba(234, 179, 8, 0.25) !important;
+    border-color: #eab308 !important;
+}
+
+.capacity-high {
+    background-color: rgba(239, 68, 68, 0.25) !important;
+    border-color: #ef4444 !important;
+}
+
+/* ========================================
+   Zone Color-Coding
+   ======================================== */
+
+.zone-picking {
+    background: rgba(16, 185, 129, 0.2);
+    border: 2px solid #10b981;
+}
+
+.zone-reserve {
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px solid #3b82f6;
+}
+
+.zone-bulk {
+    background: rgba(168, 85, 247, 0.2);
+    border: 2px solid #a855f7;
+}
+
+.zone-quarantine {
+    background: rgba(239, 68, 68, 0.2);
+    border: 2px solid #ef4444;
+}
+
+.zone-receiving {
+    background: rgba(234, 179, 8, 0.2);
+    border: 2px solid #eab308;
+}
+
+.zone-packing {
+    background: rgba(6, 182, 212, 0.2);
+    border: 2px solid #06b6d4;
+}
+
+/* ========================================
+   Isometric 3D View Support
+   ======================================== */
+
+.isometric-view {
+    perspective: 3500px;
+    perspective-origin: center 35%;
+}
+
+.isometric-level {
+    transform: rotateX(60deg) rotateZ(-45deg);
+    transform-style: preserve-3d;
+}
+
+/* ========================================
+   Performance Optimizations
+   ======================================== */
+
+* {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.gpu-accelerated {
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* ========================================
+   Intro Overlay (Exploded View Hint)
+   ======================================== */
+
+.intro-overlay {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.intro-message {
+    background: rgba(168, 85, 247, 0.9);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(168, 85, 247, 1);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    font-weight: bold;
+    box-shadow: 0 10px 40px rgba(168, 85, 247, 0.4);
+    animation: slideUpFade 0.5s ease-out;
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   Responsive - Mobile Adaptations
+   ======================================== */
+
+@media (max-width: 768px) {
+    .layer-selector-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid #3f3f46;
+    }
+
+    .warehouse-container {
+        scale: 0.6;
+    }
+}

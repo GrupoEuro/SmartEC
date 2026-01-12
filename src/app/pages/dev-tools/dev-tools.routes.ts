@@ -28,7 +28,7 @@ export const devToolsRoutes: Routes = [
                 data: { title: 'Project Vitality' }
             },
             {
-                path: 'data',
+                path: 'data-seeder',
                 loadComponent: () => import('./data-seeder/data-seeder.component').then(m => m.DataSeederComponent),
                 data: { title: 'Data Seeder' }
             },

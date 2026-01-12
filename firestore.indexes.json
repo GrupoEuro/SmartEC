@@ -13,6 +13,34 @@
                     "order": "DESCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "warehouse_locations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "warehouseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "warehouse_locations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "warehouseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "productId",
+                    "order": "ASCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

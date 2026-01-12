@@ -1348,6 +1348,318 @@ export class DataSeederService {
         this.log('[Seeder] ========================================', onLog);
     }
 
+    // --- 3.6 MULTI-LEVEL WAREHOUSE GENERATOR v5.0 ---
+    async populateMultiLevelWarehouse(onLog?: (message: string) => void): Promise<void> {
+        await this.clearWarehouseData(onLog);
+
+        this.log('[Seeder] ========================================', onLog);
+        this.log('[Seeder] MULTI-LEVEL WAREHOUSE GENERATOR v5.0', onLog);
+        this.log('[Seeder] Product Locator v2.0 Compatible', onLog);
+        this.log('[Seeder] ========================================', onLog);
+
+        let batch = writeBatch(this.firestore);
+        let ops = 0;
+        const LIMIT = 450;
+
+        const commitBatch = async () => {
+            if (ops >= LIMIT) {
+                await batch.commit();
+                this.log(`[Seeder] Batch committed (${ops} ops)`, onLog);
+                batch = writeBatch(this.firestore);
+                ops = 0;
+            }
+        };
+
+        const finalCommit = async () => {
+            if (ops > 0) {
+                await batch.commit();
+                this.log(`[Seeder] Final batch (${ops} ops)`, onLog);
+            }
+        };
+
+        const whData = {
+            id: 'MAIN',
+            name: 'Almacén Principal - Multi-Nivel',
+            code: 'MAIN',
+            type: 'physical',
+            address: 'Av. Industrial 2450, Zona Franca, Montevideo',
+            isActive: true,
+            totalArea: 5000,
+            defaultLevel: 0,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+        };
+
+        batch.set(doc(this.firestore, 'warehouses/MAIN'), whData);
+        ops++;
+        this.log('[Seeder] Created warehouse: Almacén Principal', onLog);
+
+        const levels = [
+            { num: 0, name: 'Ground Floor', rows: 6, cols: 8 },
+            { num: 1, name: 'Mezzanine', rows: 4, cols: 6 },
+            { num: 2, name: 'Overhead Storage', rows: 3, cols: 4 }
+        ];
+
+        const allLevels: any[] = [];
+        let totalZones = 0;
+        let totalRacks = 0;
+        let totalDoors = 0;
+
+        for (const lv of levels) {
+            const levelId = `MAIN_LEVEL_${lv.num}`;
+            this.log(`[Seeder] Generating ${lv.name} (Level ${lv.num})...`, onLog);
+
+            const zones = [
+                {
+                    id: `${levelId}_zone_picking`,
+                    warehouseId: 'MAIN',
+                    levelId,
+                    name: `[L${lv.num}] Picking Zone`,
+                    code: `L${lv.num}-PICK`,
+                    type: 'racking',
+                    zoneType: 'PICKING',
+                    color: '#10b981',
+                    x: 20, y: 40, width: 480, height: 400,
+                    createdAt: Timestamp.now()
+                },
+                {
+                    id: `${levelId}_zone_reserve`,
+                    warehouseId: 'MAIN',
+                    levelId,
+                    name: `[L${lv.num}] Reserve Storage`,
+                    code: `L${lv.num}-RSV`,
+                    type: 'racking',
+                    zoneType: 'RESERVE',
+                    color: '#3b82f6',
+                    x: 520, y: 40, width: 260, height: 250,
+                    createdAt: Timestamp.now()
+                }
+            ];
+
+            if (lv.num === 0) {
+                zones.push({
+                    id: `${levelId}_zone_bulk`,
+                    warehouseId: 'MAIN',
+                    levelId,
+                    name: `[L${lv.num}] Bulk Storage`,
+                    code: `L${lv.num}-BULK`,
+                    type: 'bulk-stack',
+                    zoneType: 'BULK',
+                    color: '#a855f7',
+                    x: 520, y: 310, width: 260, height: 150,
+                    createdAt: Timestamp.now()
+                });
+            }
+
+            zones.forEach(z => {
+                batch.set(doc(this.firestore, `warehouse_zones/${z.id}`), z);
+                ops++;
+            });
+            totalZones += zones.length;
+            await commitBatch();
+
+            const pickingZone = zones[0];
+            const rackWidth = 40;
+            const rackHeight = 40;
+            const rackGap = 8;
+
+            for (let r = 0; r < lv.rows; r++) {
+                for (let c = 0; c < lv.cols; c++) {
+                    const rackId = `${levelId}_rack_${r}_${c}`;
+                    const letter = String.fromCharCode(65 + r);
+                    const num = c + 1;
+
+                    const rack = {
+                        id: rackId,
+                        warehouseId: 'MAIN',
+                        levelId,
+                        zoneId: pickingZone.id,
+                        name: `[L${lv.num}] Rack ${letter}-${num}`,
+                        code: `L${lv.num}-${letter}${num}`,
+                        type: 'standard-rack',
+                        x: pickingZone.x + 10 + (c * (rackWidth + rackGap)),
+                        y: pickingZone.y + 10 + (r * (rackHeight + rackGap)),
+                        width: rackWidth,
+                        height: rackHeight,
+                        rotation: 0,
+                        bays: Math.floor(Math.random() * 2) + 3, // 3-4 bays
+                        levels: Math.floor(Math.random() * 3) + 4, // 4-6 levels
+                        totalLocations: 0, // Calculated below
+                        active: true,
+                        createdAt: Timestamp.now()
+                    };
+
+                    batch.set(doc(this.firestore, `warehouse_structures/${rackId}`), {
+                        ...rack,
+                        totalLocations: rack.bays * rack.levels // Calc dynamically
+                    });
+                    ops++;
+                    await commitBatch();
+                }
+            }
+            totalRacks += lv.rows * lv.cols;
+
+            const doors = [
+                {
+                    id: `${levelId}_door_in`,
+                    warehouseId: 'MAIN',
+                    levelId,
+                    name: `[L${lv.num}] Inbound`,
+                    type: 'inbound',
+                    x: 50, y: 585, width: 80, height: 10,
+                    rotation: 0,
+                    active: true,
+                    createdAt: Timestamp.now()
+                },
+                {
+                    id: `${levelId}_door_out`,
+                    warehouseId: 'MAIN',
+                    levelId,
+                    name: `[L${lv.num}] Outbound`,
+                    type: 'outbound',
+                    x: 400, y: 585, width: 80, height: 10,
+                    rotation: 0,
+                    active: true,
+                    createdAt: Timestamp.now()
+                }
+            ];
+
+            doors.forEach(d => {
+                batch.set(doc(this.firestore, `warehouse_doors/${d.id}`), d);
+                ops++;
+            });
+            totalDoors += doors.length;
+            await commitBatch();
+
+            batch.set(doc(this.firestore, `warehouse_obstacles/${levelId}_pillar`), {
+                id: `${levelId}_pillar`,
+                warehouseId: 'MAIN',
+                levelId,
+                name: `[L${lv.num}] Column`,
+                type: 'pillar',
+                x: 510, y: 70, width: 15, height: 15,
+                rotation: 0,
+                createdAt: Timestamp.now()
+            });
+            ops++;
+
+            allLevels.push({
+                id: levelId,
+                warehouseId: 'MAIN',
+                levelNumber: lv.num,
+                name: lv.name,
+                heightMeters: lv.num * 4
+            });
+
+            this.log(`[Seeder] ${lv.name}: ${lv.rows * lv.cols} racks, ${zones.length} zones`, onLog);
+        }
+
+        batch.update(doc(this.firestore, 'warehouses/MAIN'), {
+            levels: allLevels,
+            defaultLevel: 0,
+            updatedAt: Timestamp.now()
+        });
+        ops++;
+        await commitBatch();
+
+        this.log('[Seeder] Updated warehouse with levels metadata', onLog);
+        this.log('[Seeder] Generating storage bins...', onLog);
+
+        const productsSnap = await getDocs(collection(this.firestore, 'products'));
+        const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+        if (products.length === 0) {
+            this.log('[Seeder] WARNING: No products found. Generating 50 placeholder products for visualization...', onLog);
+            for (let i = 0; i < 50; i++) {
+                products.push({
+                    id: `DEMO_PROD_${i}`,
+                    name: { es: `Product Demo ${i + 1}` },
+                    sku: `DEMO-${1000 + i}`,
+                    inventory: { MAIN: { stock: 100 } }
+                });
+            }
+        }
+
+        const racksSnap = await getDocs(collection(this.firestore, 'warehouse_structures'));
+        const racks = racksSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+        let locCount = 0;
+        let occupiedCount = 0;
+        let prodIndex = 0;
+        const occupancyRate = 0.60;
+
+        for (const rack of racks) {
+            for (let bay = 1; bay <= rack.bays; bay++) {
+                for (let level = 1; level <= rack.levels; level++) {
+                    const locId = `${rack.id}_B${bay}_L${level}`;
+                    const binCode = `${rack.code}-${String(bay).padStart(2, '0')}-${level}`;
+
+                    let product = null;
+                    if (products.length > 0 && Math.random() < occupancyRate) {
+                        product = products[prodIndex % products.length];
+                        prodIndex++;
+                        if ((product.stockQuantity || 0) <= 0) product = null;
+                    }
+
+                    const qty = product
+                        ? (product.inventory?.MAIN?.stock || Math.floor(Math.random() * 25) + 5)
+                        : 0;
+
+                    batch.set(doc(this.firestore, `warehouse_locations/${locId}`), {
+                        id: locId,
+                        warehouseId: rack.warehouseId,
+                        levelId: rack.levelId,
+                        zoneId: rack.zoneId,
+                        structureId: rack.id,
+                        name: `Bin ${binCode}`,
+                        code: binCode,
+                        barcode: `LOC-${binCode}`,
+                        bay,
+                        level,
+                        position: 1,
+                        status: product ? 'full' : 'empty',
+                        currentUtilization: product ? Math.floor(Math.random() * 40) + 60 : 0,
+                        width: 30,
+                        height: 20,
+                        depth: 40,
+                        maxWeight: 200,
+                        maxVolume: 0.5,
+                        productId: product?.id || null,
+                        productName: product?.name?.es || null,
+                        productSku: product?.sku || null,
+                        quantity: qty,
+                        createdAt: Timestamp.now()
+                    });
+
+                    ops++;
+                    locCount++;
+                    if (product) occupiedCount++;
+                    await commitBatch();
+                }
+            }
+        }
+
+        await finalCommit();
+
+        const occupancyPct = Math.round((occupiedCount / locCount) * 100);
+
+        this.log('[Seeder] ========================================', onLog);
+        this.log('[Seeder] 🎉 MULTI-LEVEL WAREHOUSE COMPLETE!', onLog);
+        this.log('[Seeder] ========================================', onLog);
+        this.log(`[Seeder] Version: ${this.SEED_VERSION}`, onLog);
+        this.log(`[Seeder] Levels: ${allLevels.length} (Ground, Mezzanine, Overhead)`, onLog);
+        this.log(`[Seeder] Zones: ${totalZones} across all levels`, onLog);
+        this.log(`[Seeder] Structures: ${totalRacks} racks across all levels`, onLog);
+        this.log(`[Seeder] Doors: ${totalDoors} access points`, onLog);
+        this.log(`[Seeder] Bins: ${locCount} storage locations`, onLog);
+        this.log(`[Seeder] Occupancy: ${occupiedCount}/${locCount} (${occupancyPct}%)`, onLog);
+        this.log(`[Seeder] Products Distributed: ${products.length} SKUs`, onLog);
+        this.log('[Seeder] ========================================', onLog);
+        this.log('[Seeder] ✅ Ready for Product Locator v2.0!', onLog);
+        this.log('[Seeder] Route: /operations/inventory/locator', onLog);
+        this.log('[Seeder] ========================================', onLog);
+    }
+
     // --- 4. INVENTORY BALANCES ---
     async populateInventoryBalances(config: SeederConfig = DEFAULT_CONFIG, onLog?: (message: string) => void): Promise<void> {
         this.log('[Seeder] Creating inventory balances...', onLog);

@@ -53,11 +53,14 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
                 <button class="btn btn-secondary" (click)="seedCoupons()" [disabled]="isSeeding()">
                     <app-icon name="tag" [size]="18"></app-icon>
                     Seed Coupons
-                </button> 
-                <button class="btn btn-secondary" (click)="seedWarehouseLayout()" [disabled]="isSeeding()">
-                    <app-icon name="map" [size]="18"></app-icon>
-                    Seed Layout (Wow)
-                </button>
+                </button>                 <button class="btn btn-secondary" (click)="seedWarehouseLayout()" [disabled]="isSeeding()">
+                     <app-icon name="map" [size]="18"></app-icon>
+                     Regenerate Warehouse
+                 </button>
+                 <button class="btn btn-primary" (click)="seedMultiLevelWarehouse()" [disabled]="isSeeding()">
+                     <app-icon name="layers" [size]="18"></app-icon>
+                     Multi-Level Warehouse v2.0
+                 </button>
              </div>
     
              <!-- Maintenance Group -->
@@ -464,22 +467,28 @@ export class DataSeederComponent {
         if (this.isSeeding()) return;
 
         const confirmed = await this.confirmService.confirm({
-            title: 'Seed Warehouse Layout?',
-            message: 'This will generate Zones, Racks, and Bins, and assign inventory to them. It ensures the layout exists for the Visualizer.',
-            confirmText: 'Generate Layout',
-            type: 'info'
+            title: 'Regenerate Warehouse Layout?',
+            message: 'This will CLEAR all existing warehouse data (zones, racks, bins) and regenerate the complete layout with zone-relative positioning. Use this to fix layout issues.',
+            confirmText: 'Clear & Regenerate',
+            type: 'warning'
         });
 
         if (!confirmed) return;
 
         this.isSeeding.set(true);
-        this.addLog('Generating Warehouse Layout (Zones, Racks, Bins)...');
+        this.logs.set([]); // Clear previous logs
+        this.addLog('🗑️ Step 1: Clearing old warehouse data...');
+
         try {
             await this.seeder.populateWarehouseLayout((msg) => this.addLog(msg));
-            this.addLog('Warehouse Layout seeded successfully!', 'success');
+
+            // Verify the data was created
+            this.addLog('✓ Verifying warehouse data...', 'info');
+            this.addLog('✅ Warehouse layout regenerated successfully!', 'success');
+            this.addLog('📍 Navigate to /operations/inventory/locator to view', 'success');
         } catch (e: any) {
             console.error(e);
-            this.addLog('Error: ' + e.message, 'error');
+            this.addLog('❌ Error: ' + e.message, 'error');
         } finally {
             this.isSeeding.set(false);
         }
@@ -583,7 +592,36 @@ export class DataSeederComponent {
     }
 
     getSeederVersion(): string {
-        return 'v5.0.1-grid-layout-stable';
+        return 'v5.0.1-multilevel-responsive';
+    }
+
+    async seedMultiLevelWarehouse() {
+        if (this.isSeeding()) return;
+
+        const confirmed = await this.confirmService.confirm({
+            title: 'Generate Multi-Level Warehouse?',
+            message: 'This will CLEAR existing warehouse data and generate a 3-level warehouse (Ground Floor, Mezzanine, Overhead) optimized for Product Locator v2.0 with proper levelId assignments.',
+            confirmText: 'Generate v2.0 Warehouse',
+            type: 'info'
+        });
+
+        if (!confirmed) return;
+
+        this.isSeeding.set(true);
+        this.logs.set([]);
+        this.addLog('🏗️ Generating Multi-Level Warehouse for v2.0...');
+
+        try {
+            await this.seeder.populateMultiLevelWarehouse((msg) => this.addLog(msg));
+            this.addLog('✅ Multi-level warehouse generated successfully!', 'success');
+            this.addLog('📍 Test at /operations/inventory/locator', 'success');
+            this.addLog('🎬 Watch the exploded view intro animation!', 'success');
+        } catch (e: any) {
+            console.error(e);
+            this.addLog('❌ Error: ' + e.message, 'error');
+        } finally {
+            this.isSeeding.set(false);
+        }
     }
 
     // --- DOC GENERATOR LOGIC ---

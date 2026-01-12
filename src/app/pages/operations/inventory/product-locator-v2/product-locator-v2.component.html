@@ -1,0 +1,313 @@
+<div class="h-screen flex flex-col bg-zinc-950 text-white overflow-hidden">
+
+    <!-- Header / Search Bar -->
+    <div class="p-6 bg-zinc-900 border-b border-zinc-800 flex items-center gap-6 z-30 shadow-xl">
+
+        <!-- Warehouse Selector -->
+        <div *ngIf="availableWarehouses().length > 1" class="flex items-center gap-2">
+            <app-icon name="warehouse" [size]="18" class="text-zinc-500"></app-icon>
+            <select [(ngModel)]="selectedWarehouseId" (ngModelChange)="switchWarehouse($event)"
+                class="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
+                <option *ngFor="let wh of availableWarehouses()" [value]="wh.id">{{ wh.name }}</option>
+            </select>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="flex-1 max-w-2xl flex gap-2">
+            <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="search()"
+                placeholder="Search product (name or SKU)"
+                class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder-zinc-600">
+            <button (click)="search()" class="btn-glass-primary px-6 text-lg font-bold min-w-[120px]">
+                <app-icon name="search" class="mr-2"></app-icon>
+                Find
+            </button>
+        </div>
+
+        <!-- Notification Toast -->
+        <div *ngIf="notification()" class="absolute top-full mt-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+            <div class="px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2" [ngClass]="{
+             'bg-zinc-800 text-zinc-300 border border-zinc-700': notification()?.type === 'info',
+             'bg-rose-900 text-rose-200 border border-rose-700': notification()?.type === 'error',
+             'bg-emerald-900 text-emerald-200 border border-emerald-700': notification()?.type === 'success'
+           }">
+                <app-icon [name]="notification()?.type === 'error' ? 'alert-triangle' : 'info'" [size]="18"></app-icon>
+                {{ notification()?.message }}
+            </div>
+        </div>
+
+        <!-- Found Product Display -->
+        <div *ngIf="foundProduct()" class="flex items-center gap-4 animate-fade-in-right">
+            <div class="bg-emerald-900/30 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3">
+                <div class="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center">
+                    <app-icon name="package" [size]="24" class="text-purple-400"></app-icon>
+                </div>
+                <div class="flex-1">
+                    <div class="text-xs text-emerald-500 font-bold uppercase tracking-wider">{{ foundProduct().sku }}
+                    </div>
+                    <div class="font-bold text-white max-w-[200px] truncate">{{ foundProduct().name?.es }}</div>
+                </div>
+            </div>
+            <app-icon name="arrow-right" class="text-zinc-600"></app-icon>
+            <div class="bg-purple-900/30 border border-purple-500/30 rounded-lg px-4 py-3">
+                <div class="text-xs text-purple-300 uppercase tracking-widest font-bold">Location</div>
+                <div class="text-2xl font-mono font-bold text-white">{{ foundLocation()?.code || 'Searching...' }}</div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="flex items-center gap-6 text-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span class="text-zinc-400">Capacity:</span>
+                <span class="font-bold text-white">{{ occupiedBinsCount() }}/{{ totalBinsCount() }}</span>
+                <span class="text-emerald-400 font-bold">({{ occupancyRate() }}%)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Layer Selector Sidebar (or Rack Details) -->
+        <div class="w-64 bg-zinc-900 border-r border-zinc-800 p-4 flex flex-col transition-all">
+
+            <!-- MODE: Warehouse Levels -->
+            <ng-container *ngIf="!selectedRack()">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-400">Warehouse Levels</h3>
+                    <span class="px-2 py-1 bg-purple-600 text-white text-xs rounded-full font-bold">
+                        {{ levelService.levels().length }}
+                    </span>
+                </div>
+
+                <!-- Level List -->
+                <div class="flex-1 space-y-2 overflow-y-auto">
+                    <button *ngFor="let level of levelService.levels()"
+                        (click)="levelService.switchLevel(level.levelNumber)"
+                        class="w-full p-3 rounded-lg border-2 transition-all text-left group" [ngClass]="{
+                'border-purple-500 bg-purple-600/20': levelService.activeLevel() === level.levelNumber,
+                'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600': levelService.activeLevel() !== level.levelNumber
+            }">
+
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-white">{{ level.name }}</span>
+                            <app-icon *ngIf="levelService.activeLevel() === level.levelNumber" name="check-circle"
+                                [size]="16" class="text-purple-400"></app-icon>
+                        </div>
+
+                        <div class="text-xs text-zinc-400 mb-2">
+                            Level {{ level.levelNumber }} • {{ level.structures.length }} racks
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Level Controls -->
+                <div class="mt-4 pt-4 border-t border-zinc-800 space-y-2">
+                    <button (click)="levelService.levelUp()"
+                        [disabled]="levelService.activeLevel() >= levelService.levels().length - 1"
+                        class="w-full btn-glass-secondary flex items-center justify-center gap-2"
+                        [class.opacity-50]="levelService.activeLevel() >= levelService.levels().length - 1">
+                        <app-icon name="arrow-up" [size]="16"></app-icon>
+                        Level Up
+                    </button>
+                    <button (click)="levelService.levelDown()" [disabled]="levelService.activeLevel() <= 0"
+                        class="w-full btn-glass-secondary flex items-center justify-center gap-2"
+                        [class.opacity-50]="levelService.activeLevel() <= 0">
+                        <app-icon name="arrow-down" [size]="16"></app-icon>
+                        Level Down
+                    </button>
+                </div>
+            </ng-container>
+
+            <!-- MODE: Rack Details -->
+            <ng-container *ngIf="selectedRack()">
+                <div class="flex items-center gap-2 mb-6">
+                    <button (click)="selectedRack.set(null)" class="p-1 hover:bg-zinc-800 rounded">
+                        <app-icon name="arrow-left" [size]="20"></app-icon>
+                    </button>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-400">Rack Details</h3>
+                </div>
+
+                <div class="flex-1 overflow-y-auto animate-fade-in-right">
+                    <!-- Rack Header -->
+                    <div class="bg-zinc-800/50 rounded-lg p-4 mb-4 border border-zinc-700">
+                        <div class="text-xs text-zinc-500 uppercase tracking-widest mb-1">Rack Code</div>
+                        <div class="text-3xl font-bold text-white font-mono">{{ selectedRack().code }}</div>
+                    </div>
+
+                    <!-- Utilization -->
+                    <div class="space-y-2 mb-6">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-zinc-400">Utilization</span>
+                            <span class="font-bold" [ngClass]="{
+                                'text-emerald-400': selectedRackUtilization() < 50,
+                                'text-yellow-400': selectedRackUtilization() >= 50 && selectedRackUtilization() < 80,
+                                'text-rose-400': selectedRackUtilization() >= 80
+                            }">{{ selectedRackUtilization() }}%</span>
+                        </div>
+                        <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                            <div class="h-full transition-all duration-500" [style.width.%]="selectedRackUtilization()"
+                                [ngClass]="{
+                                    'bg-emerald-500': selectedRackUtilization() < 50,
+                                    'bg-yellow-500': selectedRackUtilization() >= 50 && selectedRackUtilization() < 80,
+                                    'bg-rose-500': selectedRackUtilization() >= 80
+                                }"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div class="bg-zinc-800 p-3 rounded border border-zinc-700">
+                            <div class="text-[10px] text-zinc-500 uppercase">Capacity</div>
+                            <div class="text-xl font-bold">{{ selectedRack().totalLocations || 15 }}</div>
+                        </div>
+                        <div class="bg-zinc-800 p-3 rounded border border-zinc-700">
+                            <div class="text-[10px] text-zinc-500 uppercase">Bays</div>
+                            <div class="text-xl font-bold">{{ selectedRack().bays }}</div>
+                        </div>
+                    </div>
+
+                    <button (click)="selectedRack.set(null)" class="w-full btn-glass-primary mt-4">
+                        Close Details
+                    </button>
+                </div>
+            </ng-container>
+        </div>
+
+        <!-- Warehouse Visualization Area -->
+        <div class="flex-1 bg-zinc-950 relative overflow-hidden flex items-center justify-center cursor-move"
+            (mousedown)="onMouseDown($event)" (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp()"
+            (mouseleave)="onMouseLeave()">
+
+            <!-- Zoom Controls -->
+            <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                <div class="flex flex-col gap-2 bg-zinc-900/90 backdrop-blur-sm rounded-lg p-2 shadow-lg">
+                    <button (click)="zoomIn()"
+                        class="w-10 h-10 rounded bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition-all hover:scale-110">
+                        <app-icon name="plus" [size]="20"></app-icon>
+                    </button>
+                    <button (click)="zoomOut()"
+                        class="w-10 h-10 rounded bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition-all hover:scale-110">
+                        <app-icon name="minus" [size]="20"></app-icon>
+                    </button>
+                    <div class="h-px bg-zinc-700 my-1"></div>
+                    <button (click)="resetZoom()"
+                        class="w-10 h-10 rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition-all hover:scale-110">
+                        <app-icon name="maximize-2" [size]="18"></app-icon>
+                    </button>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <button (click)="toggleViewMode()"
+                    class="w-10 h-10 rounded-lg bg-zinc-900/90 border border-zinc-700 hover:border-purple-500 text-zinc-300 hover:text-white transition-all flex items-center justify-center">
+                    <app-icon [name]="viewMode() === '2d' ? 'box' : 'layout'" [size]="20"></app-icon>
+                </button>
+
+                <!-- Grid Toggle -->
+                <button (click)="toggleGrid()"
+                    class="w-10 h-10 rounded-lg bg-zinc-900/90 border transition-all flex items-center justify-center"
+                    [ngClass]="showGrid() ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700 text-zinc-400 hover:text-white'">
+                    <app-icon name="grid" [size]="20"></app-icon>
+                </button>
+            </div>
+
+            <!-- Warehouse Canvas -->
+            <div class="relative transition-transform duration-75 ease-out warehouse-container origin-center"
+                [class.isometric-view]="viewMode() === '3d'" [style.transform]="transform()"
+                style="width: 800px; height: 600px;">
+
+                <!-- Background Grid (Optional) -->
+                <div *ngIf="showGrid()" class="absolute inset-0 opacity-20 pointer-events-none"
+                    style="background-image: radial-gradient(#4b5563 1px, transparent 1px); background-size: 20px 20px;">
+                </div>
+
+                <!-- Each Level (with animation support) -->
+                <div *ngFor="let level of levelService.levels(); let i = index" class="level-container absolute"
+                    [class.active-level]="levelService.activeLevel() === i"
+                    [class.isometric-level]="viewMode() === '3d'"
+                    [style.opacity]="levelService.activeLevel() === i ? '1' : '0'"
+                    [style.pointer-events]="levelService.activeLevel() === i ? 'auto' : 'none'"
+                    style="width: 800px; height: 600px;">
+
+                    <!-- Zones (Color-Coded) -->
+                    <div *ngFor="let zone of level.zones"
+                        class="absolute border-2 rounded-lg transition-all duration-300" [style.left.px]="zone.x"
+                        [style.top.px]="zone.y" [style.width.px]="zone.width" [style.height.px]="zone.height"
+                        [style.borderColor]="zone.color" [style.backgroundColor]="zone.color + '20'">
+
+                        <div class="absolute -top-6 left-0 text-xs font-bold uppercase tracking-wider"
+                            [style.color]="zone.color">
+                            {{ zone.name }}
+                        </div>
+                    </div>
+
+                    <!-- Racks/Structures -->
+                    <div *ngFor="let rack of level.structures" (click)="selectRack(rack, $event)"
+                        class="absolute border-2 border-zinc-500 bg-zinc-700 rounded rack-hover cursor-pointer hover:border-purple-500 flex items-center justify-center text-xs font-bold text-zinc-300"
+                        [class.ring-2]="selectedRack()?.id === rack.id"
+                        [class.ring-purple-400]="selectedRack()?.id === rack.id"
+                        [class.capacity-low]="getRackStatus(rack.id) === 'low'"
+                        [class.capacity-medium]="getRackStatus(rack.id) === 'medium'"
+                        [class.capacity-high]="getRackStatus(rack.id) === 'high'" [style.left.px]="rack.x"
+                        [style.top.px]="rack.y" [style.width.px]="rack.width" [style.height.px]="rack.height">
+                        {{ rack.code }}
+                    </div>
+
+                    <!-- Obstacles -->
+                    <div *ngFor="let obstacle of level.obstacles"
+                        class="absolute border border-zinc-700 bg-[repeating-linear-gradient(45deg,#27272a,#27272a_10px,#3f3f46_10px,#3f3f46_20px)]"
+                        [style.left.px]="obstacle.x" [style.top.px]="obstacle.y" [style.width.px]="obstacle.width"
+                        [style.height.px]="obstacle.height">
+                    </div>
+
+                    <!-- Doors -->
+                    <div *ngFor="let door of level.doors"
+                        class="absolute border-2 flex items-center justify-center font-bold text-xs"
+                        [style.left.px]="door.x" [style.top.px]="door.y" [style.width.px]="door.width"
+                        [style.height.px]="door.height" [ngClass]="{
+              'border-emerald-500 bg-emerald-500/20 text-emerald-400': door.type === 'inbound',
+              'border-rose-500 bg-rose-500/20 text-rose-400': door.type === 'outbound'
+            }">
+                        {{ door.name || (door.type === 'inbound' ? 'IN' : 'OUT') }}
+                    </div>
+
+                    <!-- Occupied Bins (Green Dots) -->
+                    <div *ngFor="let bin of occupiedBins(); let i = index"
+                        class="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 cursor-pointer hover:scale-200 transition-transform shadow-[0_0_6px_#10b981]"
+                        [style.left.px]="getBinX(bin, i)" [style.top.px]="getBinY(bin, i)" [style.z-index]="50"
+                        [title]="bin.productName + ' (' + bin.quantity + ' units)'">
+                    </div>
+
+                    <!-- Path Visualization (SVG) -->
+                    <svg *ngIf="showPath()" class="absolute top-0 left-0 w-full h-full pointer-events-none z-30">
+                        <path [attr.d]="pathString()" fill="none" stroke="#a855f7" stroke-width="4"
+                            stroke-linecap="round" stroke-dasharray="10 10"
+                            class="path-animation filter drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">
+                        </path>
+
+                        <!-- Start Point -->
+                        <circle [attr.cx]="pathCoordinates()[0]?.x" [attr.cy]="pathCoordinates()[0]?.y" r="8"
+                            fill="#fff"></circle>
+
+                        <!-- End Point -->
+                        <circle [attr.cx]="pathCoordinates()[pathCoordinates().length - 1]?.x"
+                            [attr.cy]="pathCoordinates()[pathCoordinates().length - 1]?.y" r="8" fill="#fff"
+                            class="animate-ping"></circle>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="levelService.levels().length === 0" class="text-center p-12 animate-fade-in">
+                <div class="text-6xl mb-4">📦</div>
+                <h3 class="text-2xl font-bold mb-2">No Warehouse Layout Found</h3>
+                <p class="text-zinc-500 mb-6">Seed warehouse data to see the visualization.</p>
+                <a routerLink="/dev-tools/data-seeder" class="btn-glass-primary inline-flex items-center gap-2">
+                    <app-icon name="database"></app-icon>
+                    Go to Data Seeder
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>

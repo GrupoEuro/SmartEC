@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, writeBatch, doc, Timestamp, getDocs, limit, query } from '@angular/fire/firestore';
 import { Coupon } from '../models/coupon.model';
+import { GridLayoutService } from './grid-layout.service';
 
 export interface SeederConfig {
     orderCount: number;
@@ -25,9 +26,10 @@ export const DEFAULT_CONFIG: SeederConfig = {
 })
 export class DataSeederService {
     private firestore = inject(Firestore);
+    private gridLayout = inject(GridLayoutService);
 
     // Version identifier for tracking seed data schema
-    private readonly SEED_VERSION = 'v4.0.0-warehouse-3d';
+    private readonly SEED_VERSION = 'v5.0.1-grid-layout-stable';
 
     constructor() { }
 
@@ -845,25 +847,20 @@ export class DataSeederService {
             }
         ];
 
+        // CRITICAL: Save warehouses to Firestore
+        warehouses.forEach(wh => {
+            batch.set(doc(this.firestore, `warehouses/${wh.id}`), wh);
+        });
+
         this.log(`[Seeder] Created ${warehouses.length} warehouses (1 Physical, ${warehouses.length - 1} Virtual)`, onLog);
 
         // ========================================
-        // 2. MAIN WAREHOUSE LAYOUT (1200x900 Canvas)
+        // 2. MAIN WAREHOUSE LAYOUT (800x600 Canvas - Unified Grid System)
         // ========================================
         const warehouseId = 'MAIN';
 
-        // --- ZONES (6 Professional Zones) ---
+        // --- ZONES (6 Professional Zones) - Aligned with 800x600 Grid ---
         const zones = [
-            {
-                id: 'zone_receiving',
-                warehouseId,
-                name: 'Receiving / Inbound',
-                code: 'REC',
-                type: 'receiving',
-                color: '#10b981', // Emerald Green
-                x: 20, y: 750, width: 350, height: 120,
-                createdAt: Timestamp.now()
-            },
             {
                 id: 'zone_picking',
                 warehouseId,
@@ -871,7 +868,7 @@ export class DataSeederService {
                 code: 'PICK',
                 type: 'racking',
                 color: '#3b82f6', // Blue
-                x: 20, y: 50, width: 500, height: 650,
+                x: 20, y: 40, width: 480, height: 400,
                 createdAt: Timestamp.now()
             },
             {
@@ -881,7 +878,7 @@ export class DataSeederService {
                 code: 'RSV',
                 type: 'racking',
                 color: '#8b5cf6', // Purple
-                x: 540, y: 250, width: 350, height: 450,
+                x: 520, y: 40, width: 260, height: 250,
                 createdAt: Timestamp.now()
             },
             {
@@ -891,7 +888,7 @@ export class DataSeederService {
                 code: 'BULK',
                 type: 'bulk-stack',
                 color: '#f59e0b', // Amber
-                x: 910, y: 50, width: 270, height: 450,
+                x: 520, y: 310, width: 260, height: 150,
                 createdAt: Timestamp.now()
             },
             {
@@ -901,7 +898,17 @@ export class DataSeederService {
                 code: 'PACK',
                 type: 'packing',
                 color: '#14b8a6', // Teal
-                x: 540, y: 750, width: 640, height: 120,
+                x: 20, y: 470, width: 480, height: 100,
+                createdAt: Timestamp.now()
+            },
+            {
+                id: 'zone_receiving',
+                warehouseId,
+                name: 'Receiving / Inbound',
+                code: 'REC',
+                type: 'receiving',
+                color: '#10b981', // Emerald Green
+                x: 520, y: 480, width: 260, height: 90,
                 createdAt: Timestamp.now()
             },
             {
@@ -911,7 +918,7 @@ export class DataSeederService {
                 code: 'OFC',
                 type: 'staging',
                 color: '#6b7280', // Gray
-                x: 910, y: 520, width: 270, height: 200,
+                x: 680, y: 10, width: 110, height: 20, // Minimized - edge label only
                 createdAt: Timestamp.now()
             }
         ];
@@ -922,14 +929,14 @@ export class DataSeederService {
 
         this.log(`[Seeder] Created ${zones.length} operational zones`, onLog);
 
-        // --- DOORS (6 Realistic Doors) ---
+        // --- DOORS (6 Access Points) - Positioned for 800x600 Canvas ---
         const doors = [
             {
                 id: 'door_inbound_1',
                 warehouseId,
                 name: 'Dock 1 (Inbound)',
                 type: 'inbound',
-                x: 50, y: 870, width: 80, height: 15,
+                x: 50, y: 585, width: 80, height: 10,
                 rotation: 0,
                 active: true,
                 createdAt: Timestamp.now()
@@ -939,7 +946,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Dock 2 (Inbound)',
                 type: 'inbound',
-                x: 150, y: 870, width: 80, height: 15,
+                x: 150, y: 585, width: 80, height: 10,
                 rotation: 0,
                 active: true,
                 createdAt: Timestamp.now()
@@ -949,7 +956,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Shipping Door 1',
                 type: 'outbound',
-                x: 600, y: 870, width: 80, height: 15,
+                x: 400, y: 585, width: 80, height: 10,
                 rotation: 0,
                 active: true,
                 createdAt: Timestamp.now()
@@ -959,7 +966,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Shipping Door 2',
                 type: 'outbound',
-                x: 750, y: 870, width: 80, height: 15,
+                x: 520, y: 585, width: 80, height: 10,
                 rotation: 0,
                 active: true,
                 createdAt: Timestamp.now()
@@ -969,7 +976,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Personnel Entry',
                 type: 'inbound',
-                x: 1165, y: 650, width: 15, height: 50,
+                x: 785, y: 450, width: 10, height: 40,
                 rotation: 90,
                 active: true,
                 createdAt: Timestamp.now()
@@ -979,7 +986,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Emergency Exit',
                 type: 'emergency',
-                x: 0, y: 400, width: 15, height: 60,
+                x: 5, y: 270, width: 10, height: 50,
                 rotation: 0,
                 active: true,
                 createdAt: Timestamp.now()
@@ -992,14 +999,14 @@ export class DataSeederService {
 
         this.log(`[Seeder] Created ${doors.length} doors and access points`, onLog);
 
-        // --- OBSTACLES (5 Realistic Obstacles) ---
+        // --- OBSTACLES (5 Structures) - Scaled for 800x600 Canvas ---
         const obstacles = [
             {
                 id: 'obs_office',
                 warehouseId,
                 name: 'Office Structure',
                 type: 'office',
-                x: 920, y: 530, width: 250, height: 180,
+                x: 680, y: 5, width: 110, height: 25,
                 rotation: 0,
                 createdAt: Timestamp.now()
             },
@@ -1008,7 +1015,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Quality Control Area',
                 type: 'equipment',
-                x: 540, y: 720, width: 120, height: 20,
+                x: 360, y: 465, width: 80, height: 15,
                 rotation: 0,
                 createdAt: Timestamp.now()
             },
@@ -1017,7 +1024,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Loading Equipment Zone',
                 type: 'equipment',
-                x: 380, y: 760, width: 140, height: 40,
+                x: 250, y: 490, width: 100, height: 30,
                 rotation: 0,
                 createdAt: Timestamp.now()
             },
@@ -1026,7 +1033,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Support Column A',
                 type: 'pillar',
-                x: 530, y: 100, width: 20, height: 20,
+                x: 510, y: 70, width: 15, height: 15,
                 rotation: 0,
                 createdAt: Timestamp.now()
             },
@@ -1035,7 +1042,7 @@ export class DataSeederService {
                 warehouseId,
                 name: 'Support Column B',
                 type: 'pillar',
-                x: 530, y: 600, width: 20, height: 20,
+                x: 510, y: 430, width: 15, height: 15,
                 rotation: 0,
                 createdAt: Timestamp.now()
             }
@@ -1047,11 +1054,11 @@ export class DataSeederService {
 
         this.log(`[Seeder] Created ${obstacles.length} obstacles and restricted areas`, onLog);
 
-        // --- SCALE MARKERS (Real-world measurements) ---
+        // --- SCALE MARKERS (Real-world measurements) - For 800x600 Canvas ---
         const scaleMarkers = [];
-        const pixelsPerMeter = 24; // Scale: 1 meter = 24 pixels approx
-        const canvasWidth = 1200;
-        const canvasHeight = 900;
+        const pixelsPerMeter = 20; // Scale: 1 meter = 20 pixels approx (adjusted for 800px width)
+        const canvasWidth = 800;
+        const canvasHeight = 600;
 
         // Horizontal markers (bottom edge) - every 10 meters
         for (let meters = 0; meters <= 50; meters += 10) {
@@ -1098,20 +1105,19 @@ export class DataSeederService {
         // ========================================
         const structures: any[] = [];
 
-        // --- PICKING ZONE RACKS: 6 rows × 8 cols = 48 racks ---
-        this.log('[Seeder] Generating Picking Zone racks (48)...', onLog);
+        // --- PICKING ZONE RACKS: 6 rows × 8 cols = 48 racks (GRID-BASED) ---
+        this.log('[Seeder] Generating Picking Zone racks (48) using GRID LAYOUT...', onLog);
         const pickingRows = 6;
         const pickingCols = 8;
-        const pickingStartX = 35;
-        const pickingStartY = 70;
-        const pickingSpacingX = 60;
-        const pickingSpacingY = 100;
 
         for (let r = 0; r < pickingRows; r++) {
             for (let c = 0; c < pickingCols; c++) {
                 const structId = `rack_pick_${r}_${c}`;
                 const rackLetter = String.fromCharCode(65 + r); // A-F
                 const rackNumber = c + 1; // 1-8
+
+                // Use GridLayoutService for perfect alignment
+                const gridPos = this.gridLayout.gridToPixels({ row: r, col: c });
 
                 structures.push({
                     id: structId,
@@ -1120,10 +1126,10 @@ export class DataSeederService {
                     name: `Rack ${rackLetter}-${rackNumber}`,
                     code: `${rackLetter}-${rackNumber}`,
                     type: 'standard-rack',
-                    x: pickingStartX + (c * pickingSpacingX),
-                    y: pickingStartY + (r * pickingSpacingY),
-                    width: 45,
-                    height: 18,
+                    x: gridPos.x,
+                    y: gridPos.y,
+                    width: gridPos.width,
+                    height: gridPos.height,
                     rotation: 0,
                     bays: 3, // 3 horizontal sections
                     levels: 5, // 5 vertical shelves
@@ -1134,19 +1140,22 @@ export class DataSeederService {
             }
         }
 
-        // --- RESERVE STORAGE RACKS: 4 rows × 4 cols = 16 racks ---
-        this.log('[Seeder] Generating Reserve Storage racks (16)...', onLog);
+        // --- RESERVE STORAGE RACKS: Positioned after picking zone (GRID-BASED) ---
+        this.log('[Seeder] Generating Reserve Storage racks (16) using GRID LAYOUT...', onLog);
         const reserveRows = 4;
         const reserveCols = 4;
-        const reserveStartX = 560;
-        const reserveStartY = 270;
-        const reserveSpacingX = 75;
-        const reserveSpacingY = 100;
+        const reserveStartRow = 0;
+        const reserveStartCol = 8; // Start after picking zone columns
 
         for (let r = 0; r < reserveRows; r++) {
             for (let c = 0; c < reserveCols; c++) {
                 const structId = `rack_reserve_${r}_${c}`;
                 const rackNum = (r * reserveCols) + c + 1; // R-1 through R-16
+
+                const gridPos = this.gridLayout.gridToPixels({
+                    row: reserveStartRow + r,
+                    col: reserveStartCol + c
+                });
 
                 structures.push({
                     id: structId,
@@ -1155,10 +1164,10 @@ export class DataSeederService {
                     name: `Reserve R-${rackNum}`,
                     code: `R-${rackNum}`,
                     type: 'standard-rack',
-                    x: reserveStartX + (c * reserveSpacingX),
-                    y: reserveStartY + (r * reserveSpacingY),
-                    width: 45,
-                    height: 18,
+                    x: gridPos.x,
+                    y: gridPos.y,
+                    width: gridPos.width,
+                    height: gridPos.height,
                     rotation: 0,
                     bays: 2, // 2 horizontal sections
                     levels: 6, // 6 vertical shelves (taller)
@@ -1169,19 +1178,22 @@ export class DataSeederService {
             }
         }
 
-        // --- BULK STORAGE: 2 rows × 4 cols = 8 floor stacks ---
-        this.log('[Seeder] Generating Bulk Storage positions (8)...', onLog);
+        // --- BULK STORAGE: Below reserve zone (GRID-BASED) ---
+        this.log('[Seeder] Generating Bulk Storage positions (8) using GRID LAYOUT...', onLog);
         const bulkRows = 2;
         const bulkCols = 4;
-        const bulkStartX = 925;
-        const bulkStartY = 70;
-        const bulkSpacingX = 60;
-        const bulkSpacingY = 200;
+        const bulkStartRow = 4; // Below reserve
+        const bulkStartCol = 8;
 
         for (let r = 0; r < bulkRows; r++) {
             for (let c = 0; c < bulkCols; c++) {
                 const structId = `bulk_${r}_${c}`;
                 const bulkNum = (r * bulkCols) + c + 1; // B-1 through B-8
+
+                const gridPos = this.gridLayout.gridToPixels({
+                    row: bulkStartRow + r,
+                    col: bulkStartCol + c
+                });
 
                 structures.push({
                     id: structId,
@@ -1190,10 +1202,10 @@ export class DataSeederService {
                     name: `Bulk B-${bulkNum}`,
                     code: `B-${bulkNum}`,
                     type: 'floor-stack',
-                    x: bulkStartX + (c * bulkSpacingX),
-                    y: bulkStartY + (r * bulkSpacingY),
-                    width: 50,
-                    height: 50,
+                    x: gridPos.x,
+                    y: gridPos.y,
+                    width: gridPos.width,
+                    height: gridPos.height,
                     rotation: 0,
                     bays: 1,
                     levels: 1, // Floor stack is single level
@@ -1225,7 +1237,8 @@ export class DataSeederService {
             this.log('[Seeder] WARNING: No products found. Bins will be empty.', onLog);
         }
 
-        const locBatch = writeBatch(this.firestore);
+        // CREATE NEW BATCH for bins (after committing structures)
+        let locBatch = writeBatch(this.firestore); // Changed to 'let' to allow reassignment
         let locCount = 0;
         let occupiedCount = 0;
         let prodIndex = 0;
@@ -1303,12 +1316,16 @@ export class DataSeederService {
                     if (locCount % 500 === 0) {
                         await locBatch.commit();
                         this.log(`[Seeder] Created ${locCount} bins...`, onLog);
+                        locBatch = writeBatch(this.firestore); // CREATE NEW BATCH
                     }
                 }
             }
         }
 
-        await locBatch.commit();
+        // Only commit if there are uncommitted items (not already committed at the 500 mark)
+        if (locCount % 500 !== 0) {
+            await locBatch.commit();
+        }
 
         const occupancyPercentage = Math.round((occupiedCount / locCount) * 100);
 
@@ -1319,7 +1336,7 @@ export class DataSeederService {
         this.log('[Seeder] 🎉 WAREHOUSE LAYOUT COMPLETE!', onLog);
         this.log('[Seeder] ========================================', onLog);
         this.log(`[Seeder] Version: ${this.SEED_VERSION}`, onLog);
-        this.log(`[Seeder] Canvas: 1200×900 pixels (Professional Layout)`, onLog);
+        this.log(`[Seeder] Canvas: 800×600 pixels (Unified Grid System)`, onLog);
         this.log(`[Seeder] Warehouses: ${warehouses.length} (1 Physical + ${warehouses.length - 1} Virtual)`, onLog);
         this.log(`[Seeder] Zones: ${zones.length} operational zones`, onLog);
         this.log(`[Seeder] Doors: ${doors.length} access points`, onLog);

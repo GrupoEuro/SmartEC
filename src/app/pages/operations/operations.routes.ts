@@ -61,6 +61,11 @@ export const operationsRoutes: Routes = [
                 path: 'abc-analysis',
                 loadComponent: () => import('./inventory/abc-analysis.component').then(m => m.AbcAnalysisComponent)
             },
+            // TEMPORARY: Disabled due to TypeScript cache issue - restart VS Code to fix
+            // {
+            //     path: 'replenishment-planner',
+            //     loadComponent: () => import('./inventory/replenishment-planner.component').then(m => m.ReplenishmentPlannerComponent)
+            // },
             {
                 path: 'promotions',
                 loadComponent: () => import('./promotions/promotions-reference.component').then(m => m.PromotionsReferenceComponent)
@@ -68,6 +73,22 @@ export const operationsRoutes: Routes = [
             {
                 path: 'warehouses',
                 loadComponent: () => import('./warehouses/warehouse-list.component').then(m => m.WarehouseListComponent)
+            },
+            {
+                path: 'receiving',
+                loadComponent: () => import('./receiving/receiving-dashboard/receiving-dashboard.component').then(m => m.ReceivingDashboardComponent)
+            },
+            {
+                path: 'receiving/receive',
+                loadComponent: () => import('./receiving/receive-goods/receive-goods.component').then(m => m.ReceiveGoodsComponent)
+            },
+            {
+                path: 'receiving/receive/:id',
+                loadComponent: () => import('./receiving/receive-goods/receive-goods.component').then(m => m.ReceiveGoodsComponent)
+            },
+            {
+                path: 'receiving/putaway',
+                loadComponent: () => import('./receiving/putaway-tasks/putaway-tasks.component').then(m => m.PutawayTasksComponent)
             },
             {
                 path: 'procurement',

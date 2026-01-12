@@ -19,6 +19,7 @@ import { AdminPageHeaderComponent } from '../../../../pages/admin/shared/admin-p
 import { FileImportService } from '../../../../core/services/file-import.service';
 
 import { InventoryLedgerService } from '../../../../core/services/inventory-ledger.service';
+import { ReceivingService } from '../../../../core/services/receiving.service';
 // import { DragDropModule } from '@angular/cdk/drag-drop';
 
 
@@ -39,6 +40,7 @@ export class PurchaseOrderDetailComponent {
     private mappingService = inject(SupplierMappingService);
     private productService = inject(ProductService);
     private inventoryService = inject(InventoryLedgerService);
+    private receivingService = inject(ReceivingService);
     private toast = inject(ToastService);
     private confirmDialog = inject(ConfirmDialogService);
 
@@ -537,7 +539,7 @@ export class PurchaseOrderDetailComponent {
 
         const confirmed = await this.confirmDialog.confirm({
             title: 'Receive Order?',
-            message: 'Are you sure you want to RECEIVE this order? This will update your Inventory Stock and Costs permanently.'
+            message: 'This will create an Advance Shipping Notice (ASN), Goods Receipt Note (GRN), and update inventory. Continue?'
         });
 
         if (!confirmed) return;
@@ -545,19 +547,64 @@ export class PurchaseOrderDetailComponent {
         this.isProcessing.set(true);
 
         try {
-            // 1. Process Logic
-            let processedCount = 0;
+            // === STEP 1: Generate ASN (Advance Shipping Notice) ===
+            const asnNumber = await this.receivingService.generateASNNumber();
+            const asnId = await this.receivingService.createASN({
+                asnNumber,
+                purchaseOrderRef: po.id || this.poId(),
+                supplierName: po.supplierName,
+                supplierId: po.supplierId,
+                warehouseId: 'MAIN',
+                expectedDate: Timestamp.now(),
+                status: 'received', // Already physically arrived
+                items: po.items.filter(item => item.productId).map(item => ({
+                    productId: item.productId,
+                    productSku: item.sku,
+                    productName: item.productName,
+                    expectedQuantity: item.quantityOrdered,
+                    receivedQuantity: item.quantityOrdered, // Assume full receipt
+                    uom: 'ea'
+                })),
+                notes: `Auto-generated from PO: ${po.poNumber}`,
+                createdBy: this.auth.currentUser?.uid || 'SYSTEM'
+            });
 
+            // === STEP 2: Generate GRN (Goods Receipt Note) ===
+            const grnNumber = await this.receivingService.generateGRNNumber();
+            const grnId = await this.receivingService.createGRN({
+                grnNumber,
+                asnId,
+                warehouseId: 'MAIN',
+                receivedDate: Timestamp.now(),
+                receivedBy: this.auth.currentUser?.uid || 'SYSTEM',
+                status: 'completed',
+                items: po.items.filter(item => item.productId).map(item => ({
+                    productId: item.productId,
+                    productSku: item.sku,
+                    productName: item.productName,
+                    quantityReceived: item.quantityOrdered,
+                    quantityAccepted: item.quantityOrdered, // Assume all accepted
+                    quantityRejected: 0,
+                    qualityStatus: 'passed'
+                })),
+                notes: `Generated from PO: ${po.poNumber}`
+            });
+
+            // === STEP 3: Generate Putaway Tasks ===
+            await this.receivingService.generatePutawayTasks(grnId);
+
+            // === STEP 4: Update Inventory (Original Logic) ===
+            let processedCount = 0;
             for (const item of po.items) {
                 if (item.productId) {
                     await this.inventoryService.logTransaction(
                         item.productId,
                         'PURCHASE',
-                        item.quantityOrdered, // Assuming full receipt for now
+                        item.quantityOrdered,
                         item.unitCost,
                         po.id || this.poId(),
                         'PURCHASE_ORDER',
-                        `PO Receive: ${po.poNumber}`,
+                        `PO Receive: ${po.poNumber} | GRN: ${grnNumber}`,
                         'MAIN'
                     );
                     processedCount++;
@@ -568,20 +615,24 @@ export class PurchaseOrderDetailComponent {
                 throw new Error('No linked items to receive. Please link products first.');
             }
 
-            // 2. Update PO
+            // === STEP 5: Update PO with ASN/GRN References ===
             const updatedPO: PurchaseOrder = {
                 ...po,
                 status: 'RECEIVED',
                 actualArrivalDate: new Date(),
                 receivedByUserId: this.auth.currentUser?.uid || 'SYSTEM',
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                asnId, // Link to ASN
+                grnId  // Link to GRN
             };
 
             this.po.set(updatedPO);
             await this.savePO();
 
-            this.toast.success(`Successfully received ${processedCount} items into Inventory!`);
-            this.router.navigate(['/operations/procurement']); // Exit after receive
+            this.toast.success(`✅ Received ${processedCount} items! ASN: ${asnNumber}, GRN: ${grnNumber}`);
+
+            // Navigate to putaway tasks
+            this.router.navigate(['/operations/receiving/putaway']);
 
         } catch (e: any) {
             this.toast.error('Error receiving order: ' + e.message);

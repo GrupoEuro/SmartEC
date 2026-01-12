@@ -77,4 +77,28 @@ export interface PurchaseOrder {
 
     // Integrity
     fileHash?: string; // Content hash to prevent duplicate imports
+
+    // === NEW: Receiving Workflow Integration ===
+    asnId?: string; // Link to Advance Shipping Notice
+    grnId?: string; // Link to Goods Receipt Note
+
+    // === NEW: Import/Customs (Mexican Operations) ===
+    importType?: 'DOMESTIC' | 'INTERNATIONAL';
+    incoterms?: 'EXW' | 'FOB' | 'CIF' | 'DAP' | 'DDP';
+    originCountry?: string;
+    customsBroker?: {
+        brokerName: string;
+        brokerId?: string; // Agente Aduanal license number
+        contactEmail?: string;
+    };
+    pedimento?: {
+        pedimentoNumber: string;
+        customsOffice?: string;
+        clearanceDate?: Date | Timestamp;
+        dutiesPaid?: number;
+        ivaCustoms?: number;
+        antiDumpingDuty?: number; // For Chinese tires
+        status?: 'PENDING' | 'CLEARED' | 'HELD';
+    };
 }
+

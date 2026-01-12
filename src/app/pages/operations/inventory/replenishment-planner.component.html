@@ -1,0 +1,176 @@
+<div class="h-full flex flex-col bg-zinc-950">
+    <!-- Header -->
+    <div class="bg-zinc-900/50 border-b border-zinc-800 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <app-icon name="trending-up" [size]="28" class="text-emerald-400"></app-icon>
+                    Replenishment Planner
+                </h1>
+                <p class="text-zinc-400 text-sm mt-1">
+                    Smart inventory replenishment based on demand forecasting & safety stock
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button (click)="analyzeReplenishment()" [disabled]="isLoading()"
+                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 text-white rounded-lg flex items-center gap-2 transition-colors">
+                    <app-icon [name]="isLoading() ? 'loader' : 'refresh-cw'" [size]="16"
+                        [class.animate-spin]="isLoading()"></app-icon>
+                    {{ isLoading() ? 'Analyzing...' : 'Refresh Analysis' }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="bg-zinc-900/30 border-b border-zinc-800 px-6 py-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
+                <div class="text-xs text-zinc-500 mb-1">Total Items</div>
+                <div class="text-2xl font-bold text-white">{{ stats().total }}</div>
+            </div>
+            <div class="bg-red-900/20 rounded-lg p-3 border border-red-500/30">
+                <div class="text-xs text-red-400 mb-1">Critical</div>
+                <div class="text-2xl font-bold text-red-400">{{ stats().critical }}</div>
+            </div>
+            <div class="bg-orange-900/20 rounded-lg p-3 border border-orange-500/30">
+                <div class="text-xs text-orange-400 mb-1">High Priority</div>
+                <div class="text-2xl font-bold text-orange-400">{{ stats().high }}</div>
+            </div>
+            <div class="bg-purple-900/20 rounded-lg p-3 border border-purple-500/30">
+                <div class="text-xs text-purple-400 mb-1">Selected</div>
+                <div class="text-2xl font-bold text-purple-400">{{ stats().selected }}</div>
+            </div>
+            <div class="bg-emerald-900/20 rounded-lg p-3 border border-emerald-500/30">
+                <div class="text-xs text-emerald-400 mb-1">Estimated Cost</div>
+                <div class="text-lg font-bold text-emerald-400">{{ formatCurrency(stats().totalCost) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters & Actions -->
+    <div class="bg-zinc-900/20 border-b border-zinc-800 px-6 py-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Search -->
+            <div class="flex-1 min-w-[200px]">
+                <div class="relative">
+                    <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="searchQuery.set($event)"
+                        placeholder="Search products..."
+                        class="w-full px-4 py-2 pl-10 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none">
+                    <app-icon name="search" [size]="16"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"></app-icon>
+                </div>
+            </div>
+
+            <!-- Urgency Filter -->
+            <select [(ngModel)]="urgencyFilter" (ngModelChange)="urgencyFilter.set($event)"
+                class="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-purple-500 focus:outline-none">
+                <option value="ALL">All Urgency</option>
+                <option value="CRITICAL">Critical Only</option>
+                <option value="HIGH">High Priority</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+            </select>
+
+            <!-- Selection Actions -->
+            <div class="flex items-center gap-2 ml-auto">
+                <button (click)="selectAll()"
+                    class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors">
+                    Select All
+                </button>
+                <button (click)="clearSelection()"
+                    class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors">
+                    Clear
+                </button>
+                <button (click)="generatePurchaseOrders()" [disabled]="stats().selected === 0"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-700 text-white rounded-lg flex items-center gap-2 transition-colors font-medium">
+                    <app-icon name="shopping-cart" [size]="16"></app-icon>
+                    Generate POs ({{ stats().selected }})
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Replenishment Table -->
+    <div class="flex-1 overflow-auto">
+        <div *ngIf="isLoading()" class="flex items-center justify-center h-full">
+            <div class="text-center">
+                <app-icon name="loader" [size]="48" class="text-purple-400 animate-spin mx-auto mb-4"></app-icon>
+                <p class="text-zinc-400">Analyzing inventory levels...</p>
+            </div>
+        </div>
+
+        <div *ngIf="!isLoading() && filteredItems().length === 0" class="flex items-center justify-center h-full">
+            <div class="text-center">
+                <app-icon name="check-circle" [size]="64" class="text-emerald-400 mx-auto mb-4"></app-icon>
+                <h3 class="text-xl font-bold text-white mb-2">All Clear! ✅</h3>
+                <p class="text-zinc-400">No products require replenishment at this time.</p>
+            </div>
+        </div>
+
+        <table *ngIf="!isLoading() && filteredItems().length > 0" class="w-full">
+            <thead class="bg-zinc-900/50 sticky top-0">
+                <tr class="border-b border-zinc-800">
+                    <th class="px-4 py-3 text-left">
+                        <input type="checkbox" [checked]="stats().selected === filteredItems().length"
+                            (change)="stats().selected === filteredItems().length ? clearSelection() : selectAll()"
+                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-purple-600">
+                    </th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Urgency</th>
+                    <th class="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Product</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Current Stock</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Safety Stock</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Reorder Point</th>
+                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Stockout In</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Order Qty</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Est. Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let item of filteredItems()"
+                    class="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
+                    (click)="toggleSelection(item.product.id!)">
+                    <td class="px-4 py-3">
+                        <input type="checkbox" [checked]="selectedItems().has(item.product.id!)"
+                            (click)="$event.stopPropagation()" (change)="toggleSelection(item.product.id!)"
+                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-purple-600">
+                    </td>
+                    <td class="px-4 py-3">
+                        <span
+                            [class]="'px-3 py-1 rounded-full text-xs font-bold border ' + getUrgencyClass(item.urgencyLevel)">
+                            {{ item.urgencyLevel }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-white">{{ item.product.name.es }}</div>
+                        <div class="text-xs text-zinc-500">SKU: {{ item.product.sku }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <span [class]="item.currentStock === 0 ? 'text-red-400 font-bold' : 'text-white'">
+                            {{ item.currentStock }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center text-emerald-400">
+                        {{ item.safetyStock }}
+                    </td>
+                    <td class="px-4 py-3 text-center text-purple-400">
+                        {{ item.reorderPoint }}
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <span
+                            [class]="item.projectedStockout < 3 ? 'text-red-400 font-bold' : item.projectedStockout < 7 ? 'text-orange-400' : 'text-zinc-300'">
+                            {{ item.projectedStockout }} days
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right text-white font-medium">
+                        {{ item.recommendedOrderQty }}
+                    </td>
+                    <td class="px-4 py-3 text-right text-emerald-400 font-medium">
+                        {{ formatCurrency(item.estimatedCost) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -14,13 +14,13 @@ export class AdminLogService {
   private firestore: Firestore = inject(Firestore);
   private auth = inject(Auth);
   private http = inject(HttpClient);
+  private tracker = inject(FirestoreTrackerService); // Moved from async method
   private collectionName = 'admin_logs';
 
   constructor() {
   }
 
   async log(action: AdminLog['action'], module: AdminLog['module'], details: string, targetId?: string) {
-    const tracker = inject(FirestoreTrackerService); // Lazy inject to avoid circular deps if any
     console.log('AdminLogService.log() called:', { action, module, details });
 
     const user = this.auth.currentUser;
@@ -46,7 +46,7 @@ export class AdminLogService {
 
     try {
       const docRef = await addDoc(collection(this.firestore, this.collectionName), logEntry);
-      tracker.trackWrite(1); // TRACK WRITE
+      this.tracker.trackWrite(1); // TRACK WRITE
       console.log('✅ Log entry written successfully with ID:', docRef.id);
     } catch (error) {
       console.error('❌ Failed to write admin log:', error);

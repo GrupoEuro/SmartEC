@@ -50,6 +50,9 @@ export class ProductLocatorComponent {
     // Hover State
     hoveredRack = signal<string | null>(null);
 
+    // Grid Overlay Toggle
+    showGrid = signal(false);
+
     // Selected Rack for Sidebar
     selectedRack = signal<StorageStructure | null>(null);
     binsInSelectedRack = computed(() => {
@@ -70,6 +73,14 @@ export class ProductLocatorComponent {
 
     // Camera angle controls for isometric view
     cameraAngle = signal({ rotateX: 60, rotateZ: -45 });
+
+    // Preset camera views
+    presetViews = {
+        'top': { rotateX: 90, rotateZ: 0 },        // Bird's eye view
+        'isometric': { rotateX: 60, rotateZ: -45 }, // Default 3D
+        'front': { rotateX: 30, rotateZ: 0 },      // Front elevation
+        'side': { rotateX: 30, rotateZ: -90 }      // Side view
+    };
 
     // Statistics (computed)
     occupiedBinsCount = computed(() => this.occupiedBins().length);
@@ -258,6 +269,42 @@ export class ProductLocatorComponent {
         return this.structures().find(s => s.id === bin.structureId);
     }
 
+    /**
+     * Calculate precise bin position within rack
+     * Fixes hardcoded multipliers - now uses actual rack dimensions
+     */
+    getBinPosition(bin: StorageLocation): { x: number, y: number } {
+        const rack = this.getStructureForBin(bin);
+        if (!rack) return { x: 0, y: 0 };
+
+        const bayWidth = rack.width / rack.bays;
+        const levelHeight = rack.height / rack.levels;
+        const binSize = 3; // From CSS: w-3 h-3 (12px in Tailwind)
+
+        // Center bin within bay/level cell
+        // CRITICAL: bay and level are 1-indexed in data, convert to 0-indexed
+        return {
+            x: rack.x + ((bin.bay - 1) * bayWidth) + (bayWidth / 2) - (binSize / 2),
+            y: rack.y + ((bin.level - 1) * levelHeight) + (levelHeight / 2) - (binSize / 2)
+        };
+    }
+
+    /**
+     * Set camera to preset view
+     */
+    setPresetView(preset: keyof typeof this.presetViews) {
+        this.cameraAngle.set(this.presetViews[preset]);
+    }
+
+    /**
+     * Check if current view matches preset
+     */
+    isPresetActive(preset: keyof typeof this.presetViews): boolean {
+        const current = this.cameraAngle();
+        const target = this.presetViews[preset];
+        return current.rotateX === target.rotateX && current.rotateZ === target.rotateZ;
+    }
+
     // Zoom Controls
     private readonly MIN_ZOOM = 0.5;
     private readonly MAX_ZOOM = 3.0;
@@ -335,6 +382,10 @@ export class ProductLocatorComponent {
         this.viewMode.update(mode => mode === 'top' ? 'isometric' : 'top');
     }
 
+    toggleGrid() {
+        this.showGrid.update(v => !v);
+    }
+
     // Enhanced view transform with dynamic camera angles
     getViewTransform(): string {
         if (this.viewMode() === 'isometric') {
@@ -356,10 +407,13 @@ export class ProductLocatorComponent {
         this.cameraAngle.set({ rotateX: 60, rotateZ: -45 });
     }
 
-    // Calculate rack depth for z-index layering
+    // Calculate rack depth for z-index layering IN ISOMETRIC VIEW
     getRackDepth(rack: StorageStructure): number {
-        // Items further back (higher y) and left (lower x) render first
-        return (rack.y * 1000) + (1200 - rack.x);
+        // In isometric projection, depth = y + (x * 0.5)
+        // Objects with higher values are "farther" and should render first (lower z-index)
+        // Invert to get proper layering: farther items = lower z-index
+        const isometricDepth = rack.y + (rack.x * 0.5);
+        return Math.floor(isometricDepth);
     }
 
     // Enhanced multi-layer shadow calculation

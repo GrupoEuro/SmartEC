@@ -98,6 +98,45 @@ export interface Product {
         focusKeywords?: string[];
     };
 
+    // === Inventory Policy & Demand Forecasting ===
+    inventoryPolicy?: {
+        // Service Level
+        targetServiceLevel: number; // 0.95 = 95%
+
+        // Safety Stock
+        safetyStock: number; // Calculated units
+        safetyStockDays: number; // Days of supply
+
+        // Reorder Point
+        reorderPoint: number; // When to trigger replenishment
+
+        // Order Quantity
+        orderQuantity: number; // How much to order (EOQ or MOQ)
+        maxStockLevel: number; // Maximum inventory level
+        minStockLevel: number; // Minimum before emergency action
+
+        // Lead Time
+        leadTimeDays: number; // Supplier delivery time
+        leadTimeVariability: number; // Std dev of lead time
+
+        // Demand Stats
+        avgDailyDemand?: number;
+        demandVariability?: number; // Coefficient of variation
+        demandClassification?: 'STABLE' | 'VARIABLE' | 'ERRATIC';
+
+        // Review
+        lastPolicyReview?: Timestamp | Date;
+        reviewFrequencyDays: number; // How often to recalculate (30, 60, 90)
+
+        // Forecasting
+        forecastMethod?: 'SMA' | 'WMA' | 'EXP_SMOOTHING' | 'SEASONAL';
+        seasonalityDetected?: boolean;
+
+        // Flags
+        autoReplenishmentEnabled: boolean; // Auto-generate POs?
+        manualOverride?: boolean; // Prevent auto changes
+    };
+
     // Status & Publishing
     publishStatus?: 'draft' | 'published' | 'archived';
     visibility?: 'public' | 'private';

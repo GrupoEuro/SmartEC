@@ -100,45 +100,90 @@
                 <button (click)="resetZoom()"
                     class="w-10 h-10 rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition-all hover:scale-110 shadow-lg shadow-purple-500/50"
                     title="Reset Zoom">
-                    <app-icon name="maximize" [size]="18"></app-icon>
+                    <app-icon name="maximize-2" [size]="18"></app-icon>
                 </button>
             </div>
 
             <!-- Camera Controls (Isometric Only) -->
             <div *ngIf="viewMode() === 'isometric'"
                 class="flex flex-col gap-2 bg-purple-900/90 backdrop-blur-sm rounded-lg p-2 shadow-lg animate-fade-in">
-                <div class="text-xs text-purple-300 font-bold text-center mb-1 px-2">CAMERA</div>
+                <div class="text-xs text-purple-300 font-bold text-center mb-1 px-2">
+                    <div>CAMERA</div>
+                    <div class="text-[9px] font-normal text-purple-400">
+                        {{ cameraAngle().rotateX }}° / {{ cameraAngle().rotateZ }}°
+                    </div>
+                </div>
                 <button (click)="rotateCamera('x', 5)"
                     class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
-                    title="Tilt Up">
+                    title="Tilt camera up (more overhead view)">
                     <app-icon name="arrow-up" [size]="18"></app-icon>
                 </button>
                 <button (click)="rotateCamera('x', -5)"
                     class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
-                    title="Tilt Down">
+                    title="Tilt camera down (more frontal view)">
                     <app-icon name="arrow-down" [size]="18"></app-icon>
                 </button>
                 <button (click)="rotateCamera('z', 5)"
                     class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
-                    title="Rotate Left">
+                    title="Rotate view counter-clockwise">
                     <app-icon name="rotate-ccw" [size]="18"></app-icon>
                 </button>
                 <button (click)="rotateCamera('z', -5)"
                     class="w-10 h-10 rounded bg-purple-800 hover:bg-purple-700 text-white flex items-center justify-center transition-all hover:scale-110"
-                    title="Rotate Right">
+                    title="Rotate view clockwise">
                     <app-icon name="rotate-cw" [size]="18"></app-icon>
                 </button>
                 <button (click)="resetCamera()"
                     class="w-10 h-10 rounded bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition-all hover:scale-110"
-                    title="Reset Camera">
-                    <app-icon name="target" [size]="18"></app-icon>
+                    title="Reset to default 3D isometric view">
+                    <app-icon name="crosshair" [size]="18"></app-icon>
                 </button>
             </div>
+
+            <!-- Preset Camera Views (NEW) -->
+            <div *ngIf="viewMode() === 'isometric'"
+                class="flex flex-col gap-1 bg-zinc-900/90 backdrop-blur-sm rounded-lg p-2 shadow-lg animate-fade-in">
+                <div class="text-[10px] text-zinc-400 font-bold text-center mb-1 px-1 uppercase tracking-wider">Quick
+                    Views</div>
+                <button (click)="setPresetView('top')"
+                    class="px-2 py-1.5 rounded text-[11px] font-semibold transition-all"
+                    [ngClass]="isPresetActive('top') ? 'bg-purple-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'"
+                    title="Bird's Eye View (Top-Down)">
+                    📱 Top
+                </button>
+                <button (click)="setPresetView('isometric')"
+                    class="px-2 py-1.5 rounded text-[11px] font-semibold transition-all"
+                    [ngClass]="isPresetActive('isometric') ? 'bg-purple-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'"
+                    title="Classic 3D Isometric View">
+                    🎲 3D
+                </button>
+                <button (click)="setPresetView('front')"
+                    class="px-2 py-1.5 rounded text-[11px] font-semibold transition-all"
+                    [ngClass]="isPresetActive('front') ? 'bg-purple-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'"
+                    title="Front Elevation View">
+                    🏢 Front
+                </button>
+                <button (click)="setPresetView('side')"
+                    class="px-2 py-1.5 rounded text-[11px] font-semibold transition-all"
+                    [ngClass]="isPresetActive('side') ? 'bg-purple-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'"
+                    title="Side Elevation View">
+                    📐 Side
+                </button>
+            </div>
+
             <!-- View Mode Toggle -->
             <button (click)="toggleViewMode()"
                 class="w-10 h-10 rounded-lg bg-zinc-900/90 border border-zinc-700 hover:border-purple-500 text-zinc-300 hover:text-white transition-all flex items-center justify-center"
                 [title]="viewMode() === 'top' ? 'Switch to Isometric View' : 'Switch to Top View'">
                 <app-icon [name]="viewMode() === 'top' ? 'box' : 'layout'" [size]="20"></app-icon>
+            </button>
+
+            <!-- Grid Overlay Toggle (NEW) -->
+            <button (click)="toggleGrid()"
+                class="w-10 h-10 rounded-lg bg-zinc-900/90 border transition-all flex items-center justify-center"
+                [ngClass]="showGrid() ? 'border-emerald-500 text-emerald-400' : 'border-zinc-700 text-zinc-400 hover:text-white'"
+                title="Toggle Grid Overlay">
+                <app-icon name="grid" [size]="20"></app-icon>
             </button>
         </div>
 
@@ -190,14 +235,32 @@
                 <!-- 3D Floor Grid (Isometric Mode) -->
                 <svg *ngIf="viewMode() === 'isometric'"
                     class="absolute top-0 left-0 w-full h-full pointer-events-none floor-grid-svg"
-                    [attr.viewBox]="'0 0 1200 900'" style="z-index: 0;">
+                    [attr.viewBox]="'0 0 800 600'" style="z-index: 0;">
                     <defs>
                         <pattern id="floorGrid" width="100" height="100" patternUnits="userSpaceOnUse">
                             <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(100,116,139,0.25)"
                                 stroke-width="1.5" />
                         </pattern>
                     </defs>
-                    <rect x="0" y="0" width="1200" height="900" fill="url(#floorGrid)" class="floor-element" />
+                    <rect x="0" y="0" width="800" height="600" fill="url(#floorGrid)" class="floor-element" />
+                </svg>
+
+                <!-- Grid Overlay (NEW) - Snap-to-grid visualization -->
+                <svg *ngIf="showGrid()" class="absolute inset-0 pointer-events-none z-10 opacity-40"
+                    viewBox="0 0 800 600" style="width: 800px; height: 600px;">
+                    <defs>
+                        <pattern id="gridPattern" width="70" height="70" patternUnits="userSpaceOnUse">
+                            <!-- Main grid lines -->
+                            <path d="M 70 0 L 0 0 0 70" fill="none" stroke="#a855f7" stroke-width="0.5" />
+                            <!-- Cell highlight (every cell) -->
+                            <rect x="0" y="0" width="60" height="60" fill="none" stroke="#a855f7" stroke-width="0.3"
+                                stroke-dasharray="2,2" />
+                        </pattern>
+                    </defs>
+                    <!-- Offset by 50px to match GridLayoutService DEFAULT_CONFIG -->
+                    <rect x="50" y="50" width="770" height="630" fill="url(#gridPattern)" />
+                    <!-- Grid labels -->
+                    <text x="20" y="30" fill="#a855f7" font-size="10" opacity="0.7">GRID (60px cells, 10px gaps)</text>
                 </svg>
 
                 <div class="relative transition-transform duration-500 ease-out"
@@ -252,24 +315,24 @@
 
                     <!-- Racks -->
                     <div *ngFor="let struct of structures()"
-                        class="absolute border transition-all duration-300 transform cursor-pointer group rack-structure"
+                        class="absolute border-2 transition-all duration-300 transform cursor-pointer group rack-structure"
                         [attr.data-view-mode]="viewMode()" [style.left.px]="struct.x" [style.top.px]="struct.y"
                         [style.width.px]="struct.width" [style.height.px]="struct.height"
-                        [style.z-index]="viewMode() === 'isometric' ? getRackDepth(struct) : 'auto'"
+                        [style.z-index]="viewMode() === 'isometric' ? getRackDepth(struct) : 10"
                         [style.filter]="viewMode() === 'isometric' ? getRackShadow(struct) : ''"
                         [style.--rack-opacity]="viewMode() === 'isometric' ? getRackAtmosphericOpacity(struct) : 1"
                         (mouseenter)="onRackHover(struct.id!)" (mouseleave)="onRackLeave()"
                         (click)="onRackClick(struct)" [ngClass]="{
-                    'bg-zinc-800 border-zinc-700 opacity-50': !foundLocation() || foundLocation()?.structureId !== struct.id,
+                    'bg-zinc-800 border-zinc-600 opacity-80': !foundLocation() || foundLocation()?.structureId !== struct.id,
                     'bg-purple-600 border-white shadow-[0_0_30px_rgba(168,85,247,0.6)] z-20 scale-105 rack-highlighted': foundLocation()?.structureId === struct.id || selectedRack()?.id === struct.id,
-                    'border-zinc-500 opacity-70': hoveredRack() === struct.id && foundLocation()?.structureId !== struct.id && selectedRack()?.id !== struct.id,
+                    'border-zinc-400 opacity-90': hoveredRack() === struct.id && foundLocation()?.structureId !== struct.id && selectedRack()?.id !== struct.id,
                     'capacity-low': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'low',
                     'capacity-medium': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'medium',
                     'capacity-high': hoveredRack() === struct.id && getRackCapacityColor(struct.id!) === 'high'
                  }">
-                        <!-- Rack Label (visible on hover or when zoomed) -->
+                        <!-- Rack Label (visible with opacity) -->
                         <div
-                            class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-zinc-300 opacity-70 group-hover:opacity-100 transition-opacity pointer-events-none bg-black/10">
                             {{ struct.code }}
                         </div>
                         <!-- Capacity Badge (visible on hover) -->
@@ -284,13 +347,11 @@
                         </div>
                     </div>
 
-                    <!-- Occupied Bins (Hotspots) - LARGER & PULSING -->
+                    <!-- Occupied Bins (Hotspots) - FIXED POSITIONING -->
                     <div *ngFor="let bin of occupiedBins()"
                         class="absolute w-3 h-3 rounded-full bg-emerald-500 cursor-pointer hover:scale-150 transition-transform shadow-[0_0_10px_#10b981] animate-pulse bin-indicator"
-                        [attr.data-view-mode]="viewMode()"
-                        [style.left.px]="(getStructureForBin(bin)?.x || 0) + (bin.bay * 10) + 5"
-                        [style.top.px]="(getStructureForBin(bin)?.y || 0) + (bin.level * 4) + 5"
-                        (click)="onBinClick(bin)"
+                        [attr.data-view-mode]="viewMode()" [style.left.px]="getBinPosition(bin).x"
+                        [style.top.px]="getBinPosition(bin).y" (click)="onBinClick(bin)"
                         [title]="(bin.productName || 'Product') + ' • ' + (bin.quantity || 0) + ' units • ' + (bin.code || '')">
                     </div>
 
@@ -313,7 +374,7 @@
 
                     <!-- Entrance Label -->
                     <div *ngIf="doors().length > 0"
-                        class="absolute top-[800px] left-[20px] bg-emerald-600 text-white text-xs px-2 py-1 rounded">
+                        class="absolute top-[580px] left-[20px] bg-emerald-600 text-white text-xs px-2 py-1 rounded">
                         ENTRANCE
                     </div>
 

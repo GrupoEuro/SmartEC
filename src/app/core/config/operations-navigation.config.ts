@@ -23,7 +23,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
     {
         id: 'inventory',
         title: 'OPERATIONS.SIDEBAR.INVENTORY',
-        icon: 'box',
+        icon: 'package',
         children: [
             {
                 id: 'lookup',
@@ -34,10 +34,10 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
             {
                 id: 'locator',
                 title: 'OPERATIONS.SIDEBAR.LOCATOR',
-                icon: 'map',
+                icon: 'map-pin',
                 route: '/operations/inventory/locator',
                 badge: {
-                    text: 'NEW',
+                    text: '3D',
                     color: 'bg-emerald-500'
                 }
             },
@@ -54,10 +54,50 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 route: '/operations/abc-analysis'
             },
             {
+                id: 'replenishment',
+                title: 'Replenishment Planner',
+                icon: 'trending-up',
+                route: '/operations/replenishment-planner',
+                badge: {
+                    text: 'NEW',
+                    color: 'bg-purple-500'
+                }
+            }
+        ]
+    },
+    {
+        id: 'warehouse',
+        title: 'Warehouse Operations',
+        icon: 'warehouse',
+        children: [
+            {
                 id: 'warehouses',
                 title: 'OPERATIONS.SIDEBAR.WAREHOUSES',
-                icon: 'layers',
+                icon: 'building',
                 route: '/operations/warehouses'
+            },
+            {
+                id: 'receiving',
+                title: 'Receiving',
+                icon: 'download',
+                route: '/operations/receiving',
+                badge: {
+                    text: 'NEW',
+                    color: 'bg-blue-500'
+                }
+            }
+        ]
+    },
+    {
+        id: 'supply_chain',
+        title: 'Supply Chain',
+        icon: 'truck',
+        children: [
+            {
+                id: 'procurement',
+                title: 'OPERATIONS.SIDEBAR.PURCHASE_ORDERS',
+                icon: 'clipboard-list',
+                route: '/operations/procurement'
             }
         ]
     },
@@ -77,19 +117,6 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'OPERATIONS.SIDEBAR.PROMOTIONS',
                 icon: 'tag',
                 route: '/operations/promotions'
-            }
-        ]
-    },
-    {
-        id: 'procurement',
-        title: 'OPERATIONS.SIDEBAR.PROCUREMENT',
-        icon: 'truck',
-        children: [
-            {
-                id: 'purchase_orders',
-                title: 'OPERATIONS.SIDEBAR.PURCHASE_ORDERS',
-                icon: 'clipboard-list',
-                route: '/operations/procurement'
             }
         ]
     }

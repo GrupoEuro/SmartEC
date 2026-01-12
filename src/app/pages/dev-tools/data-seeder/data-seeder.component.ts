@@ -583,7 +583,7 @@ export class DataSeederComponent {
     }
 
     getSeederVersion(): string {
-        return 'v4.0.0-warehouse-3d';
+        return 'v5.0.1-grid-layout-stable';
     }
 
     // --- DOC GENERATOR LOGIC ---

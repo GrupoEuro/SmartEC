@@ -76,9 +76,8 @@ export class ProductLocatorV2Component implements OnInit {
     // Notifications
     public notification = signal<{ message: string, type: 'info' | 'error' | 'success' } | null>(null);
 
-    // Exploded View Animation (Intro)
+    // Exploded View State (Controlled by Toggle)
     public explodedView = signal(false);
-    private introAnimationPlayed = signal(false);
 
     // ========================================
     // Computed Values
@@ -168,52 +167,37 @@ export class ProductLocatorV2Component implements OnInit {
         await this.levelService.loadLevels(warehouseId);
 
         // Load occupied bins for the warehouse
+        // Load occupied bins for the warehouse
+        console.log(`[ProductLocatorV2] Fetching occupied bins for warehouseId: "${warehouseId}"`);
         this.warehouseService.getOccupiedLocations(warehouseId).subscribe(bins => {
-            this.occupiedBins.set(bins);
+            console.log(`[ProductLocatorV2] RAW LOCATIONS FETCHED: ${bins.length}`);
+            const fullBins = bins.filter(b => b.status === 'full'); // Double check filtering
+            console.log(`[ProductLocatorV2] FULL BINS (status='full'): ${fullBins.length}`);
+
+            // Log first bin for inspection
+            if (bins.length > 0) {
+                console.log('[ProductLocatorV2] SAMPLE BIN (JSON):', JSON.stringify(bins[0], null, 2));
+            }
+
+            this.occupiedBins.set(fullBins); // Use fullBins
+            if (fullBins.length === 0) {
+                console.warn('[ProductLocatorV2] No occupied bins found (0% Capacity).');
+                console.warn('Possible causes: 1. Seeder failed to set status="full". 2. WarehouseId mismatch. 3. Firestore permissions.');
+            }
         });
 
         // Play intro animation if needed
-        if (this.shouldPlayIntro()) {
-            setTimeout(() => this.playIntroAnimation(), 300);
-        }
+        // REMOVED: Animation should only happen on explicit toggle
+        // if (this.shouldPlayIntro()) {
+        //     setTimeout(() => this.playIntroAnimation(), 300);
+        // }
     }
 
     // ========================================
-    // Intro Animation (Exploded View)
+    // Helpers
     // ========================================
 
-    private shouldPlayIntro(): boolean {
-        const warehouseId = this.selectedWarehouseId();
-        const key = `warehouse_${warehouseId}_intro_v2`;
-        const hasSeenIntro = localStorage.getItem(key);
 
-        // Only show if multi-level and never seen
-        return !hasSeenIntro && this.levelService.levels().length > 1;
-    }
-
-    private async playIntroAnimation() {
-        console.log('[ProductLocatorV2] Playing exploded view intro');
-
-        // Step 1: Show exploded view
-        this.explodedView.set(true);
-
-        // Step 2: Wait 1.8s (let user see all levels)
-        await this.delay(1800);
-
-        // Step 3: Collapse to default level
-        this.explodedView.set(false);
-
-        // Step 4: Mark as seen
-        const warehouseId = this.selectedWarehouseId();
-        localStorage.setItem(`warehouse_${warehouseId}_intro_v2`, 'true');
-
-        this.introAnimationPlayed.set(true);
-        console.log('[ProductLocatorV2] Intro complete');
-    }
-
-    public replayIntroAnimation() {
-        this.playIntroAnimation();
-    }
 
     private delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
@@ -360,7 +344,18 @@ export class ProductLocatorV2Component implements OnInit {
     }
 
     toggleViewMode() {
-        this.viewMode.update(mode => mode === '2d' ? '3d' : '2d');
+        // Toggle between 2D and 3D
+        // When switching to 3D, enable exploded view
+        // When switching to 2D, disable it
+        this.viewMode.update(mode => {
+            if (mode === '2d') {
+                this.explodedView.set(true);
+                return '3d';
+            } else {
+                this.explodedView.set(false);
+                return '2d';
+            }
+        });
     }
 
     getBinX(bin: StorageLocation, index: number): number {

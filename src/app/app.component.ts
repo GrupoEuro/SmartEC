@@ -28,7 +28,7 @@ export class AppComponent implements OnInit {
   private analytics = inject(AnalyticsService);
 
   constructor() {
-    console.log('%c App Version V9.0.0 (Product Locator v2.0 - Multi-Level) ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');
+    console.log('%c App Version V9.0.1 (Product Locator v2.1 Debugging) ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');
 
     // Set default language
     this.translate.setDefaultLang('es');

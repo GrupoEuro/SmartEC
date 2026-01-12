@@ -114,8 +114,11 @@ export class WarehouseService {
     }
 
     getOccupiedLocations(warehouseId: string): Observable<StorageLocation[]> {
-        const q = query(this.locationsColl, where('warehouseId', '==', warehouseId), where('status', '==', 'full'));
-        return collectionData(q, { idField: 'id' }) as Observable<StorageLocation[]>;
+        // Query ALL locations for warehouse (avoid composite index requirement)
+        const q = query(this.locationsColl, where('warehouseId', '==', warehouseId));
+        return collectionData(q, { idField: 'id' }).pipe(
+            map(locs => (locs as StorageLocation[]).filter(l => l.status === 'full'))
+        );
     }
 
     async getProductLocation(warehouseId: string, productId: string): Promise<StorageLocation | null> {

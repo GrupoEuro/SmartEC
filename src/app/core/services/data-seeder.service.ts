@@ -1409,29 +1409,39 @@ export class DataSeederService {
             const levelId = `MAIN_LEVEL_${lv.num}`;
             this.log(`[Seeder] Generating ${lv.name} (Level ${lv.num})...`, onLog);
 
+            // Offset/Resize zones based on level to create visual distinction in 3D
+            const offset = lv.num * 40; // Shift right/down 40px per level
+            const shrink = lv.num * 80; // Shrink width/height 80px per level
+
             const zones = [
                 {
                     id: `${levelId}_zone_picking`,
                     warehouseId: 'MAIN',
                     levelId,
-                    name: `[L${lv.num}] Picking Zone`,
+                    name: `${lv.name} Picking Zone`, // e.g. "Mezzanine Picking Zone"
                     code: `L${lv.num}-PICK`,
                     type: 'racking',
                     zoneType: 'PICKING',
                     color: '#10b981',
-                    x: 20, y: 40, width: 480, height: 400,
+                    x: 20 + offset,
+                    y: 40 + offset,
+                    width: Math.max(200, 480 - shrink),
+                    height: Math.max(200, 400 - shrink),
                     createdAt: Timestamp.now()
                 },
                 {
                     id: `${levelId}_zone_reserve`,
                     warehouseId: 'MAIN',
                     levelId,
-                    name: `[L${lv.num}] Reserve Storage`,
+                    name: `${lv.name} Reserve Storage`,
                     code: `L${lv.num}-RSV`,
                     type: 'racking',
                     zoneType: 'RESERVE',
                     color: '#3b82f6',
-                    x: 520, y: 40, width: 260, height: 250,
+                    x: 520, // Keep Reserve separate
+                    y: 40 + offset,
+                    width: 260,
+                    height: 250,
                     createdAt: Timestamp.now()
                 }
             ];
@@ -1474,7 +1484,7 @@ export class DataSeederService {
                         warehouseId: 'MAIN',
                         levelId,
                         zoneId: pickingZone.id,
-                        name: `[L${lv.num}] Rack ${letter}-${num}`,
+                        name: `L${lv.num} Rack ${letter}-${num}`,
                         code: `L${lv.num}-${letter}${num}`,
                         type: 'standard-rack',
                         x: pickingZone.x + 10 + (c * (rackWidth + rackGap)),
@@ -1598,7 +1608,19 @@ export class DataSeederService {
                     if (products.length > 0 && Math.random() < occupancyRate) {
                         product = products[prodIndex % products.length];
                         prodIndex++;
-                        if ((product.stockQuantity || 0) <= 0) product = null;
+                        // Fix: Check nested inventory stock if root stockQuantity is missing
+                        const stock = product.inventory?.MAIN?.stock || product.stockQuantity || 0;
+                        if (stock <= 0) product = null;
+                    }
+
+                    // FORCE POPULATE first 100 bins for debugging 3D view
+                    if (!product && locCount < 100) {
+                        product = {
+                            id: 'DEBUG_PROD',
+                            name: { es: 'Test Product (Forced)' },
+                            sku: 'DEBUG-001',
+                            inventory: { MAIN: { stock: 999 } }
+                        } as any;
                     }
 
                     const qty = product

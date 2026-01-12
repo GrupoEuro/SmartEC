@@ -78,9 +78,16 @@
 }
 
 /* Exploded View Animation States */
+/* Exploded View Animation States */
 .level-container.exploded {
+    /* Default for 2D exploded (if ever needed) */
     transform: translateY(var(--level-offset, 0px));
     opacity: var(--level-opacity, 1);
+}
+
+.level-container.isometric-level.exploded {
+    /* 3D Exploded: Keep rotation and lift on Z-axis */
+    transform: rotateX(60deg) rotateZ(-45deg) translateZ(var(--level-offset, 0px));
 }
 
 .level-container:not(.active-level) {
@@ -254,4 +261,57 @@
     .warehouse-container {
         scale: 0.6;
     }
+}
+
+/* ========================================
+   FULL 3D EXTRUSION SUPPORT
+   ======================================== */
+
+/* When in isometric view, enable 3D extrusion on racks */
+.isometric-view .rack-hover {
+    transform-style: preserve-3d;
+    /* Lift the "Lid" (Top Face) by its height */
+    transform: translateZ(var(--rack-height, 20px));
+    /* Add shadow below */
+    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Front Face (South) */
+.isometric-view .rack-hover::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: var(--rack-height, 20px);
+    background: inherit;
+    /* Darker shade */
+    filter: brightness(0.7);
+    transform-origin: bottom;
+    transform: rotateX(90deg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Side Face (East/Right) */
+.isometric-view .rack-hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--rack-height, 20px);
+    height: 100%;
+    background: inherit;
+    /* Medium shade */
+    filter: brightness(0.85);
+    transform-origin: right;
+    transform: rotateY(90deg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Bins (Products) - lift them to be inside the rack */
+.isometric-view .bin-dot {
+    /* Scale down slightly in 3D to fit shelves */
+    transform: scale(0.8);
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.8);
 }

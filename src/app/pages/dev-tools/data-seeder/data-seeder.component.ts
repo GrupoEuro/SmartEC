@@ -592,7 +592,7 @@ export class DataSeederComponent {
     }
 
     getSeederVersion(): string {
-        return 'v5.0.1-multilevel-responsive';
+        return 'v5.0.2-3d-layout';
     }
 
     async seedMultiLevelWarehouse() {

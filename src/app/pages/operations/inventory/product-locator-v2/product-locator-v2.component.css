@@ -13,6 +13,30 @@
 }
 
 /* ========================================
+   Bin Pulse Animation (Search Results)
+   ======================================== */
+
+.bin-found {
+    animation: bin-pulse 1.5s ease-in-out infinite;
+    z-index: 100 !important;
+}
+
+@keyframes bin-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 6px #10b981;
+    }
+
+    50% {
+        transform: scale(1.8);
+        box-shadow: 0 0 20px #10b981, 0 0 40px rgba(16, 185, 129, 0.5);
+    }
+}
+
+
+/* ========================================
    Fade In Animations
    ======================================== */
 
@@ -132,6 +156,12 @@
 }
 
 /* Capacity Color States */
+.capacity-empty {
+    background-color: rgba(113, 113, 122, 0.15) !important;
+    /* Lighter zinc grey for empty */
+    border-color: #71717a !important;
+}
+
 .capacity-low {
     background-color: rgba(16, 185, 129, 0.25) !important;
     border-color: #10b981 !important;
@@ -145,6 +175,104 @@
 .capacity-high {
     background-color: rgba(239, 68, 68, 0.25) !important;
     border-color: #ef4444 !important;
+}
+
+/* ========================================
+   LAYERED SHELF VIEW
+   ======================================== */
+
+/* Shelf View Container */
+.shelf-view-rack {
+    position: relative;
+    border: 2px solid #52525b;
+    /* Zinc-600 */
+    border-radius: 4px;
+    background: transparent;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.shelf-view-rack:hover {
+    border-color: #a855f7;
+    /* Purple on hover */
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+}
+
+/* Individual Shelf Bars - ENHANCED VISIBILITY */
+.rack-shelf {
+    width: 100%;
+    left: 0;
+    /* Strong top border to simulate metal beam edge */
+    border-top: 2px solid rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease;
+    /* Add slight inset shadow for depth */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Shelf gradient for depth - MUCH MORE SOLID */
+.shelf-empty .rack-shelf,
+.rack-shelf.shelf-empty {
+    background: linear-gradient(to bottom,
+            rgba(161, 161, 170, 0.85),
+            /* Much lighter and more opaque top */
+            rgba(82, 82, 91, 0.95)
+            /* Darker solid bottom */
+        );
+}
+
+.shelf-low .rack-shelf,
+.rack-shelf.shelf-low {
+    background: linear-gradient(to bottom,
+            rgba(52, 211, 153, 0.75),
+            /* Brighter emerald top */
+            rgba(16, 185, 129, 0.95)
+            /* Solid emerald bottom */
+        );
+}
+
+.shelf-medium .rack-shelf,
+.rack-shelf.shelf-medium {
+    background: linear-gradient(to bottom,
+            rgba(253, 224, 71, 0.75),
+            /* Brighter yellow top */
+            rgba(234, 179, 8, 0.95)
+            /* Solid yellow bottom */
+        );
+}
+
+.shelf-high .rack-shelf,
+.rack-shelf.shelf-high {
+    background: linear-gradient(to bottom,
+            rgba(248, 113, 113, 0.75),
+            /* Brighter red top */
+            rgba(239, 68, 68, 0.95)
+            /* Solid red bottom */
+        );
+}
+
+/* Rack Label Overlay - ENHANCED FOR SHELF VIEW */
+.rack-label-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    /* Add dark background for better contrast against shelves */
+    background: rgba(0, 0, 0, 0.7);
+    padding: 3px 6px;
+    border-radius: 3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 10;
+    letter-spacing: 0.5px;
+}
+
+/* Isometric transform for shelf view */
+.isometric-level .shelf-view-rack:not(.shelf-view-rack.ng-star-inserted:first-child) {
+    transform-style: preserve-3d;
 }
 
 /* ========================================
@@ -186,13 +314,14 @@
    ======================================== */
 
 .isometric-view {
-    perspective: 3500px;
-    perspective-origin: center 35%;
+    perspective: 2000px;
+    perspective-origin: center center;
 }
 
 .isometric-level {
     transform: rotateX(60deg) rotateZ(-45deg);
     transform-style: preserve-3d;
+    transform-origin: center center;
 }
 
 /* ========================================
@@ -270,48 +399,61 @@
 /* When in isometric view, enable 3D extrusion on racks */
 .isometric-view .rack-hover {
     transform-style: preserve-3d;
-    /* Lift the "Lid" (Top Face) by its height */
-    transform: translateZ(var(--rack-height, 20px));
-    /* Add shadow below */
-    box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* REDUCED depth for better cube appearance */
+    transform: translateZ(8px);
+    /* Add subtle shadow for depth */
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4),
+        0 1px 4px rgba(0, 0, 0, 0.3);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.4s ease;
 }
 
-/* Front Face (South) */
+/* Enhanced hover effect in 3D */
+.isometric-view .rack-hover:hover {
+    transform: translateZ(15px) scale(1.03);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.6),
+        0 4px 12px rgba(168, 85, 247, 0.4),
+        0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Front Face (South) - MINIMIZED */
 .isometric-view .rack-hover::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: var(--rack-height, 20px);
+    height: 8px;
+    /* Much smaller */
     background: inherit;
-    /* Darker shade */
-    filter: brightness(0.7);
+    /* Darker shade for depth */
+    filter: brightness(0.55);
     transform-origin: bottom;
     transform: rotateX(90deg);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Side Face (East/Right) */
+/* Side Face (East/Right) - MINIMIZED */
 .isometric-view .rack-hover::before {
     content: '';
     position: absolute;
     top: 0;
     right: 0;
-    width: var(--rack-height, 20px);
+    width: 8px;
+    /* Much smaller */
     height: 100%;
     background: inherit;
-    /* Medium shade */
-    filter: brightness(0.85);
+    /* Medium shade for better depth perception */
+    filter: brightness(0.7);
     transform-origin: right;
     transform: rotateY(90deg);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Bins (Products) - lift them to be inside the rack */
+/* Bins (Products) - lift them to be inside the rack in 3D */
 .isometric-view .bin-dot {
-    /* Scale down slightly in 3D to fit shelves */
-    transform: scale(0.8);
-    box-shadow: 0 0 5px rgba(16, 185, 129, 0.8);
+    /* Keep bins visible and prominent */
+    transform: scale(1.2) translateZ(10px);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 1),
+        0 0 16px rgba(16, 185, 129, 0.6);
 }

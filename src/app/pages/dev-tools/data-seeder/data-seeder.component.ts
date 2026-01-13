@@ -46,6 +46,10 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
              <!-- Simulation Group -->
              <div class="action-group">
                 <span class="group-label">Simulation</span>
+                <button class="btn btn-secondary" (click)="seedProducts()" [disabled]="isSeeding()">
+                    <app-icon name="package" [size]="18"></app-icon>
+                    Seed Products
+                </button>
                 <button class="btn btn-secondary" (click)="seedPraxisHistory()" [disabled]="isSeeding()">
                     <app-icon name="activity" [size]="18"></app-icon>
                     SoTA Backfill
@@ -53,7 +57,12 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
                 <button class="btn btn-secondary" (click)="seedCoupons()" [disabled]="isSeeding()">
                     <app-icon name="tag" [size]="18"></app-icon>
                     Seed Coupons
-                </button>                 <button class="btn btn-secondary" (click)="seedWarehouseLayout()" [disabled]="isSeeding()">
+                </button>
+                <button class="btn btn-secondary" (click)="seedPricingRules()" [disabled]="isSeeding()">
+                    <app-icon name="dollar-sign" [size]="18"></app-icon>
+                    Seed Pricing Rules
+                </button>
+                 <button class="btn btn-secondary" (click)="seedWarehouseLayout()" [disabled]="isSeeding()">
                      <app-icon name="map" [size]="18"></app-icon>
                      Regenerate Warehouse
                  </button>
@@ -494,6 +503,30 @@ export class DataSeederComponent {
         }
     }
 
+    async seedProducts() {
+        if (this.isSeeding()) return;
+
+        const confirmed = await this.confirmService.confirm({
+            title: 'Generate 50 Sample Products?',
+            message: 'This will seed the database with 50 realistic motorcycle tires.',
+            confirmText: 'Seed Products',
+            type: 'info'
+        });
+
+        if (!confirmed) return;
+
+        this.isSeeding.set(true);
+        try {
+            await this.seeder.seedProducts((msg: string) => this.addLog(msg));
+            this.addLog('✅ Product seeding complete!', 'success');
+        } catch (error: any) {
+            console.error(error);
+            this.addLog('❌ Error seeding products: ' + (error.message || 'Unknown error'), 'error');
+        } finally {
+            this.isSeeding.set(false);
+        }
+    }
+
     async seedPraxisHistory() {
         if (this.isSeeding()) return;
 
@@ -540,6 +573,33 @@ export class DataSeederComponent {
         } catch (error) {
             console.error(error);
             this.addLog('Failed to seed coupons', 'error');
+        } finally {
+            this.isSeeding.set(false);
+        }
+    }
+
+    async seedPricingRules() {
+        if (this.isSeeding()) return;
+
+        const confirmed = await this.confirmService.confirm({
+            title: 'Seed Pricing Commission Rules?',
+            message: 'This will create official commission rules for Amazon FBA, MercadoLibre (Classic & Full), POS, and Web Store. Required for the Pricing Strategy Calculator.',
+            confirmText: 'Seed Rules',
+            type: 'info'
+        });
+
+        if (!confirmed) return;
+
+        this.isSeeding.set(true);
+        this.logs.set([]);
+
+        try {
+            await this.seeder.seedChannelCommissionRules((msg) => this.addLog(msg));
+            this.addLog('✅ Pricing rules seeded successfully!', 'success');
+            this.addLog('📍 Ready for use in /operations/pricing', 'success');
+        } catch (error) {
+            console.error(error);
+            this.addLog('❌ Failed to seed pricing rules', 'error');
         } finally {
             this.isSeeding.set(false);
         }
@@ -592,7 +652,7 @@ export class DataSeederComponent {
     }
 
     getSeederVersion(): string {
-        return 'v5.0.2-3d-layout';
+        return 'v5.0.2-memory-patch';
     }
 
     async seedMultiLevelWarehouse() {

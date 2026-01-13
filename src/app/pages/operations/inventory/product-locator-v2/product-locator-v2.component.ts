@@ -52,7 +52,7 @@ export class ProductLocatorV2Component implements OnInit {
     private lastMouseX = 0;
     private lastMouseY = 0;
 
-    public viewMode = signal<'2d' | '3d'>('2d');
+    public viewMode = signal<'2d' | '3d' | '3d-shelves'>('2d');
     public showGrid = signal(false);
 
     // Search
@@ -104,6 +104,21 @@ export class ProductLocatorV2Component implements OnInit {
         return total > 0 ? Math.round((this.occupiedBinsCount() / total) * 100) : 0;
     });
 
+    // Smart Bin Visibility: Only show bins when searching for a product
+    public visibleBins = computed(() => {
+        const foundLocation = this.foundLocation();
+
+        // If no search active, hide all bins (clean warehouse view)
+        if (!foundLocation) {
+            return [];
+        }
+
+        // Show all bins for the found product (handles multiple locations)
+        return this.occupiedBins().filter(bin =>
+            bin.productId === foundLocation.productId
+        );
+    });
+
     // Zone color palette (accessible from template)
     public readonly ZONE_COLORS = ZONE_COLORS;
 
@@ -146,8 +161,18 @@ export class ProductLocatorV2Component implements OnInit {
     // ========================================
 
     async ngOnInit() {
+        console.log('[ProductLocatorV2] initialized. Subscribing to warehouses...');
+
+        // Timeout check for database connection
+        setTimeout(() => {
+            if (this.availableWarehouses().length === 0) {
+                console.error('[ProductLocatorV2] CRITICAL: Warehouse fetch timed out (5s). Firestore connection is likely hanging due to IndexedDB lock. Please clear site data.');
+            }
+        }, 5000);
+
         // Load warehouses
         this.warehouseService.getWarehouses().subscribe(warehouses => {
+            console.log('[ProductLocatorV2] Warehouses fetched:', warehouses.length);
             this.availableWarehouses.set(warehouses);
 
             if (warehouses.length > 0) {
@@ -183,8 +208,10 @@ export class ProductLocatorV2Component implements OnInit {
             if (fullBins.length === 0) {
                 console.warn('[ProductLocatorV2] No occupied bins found (0% Capacity).');
                 console.warn('Possible causes: 1. Seeder failed to set status="full". 2. WarehouseId mismatch. 3. Firestore permissions.');
+                console.warn('ACTION REQUIRED: Please RUN THE DATA SEEDER ("Seed Multi-Level Warehouse") to populate "warehouse_locations".');
             }
         });
+
 
         // Play intro animation if needed
         // REMOVED: Animation should only happen on explicit toggle
@@ -344,13 +371,14 @@ export class ProductLocatorV2Component implements OnInit {
     }
 
     toggleViewMode() {
-        // Toggle between 2D and 3D
-        // When switching to 3D, enable exploded view
-        // When switching to 2D, disable it
+        // Cycle through: 2D → 3D → 3D Shelves → 2D...
         this.viewMode.update(mode => {
             if (mode === '2d') {
                 this.explodedView.set(true);
                 return '3d';
+            } else if (mode === '3d') {
+                this.explodedView.set(true);
+                return '3d-shelves';
             } else {
                 this.explodedView.set(false);
                 return '2d';
@@ -428,6 +456,11 @@ export class ProductLocatorV2Component implements OnInit {
 
     onMouseLeave() {
         this.isDragging.set(false);
+    }
+
+    // Helper method for shelf view rendering
+    getShelfArray(levels: number): number[] {
+        return Array.from({ length: levels }, (_, i) => i);
     }
 
     centerView() {

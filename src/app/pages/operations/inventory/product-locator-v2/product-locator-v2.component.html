@@ -14,8 +14,8 @@
 
         <!-- Search Bar -->
         <div class="flex-1 max-w-2xl flex gap-2">
-            <input type="text" [(ngModel)]="searchQuery" (keyup.enter)="search()"
-                placeholder="Search product (name or SKU)"
+            <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)"
+                (keyup.enter)="search()" placeholder="Search product (name or SKU)"
                 class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-3 text-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all placeholder-zinc-600">
             <button (click)="search()" class="btn-glass-primary px-6 text-lg font-bold min-w-[120px]">
                 <app-icon name="search" class="mr-2"></app-icon>
@@ -224,8 +224,9 @@
                 <!-- Each Level (with animation support) -->
                 <div *ngFor="let level of levelService.levels(); let i = index" class="level-container absolute"
                     [class.active-level]="levelService.activeLevel() === i"
-                    [class.isometric-level]="viewMode() === '3d'" [class.exploded]="explodedView()"
-                    [style.--level-offset.px]="explodedView() ? (i - levelService.activeLevel()) * 300 : 0"
+                    [class.isometric-level]="viewMode() === '3d' || viewMode() === '3d-shelves'"
+                    [class.exploded]="explodedView()"
+                    [style.--level-offset.px]="explodedView() ? (i - levelService.activeLevel()) * 80 : 0"
                     [style.opacity]="(levelService.activeLevel() === i || explodedView()) ? '1' : '0'"
                     [style.pointer-events]="levelService.activeLevel() === i ? 'auto' : 'none'"
                     style="width: 800px; height: 600px;">
@@ -242,18 +243,44 @@
                         </div>
                     </div>
 
-                    <!-- Racks/Structures -->
-                    <div *ngFor="let rack of level.structures" (click)="selectRack(rack, $event)"
-                        class="absolute border-2 border-zinc-500 bg-zinc-700 rounded rack-hover cursor-pointer hover:border-purple-500 flex items-center justify-center text-xs font-bold text-zinc-300"
-                        [class.ring-2]="selectedRack()?.id === rack.id"
-                        [class.ring-purple-400]="selectedRack()?.id === rack.id"
-                        [class.capacity-low]="getRackStatus(rack.id) === 'low'"
-                        [class.capacity-medium]="getRackStatus(rack.id) === 'medium'"
-                        [class.capacity-high]="getRackStatus(rack.id) === 'high'" [style.left.px]="rack.x"
-                        [style.top.px]="rack.y" [style.width.px]="rack.width" [style.height.px]="rack.height"
-                        [style.--rack-height.px]="rack.levels * 8">
-                        {{ rack.code }}
-                    </div>
+                    <!-- Racks/Structures (Standard 2D/3D Extrusion View) -->
+                    <ng-container *ngIf="viewMode() !== '3d-shelves'">
+                        <div *ngFor="let rack of level.structures" (click)="selectRack(rack, $event)"
+                            class="absolute border-2 border-zinc-500 bg-zinc-700 rounded rack-hover cursor-pointer hover:border-purple-500 flex items-center justify-center text-xs font-bold text-zinc-300"
+                            [class.ring-2]="selectedRack()?.id === rack.id"
+                            [class.ring-purple-400]="selectedRack()?.id === rack.id"
+                            [class.capacity-empty]="getRackStatus(rack.id) === 'empty'"
+                            [class.capacity-low]="getRackStatus(rack.id) === 'low'"
+                            [class.capacity-medium]="getRackStatus(rack.id) === 'medium'"
+                            [class.capacity-high]="getRackStatus(rack.id) === 'high'" [style.left.px]="rack.x"
+                            [style.top.px]="rack.y" [style.width.px]="rack.width" [style.height.px]="rack.height"
+                            [style.--rack-height.px]="rack.levels * 5">
+                            {{ rack.code }}
+                        </div>
+                    </ng-container>
+
+                    <!-- Racks/Structures (Layered Shelf View) -->
+                    <ng-container *ngIf="viewMode() === '3d-shelves'">
+                        <div *ngFor="let rack of level.structures" (click)="selectRack(rack, $event)"
+                            class="absolute shelf-view-rack cursor-pointer"
+                            [class.ring-2]="selectedRack()?.id === rack.id"
+                            [class.ring-purple-400]="selectedRack()?.id === rack.id" [style.left.px]="rack.x"
+                            [style.top.px]="rack.y" [style.width.px]="rack.width" [style.height.px]="rack.height">
+
+                            <!-- Individual Shelf Bars -->
+                            <div *ngFor="let shelfIndex of getShelfArray(rack.levels); let s = index"
+                                class="rack-shelf absolute" [class.shelf-empty]="getRackStatus(rack.id) === 'empty'"
+                                [class.shelf-low]="getRackStatus(rack.id) === 'low'"
+                                [class.shelf-medium]="getRackStatus(rack.id) === 'medium'"
+                                [class.shelf-high]="getRackStatus(rack.id) === 'high'"
+                                [style.top.px]="s * (rack.height / rack.levels)"
+                                [style.height.px]="rack.height / rack.levels">
+                            </div>
+
+                            <!-- Rack Label Overlay -->
+                            <div class="rack-label-overlay">{{ rack.code }}</div>
+                        </div>
+                    </ng-container>
 
                     <!-- Obstacles -->
                     <!-- Obstacles (Hidden for cleaner view) -->
@@ -263,11 +290,11 @@
                     <!-- Doors (Hidden to reduce clutter) -->
                     <!-- <div *ngFor="let door of level.doors" ...></div> -->
 
-                    <!-- Occupied Bins (Green Dots) -->
-                    <div *ngFor="let bin of occupiedBins(); let i = index"
-                        class="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 cursor-pointer hover:scale-200 transition-transform shadow-[0_0_6px_#10b981] bin-dot"
-                        [style.left.px]="getBinX(bin, i)" [style.top.px]="getBinY(bin, i)" [style.z-index]="50"
-                        [style.transform]="viewMode() === '3d' ? 'translateZ(' + (-(rackStatusMap().get(bin.structureId) ? 8 : 8) + (bin.level * 8)) + 'px)' : 'none'"
+
+                    <!-- Occupied Bins (Smart Visibility: Only shown on search) -->
+                    <div *ngFor="let bin of visibleBins(); let i = index"
+                        class="absolute w-2.5 h-2.5 rounded-full bg-emerald-500 cursor-pointer hover:scale-200 transition-transform shadow-[0_0_6px_#10b981] bin-dot bin-found"
+                        [style.left.px]="getBinX(bin, i)" [style.top.px]="getBinY(bin, i)" [style.z-index]="100"
                         [title]="bin.productName + ' (' + bin.quantity + ' units)'">
                     </div>
 
@@ -279,12 +306,12 @@
                         </path>
 
                         <!-- Start Point -->
-                        <circle [attr.cx]="pathCoordinates()[0]?.x" [attr.cy]="pathCoordinates()[0]?.y" r="8"
-                            fill="#fff"></circle>
+                        <circle [attr.cx]="pathCoordinates()[0].x" [attr.cy]="pathCoordinates()[0].y" r="8" fill="#fff">
+                        </circle>
 
                         <!-- End Point -->
-                        <circle [attr.cx]="pathCoordinates()[pathCoordinates().length - 1]?.x"
-                            [attr.cy]="pathCoordinates()[pathCoordinates().length - 1]?.y" r="8" fill="#fff"
+                        <circle [attr.cx]="pathCoordinates()[pathCoordinates().length - 1].x"
+                            [attr.cy]="pathCoordinates()[pathCoordinates().length - 1].y" r="8" fill="#fff"
                             class="animate-ping"></circle>
                     </svg>
                 </div>

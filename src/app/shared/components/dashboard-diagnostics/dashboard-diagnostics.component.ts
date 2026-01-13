@@ -32,8 +32,8 @@ import { toObservable } from '@angular/core/rxjs-interop';
                 </div>
                 <div class="info-row">
                     <strong>Date Range:</strong> 
-                    {{ contextService.dateRange()?.start | date:'short' }} - 
-                    {{ contextService.dateRange()?.end | date:'short' }}
+                    {{ contextService.dateRange().start | date:'short' }} - 
+                    {{ contextService.dateRange().end | date:'short' }}
                 </div>
             </div>
 

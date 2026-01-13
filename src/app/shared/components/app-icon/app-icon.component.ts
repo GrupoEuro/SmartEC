@@ -39,7 +39,7 @@ export class AppIconComponent {
         const content = ICONS[iconName];
 
         if (!content) {
-            console.warn(`Icon not found: ${iconName}`);
+            // console.warn(`Icon not found: ${iconName}`);
             // Return a fallback or empty
             return '';
         }

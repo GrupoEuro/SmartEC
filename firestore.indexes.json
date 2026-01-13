@@ -41,6 +41,80 @@
                     "order": "ASCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "pricing_strategies",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "productId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "active",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "pricing_strategies",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "sku",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "lastCalculated",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "channel_commission_rules",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "channel",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "country",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "active",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "pricing_history",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "productId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "pricing_history",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "channel",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

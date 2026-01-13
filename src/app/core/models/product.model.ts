@@ -71,6 +71,16 @@ export interface Product {
         name?: string; // Denormalized for display
     }[];
 
+    // Pricing Calculator Fields
+    cog?: number; // Cost of Goods (base for pricing calculator)
+    category?: string; // Product category for commission rule lookup
+    weight?: number; // kg - for shipping cost calculations
+    dimensions?: {
+        length: number; // cm
+        width: number;  // cm
+        height: number; // cm
+    };
+
     // Cost Tracking (Financial Intelligence)
     costPrice?: number; // Cost per unit from supplier (Last Purchase Price)
     averageCost?: number; // Weighted Average Cost (Kardex)

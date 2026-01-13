@@ -1,0 +1,88 @@
+/* Main Container */
+.pricing-list-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #0f172a;
+    /* storage-950 */
+    color: #e2e8f0;
+}
+
+/* Header */
+.header {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+    padding: 1.5rem 2rem;
+    flex-shrink: 0;
+}
+
+.header-content {
+    max-width: 1800px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.title-icon {
+    font-size: 2rem;
+    color: #a78bfa;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    background: linear-gradient(135deg, #a78bfa, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+/* Grid Area */
+.grid-wrapper {
+    flex-grow: 1;
+    width: 100%;
+    /* Ensure grid takes remaining space */
+    position: relative;
+}
+
+/* AG Grid Dark Theme Customization */
+::ng-deep .ag-theme-alpine-dark {
+    --ag-foreground-color: #f8fafc;
+    --ag-background-color: #0f172a;
+    --ag-header-background-color: #1e293b;
+    --ag-row-hover-color: #334155;
+    --ag-odd-row-background-color: #1e293b;
+    --ag-border-color: rgba(100, 116, 139, 0.2) !important;
+    --ag-selected-row-background-color: rgba(167, 139, 250, 0.2) !important;
+    --ag-input-focus-border-color: #a78bfa !important;
+}
+
+::ng-deep .ag-header-cell-text {
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+/* Utility to color profit text */
+.text-green-500 {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.text-red-500 {
+    color: #ef4444;
+    font-weight: 600;
+}

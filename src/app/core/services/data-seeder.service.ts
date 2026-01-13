@@ -29,13 +29,14 @@ export class DataSeederService {
     private gridLayout = inject(GridLayoutService);
 
     // Version identifier for tracking seed data schema
-    private readonly SEED_VERSION = 'v5.0.1-grid-layout-stable';
+    private readonly SEED_VERSION = 'v5.0.2-memory-patch';
 
     constructor() { }
 
     // --- LOGGING HELPER ---
     private log(message: string, onLog?: (message: string) => void): void {
-        console.log(message);
+        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+        console.log(`[${timestamp}] ${message}`);
         if (onLog) {
             onLog(message);
         }
@@ -132,6 +133,12 @@ export class DataSeederService {
         }
 
         this.log('[Seeder] History Backfill Complete.', onLog);
+    }
+
+    // --- SEED PRODUCTS ---
+    async seedProducts(onLog?: (message: string) => void): Promise<void> {
+        // Wrapper for populateCatalog to reuse consistent Praxis logic
+        await this.populateCatalog(DEFAULT_CONFIG, onLog);
     }
 
     // --- SCENARIO ORCHESTRATOR ---
@@ -596,9 +603,9 @@ export class DataSeederService {
 
             // Channel Distribution (Realistic proportions)
             const channelRoll = Math.random();
-            let channel: string;
+            let channel: 'WEB' | 'POS' | 'ON_BEHALF' | 'AMAZON_MFN' | 'MELI_CLASSIC' | 'AMAZON_FBA' | 'MELI_FULL';
             let externalId: string | null = null;
-            let metadata: any = undefined;
+            let metadata: { enteredBy?: string; enteredAt?: Date; source?: string } | undefined = undefined;
 
             if (channelRoll < 0.40) {
                 // 40% WEB orders
@@ -1401,6 +1408,7 @@ export class DataSeederService {
         ];
 
         const allLevels: any[] = [];
+        const allRacks: any[] = []; // Store racks in memory to avoid query race condition
         let totalZones = 0;
         let totalRacks = 0;
         let totalDoors = 0;
@@ -1479,6 +1487,10 @@ export class DataSeederService {
                     const letter = String.fromCharCode(65 + r);
                     const num = c + 1;
 
+                    // STANDARDIZED RACK LEVELS PER FLOOR
+                    // Ground Floor (0): 5 levels, Mezzanine (1): 4 levels, Overhead (2): 3 levels
+                    const standardLevels = lv.num === 0 ? 5 : lv.num === 1 ? 4 : 3;
+
                     const rack = {
                         id: rackId,
                         warehouseId: 'MAIN',
@@ -1492,17 +1504,20 @@ export class DataSeederService {
                         width: rackWidth,
                         height: rackHeight,
                         rotation: 0,
-                        bays: Math.floor(Math.random() * 2) + 3, // 3-4 bays
-                        levels: Math.floor(Math.random() * 3) + 4, // 4-6 levels
+                        bays: 3, // Fixed: 3 bays for consistency
+                        levels: standardLevels, // Consistent levels per floor
                         totalLocations: 0, // Calculated below
                         active: true,
                         createdAt: Timestamp.now()
                     };
 
-                    batch.set(doc(this.firestore, `warehouse_structures/${rackId}`), {
+                    const rackData = {
                         ...rack,
                         totalLocations: rack.bays * rack.levels // Calc dynamically
-                    });
+                    };
+
+                    batch.set(doc(this.firestore, `warehouse_structures/${rackId}`), rackData);
+                    allRacks.push(rackData); // Add to in-memory list
                     ops++;
                     await commitBatch();
                 }
@@ -1590,8 +1605,9 @@ export class DataSeederService {
             }
         }
 
-        const racksSnap = await getDocs(collection(this.firestore, 'warehouse_structures'));
-        const racks = racksSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        // Use in-memory racks instead of querying
+        const racks = allRacks;
+        this.log(`[Seeder] DEBUG: Using ${racks.length} racks from memory to populate bins.`, onLog);
 
         let locCount = 0;
         let occupiedCount = 0;
@@ -2365,4 +2381,197 @@ export class DataSeederService {
         await batch.commit();
         this.log(`[Seeder] Metadata saved: ${this.SEED_VERSION}`, onLog);
     }
+
+    /**
+     * Seed Channel Commission Rules for Multi-Channel Pricing
+     * Based on official Amazon FBA and MercadoLibre fee structures (2024)
+     */
+    async seedChannelCommissionRules(onLog?: (message: string) => void): Promise<void> {
+        this.log('========================================', onLog);
+        this.log(`[Seeder] Seeding Channel Commission Rules`, onLog);
+        this.log('========================================', onLog);
+
+        const batch = writeBatch(this.firestore);
+        let count = 0;
+
+        try {
+            // 0. CLEAR EXISTING RULES
+            this.log('[Seeder] Cleaning old commission rules...', onLog);
+            await this.deleteCollection('channel_commission_rules');
+
+            // 1. AMAZON FBA - Standard Categories (15% referral)
+            // 1. AMAZON FBM (Merchant Fulfilled) - Preferred for Tires
+            const amazonFbmRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(amazonFbmRef, {
+                channel: 'AMAZON_FBM',
+                country: 'MX',
+                category: 'Automotriz / Llantas Moto',
+                referralFeePercent: 10.0, // 10% for Tires
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 0, // Bundled
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'Amazon MX 2024 Fees',
+                notes: 'Merchant Fulfilled (Recommended). 10% Referral.',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: AMAZON_FBM (Moto Tires)', onLog);
+            count++;
+
+            // 1.5 AMAZON FBA (Simulated) - User requested to keep
+            const amazonFbaRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(amazonFbaRef, {
+                channel: 'AMAZON_FBA',
+                country: 'MX',
+                category: 'Automotriz / Llantas Moto',
+                referralFeePercent: 10.0, // 10% for Tires
+                minReferralFee: 10,
+                fulfillmentType: 'FBA', // Simulated since Tires are usually restricted
+                fulfillmentTiers: [
+                    {
+                        sizeCategory: 'standard', // Moto tires might fit here if not too huge
+                        weightTiers: [
+                            { maxWeight: 3, baseFee: 85, perKgOver: 0 },
+                            { maxWeight: 10, baseFee: 120, perKgOver: 9 }
+                        ]
+                    },
+                    {
+                        sizeCategory: 'oversized',
+                        weightTiers: [
+                            { maxWeight: 30, baseFee: 165, perKgOver: 8 }
+                        ]
+                    }
+                ],
+                monthlyStoragePerCubicMeter: 350,
+                paymentProcessingPercent: 0,
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'Amazon Seller Central MX 2024',
+                notes: 'FBA Simulated (Tires typically restricted). 10% Referral.',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: AMAZON_FBA (Simulated)', onLog);
+            count++;
+
+            // 2. MERCADOLIBRE CLASSIC - Mexico (17.5% average)
+            const meliClassicRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(meliClassicRef, {
+                channel: 'MELI_CLASSIC',
+                country: 'MX',
+                category: 'Autopartes', // Llantas falls under Autopartes
+                referralFeePercent: 16.0, // Avg for Tires in Classic
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 0, // Bundled in Commission
+                perUnitFee: 25, // MXN fixed fee for items under $299 (most tires are above, but good fallback)
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'MercadoLibre Mexico 2025',
+                notes: 'Classic listing. Payment fee included. Shipping separate.',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: MELI_CLASSIC (General)', onLog);
+            count++;
+
+            // 2.5 MERCADOLIBRE PREMIUM - Mexico (Higher fee, ~22.5% + Installments)
+            const meliPremiumRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(meliPremiumRef, {
+                channel: 'MELI_PREMIUM',
+                country: 'MX',
+                category: 'Autopartes',
+                referralFeePercent: 21.0, // Avg for Tires in Premium (includes MSI)
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 0, // Bundled in Commission
+                perUnitFee: 25,
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'MercadoLibre Mexico 2025',
+                notes: 'Premium with MSI. Payment fee included. Shipping separate.',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: MELI_PREMIUM (General)', onLog);
+            count++;
+
+            // 3. MERCADOLIBRE FULL - Mexico (18% + fulfillment)
+            const meliFullRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(meliFullRef, {
+                channel: 'MELI_FULL',
+                country: 'MX',
+                category: 'Autopartes',
+                referralFeePercent: 21.0, // Usually listed as Premium in Full
+                fulfillmentType: 'FULL',
+                fulfillmentTiers: [
+                    {
+                        sizeCategory: 'standard',
+                        weightTiers: [
+                            { maxWeight: 3, baseFee: 65, perKgOver: 0 },
+                            // Simplified tire tiers
+                            { maxWeight: 10, baseFee: 90, perKgOver: 8 },
+                            { maxWeight: 20, baseFee: 150, perKgOver: 6 }
+                        ]
+                    }
+                ],
+                monthlyStoragePerCubicMeter: 250, // Updated 2025 rate
+                paymentProcessingPercent: 0, // Bundled
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'MercadoLibre Full 2025',
+                notes: 'Full Fulfillment. Premium listing rates.',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: MELI_FULL (General)', onLog);
+            count++;
+
+            // 4. POS / In-Store
+            const posRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(posRef, {
+                channel: 'POS',
+                country: 'MX',
+                referralFeePercent: 0, // No marketplace commission
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 2.75, // Card terminal fees
+                paymentProcessingFixed: 0.50,
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'Internal POS System',
+                notes: 'In-store sales with card processing fees',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: POS (General)', onLog);
+            count++;
+
+            // 5. Web Store
+            const webRef = doc(collection(this.firestore, 'channel_commission_rules'));
+            batch.set(webRef, {
+                channel: 'WEB',
+                country: 'MX',
+                referralFeePercent: 0, // No marketplace commission
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 3.0, // Stripe/PayPal
+                paymentProcessingFixed: 0.30,
+                active: true,
+                effectiveDate: Timestamp.now(),
+                source: 'Payment Gateway Docs',
+                notes: 'Direct web store sales with payment gateway fees',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            this.log('[Seeder] Added rule: WEB (General)', onLog);
+            count++;
+
+            await batch.commit();
+            this.log(`[Seeder] SUCCESS: Created ${count} commission rules.`, onLog);
+            this.log('[Seeder] Commission rule seeding complete!', onLog);
+
+        } catch (error: any) {
+            this.log(`[Seeder] ERROR seeding commission rules: ${error.message}`, onLog);
+            throw error;
+        }
+    }
 }
+

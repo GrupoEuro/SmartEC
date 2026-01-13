@@ -1,0 +1,107 @@
+<div class="rules-container">
+    <div class="header">
+        <div class="header-left">
+            <h2>Pricing Rules</h2>
+            <button class="btn-icon close-btn" (click)="close.emit()">
+                <app-icon name="close"></app-icon>
+            </button>
+        </div>
+        <button class="btn-primary" (click)="openNew()" *ngIf="!showForm()">
+            <app-icon name="add"></app-icon> New Rule
+        </button>
+    </div>
+
+    <!-- Rule Form -->
+    <div class="rule-form" *ngIf="showForm()">
+        <h3>{{ editingId() ? 'Edit Rule' : 'New Rule' }}</h3>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" [(ngModel)]="currentRule.name" placeholder="e.g. Michelin Margin">
+            </div>
+
+            <div class="form-group">
+                <label>Target Type</label>
+                <select [(ngModel)]="currentRule.targetType">
+                    <option value="GLOBAL">Global (All Products)</option>
+                    <option value="BRAND">Brand</option>
+                    <option value="CATEGORY">Category</option>
+                </select>
+            </div>
+
+            <div class="form-group" *ngIf="currentRule.targetType !== 'GLOBAL'">
+                <label>Target Value</label>
+                <input type="text" [(ngModel)]="currentRule.targetValue" placeholder="e.g. Michelin">
+            </div>
+
+            <div class="form-group">
+                <label>Action</label>
+                <select [(ngModel)]="currentRule.action">
+                    <option value="SET_MARGIN">Set Net Margin %</option>
+                    <option value="MULTIPLIER">Multiplier (Price = Cost * X)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Value</label>
+                <input type="number" [(ngModel)]="currentRule.value">
+                <small *ngIf="currentRule.action === 'SET_MARGIN'">e.g. 20 for 20% Net Margin</small>
+                <small *ngIf="currentRule.action === 'MULTIPLIER'">e.g. 1.25 for 25% Markup</small>
+            </div>
+
+            <div class="form-group">
+                <label>Priority</label>
+                <input type="number" [(ngModel)]="currentRule.priority">
+                <small>Higher numbers run first</small>
+            </div>
+
+            <div class="form-group checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="currentRule.active"> Active
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-secondary" (click)="cancelEdit()">Cancel</button>
+            <button class="btn-primary" (click)="saveRule()" [disabled]="loading()">Save</button>
+        </div>
+    </div>
+
+    <!-- Rules List -->
+    <div class="rules-list" *ngIf="!showForm()">
+        <div class="rule-card" *ngFor="let rule of rules()">
+            <div class="rule-info">
+                <div class="rule-title">
+                    <span class="priority-badge">{{ rule.priority }}</span>
+                    <span>{{ rule.name }}</span>
+                    <span class="status-badge" [class.inactive]="!rule.active">{{ rule.active ? 'Active' : 'Inactive'
+                        }}</span>
+                </div>
+                <div class="rule-details">
+                    <span class="detail-pill">
+                        Target: <strong>{{ rule.targetType }} {{ rule.targetValue ? ': ' + rule.targetValue : ''
+                            }}</strong>
+                    </span>
+                    <span class="detail-pill">
+                        Action: <strong>{{ rule.action === 'SET_MARGIN' ? 'Net Margin' : 'Multiplier' }} {{ rule.value
+                            }}{{ rule.action === 'SET_MARGIN' ? '%' : 'x' }}</strong>
+                    </span>
+                </div>
+            </div>
+            <div class="rule-actions">
+                <button class="btn-icon" (click)="editRule(rule)" title="Edit">
+                    <app-icon name="edit"></app-icon>
+                </button>
+                <button class="btn-icon delete" (click)="deleteRule(rule.id!)" title="Delete">
+                    <app-icon name="delete"></app-icon>
+                </button>
+            </div>
+        </div>
+
+        <div *ngIf="rules().length === 0 && !loading()" class="empty-state">
+            No rules defined. Create one to automate pricing.
+        </div>
+    </div>
+</div>

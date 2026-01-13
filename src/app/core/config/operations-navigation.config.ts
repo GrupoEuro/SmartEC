@@ -117,6 +117,26 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'OPERATIONS.SIDEBAR.PROMOTIONS',
                 icon: 'tag',
                 route: '/operations/promotions'
+            },
+            {
+                id: 'pricing',
+                title: 'Pricing Strategy',
+                icon: 'price_check',
+                route: '/operations/pricing',
+                badge: {
+                    text: 'NEW',
+                    color: 'bg-purple-500'
+                }
+            },
+            {
+                id: 'pricing_lists',
+                title: 'Smart Price Grid',
+                icon: 'table_view',
+                route: '/operations/pricing-grid',
+                badge: {
+                    text: 'NEW',
+                    color: 'bg-green-500'
+                }
             }
         ]
     }

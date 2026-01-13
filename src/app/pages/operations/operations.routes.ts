@@ -97,6 +97,15 @@ export const operationsRoutes: Routes = [
             {
                 path: 'procurement/:id',
                 loadComponent: () => import('./procurement/purchase-order-detail/purchase-order-detail.component').then(m => m.PurchaseOrderDetailComponent)
+            },
+            {
+                path: 'pricing-grid',
+                loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
+            },
+            {
+                path: 'pricing',
+                loadComponent: () => import('./pricing/pricing-strategy/pricing-strategy.component').then(m => m.PricingStrategyComponent),
+                pathMatch: 'full'
             }
         ]
     }

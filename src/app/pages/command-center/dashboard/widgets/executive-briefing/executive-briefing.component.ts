@@ -18,7 +18,7 @@ import { ExecutiveBriefing, Insight } from '../../../services/smart-briefing.ser
                         <span>AI Analyst</span>
                     </div>
                     <h1>{{ briefing?.headline || 'Analyzing business signals...' }}</h1>
-                    <p class="timestamp" *ngIf="briefing">Generated at {{ briefing?.generatedAt | date:'shortTime' }}</p>
+                    <p class="timestamp" *ngIf="briefing">Generated at {{ briefing.generatedAt | date:'shortTime' }}</p>
                 </div>
                 
                 <!-- Health Score -->

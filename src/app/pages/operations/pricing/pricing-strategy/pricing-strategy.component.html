@@ -1,0 +1,490 @@
+<div class="pricing-strategy-container">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="title-section">
+                <app-icon name="price_check" class="title-icon"></app-icon>
+                <div>
+                    <h1 class="title">{{ 'PRICING_STRATEGY.TITLE' | translate }}</h1>
+                    <p class="subtitle">{{ 'PRICING_STRATEGY.SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+
+            @if (selectedProduct()) {
+            <button class="btn-save" (click)="savePricingStrategy()">
+                <app-icon name="save"></app-icon>
+                {{ 'PRICING_STRATEGY.SAVE_STRATEGY' | translate }}
+            </button>
+            }
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <!-- Left Panel: Inputs -->
+        <div class="input-panel">
+            <!-- Product Selection -->
+            <div class="card">
+                <h2 class="card-title">
+                    <app-icon name="inventory_2"></app-icon>
+                    {{ 'PRICING_STRATEGY.PRODUCT_SELECTION' | translate }}
+                </h2>
+
+                <div class="search-box">
+                    <app-icon name="search" class="search-icon"></app-icon>
+                    <input type="text" [placeholder]="'PRICING_STRATEGY.SEARCH_PLACEHOLDER' | translate"
+                        [(ngModel)]="searchQuery" class="search-input" />
+                </div>
+
+                @if (selectedProduct()) {
+                <div class="selected-product">
+                    <div class="product-info">
+                        <span class="product-sku">{{ selectedProduct()!.sku }}</span>
+                        <span class="product-name">{{ selectedProduct()!.name.es }}</span>
+                    </div>
+                    <button class="btn-icon" (click)="selectedProduct.set(null)">
+                        <app-icon name="close"></app-icon>
+                    </button>
+                </div>
+                } @else if (searchQuery()) {
+                <div class="product-list">
+                    @for (product of filteredProducts(); track product.id) {
+                    <div class="product-item" (click)="selectProduct(product)">
+                        <span class="product-sku">{{ product.sku }}</span>
+                        <span class="product-name">{{ product.name.es }}</span>
+                    </div>
+                    }
+                    @empty {
+                    <div class="empty-state">{{ 'PRICING_STRATEGY.NO_PRODUCTS_FOUND' | translate }}</div>
+                    }
+                </div>
+                }
+            </div>
+
+            <!-- Cost Inputs -->
+            <div class="card">
+                <h2 class="card-title">
+                    <app-icon name="payments"></app-icon>
+                    {{ 'PRICING_STRATEGY.BASE_COSTS' | translate }}
+                </h2>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.COG' | translate }}</label>
+                    <div class="input-with-currency">
+                        <span class="currency">$</span>
+                        <input type="number" [(ngModel)]="cog" class="number-input" />
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.INBOUND_SHIPPING' | translate }}</label>
+                    <div class="input-with-currency">
+                        <span class="currency">$</span>
+                        <input type="number" [(ngModel)]="inboundShipping" class="number-input" />
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.PACKAGING' | translate }}</label>
+                    <div class="input-with-currency">
+                        <span class="currency">$</span>
+                        <input type="number" [(ngModel)]="packaging" class="number-input" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Specs -->
+            <div class="card">
+                <h2 class="card-title">
+                    <app-icon name="straighten"></app-icon>
+                    {{ 'PRICING_STRATEGY.PRODUCT_SPECS' | translate }}
+                </h2>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.WEIGHT' | translate }}</label>
+                    <input type="number" step="0.1" [(ngModel)]="weight" class="number-input" />
+                </div>
+
+                <div class="dimensions-grid">
+                    <div class="input-group">
+                        <label>{{ 'PRICING_STRATEGY.LENGTH' | translate }}</label>
+                        <input type="number" [(ngModel)]="length" class="number-input" />
+                    </div>
+                    <div class="input-group">
+                        <label>{{ 'PRICING_STRATEGY.WIDTH' | translate }}</label>
+                        <input type="number" [(ngModel)]="width" class="number-input" />
+                    </div>
+                    <div class="input-group">
+                        <label>{{ 'PRICING_STRATEGY.HEIGHT' | translate }}</label>
+                        <input type="number" [(ngModel)]="height" class="number-input" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Margin Targets -->
+            <div class="card">
+                <h2 class="card-title">
+                    <app-icon name="trending_up"></app-icon>
+                    {{ 'PRICING_STRATEGY.PROFIT_TARGETS' | translate }}
+                </h2>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.TARGET_GROSS_MARGIN' | translate }}: {{
+                        formatPercent(targetGrossMargin())
+                        }}</label>
+                    <input type="range" min="0" max="100" [(ngModel)]="targetGrossMargin" class="slider" />
+                    <div class="slider-labels">
+                        <span>0%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.TARGET_NET_MARGIN' | translate }}: {{ formatPercent(targetNetMargin())
+                        }}</label>
+                    <input type="range" min="0" max="50" [(ngModel)]="targetNetMargin" class="slider" />
+                    <div class="slider-labels">
+                        <span>0%</span>
+                        <span>50%</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>{{ 'PRICING_STRATEGY.MIN_ACCEPTABLE_MARGIN' | translate }}: {{
+                        formatPercent(minAcceptableMargin()) }}</label>
+                    <input type="range" min="0" max="30" [(ngModel)]="minAcceptableMargin" class="slider" />
+                    <div class="slider-labels">
+                        <span>0%</span>
+                        <span>30%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="btn-calculate" (click)="calculatePrices()" [disabled]="!selectedProduct() || calculating()">
+                @if (calculating()) {
+                <app-icon name="autorenew" class="spin"></app-icon>
+                {{ 'PRICING_STRATEGY.CALCULATING' | translate }}
+                } @else {
+                <app-icon name="calculate"></app-icon>
+                {{ 'PRICING_STRATEGY.CALCULATE_PRICES' | translate }}
+                }
+            </button>
+        </div>
+
+        <!-- Right Panel: Results -->
+        <div class="results-panel">
+            @if (channelPrices() && Object.keys(channelPrices()).length > 0) {
+
+            <!-- Global Expand/Collapse & View Mode -->
+            <div class="expand-controls">
+                <div class="view-toggles">
+                    <button class="btn-icon" [class.active]="viewMode() === 'cards'" (click)="viewMode.set('cards')"
+                        title="Card View">
+                        <app-icon name="view_agenda"></app-icon>
+                    </button>
+                    <button class="btn-icon" [class.active]="viewMode() === 'matrix'" (click)="viewMode.set('matrix')"
+                        title="Matrix Comparison">
+                        <app-icon name="table_chart"></app-icon>
+                    </button>
+                </div>
+
+                <span class="switch-label" *ngIf="viewMode() === 'cards'">{{ 'PRICING_STRATEGY.SHOW_DETAILS' | translate
+                    }}</span>
+                <label class="switch" *ngIf="viewMode() === 'cards'">
+                    <input type="checkbox" [checked]="showDetails()" (change)="toggleAll($event)">
+                    <span class="slider-toggle round"></span>
+                </label>
+            </div>
+
+            <!-- Matrix View -->
+            @if (viewMode() === 'matrix') {
+            <div class="matrix-container">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            @for (channel of channels; track channel.channel) {
+                            <th>
+                                <div class="th-content">
+                                    <app-icon [name]="channel.channelIcon"></app-icon>
+                                    {{ channel.channelName }}
+                                </div>
+                            </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Selling Price -->
+                        <tr class="highlight-row">
+                            <td class="metric-label">Selling Price</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td class="price-cell">{{ formatCurrency(channel.price?.sellingPrice || 0) }}</td>
+                            }
+                        </tr>
+
+                        <!-- Net Profit -->
+                        <tr class="highlight-row profit-row">
+                            <td class="metric-label">Net Profit</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td [class]="getMarginColor(channel.price?.netMargin || 0, minAcceptableMargin())">
+                                {{ formatCurrency(channel.price?.netProfit || 0) }}
+                                <span class="sub-metric">({{ formatPercent(channel.price?.netMargin || 0) }})</span>
+                            </td>
+                            }
+                        </tr>
+
+                        <!-- ROI -->
+                        <tr class="highlight-row">
+                            <td class="metric-label">ROI</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td [class.positive]="(channel.price?.roi || 0) > 0"
+                                [class.negative]="(channel.price?.roi || 0) < 0">
+                                {{ formatPercent(channel.price?.roi || 0) }}
+                            </td>
+                            }
+                        </tr>
+
+                        <tr class="spacer-row">
+                            <td [attr.colspan]="channels.length + 1"></td>
+                        </tr>
+
+                        <!-- Costs Details -->
+                        <tr>
+                            <td class="metric-label">COG</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td>{{ formatCurrency(channel.price?.breakdown?.cog || 0) }}</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="metric-label">Commission</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td>{{ formatCurrency(channel.price?.breakdown?.commission || 0) }}</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="metric-label">Fulfillment</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td>{{ formatCurrency(channel.price?.breakdown?.fulfillmentShipping || 0) }}</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="metric-label">Total Cost</td>
+                            @for (channel of channels; track channel.channel) {
+                            <td class="total-cost">{{ formatCurrency(channel.price?.breakdown?.totalCost || 0) }}</td>
+                            }
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            }
+
+            <!-- Card View -->
+            @if (viewMode() === 'cards') {
+            @for (channel of channels; track channel.channel) {
+            @if (channel.price) {
+            <div class="channel-card" [class.collapsed]="!channel.expanded">
+                <div class="channel-header" (click)="toggleChannel(channel)">
+                    <div class="channel-info">
+                        <app-icon [name]="channel.channelIcon" class="channel-icon"></app-icon>
+                        <h3 class="channel-name">{{ channel.channelName }}</h3>
+                    </div>
+
+                    <div class="header-right">
+                        <div class="channel-price">{{ formatCurrency(channel.price.sellingPrice) }}</div>
+                        <div class="profit-summary" *ngIf="!channel.expanded">
+                            <span class="roi-badge" [title]="'Return on Investment'">ROI: {{
+                                formatPercent(channel.price.roi) }}</span>
+                            <span [class]="getMarginColor(channel.price.netMargin, minAcceptableMargin())">
+                                Net: {{ formatPercent(channel.price.netMargin) }}
+                            </span>
+                        </div>
+                        <button class="btn-icon">
+                            <app-icon [name]="channel.expanded ? 'expand_less' : 'expand_more'"></app-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-content" *ngIf="channel.expanded">
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.COG' | translate }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.cog) }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label"
+                                title="Includes Referral Fee + Payment Processing (if applicable)">
+                                {{ 'PRICING_STRATEGY.BREAKDOWN.COMMISSION' | translate }} ℹ️
+                            </span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.commission)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.FULFILLMENT' | translate
+                                }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.fulfillmentShipping)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PAYMENT_PROCESSING' | translate
+                                }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.paymentProcessing)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.STORAGE' | translate }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.storageFees)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PACKAGING' | translate
+                                }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.packagingLabeling)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.INBOUND_SHIPPING' | translate
+                                }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.inboundShipping)
+                                }}</span>
+                        </div>
+                        <div class="breakdown-item total">
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.TOTAL_COST' | translate
+                                }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.totalCost) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="margin-section">
+                        <div class="margin-bar"
+                            [class]="getMarginBgColor(channel.price.netMargin, minAcceptableMargin())">
+                            <div class="margin-item">
+                                <span class="margin-label">{{ 'PRICING_STRATEGY.MARGINS.GROSS_PROFIT' | translate
+                                    }}</span>
+                                <span [class]="getMarginColor(channel.price.grossMargin, targetGrossMargin())">
+                                    {{ formatCurrency(channel.price.grossProfit) }} ({{
+                                    formatPercent(channel.price.grossMargin) }})
+                                </span>
+                            </div>
+                            <div class="margin-item">
+                                <span class="margin-label">{{ 'PRICING_STRATEGY.MARGINS.NET_PROFIT' | translate
+                                    }}</span>
+                                <span [class]="getMarginColor(channel.price.netMargin, minAcceptableMargin())"
+                                    class="net-profit-value">
+                                    {{ formatCurrency(channel.price.netProfit) }}
+                                    <span class="margin-percent">({{ formatPercent(channel.price.netMargin) }})</span>
+                                </span>
+                            </div>
+                            <div class="margin-item">
+                                <span class="margin-label">ROI (Return on Investment)</span>
+                                <span class="roi-value" [class.positive]="channel.price.roi > 0"
+                                    [class.negative]="channel.price.roi < 0">
+                                    {{ formatPercent(channel.price.roi) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (channel.price.netMargin < minAcceptableMargin()) { <div class="warning-banner">
+                        <app-icon name="warning"></app-icon>
+                        {{ 'PRICING_STRATEGY.MARGINS.WARNING_LOW_MARGIN' | translate }}
+                </div>
+                }
+                @if (channel.price.netMargin < 0) { <div class="error-banner">
+                    <app-icon name="error"></app-icon>
+                    {{ 'PRICING_STRATEGY.MARGINS.CRITICAL_LOSS' | translate }}
+            </div>
+            }
+        </div>
+    </div>
+
+    }
+    }
+    }
+
+
+    <!-- Competitive Intelligence CTA -->
+    <div class="competitive-cta" (click)="openCompetitiveModal()">
+        <app-icon name="insights" class="cta-icon"></app-icon>
+        <div class="cta-content">
+            <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.CTA_TITLE' | translate }}</h3>
+            <p>{{ 'PRICING_STRATEGY.COMPETITIVE.CTA_DESC' | translate }}</p>
+        </div>
+        <app-icon name="arrow_forward"></app-icon>
+    </div>
+    } @else {
+    <div class="empty-results">
+        <app-icon name="calculate" class="empty-icon"></app-icon>
+        <h3>{{ 'PRICING_STRATEGY.READY_TO_CALCULATE' | translate }}</h3>
+        <p>{{ 'PRICING_STRATEGY.READY_DESC' | translate }}</p>
+    </div>
+    }
+</div>
+</div>
+</div>
+
+
+
+<!-- Competitive Intelligence Modal -->
+@if (showCompetitiveModal()) {
+<div class="modal-overlay" (click)="closeCompetitiveModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>{{ 'PRICING_STRATEGY.COMPETITIVE.MODAL_TITLE' | translate }}</h2>
+            <button class="btn-icon" (click)="closeCompetitiveModal()">
+                <app-icon name="close"></app-icon>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="info-section">
+                <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.WHAT_IS_TITLE' | translate }}</h3>
+                <p>{{ 'PRICING_STRATEGY.COMPETITIVE.WHAT_IS_DESC' | translate }}</p>
+            </div>
+
+            <div class="info-section">
+                <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.BENEFITS_TITLE' | translate }}</h3>
+                <ul>
+                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_1' | translate }}</li>
+                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_2' | translate }}</li>
+                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_3' | translate }}</li>
+                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_4' | translate }}</li>
+                </ul>
+            </div>
+
+            <div class="info-section">
+                <h3>Legal & Ethical Approach</h3>
+                <p>We only recommend tools that:</p>
+                <ul>
+                    <li>Monitor publicly available data</li>
+                    <li>Respect robots.txt and Terms of Service</li>
+                    <li>Comply with GDPR/CCPA</li>
+                    <li>Focus on your specific product categories</li>
+                </ul>
+            </div>
+
+            <div class="tool-grid">
+                <div class="tool-card">
+                    <h4>Prisync AI</h4>
+                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.PRISYNC_DESC' | translate }}</p>
+                    <a href="https://prisync.com" target="_blank" class="btn-secondary">{{
+                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Prisync →</a>
+                </div>
+
+                <div class="tool-card">
+                    <h4>Priceva</h4>
+                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.PRICEVA_DESC' | translate }}</p>
+                    <a href="https://priceva.com" target="_blank" class="btn-secondary">{{
+                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Priceva →</a>
+                </div>
+
+                <div class="tool-card">
+                    <h4>Boardfy</h4>
+                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.BOARDFY_DESC' | translate }}</p>
+                    <a href="https://boardfy.com" target="_blank" class="btn-secondary">{{
+                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Boardfy →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}

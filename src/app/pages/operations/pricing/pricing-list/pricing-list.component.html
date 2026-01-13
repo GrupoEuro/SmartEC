@@ -1,0 +1,32 @@
+<div class="pricing-list-container">
+    <div class="header">
+        <div class="header-content">
+            <div class="title-section">
+                <app-icon name="grid_view" class="title-icon"></app-icon>
+                <div>
+                    <h1 class="title">{{ 'PRICING_STRATEGY.PRICE_GRID_TITLE' | translate }}</h1>
+                    <p class="subtitle">{{ 'PRICING_STRATEGY.PRICE_GRID_SUBTITLE' | translate }}</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn-secondary" (click)="openRulesManager()">
+                    <app-icon name="tune"></app-icon> Manage Rules
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-wrapper">
+        <ag-grid-angular class="ag-theme-alpine-dark" style="width: 100%; height: 100%;" [rowData]="rowData()"
+            [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+            [loadingOverlayComponentParams]="{ loadingMessage: 'Calculating optimized prices...' }"
+            (cellValueChanged)="onCellValueChanged($event)">
+        </ag-grid-angular>
+    </div>
+
+    <!-- Rules Manager Modal -->
+    <div class="modal-overlay" *ngIf="showRulesManager()">
+        <app-pricing-rules-manager (close)="showRulesManager.set(false); loadProducts()"></app-pricing-rules-manager>
+    </div>
+</div>

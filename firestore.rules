@@ -85,6 +85,22 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Channel Commission Rules: Public read, Admin write
+    match /channel_commission_rules/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Pricing Strategies: Admin read/write
+    match /pricing_strategies/{document} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Pricing History: Admin read/write
+    match /pricing_history/{document} {
+      allow read, write: if request.auth != null;
+    }
+
     // Customers: Admin read/write, owner read/write
     match /customers/{document} {
       allow read, write: if request.auth != null; // Simplified: Trust authenticated users to behave or rely on admin checks in app for now. 

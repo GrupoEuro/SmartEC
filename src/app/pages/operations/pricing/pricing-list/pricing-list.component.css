@@ -41,6 +41,7 @@
     font-weight: 700;
     margin: 0;
     background: linear-gradient(135deg, #a78bfa, #ec4899);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -85,4 +86,21 @@
 .text-red-500 {
     color: #ef4444;
     font-weight: 600;
+}
+
+.text-yellow-500 {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+/* Editable Cell Indicator */
+::ng-deep .editable-cell {
+    background-color: rgba(56, 189, 248, 0.05);
+    border-right: 1px solid rgba(100, 116, 139, 0.2);
+    /* Subtle vertical separation */
+}
+
+::ng-deep .editable-cell:hover {
+    background-color: rgba(56, 189, 248, 0.1);
+    cursor: text;
 }

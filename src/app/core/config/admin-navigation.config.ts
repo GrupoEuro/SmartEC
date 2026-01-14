@@ -101,6 +101,16 @@ export const ADMIN_NAVIGATION: NavItem[] = [
         ]
     },
     {
+        id: 'integrations',
+        title: 'ADMIN.SIDEBAR.INTEGRATIONS',
+        icon: 'link',
+        route: '/admin/integrations',
+        badge: {
+            text: 'BETA',
+            color: 'bg-indigo-500'
+        }
+    },
+    {
         id: 'system',
         title: 'ADMIN.SIDEBAR.SECTION_SYSTEM',
         icon: 'settings',
@@ -117,10 +127,11 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 icon: 'user', // or 'users'
                 route: '/admin/users'
             },
+
             {
                 id: 'settings',
                 title: 'ADMIN.SIDEBAR.SETTINGS', // Define new key
-                icon: 'sliders', // fallback to 'settings'
+                icon: 'settings',
                 route: '/admin/settings'
             },
             {

@@ -16,7 +16,7 @@ export const DEFAULT_CONFIG: SeederConfig = {
     orderCount: 100,
     customerCount: 50,
     startDate: new Date(2025, 11, 1), // Dec 1, 2025
-    endDate: new Date(), // Today (Jan 9, 2026)
+    endDate: new Date(2026, 0, 14),   // Jan 14, 2026 (Fixed End Date)
     chaosMode: false,
     scenario: 'CUSTOM'
 };
@@ -199,7 +199,78 @@ export class DataSeederService {
         await this.deleteCollection('orderNotes'); // Clear order notes
         await this.deleteCollection('inventory_balances'); // Clear inventory
         await this.deleteCollection('inventory_ledger'); // Clear kardex
+        await this.deleteCollection('staff_profiles'); // Clear staff profiles
         this.log('[Seeder] Database Cleared.', onLog);
+    }
+
+    // --- SEED STAFF PROFILES ---
+    async seedStaffProfiles(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Operations Staff...', onLog);
+        const batch = writeBatch(this.firestore);
+
+        // 1. Create Base Users (if they don't exist, we usually assume Auth service handles this, 
+        // but here we create profiles linked to hypothetical or known UIDs)
+
+        // Define Staff Roster
+        const roster = [
+            {
+                uid: 'ops_user_1', displayName: 'Carlos Ruiz', email: 'carlos.ruiz@example.com', role: 'OPERATIONS',
+                profile: {
+                    department: 'WAREHOUSE', jobTitle: 'Senior Picker', employeeId: 'EMP-101',
+                    assignedWarehouseId: 'MAIN', status: 'ONLINE', skills: ['PICKING', 'FORKLIFT']
+                }
+            },
+            {
+                uid: 'ops_user_2', displayName: 'Ana Torres', email: 'ana.torres@example.com', role: 'OPERATIONS',
+                profile: {
+                    department: 'WAREHOUSE', jobTitle: 'Packer', employeeId: 'EMP-102',
+                    assignedWarehouseId: 'MAIN', status: 'BUSY', skills: ['PACKING']
+                }
+            },
+            {
+                uid: 'manager_1', displayName: 'Roberto Gomez', email: 'roberto.g@example.com', role: 'MANAGER',
+                profile: {
+                    department: 'ADMIN', jobTitle: 'Warehouse Manager', employeeId: 'MGR-01',
+                    assignedWarehouseId: 'MAIN', status: 'ONLINE', allowedWarehouseIds: ['MAIN', 'AMAZON_FBA']
+                }
+            },
+            {
+                uid: 'support_1', displayName: 'Elena Volkov', email: 'elena.v@example.com', role: 'OPERATIONS',
+                profile: {
+                    department: 'SUPPORT', jobTitle: 'Support Specialist', employeeId: 'SUP-01',
+                    assignedWarehouseId: null, status: 'ONLINE', skills: ['RETURNS', 'ZENDESK']
+                }
+            }
+        ];
+
+        // Seed Users Collection + Staff Profiles
+        for (const staff of roster) {
+            // User Doc
+            const userRef = doc(this.firestore, `users/${staff.uid}`);
+            batch.set(userRef, {
+                uid: staff.uid,
+                displayName: staff.displayName,
+                email: staff.email,
+                role: staff.role,
+                isActive: true,
+                createdAt: Timestamp.now(),
+                photoURL: `https://ui-avatars.com/api/?name=${staff.displayName}&background=random`
+            });
+
+            // Profile Doc
+            const profileRef = doc(this.firestore, `staff_profiles/${staff.uid}`);
+            batch.set(profileRef, {
+                uid: staff.uid,
+                email: staff.email,
+                displayName: staff.displayName,
+                ...staff.profile,
+                created_at: Timestamp.now(),
+                updated_at: Timestamp.now()
+            });
+        }
+
+        await batch.commit();
+        this.log(`[Seeder] Created ${roster.length} staff profiles (Ops & Support).`, onLog);
     }
 
     // --- WAREHOUSE DATA CLEANUP ---
@@ -527,7 +598,8 @@ export class DataSeederService {
                 id: doc.id,
                 name: data['displayName'] || 'Unknown Customer',
                 email: data['email'] || `${doc.id}@example.com`,
-                phone: data['phone'] || '+52 444 123 4567'
+                phone: data['phone'] || '+52 444 123 4567',
+                acquisitionChannel: data['acquisitionChannel'] || 'DIRECT'
             });
         });
 
@@ -649,7 +721,8 @@ export class DataSeederService {
                     id: custId,
                     name: customer.name,
                     email: customer.email,
-                    phone: customer.phone
+                    phone: customer.phone,
+                    acquisitionChannel: customer.acquisitionChannel
                 },
                 shippingAddress: shippingAddress,
                 status,
@@ -797,6 +870,65 @@ export class DataSeederService {
         this.log('[Seeder]   - AMAZON_FBA: ~7%', onLog);
         this.log('[Seeder]   - MELI_FULL: ~8%', onLog);
         this.log('[Seeder] ========================================', onLog);
+    }
+
+    // --- 4. EXPENSES (Operational Costs for P&L) ---
+    async populateExpenses(config: SeederConfig = DEFAULT_CONFIG, onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Operational Expenses...', onLog);
+        const batch = writeBatch(this.firestore);
+
+        // Expense Categories and approximate monthly costs (MXN)
+        const expenseTypes = [
+            { category: 'RENT', description: 'Monthly Warehouse Rent', amount: 45000, dayOfMonth: 5, fixed: true },
+            { category: 'PAYROLL', description: 'Staff Salaries (Operations)', amount: 120000, dayOfMonth: 15, fixed: true },
+            { category: 'PAYROLL', description: 'Staff Salaries (Admin)', amount: 85000, dayOfMonth: 15, fixed: true },
+            { category: 'UTILITIES', description: 'CFE Electricity Bill', amount: 8500, dayOfMonth: 10, fixed: false }, // Variable
+            { category: 'INTERNET', description: 'Fiber Optic Internet', amount: 1200, dayOfMonth: 2, fixed: true },
+            { category: 'MARKETING', description: 'Google Ads Campaign', amount: 15000, dayOfMonth: 28, fixed: false },
+            { category: 'MARKETING', description: 'Facebook/Instagram Ads', amount: 8000, dayOfMonth: 28, fixed: false },
+            { category: 'SOFTWARE', description: 'ERP & Cloud Subscriptions', amount: 4500, dayOfMonth: 1, fixed: true },
+            { category: 'PACKAGING', description: 'Boxing & Tape Supplies', amount: 12000, dayOfMonth: 20, fixed: false }
+        ];
+
+        // Generate expenses for Dec 2025 and Jan 2026
+        const months = [
+            { year: 2025, month: 11 }, // Dec
+            { year: 2026, month: 0 }   // Jan
+        ];
+
+        let count = 0;
+
+        months.forEach(m => {
+            expenseTypes.forEach(exp => {
+                // Skip future dates if we are in Jan and day is passed
+                if (m.year === 2026 && m.month === 0 && exp.dayOfMonth > 14) return;
+
+                const id = `exp_${m.year}_${m.month}_${exp.category}_${Math.floor(Math.random() * 1000)}`;
+                const ref = doc(this.firestore, `expenses/${id}`);
+
+                // Add some variance to variable costs
+                const finalAmount = exp.fixed ? exp.amount : Math.round(exp.amount * (0.9 + Math.random() * 0.2));
+
+                const date = new Date(m.year, m.month, exp.dayOfMonth, 10, 0, 0);
+
+                batch.set(ref, {
+                    id: id,
+                    category: exp.category,
+                    description: `${exp.description} - ${date.toLocaleString('default', { month: 'short' })} ${m.year}`,
+                    amount: finalAmount,
+                    date: Timestamp.fromDate(date),
+                    status: 'PAID',
+                    paymentMethod: 'TRANSFER',
+                    reference: `REF-${Math.floor(Math.random() * 90000) + 10000}`,
+                    createdAt: Timestamp.fromDate(date),
+                    updatedAt: Timestamp.fromDate(date)
+                });
+                count++;
+            });
+        });
+
+        await batch.commit();
+        this.log(`[Seeder] Created ${count} expense records for P&L analysis.`, onLog);
     }
 
     // --- 3.5 WAREHOUSE LAYOUT (The Wow Factor v4.0) ---
@@ -1357,345 +1489,6 @@ export class DataSeederService {
 
     // --- 3.6 MULTI-LEVEL WAREHOUSE GENERATOR v5.0 ---
     async populateMultiLevelWarehouse(onLog?: (message: string) => void): Promise<void> {
-        await this.clearWarehouseData(onLog);
-
-        this.log('[Seeder] ========================================', onLog);
-        this.log('[Seeder] MULTI-LEVEL WAREHOUSE GENERATOR v5.0', onLog);
-        this.log('[Seeder] Product Locator v2.0 Compatible', onLog);
-        this.log('[Seeder] ========================================', onLog);
-
-        let batch = writeBatch(this.firestore);
-        let ops = 0;
-        const LIMIT = 450;
-
-        const commitBatch = async () => {
-            if (ops >= LIMIT) {
-                await batch.commit();
-                this.log(`[Seeder] Batch committed (${ops} ops)`, onLog);
-                batch = writeBatch(this.firestore);
-                ops = 0;
-            }
-        };
-
-        const finalCommit = async () => {
-            if (ops > 0) {
-                await batch.commit();
-                this.log(`[Seeder] Final batch (${ops} ops)`, onLog);
-            }
-        };
-
-        const whData = {
-            id: 'MAIN',
-            name: 'Almacén Principal - Multi-Nivel',
-            code: 'MAIN',
-            type: 'physical',
-            address: 'Av. Industrial 2450, Zona Franca, Montevideo',
-            isActive: true,
-            totalArea: 5000,
-            defaultLevel: 0,
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
-        };
-
-        batch.set(doc(this.firestore, 'warehouses/MAIN'), whData);
-        ops++;
-        this.log('[Seeder] Created warehouse: Almacén Principal', onLog);
-
-        const levels = [
-            { num: 0, name: 'Ground Floor', rows: 6, cols: 8 },
-            { num: 1, name: 'Mezzanine', rows: 4, cols: 6 },
-            { num: 2, name: 'Overhead Storage', rows: 3, cols: 4 }
-        ];
-
-        const allLevels: any[] = [];
-        const allRacks: any[] = []; // Store racks in memory to avoid query race condition
-        let totalZones = 0;
-        let totalRacks = 0;
-        let totalDoors = 0;
-
-        for (const lv of levels) {
-            const levelId = `MAIN_LEVEL_${lv.num}`;
-            this.log(`[Seeder] Generating ${lv.name} (Level ${lv.num})...`, onLog);
-
-            // Offset/Resize zones based on level to create visual distinction in 3D
-            const offset = lv.num * 40; // Shift right/down 40px per level
-            const shrink = lv.num * 80; // Shrink width/height 80px per level
-
-            const zones = [
-                {
-                    id: `${levelId}_zone_picking`,
-                    warehouseId: 'MAIN',
-                    levelId,
-                    name: `${lv.name} Picking Zone`, // e.g. "Mezzanine Picking Zone"
-                    code: `L${lv.num}-PICK`,
-                    type: 'racking',
-                    zoneType: 'PICKING',
-                    color: '#10b981',
-                    x: 20 + offset,
-                    y: 40 + offset,
-                    width: Math.max(200, 480 - shrink),
-                    height: Math.max(200, 400 - shrink),
-                    createdAt: Timestamp.now()
-                },
-                {
-                    id: `${levelId}_zone_reserve`,
-                    warehouseId: 'MAIN',
-                    levelId,
-                    name: `${lv.name} Reserve Storage`,
-                    code: `L${lv.num}-RSV`,
-                    type: 'racking',
-                    zoneType: 'RESERVE',
-                    color: '#3b82f6',
-                    x: 520, // Keep Reserve separate
-                    y: 40 + offset,
-                    width: 260,
-                    height: 250,
-                    createdAt: Timestamp.now()
-                }
-            ];
-
-            if (lv.num === 0) {
-                zones.push({
-                    id: `${levelId}_zone_bulk`,
-                    warehouseId: 'MAIN',
-                    levelId,
-                    name: `[L${lv.num}] Bulk Storage`,
-                    code: `L${lv.num}-BULK`,
-                    type: 'bulk-stack',
-                    zoneType: 'BULK',
-                    color: '#a855f7',
-                    x: 520, y: 310, width: 260, height: 150,
-                    createdAt: Timestamp.now()
-                });
-            }
-
-            zones.forEach(z => {
-                batch.set(doc(this.firestore, `warehouse_zones/${z.id}`), z);
-                ops++;
-            });
-            totalZones += zones.length;
-            await commitBatch();
-
-            const pickingZone = zones[0];
-            const rackWidth = 40;
-            const rackHeight = 40;
-            const rackGap = 8;
-
-            for (let r = 0; r < lv.rows; r++) {
-                for (let c = 0; c < lv.cols; c++) {
-                    const rackId = `${levelId}_rack_${r}_${c}`;
-                    const letter = String.fromCharCode(65 + r);
-                    const num = c + 1;
-
-                    // STANDARDIZED RACK LEVELS PER FLOOR
-                    // Ground Floor (0): 5 levels, Mezzanine (1): 4 levels, Overhead (2): 3 levels
-                    const standardLevels = lv.num === 0 ? 5 : lv.num === 1 ? 4 : 3;
-
-                    const rack = {
-                        id: rackId,
-                        warehouseId: 'MAIN',
-                        levelId,
-                        zoneId: pickingZone.id,
-                        name: `L${lv.num} Rack ${letter}-${num}`,
-                        code: `L${lv.num}-${letter}${num}`,
-                        type: 'standard-rack',
-                        x: pickingZone.x + 10 + (c * (rackWidth + rackGap)),
-                        y: pickingZone.y + 10 + (r * (rackHeight + rackGap)),
-                        width: rackWidth,
-                        height: rackHeight,
-                        rotation: 0,
-                        bays: 3, // Fixed: 3 bays for consistency
-                        levels: standardLevels, // Consistent levels per floor
-                        totalLocations: 0, // Calculated below
-                        active: true,
-                        createdAt: Timestamp.now()
-                    };
-
-                    const rackData = {
-                        ...rack,
-                        totalLocations: rack.bays * rack.levels // Calc dynamically
-                    };
-
-                    batch.set(doc(this.firestore, `warehouse_structures/${rackId}`), rackData);
-                    allRacks.push(rackData); // Add to in-memory list
-                    ops++;
-                    await commitBatch();
-                }
-            }
-            totalRacks += lv.rows * lv.cols;
-
-            const doors = [
-                {
-                    id: `${levelId}_door_in`,
-                    warehouseId: 'MAIN',
-                    levelId,
-                    name: `[L${lv.num}] Inbound`,
-                    type: 'inbound',
-                    x: 50, y: 585, width: 80, height: 10,
-                    rotation: 0,
-                    active: true,
-                    createdAt: Timestamp.now()
-                },
-                {
-                    id: `${levelId}_door_out`,
-                    warehouseId: 'MAIN',
-                    levelId,
-                    name: `[L${lv.num}] Outbound`,
-                    type: 'outbound',
-                    x: 400, y: 585, width: 80, height: 10,
-                    rotation: 0,
-                    active: true,
-                    createdAt: Timestamp.now()
-                }
-            ];
-
-            doors.forEach(d => {
-                batch.set(doc(this.firestore, `warehouse_doors/${d.id}`), d);
-                ops++;
-            });
-            totalDoors += doors.length;
-            await commitBatch();
-
-            batch.set(doc(this.firestore, `warehouse_obstacles/${levelId}_pillar`), {
-                id: `${levelId}_pillar`,
-                warehouseId: 'MAIN',
-                levelId,
-                name: `[L${lv.num}] Column`,
-                type: 'pillar',
-                x: 510, y: 70, width: 15, height: 15,
-                rotation: 0,
-                createdAt: Timestamp.now()
-            });
-            ops++;
-
-            allLevels.push({
-                id: levelId,
-                warehouseId: 'MAIN',
-                levelNumber: lv.num,
-                name: lv.name,
-                heightMeters: lv.num * 4
-            });
-
-            this.log(`[Seeder] ${lv.name}: ${lv.rows * lv.cols} racks, ${zones.length} zones`, onLog);
-        }
-
-        batch.update(doc(this.firestore, 'warehouses/MAIN'), {
-            levels: allLevels,
-            defaultLevel: 0,
-            updatedAt: Timestamp.now()
-        });
-        ops++;
-        await commitBatch();
-
-        this.log('[Seeder] Updated warehouse with levels metadata', onLog);
-        this.log('[Seeder] Generating storage bins...', onLog);
-
-        const productsSnap = await getDocs(collection(this.firestore, 'products'));
-        const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-
-        if (products.length === 0) {
-            this.log('[Seeder] WARNING: No products found. Generating 50 placeholder products for visualization...', onLog);
-            for (let i = 0; i < 50; i++) {
-                products.push({
-                    id: `DEMO_PROD_${i}`,
-                    name: { es: `Product Demo ${i + 1}` },
-                    sku: `DEMO-${1000 + i}`,
-                    inventory: { MAIN: { stock: 100 } }
-                });
-            }
-        }
-
-        // Use in-memory racks instead of querying
-        const racks = allRacks;
-        this.log(`[Seeder] DEBUG: Using ${racks.length} racks from memory to populate bins.`, onLog);
-
-        let locCount = 0;
-        let occupiedCount = 0;
-        let prodIndex = 0;
-        const occupancyRate = 0.60;
-
-        for (const rack of racks) {
-            for (let bay = 1; bay <= rack.bays; bay++) {
-                for (let level = 1; level <= rack.levels; level++) {
-                    const locId = `${rack.id}_B${bay}_L${level}`;
-                    const binCode = `${rack.code}-${String(bay).padStart(2, '0')}-${level}`;
-
-                    let product = null;
-                    if (products.length > 0 && Math.random() < occupancyRate) {
-                        product = products[prodIndex % products.length];
-                        prodIndex++;
-                        // Fix: Check nested inventory stock if root stockQuantity is missing
-                        const stock = product.inventory?.MAIN?.stock || product.stockQuantity || 0;
-                        if (stock <= 0) product = null;
-                    }
-
-                    // FORCE POPULATE first 100 bins for debugging 3D view
-                    if (!product && locCount < 100) {
-                        product = {
-                            id: 'DEBUG_PROD',
-                            name: { es: 'Test Product (Forced)' },
-                            sku: 'DEBUG-001',
-                            inventory: { MAIN: { stock: 999 } }
-                        } as any;
-                    }
-
-                    const qty = product
-                        ? (product.inventory?.MAIN?.stock || Math.floor(Math.random() * 25) + 5)
-                        : 0;
-
-                    batch.set(doc(this.firestore, `warehouse_locations/${locId}`), {
-                        id: locId,
-                        warehouseId: rack.warehouseId,
-                        levelId: rack.levelId,
-                        zoneId: rack.zoneId,
-                        structureId: rack.id,
-                        name: `Bin ${binCode}`,
-                        code: binCode,
-                        barcode: `LOC-${binCode}`,
-                        bay,
-                        level,
-                        position: 1,
-                        status: product ? 'full' : 'empty',
-                        currentUtilization: product ? Math.floor(Math.random() * 40) + 60 : 0,
-                        width: 30,
-                        height: 20,
-                        depth: 40,
-                        maxWeight: 200,
-                        maxVolume: 0.5,
-                        productId: product?.id || null,
-                        productName: product?.name?.es || null,
-                        productSku: product?.sku || null,
-                        quantity: qty,
-                        createdAt: Timestamp.now()
-                    });
-
-                    ops++;
-                    locCount++;
-                    if (product) occupiedCount++;
-                    await commitBatch();
-                }
-            }
-        }
-
-        await finalCommit();
-
-        const occupancyPct = Math.round((occupiedCount / locCount) * 100);
-
-        this.log('[Seeder] ========================================', onLog);
-        this.log('[Seeder] 🎉 MULTI-LEVEL WAREHOUSE COMPLETE!', onLog);
-        this.log('[Seeder] ========================================', onLog);
-        this.log(`[Seeder] Version: ${this.SEED_VERSION}`, onLog);
-        this.log(`[Seeder] Levels: ${allLevels.length} (Ground, Mezzanine, Overhead)`, onLog);
-        this.log(`[Seeder] Zones: ${totalZones} across all levels`, onLog);
-        this.log(`[Seeder] Structures: ${totalRacks} racks across all levels`, onLog);
-        this.log(`[Seeder] Doors: ${totalDoors} access points`, onLog);
-        this.log(`[Seeder] Bins: ${locCount} storage locations`, onLog);
-        this.log(`[Seeder] Occupancy: ${occupiedCount}/${locCount} (${occupancyPct}%)`, onLog);
-        this.log(`[Seeder] Products Distributed: ${products.length} SKUs`, onLog);
-        this.log('[Seeder] ========================================', onLog);
-        this.log('[Seeder] ✅ Ready for Product Locator v2.0!', onLog);
-        this.log('[Seeder] Route: /operations/inventory/locator', onLog);
-        this.log('[Seeder] ========================================', onLog);
     }
 
     // --- 4. INVENTORY BALANCES ---
@@ -2224,9 +2017,7 @@ export class DataSeederService {
         this.log(`  - ${notesCount} order notes`, onLog);
     }
 
-    async populateExpenses(config: SeederConfig = DEFAULT_CONFIG): Promise<void> {
-        // ... (Keep simpler for now)
-    }
+
 
     // Stub methods for other collections to prevent errors if UI calls them directly
     async populateCoupons(onLog?: (message: string) => void) {
@@ -2332,28 +2123,41 @@ export class DataSeederService {
             this.log('[Seeder] Step 4: Orders', onLog);
             await this.populateOrders(config, onLog);
 
+            this.log('[Seeder] Step 4.5: Inbound Logistics (International POs)', onLog);
+            await this.seedInboundOrders(onLog);
+
+            this.log('[Seeder] Step 4.6: Unified CRM (Cross-Channel)', onLog);
+            await this.seedUnifiedCustomers(onLog);
+
+            this.log('[Seeder] Step 5: Operational Expenses (P&L)', onLog);
+            await this.populateExpenses(config, onLog);
+
             // Inventory seeding
-            this.log('[Seeder] Step 5: Inventory Balances', onLog);
+            this.log('[Seeder] Step 6: Inventory Balances', onLog);
             await this.populateInventoryBalances(config, onLog);
 
-            this.log('[Seeder] Step 6: Inventory Ledger', onLog);
+            this.log('[Seeder] Step 7: Inventory Ledger', onLog);
             await this.populateInventoryLedger(config, onLog);
 
             // Inventory enhancements
-            this.log('[Seeder] Step 7: Inventory Enhancements (Adjustments, Transfers)', onLog);
+            this.log('[Seeder] Step 8: Inventory Enhancements (Adjustments, Transfers)', onLog);
             await this.populateInventoryEnhancements(config, onLog);
 
-            this.log('[Seeder] Step 8: Warehouse Layout (Zones, Racks, Bins)', onLog);
+            this.log('[Seeder] Step 9: Warehouse Layout (Zones, Racks, Bins)', onLog);
             await this.populateWarehouseLayout(onLog);
 
-            this.log('[Seeder] Step 9: Coupons', onLog);
+            this.log('[Seeder] Step 10: Coupons', onLog);
             await this.populateCoupons(onLog);
 
-            this.log('[Seeder] Step 10: Order Enhancements (Returns, Notes)', onLog);
+            this.log('[Seeder] Step 11: Order Enhancements (Returns, Notes)', onLog);
             await this.enhanceOrders(config, onLog);
 
+            // Channel Rules
+            this.log('[Seeder] Step 12: Channel Rules', onLog);
+            await this.seedChannelCommissionRules(onLog);
+
             // Save seed metadata
-            this.log('[Seeder] Step 11: Saving Metadata', onLog);
+            this.log('[Seeder] Step 13: Saving Metadata', onLog);
             await this.saveSeedMetadata(config, onLog);
 
             this.log('[Seeder] seedAll Complete!', onLog);
@@ -2573,5 +2377,174 @@ export class DataSeederService {
             throw error;
         }
     }
-}
 
+    // --- 9. SEED INBOUND ORDERS (INTERNATIONAL) ---
+    async seedInboundOrders(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Inbound Purchase Orders...', onLog);
+        const batch = writeBatch(this.firestore);
+
+
+        // Simulation Scenarios
+        const pos = [
+            {
+                id: 'PO-MX-2024-001',
+                supplierName: 'Michelin France HQ',
+                originCountry: 'FR',
+                status: 'customs_hold',
+                totalItems: 1200,
+                totalCost: 145000,
+                estimatedArrival: -2, // 2 days ago (DELAYED)
+                containerId: 'MSCU-1928374',
+                pedimento: 'PENDING',
+                timeline: [
+                    { status: 'placed', daysOffset: -45, note: 'Order Placed' },
+                    { status: 'manufacturing', daysOffset: -40, note: 'Production Started' },
+                    { status: 'ready_to_ship', daysOffset: -15, note: 'Container Loaded' },
+                    { status: 'shipped', daysOffset: -14, note: 'Vessel Departed Le Havre' },
+                    { status: 'customs_hold', daysOffset: -1, note: 'Held for inspection' }
+                ]
+            },
+            {
+                id: 'PO-CN-2024-088',
+                supplierName: 'Praxis Manufacturing Shenzen',
+                originCountry: 'CN',
+                status: 'shipped',
+                totalItems: 5000,
+                totalCost: 85000,
+                estimatedArrival: 12, // 12 days to go
+                containerId: 'COSU-99887766',
+                pedimento: null,
+                timeline: [
+                    { status: 'placed', daysOffset: -20, note: 'Order Placed' },
+                    { status: 'manufacturing', daysOffset: -10, note: 'Production Complete' },
+                    { status: 'shipped', daysOffset: -5, note: 'Vessel Departed Shanghai' }
+                ]
+            },
+            {
+                id: 'PO-IT-2024-003',
+                supplierName: 'Pirelli Italia S.p.A.',
+                originCountry: 'IT',
+                status: 'manufacturing',
+                totalItems: 450,
+                totalCost: 65000,
+                estimatedArrival: 25,
+                containerId: null,
+                pedimento: null,
+                timeline: [
+                    { status: 'placed', daysOffset: -5, note: 'Order Placed' },
+                    { status: 'manufacturing', daysOffset: 0, note: 'Production Started' }
+                ]
+            },
+            {
+                id: 'PO-US-2024-102',
+                supplierName: 'Dunlop North America',
+                originCountry: 'US',
+                status: 'customs_cleared',
+                totalItems: 800,
+                totalCost: 42000,
+                estimatedArrival: 1, // Arriving tomorrow
+                containerId: 'TRUCK-992',
+                pedimento: '24-23-3323-223123',
+                timeline: [
+                    { status: 'placed', daysOffset: -10, note: 'Order Placed' },
+                    { status: 'shipped', daysOffset: -3, note: 'Truck Departed Texas' },
+                    { status: 'customs_cleared', daysOffset: 0, note: 'Customs Cleared at Laredo' }
+                ]
+            }
+        ];
+
+        for (const po of pos) {
+            const ref = doc(this.firestore, `purchase_orders/${po.id}`);
+
+            // Calculate Dates relative to NOW
+            const eta = new Date();
+            eta.setDate(eta.getDate() + po.estimatedArrival); // + or - days
+
+            const timelineEvents = po.timeline.map(t => {
+                const d = new Date();
+                d.setDate(d.getDate() + t.daysOffset);
+                return {
+                    status: t.status,
+                    timestamp: Timestamp.fromDate(d),
+                    description: t.note,
+                    completed: true
+                };
+            });
+
+            const data = {
+                id: po.id,
+                supplierId: po.supplierName.replace(/\s+/g, '_').toUpperCase(),
+                supplierName: po.supplierName,
+                originCountry: po.originCountry,
+                destinationWarehouseId: 'MAIN',
+                status: po.status,
+                createdAt: timelineEvents[0].timestamp,
+                updatedAt: Timestamp.now(),
+                estimatedArrivalDate: Timestamp.fromDate(eta),
+                totalItems: po.totalItems,
+                totalCost: po.totalCost,
+                currency: 'USD',
+                containerId: po.containerId,
+                pedimento: po.pedimento,
+                timeline: timelineEvents
+            };
+
+            batch.set(ref, data);
+        }
+
+        await batch.commit();
+        this.log('[Seeder] Inbound POs Seeded.', onLog);
+    }
+
+
+    // --- 10. SEED UNIFIED CUSTOMERS (CRM) ---
+    async seedUnifiedCustomers(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Cross-Channel Customer Data...', onLog);
+        const batch = writeBatch(this.firestore);
+
+        const now = new Date();
+        const past = new Date(); past.setDate(now.getDate() - 30);
+
+        // Scenario: Carlos Mendez (VIP Cross-channel)
+        const email = 'carlos.mendez.vip@example.com';
+
+        // 1. Web Order
+        const ord1Ref = doc(collection(this.firestore, 'orders'));
+        batch.set(ord1Ref, {
+            orderNumber: 'WEB-99102',
+            status: 'delivered',
+            channel: 'WEB',
+            total: 2500,
+            customer: { name: 'Carlos Mendez', email: email, phone: '555-0100' },
+            createdAt: Timestamp.fromDate(past),
+            items: [],
+            updatedAt: Timestamp.fromDate(past)
+        });
+
+        // 2. Amazon Order (Matched by Email)
+        const ord2Ref = doc(collection(this.firestore, 'orders'));
+        batch.set(ord2Ref, {
+            orderNumber: '114-3829102-48291',
+            status: 'shipped',
+            channel: 'AMAZON_FBA',
+            total: 1800,
+            customer: { name: 'Carlos Mendez', email: email, phone: '555-0100' },
+            createdAt: Timestamp.fromDate(now),
+            items: [],
+            updatedAt: Timestamp.fromDate(now)
+        });
+
+        // Scenario: Sarah Connor (Web Only)
+        batch.set(doc(collection(this.firestore, 'orders')), {
+            orderNumber: 'WEB-2009',
+            status: 'processing',
+            channel: 'WEB',
+            total: 500,
+            customer: { name: 'Sarah Connor', email: 'sarah@skynet.com', phone: '555-1010' },
+            createdAt: Timestamp.now(), items: [], updatedAt: Timestamp.now()
+        });
+
+        await batch.commit();
+        this.log('[Seeder] Unified Customers Seeded.', onLog);
+    }
+}

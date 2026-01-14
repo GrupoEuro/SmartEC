@@ -1,5 +1,5 @@
-import { Component, Input, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, computed, Inject, PLATFORM_ID, signal } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ICONS } from './icons';
 
@@ -8,15 +8,17 @@ import { ICONS } from './icons';
     standalone: true,
     imports: [CommonModule],
     template: `
-        <svg 
-            [attr.width]="size" 
-            [attr.height]="size" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            [attr.class]="class"
-            [innerHTML]="svgContent()">
-        </svg>
+        @if (isBrowser()) {
+            <svg 
+                [attr.width]="size" 
+                [attr.height]="size" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                [attr.class]="class"
+                [innerHTML]="svgContent()">
+            </svg>
+        }
     `,
     styles: [`
         :host {
@@ -24,6 +26,8 @@ import { ICONS } from './icons';
             align-items: center;
             justify-content: center;
             line-height: 0;
+            min-width: 1em; /* Prevent collapse */
+            min-height: 1em;
         }
     `]
 })
@@ -32,15 +36,20 @@ export class AppIconComponent {
     @Input() size: number = 24;
     @Input() class: string = '';
 
-    constructor(private sanitizer: DomSanitizer) { }
+    isBrowser = signal(false);
+
+    constructor(
+        private sanitizer: DomSanitizer,
+        @Inject(PLATFORM_ID) platformId: Object
+    ) {
+        this.isBrowser.set(isPlatformBrowser(platformId));
+    }
 
     svgContent = computed(() => {
         const iconName = this.name.toLowerCase();
         const content = ICONS[iconName];
 
         if (!content) {
-            // console.warn(`Icon not found: ${iconName}`);
-            // Return a fallback or empty
             return '';
         }
 

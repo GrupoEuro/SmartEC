@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node --max_old_space_size=8192 ./node_modules/@angular/cli/bin/ng serve",
+    "start:turbo": "node --max_old_space_size=12288 ./node_modules/@angular/cli/bin/ng serve --configuration development",
+    "clean": "rm -rf .angular && rm -rf dist",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

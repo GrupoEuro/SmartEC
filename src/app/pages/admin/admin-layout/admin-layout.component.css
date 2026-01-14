@@ -1,206 +1,45 @@
+/* Clean Admin Layout */
 .admin-layout {
     display: flex;
     min-height: 100vh;
+    background-color: #f4f4f4;
+    /* Match content bg */
 }
 
-.sidebar {
-    width: 250px;
-    background-color: #1a1a1a;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    overflow-y: auto;
-    z-index: 1000;
-    transition: width 0.3s ease;
-}
+/* New Sidebar is a flex item, no styles needed here for it */
 
-.sidebar.collapsed {
-    width: 60px;
-}
-
-.sidebar-header {
-    padding: 1rem;
-    flex-shrink: 0;
-    border-bottom: 1px solid #333;
-}
-
-.header-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 30px;
-}
-
-.sidebar-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    white-space: nowrap;
-    overflow: hidden;
-    transition: opacity 0.2s;
-}
-
-.sidebar.collapsed .sidebar-header h3 {
-    opacity: 0;
-    width: 0;
-    display: none;
-}
-
-.toggle-btn {
-    background: transparent;
-    border: none;
-    color: #888;
-    cursor: pointer;
-    font-size: 1.2rem;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.toggle-btn:hover {
-    color: white;
-    background: #333;
-}
-
-.sidebar.collapsed .toggle-btn {
-    width: 100%;
-}
-
-.sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.admin-content {
     flex: 1;
-    padding: 1rem 0.5rem;
-    overflow-y: auto;
-    overflow-x: hidden;
+    /* margin-left removed: Flexbox handles positioning */
+    background-color: #f4f4f4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* width: 0; Prevent flex overflow */
+    min-width: 0;
 }
 
-/* Dynamic Sidebar Classes */
-.sidebar-link {
-    color: #ccc;
-    text-decoration: none;
-    padding: 0.75rem;
-    border-radius: 4px;
-    transition: all 0.2s;
+.admin-header {
+    height: 64px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
     align-items: center;
-    gap: 12px;
-    white-space: nowrap;
-    margin-bottom: 0.25rem;
-}
-
-.sidebar-link:hover,
-.sidebar-link.active {
-    background-color: #ffd700;
-    color: #000;
-    font-weight: bold;
-}
-
-.child-link {
-    color: #ccc;
-    text-decoration: none;
-    padding: 0.6rem 0.75rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    white-space: nowrap;
-    font-size: 0.9rem;
-}
-
-.child-link:hover,
-.child-link.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.child-link.active {
-    color: #ffd700;
-    font-weight: bold;
-}
-
-.nav-icon,
-.section-icon {
-    font-size: 1.2rem;
-    width: 24px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Hide text when collapsed */
-.sidebar.collapsed .sidebar-link .text,
-.sidebar.collapsed .child-link .text {
-    opacity: 0;
-    width: 0;
-    display: none;
-}
-
-.sidebar.collapsed .sidebar-link {
-    justify-content: center;
-    position: relative;
-}
-
-/* Consolidated Tooltips for dynamic links */
-.sidebar.collapsed .sidebar-link:hover::after,
-.sidebar.collapsed .section-header:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #333;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    margin-left: 10px;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-}
-
-.sidebar.collapsed .sidebar-link:hover::before,
-.sidebar.collapsed .section-header:hover::before {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border: 5px solid transparent;
-    border-right-color: #333;
-    margin-left: 0;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-
-.sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid #333;
+    padding: 0 2rem;
     flex-shrink: 0;
-    background-color: #1a1a1a;
-    position: sticky;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    margin-top: auto;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
 }
 
+.spacer {
+    flex: 1;
+}
+
+.content-wrapper {
+    padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Header Avatar & Actions */
 .header-actions-group {
     display: flex;
     align-items: center;
@@ -225,184 +64,10 @@
     color: white;
 }
 
-/* Old lang-switcher styles removed */
-
-
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #333;
-    overflow: hidden;
-    transition: all 0.3s ease;
+.user-menu-container {
+    position: relative;
 }
 
-.sidebar.collapsed .user-profile {
-    justify-content: center;
-    padding-bottom: 8px;
-    border-bottom: none;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: #333;
-    flex-shrink: 0;
-}
-
-.user-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #ffd700;
-    color: #000;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: opacity 0.2s;
-}
-
-.user-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.user-email {
-    font-size: 12px;
-    color: #888;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sidebar.collapsed .user-info {
-    display: none;
-}
-
-/* Logout Link - Subtle style matching sidebar links */
-.logout-link {
-    width: 100%;
-    padding: 0.75rem;
-    background: transparent;
-    border: none;
-    color: #888;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    /* Matches sidebar-link gap */
-    font-size: 0.95rem;
-}
-
-.logout-link:hover {
-    background: rgba(255, 68, 68, 0.1);
-    color: #ff4444;
-}
-
-.logout-link .logout-icon {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.sidebar.collapsed .logout-link {
-    justify-content: center;
-    padding: 0.75rem;
-}
-
-.sidebar.collapsed .logout-link .text {
-    display: none;
-}
-
-/* Tooltip for logout link */
-.sidebar.collapsed .logout-link:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #ff4444;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    margin-left: 10px;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-}
-
-.sidebar.collapsed .logout-link:hover::before {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: transparent #ff4444 transparent transparent;
-    margin-left: 0px;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-.admin-content {
-    flex: 1;
-    margin-left: 250px;
-    background-color: #f4f4f4;
-    min-height: 100vh;
-    transition: margin-left 0.3s ease;
-    display: flex;
-    flex-direction: column;
-}
-
-.admin-header {
-    height: 64px;
-    background: white;
-    border-bottom: 1px solid #e0e0e0;
-    display: flex;
-    align-items: center;
-    padding: 0 2rem;
-    flex-shrink: 0;
-}
-
-.spacer {
-    flex: 1;
-}
-
-.content-wrapper {
-    padding: 2rem;
-    flex: 1;
-    /* Removed overflow-y: auto to allow sticky positioning to work */
-}
-
-/* Header Avatar */
 .header-avatar {
     width: 40px;
     height: 40px;
@@ -413,6 +78,10 @@
     overflow: hidden;
     transition: all 0.2s;
     background: white;
+    display: flex;
+    /* Ensure centering */
+    align-items: center;
+    justify-content: center;
 }
 
 .header-avatar:hover {
@@ -439,10 +108,6 @@
 }
 
 /* Dropdown */
-.user-menu-container {
-    position: relative;
-}
-
 .user-dropdown {
     position: absolute;
     top: 50px;
@@ -451,7 +116,8 @@
     min-width: 220px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    z-index: 1001;
+    /* Higher than sidebar potentially */
     padding: 0.5rem 0;
     animation: slideDown 0.2s ease-out;
     border: 1px solid #eee;
@@ -491,6 +157,11 @@
     font-weight: 600;
 }
 
+.d-role-badge.inactive {
+    background: #eee;
+    color: #666;
+}
+
 .d-email {
     font-size: 0.85rem;
     color: #666;
@@ -521,18 +192,10 @@
     color: #d32f2f;
 }
 
-.admin-content.expanded {
-    margin-left: 60px;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-    .sidebar {
-        width: 200px;
-    }
-
-    .admin-content {
-        margin-left: 200px;
+    .admin-layout {
+        flex-direction: column;
     }
 
     .admin-header {
@@ -542,152 +205,4 @@
     .content-wrapper {
         padding: 1rem;
     }
-
-    .user-info {
-        display: none;
-    }
-
-    .user-profile {
-        justify-content: center;
-    }
-}
-
-/* Collapsible Navigation Sections */
-.nav-section {
-    margin-bottom: 0.5rem;
-}
-
-.section-header {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: #888;
-    padding: 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.2s;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.section-header:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-}
-
-.section-icon {
-    font-size: 1.1rem;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.section-title {
-    flex: 1;
-    text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.toggle-icon {
-    font-size: 0.7rem;
-    transition: transform 0.2s;
-    flex-shrink: 0;
-}
-
-.section-header.collapsed .toggle-icon {
-    transform: rotate(-90deg);
-}
-
-.section-items {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-    padding-left: 0.5rem;
-}
-
-.section-items.expanded {
-    max-height: 500px;
-    transition: max-height 0.3s ease-in;
-}
-
-.section-items a {
-    margin: 0.25rem 0;
-}
-
-/* Coming Soon Badge */
-.coming-soon {
-    opacity: 0.6;
-    pointer-events: none;
-    position: relative;
-}
-
-.coming-soon .badge {
-    background: #ff9800;
-    color: white;
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    margin-left: auto;
-}
-
-/* Collapsed Sidebar Adjustments for Sections */
-.sidebar.collapsed .section-title,
-.sidebar.collapsed .toggle-icon {
-    opacity: 0;
-    width: 0;
-    display: none;
-}
-
-.sidebar.collapsed .section-header {
-    justify-content: center;
-    padding: 0.75rem;
-}
-
-.sidebar.collapsed .section-items {
-    padding-left: 0;
-}
-
-/* Tooltip for section headers when collapsed */
-.sidebar.collapsed .section-header:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    background-color: #333;
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    margin-left: 10px;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    pointer-events: none;
-}
-
-.sidebar.collapsed .section-header:hover::before {
-    content: '';
-    position: absolute;
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    border-width: 5px;
-    border-style: solid;
-    border-color: transparent #333 transparent transparent;
-    margin-left: 0px;
-    z-index: 1000;
-    pointer-events: none;
-}
-
-/* Hide coming soon badge when collapsed */
-.sidebar.collapsed .coming-soon .badge {
-    display: none;
 }

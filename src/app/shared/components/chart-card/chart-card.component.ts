@@ -34,6 +34,7 @@ export class ChartCardComponent {
     @Input() tableColumns: TableColumn[] = [];
     @Input({ transform: booleanAttribute }) disableTable: boolean = false;
 
+
     // State
     isTableVisible = false;
 

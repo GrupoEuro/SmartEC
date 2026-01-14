@@ -12,7 +12,7 @@
         [subtitle]="'OPERATIONS.PROCUREMENT.SUBTITLE' | translate" variant="operations">
 
         <div class="flex gap-3">
-            <button class="btn-glass hover:text-white text-zinc-300" routerLink="/operations/procurement">
+            <button class="btn-glass hover:text-white text-slate-300" routerLink="/operations/procurement">
                 Cancel
             </button>
             <ng-container *ngIf="po()?.status !== 'RECEIVED'">
@@ -26,7 +26,7 @@
                 </button>
             </ng-container>
             <div *ngIf="po()?.status === 'RECEIVED'"
-                class="px-3 py-1.5 bg-green-100 text-green-800 rounded font-bold border border-green-200 flex items-center gap-2">
+                class="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg font-bold border border-green-500/30 flex items-center gap-2 backdrop-blur-sm shadow-sm">
                 <app-icon name="lock" [size]="14"></app-icon> RECEIVED
             </div>
         </div>
@@ -40,16 +40,16 @@
 
                 <!-- Drag & Drop Zone -->
                 <div *ngIf="po()?.status === 'DRAFT' || !po()?.status"
-                    class="drag-zone border-2 border-dashed border-zinc-600 rounded-xl p-12 text-center bg-zinc-800/50 hover:bg-zinc-800 hover:border-indigo-500 transition-all cursor-pointer"
-                    [ngClass]="{'border-amber-500': isDragging(), 'bg-amber-900/10': isDragging()}"
+                    class="drag-zone border-2 border-dashed border-slate-600 rounded-xl p-12 text-center bg-slate-800/30 hover:bg-slate-800/50 hover:border-indigo-500 transition-all cursor-pointer backdrop-blur-sm"
+                    [ngClass]="{'border-amber-500': isDragging(), 'bg-amber-900/20': isDragging()}"
                     (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
 
                     <div
-                        class="drag-icon w-12 h-12 rounded-full bg-zinc-700 shadow-sm flex items-center justify-center mx-auto mb-4 text-amber-500">
+                        class="drag-icon w-12 h-12 rounded-full bg-slate-700/50 shadow-sm flex items-center justify-center mx-auto mb-4 text-amber-500 border border-white/5">
                         <app-icon name="upload-cloud" [size]="24"></app-icon>
                     </div>
                     <h3 class="text-lg font-bold text-white mb-2">Import Invoice or Packing List</h3>
-                    <p class="text-zinc-500 mb-4">
+                    <p class="text-slate-400 mb-4">
                         Drag <strong>XML</strong> (Mexico) or <strong>Excel/CSV</strong> (International) here.
                     </p>
 
@@ -63,26 +63,26 @@
 
                 <!-- Attached Invoices -->
                 <div *ngIf="po()?.invoices?.length"
-                    class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
-                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                    class="bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 overflow-hidden">
+                    <div class="p-4 border-b border-white/10 bg-slate-800/30 flex justify-between items-center">
                         <h3 class="font-semibold text-white">Attached Invoices</h3>
                     </div>
                     <div class="p-0">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr
-                                    class="bg-zinc-900/50 text-zinc-400 text-xs font-bold uppercase border-b border-zinc-700">
+                                    class="bg-slate-900/50 text-slate-400 text-xs font-bold uppercase border-b border-white/5">
                                     <th class="p-3">Invoice #</th>
                                     <th class="p-3">UUID</th>
                                     <th class="p-3">Date</th>
                                     <th class="p-3 text-right">Total</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-sm text-zinc-300">
+                            <tbody class="text-sm text-slate-300">
                                 <tr *ngFor="let inv of po()?.invoices"
-                                    class="border-b border-zinc-800 last:border-0 hover:bg-zinc-700/30">
+                                    class="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                                     <td class="p-3 font-medium text-white">{{ inv.invoiceNumber }}</td>
-                                    <td class="p-3 text-xs text-zinc-500 font-mono">{{ inv.uuid }}</td>
+                                    <td class="p-3 text-xs text-slate-500 font-mono">{{ inv.uuid }}</td>
                                     <td class="p-3">{{ getDate(inv.date) | date:'mediumDate' }}</td>
                                     <td class="p-3 text-right font-bold text-emerald-400">
                                         {{ inv.totalAmount | currency:inv.currency }}
@@ -94,15 +94,16 @@
                 </div>
 
                 <!-- Items Table -->
-                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
-                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                <div
+                    class="bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 overflow-hidden">
+                    <div class="p-4 border-b border-white/10 bg-slate-800/30 flex justify-between items-center">
                         <h3 class="font-semibold text-white">Line Items ({{ po()?.items?.length }})</h3>
                     </div>
                     <div class="p-0 overflow-x-auto">
                         <table class="operations-table w-full text-left border-collapse">
                             <thead>
                                 <tr
-                                    class="bg-zinc-900/50 text-zinc-400 text-xs font-bold uppercase border-b border-zinc-700">
+                                    class="bg-slate-900/50 text-slate-400 text-xs font-bold uppercase border-b border-white/5">
                                     <th class="p-3">Supplier SKU</th>
                                     <th class="p-3 w-1/3">Internal Product (Mapped)</th>
                                     <th class="p-3 text-right">Qty</th>
@@ -111,18 +112,18 @@
                                     <th class="p-3 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody class="text-sm text-zinc-300">
+                            <tbody class="text-sm text-slate-300">
                                 <!-- Item Row -->
                                 <tr *ngFor="let item of po()?.items; let i = index"
-                                    class="border-b border-zinc-700/50 hover:bg-zinc-700/30 transition-colors"
+                                    class="border-b border-white/5 hover:bg-white/5 transition-colors"
                                     [ngClass]="{'bg-amber-900/10': !item.productId}">
-                                    <td class="p-3 text-sm text-zinc-500 font-mono">{{ item.sku }}</td>
+                                    <td class="p-3 text-sm text-slate-500 font-mono">{{ item.sku }}</td>
                                     <td class="p-2 relative group"
                                         [ngClass]="{'bg-blue-900/10': focusedRowIndex() === i}">
                                         <!-- Inline Smart Input -->
                                         <div class="relative w-full">
                                             <!-- Icon Helper -->
-                                            <div class="absolute left-2 top-1/2 -tranzinc-y-1/2 text-zinc-400 pointer-events-none transition-colors duration-200"
+                                            <div class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none transition-colors duration-200"
                                                 [class.text-emerald-500]="item.productId"
                                                 [class.text-blue-400]="focusedRowIndex() === i">
                                                 <app-icon [name]="item.productId ? 'check-circle' : 'search'"
@@ -136,38 +137,38 @@
                                                 (keydown)="onRowKeydown($event, i)"
                                                 [placeholder]="item.productId ? '' : 'Type to search...'"
                                                 class="w-full text-sm border border-transparent rounded-md py-1.5 pl-8 pr-2 transition-all duration-200 outline-none
-                                                       focus:bg-zinc-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50" [ngClass]="{
+                                                       focus:bg-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50" [ngClass]="{
                                                     'text-white font-semibold bg-transparent': item.productId,
-                                                    'text-zinc-400 placeholder-zinc-600 bg-zinc-900/50': !item.productId
+                                                    'text-slate-400 placeholder-slate-600 bg-slate-900/50': !item.productId
                                                 }" autocomplete="off">
 
                                             <!-- Floating Autocomplete Dropdown -->
                                             <div *ngIf="focusedRowIndex() === i && (inlineResults().length > 0 || inlineSearchTerm())"
-                                                class="absolute z-50 left-0 top-full mt-2 w-[480px] bg-zinc-800 rounded-xl shadow-2xl border border-zinc-600 overflow-hidden ring-1 ring-black/20 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
+                                                class="absolute z-50 left-0 top-full mt-2 w-[480px] bg-slate-800 rounded-xl shadow-2xl border border-slate-600 overflow-hidden ring-1 ring-black/20 animate-in fade-in zoom-in-95 duration-100 origin-top-left">
 
-                                                <!-- Header/Context (Optional, if we want to show 'Creating...' or 'Results') -->
+                                                <!-- Header/Context -->
                                                 <div *ngIf="inlineResults().length === 0 && inlineSearchTerm()"
-                                                    class="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider bg-zinc-900/50 border-b border-zinc-700">
+                                                    class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-900/50 border-b border-slate-700">
                                                     No matches found
                                                 </div>
 
                                                 <!-- Results -->
                                                 <div *ngFor="let res of inlineResults(); let rIdx = index"
-                                                    class="group/item px-3 py-2.5 cursor-pointer flex items-center justify-between border-b border-zinc-700/50 last:border-0 hover:bg-zinc-700 transition-colors"
-                                                    [class.bg-zinc-700]="inlineSelectedIndex() === rIdx"
+                                                    class="group/item px-3 py-2.5 cursor-pointer flex items-center justify-between border-b border-slate-700/50 last:border-0 hover:bg-slate-700 transition-colors"
+                                                    [class.bg-slate-700]="inlineSelectedIndex() === rIdx"
                                                     (mousedown)="selectProduct(res, i)">
 
                                                     <div class="flex flex-col gap-0.5">
                                                         <span
-                                                            class="text-sm font-semibold text-zinc-200 group-hover/item:text-white transition-colors">
+                                                            class="text-sm font-semibold text-slate-200 group-hover/item:text-white transition-colors">
                                                             {{ res.name.es }}
                                                         </span>
                                                         <div class="flex items-center gap-2">
                                                             <span
-                                                                class="text-[10px] font-mono bg-zinc-900 text-zinc-400 px-1.5 rounded border border-zinc-700">{{
+                                                                class="text-[10px] font-mono bg-slate-900 text-slate-400 px-1.5 rounded border border-slate-700">{{
                                                                 res.sku }}</span>
                                                             <span
-                                                                class="text-[10px] uppercase font-bold text-zinc-500 tracking-wide">{{
+                                                                class="text-[10px] uppercase font-bold text-slate-500 tracking-wide">{{
                                                                 res.brand }}</span>
                                                         </div>
                                                     </div>
@@ -177,54 +178,50 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Quick Create Option (Always Last) -->
+                                                <!-- Quick Create Option -->
                                                 <div *ngIf="inlineSearchTerm()"
-                                                    class="px-3 py-3 cursor-pointer bg-zinc-900/30 hover:bg-zinc-900 flex items-center gap-3 text-blue-400 border-t border-zinc-700 transition-colors"
-                                                    [class.bg-zinc-900]="inlineSelectedIndex() === inlineResults().length"
+                                                    class="px-3 py-3 cursor-pointer bg-slate-900/30 hover:bg-slate-900 flex items-center gap-3 text-blue-400 border-t border-slate-700 transition-colors"
+                                                    [class.bg-slate-900]="inlineSelectedIndex() === inlineResults().length"
                                                     (mousedown)="inlineCreateStub(i)">
 
                                                     <div
-                                                        class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center shadow-sm text-blue-400">
+                                                        class="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center shadow-sm text-blue-400">
                                                         <app-icon name="plus" [size]="16"></app-icon>
                                                     </div>
 
                                                     <div class="flex flex-col">
                                                         <span class="text-sm font-bold text-white">Create new
                                                             product</span>
-                                                        <span class="text-xs text-zinc-500">"{{ inlineSearchTerm()
+                                                        <span class="text-xs text-slate-500">"{{ inlineSearchTerm()
                                                             }}"</span>
                                                     </div>
 
                                                     <div class="ml-auto flex items-center gap-1.5 opacity-60">
                                                         <span
-                                                            class="text-[10px] font-bold bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">⌘</span>
+                                                            class="text-[10px] font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">⌘</span>
                                                         <span
-                                                            class="text-[10px] font-bold bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">ENTER</span>
+                                                            class="text-[10px] font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400">ENTER</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
 
-                                    <!-- Old Button Removed -->
-                                    <td class="px-4 py-3 hidden">
-                                        <!-- Kept hidden to preserve column count if needed, or remove completely -->
-                                    </td>
                                     <td class="text-right px-4">{{ item.quantityOrdered }}</td>
-                                    <td class="text-right text-zinc-500 px-4">{{ item.unitCost |
+                                    <td class="text-right text-slate-500 px-4">{{ item.unitCost |
                                         currency:po()?.currency
                                         }}</td>
                                     <td class="text-right font-medium text-white px-4">{{ item.totalCost |
                                         currency:po()?.currency }}</td>
                                     <td class="text-center px-4">
                                         <button (click)="removeItem(i)"
-                                            class="text-zinc-500 hover:text-red-400 transition-colors p-2 hover:bg-zinc-700 rounded-full">
+                                            class="text-slate-500 hover:text-red-400 transition-colors p-2 hover:bg-slate-700 rounded-full">
                                             <app-icon name="trash-2" [size]="16"></app-icon>
                                         </button>
                                     </td>
                                 </tr>
                                 <tr *ngIf="po()?.items?.length === 0">
-                                    <td colspan="6" class="p-12 text-center text-zinc-500 italic">
+                                    <td colspan="6" class="p-12 text-center text-slate-500 italic">
                                         No items yet. Import XML or add manually.
                                     </td>
                                 </tr>
@@ -238,23 +235,24 @@
             <div class="sidebar flex flex-col gap-6">
 
                 <!-- Financials -->
-                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
-                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                <div
+                    class="bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 overflow-hidden">
+                    <div class="p-4 border-b border-white/10 bg-slate-800/30 flex justify-between items-center">
                         <h3 class="font-semibold text-white">Financial Summary</h3>
                     </div>
                     <div class="p-4 space-y-3">
-                        <div class="flex justify-between text-sm text-zinc-400">
+                        <div class="flex justify-between text-sm text-slate-400">
                             <span>Subtotal</span>
-                            <span class="font-medium text-zinc-200">{{ po()?.subtotal | currency:po()?.currency
+                            <span class="font-medium text-slate-200">{{ po()?.subtotal | currency:po()?.currency
                                 }}</span>
                         </div>
-                        <div class="flex justify-between text-sm text-zinc-400">
+                        <div class="flex justify-between text-sm text-slate-400">
                             <span>Taxes</span>
-                            <span class="font-medium text-zinc-200">{{ po()?.taxTotal | currency:po()?.currency
+                            <span class="font-medium text-slate-200">{{ po()?.taxTotal | currency:po()?.currency
                                 }}</span>
                         </div>
                         <div
-                            class="flex justify-between text-lg font-bold text-white pt-3 border-t border-zinc-700 mt-1">
+                            class="flex justify-between text-lg font-bold text-white pt-3 border-t border-white/10 mt-1">
                             <span>Total</span>
                             <span class="text-emerald-400">{{ po()?.grandTotal | currency:po()?.currency }}</span>
                         </div>
@@ -262,26 +260,28 @@
                 </div>
 
                 <!-- PO Info Form -->
-                <div class="bg-zinc-800 rounded-xl shadow-lg border border-zinc-700 overflow-hidden">
-                    <div class="p-4 border-b border-zinc-700 bg-zinc-800 flex justify-between items-center">
+                <div
+                    class="bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 overflow-hidden">
+                    <div class="p-4 border-b border-white/10 bg-slate-800/30 flex justify-between items-center">
                         <h3 class="font-semibold text-white">Order Details</h3>
                     </div>
                     <div class="p-4 space-y-4">
                         <div class="space-y-1">
-                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">PO
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">PO
                                 Number</label>
                             <input [(ngModel)]="po()!.poNumber"
-                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Supplier
-                                Name</label>
-                            <input [(ngModel)]="po()!.supplierName"
-                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+                                class="w-full bg-slate-800/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
                         </div>
                         <div class="space-y-1">
                             <label
-                                class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Status</label>
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Supplier
+                                Name</label>
+                            <input [(ngModel)]="po()!.supplierName"
+                                class="w-full bg-slate-800/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+                        </div>
+                        <div class="space-y-1">
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Status</label>
                             <div class="py-1">
                                 <span
                                     class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
@@ -292,9 +292,9 @@
                         </div>
                         <div class="space-y-1">
                             <label
-                                class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Notes</label>
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Notes</label>
                             <textarea [(ngModel)]="po()!.notes" rows="4"
-                                class="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors resize-none"></textarea>
+                                class="w-full bg-slate-800/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors resize-none"></textarea>
                         </div>
                     </div>
                 </div>

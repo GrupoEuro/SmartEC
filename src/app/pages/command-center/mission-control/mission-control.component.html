@@ -1,0 +1,58 @@
+<div class="mission-control-container">
+    <div class="header">
+        <div>
+            <h1 class="page-title">
+                <app-icon name="command-center" [size]="24" class="mr-2"></app-icon>
+                Mission Control
+            </h1>
+            <p class="page-subtitle">Strategic Orchestration & Omnichannel Intelligence</p>
+        </div>
+        <div class="actions">
+            <!-- Channel Selector (The "God Mode" View) -->
+            <div class="channel-selector">
+                <button class="btn-channel" [class.active]="contextService.selectedChannels().length === 0"
+                    (click)="selectChannel(null)">
+                    <app-icon name="grid" [size]="16"></app-icon>
+                    All
+                </button>
+                <button *ngFor="let c of contextService.availableChannels" class="btn-channel"
+                    [class.active]="contextService.selectedChannels().includes(c.id)" (click)="selectChannel(c.id)"
+                    [title]="c.label">
+                    <app-icon [name]="c.icon" [size]="16"></app-icon>
+                    <span class="channel-label">{{ c.id.replace('_', ' ') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mission-grid">
+        <!-- 1. Omnichannel Visibility (The "Hidden Data" reveal) -->
+        <div class="grid-item wide">
+            <app-channel-revenue-widget></app-channel-revenue-widget>
+        </div>
+
+        <!-- 2. Marketing Intelligence -->
+        <div class="grid-item">
+            <app-marketing-roi-widget></app-marketing-roi-widget>
+        </div>
+
+        <!-- 3. Autonomous Intelligence: Stockouts -->
+        <div class="grid-item">
+            <app-stockout-prediction-widget></app-stockout-prediction-widget>
+        </div>
+
+        <!-- 4. Pillar 2: End-to-End Visibility (Inbound Logistics) -->
+        <div class="grid-item wide">
+            <app-inbound-logistics-widget></app-inbound-logistics-widget>
+        </div>
+
+        <!-- 5. Pillar 3: Omnichannel Experience (Unified CRM) -->
+        <div class="grid-item wide">
+            <app-unified-crm-widget></app-unified-crm-widget>
+        </div>
+    </div>
+</div>
+
+<!-- Diagnostics Tool -->
+<app-dashboard-diagnostics [logs]="['Mission Control Loaded', 'Context Service Active']" buildVersion="v1.1.0-RC1">
+</app-dashboard-diagnostics>

@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -11,7 +12,7 @@ import { ADMIN_NAVIGATION, NavItem } from '../../../core/config/admin-navigation
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslateModule, HasRoleDirective, AppIconComponent],
+  imports: [CommonModule, RouterModule, TranslateModule, HasRoleDirective, AppIconComponent, SidebarComponent],
   templateUrl: './admin-layout.component.html',
   styleUrls: ['./admin-layout.component.css', '../admin-tables.css']
 })
@@ -72,9 +73,9 @@ export class AdminLayoutComponent {
     this.saveState();
   }
 
-  toggleSidebar() {
-    this.isSidebarCollapsed = !this.isSidebarCollapsed;
-    localStorage.setItem('admin-sidebar-collapsed', this.isSidebarCollapsed.toString());
+  onSidebarCollapse(isCollapsed: boolean) {
+    this.isSidebarCollapsed = isCollapsed;
+    localStorage.setItem('admin-sidebar-collapsed', String(this.isSidebarCollapsed));
   }
 
   private saveState() {

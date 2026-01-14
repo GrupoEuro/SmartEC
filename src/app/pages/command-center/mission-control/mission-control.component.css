@@ -1,0 +1,130 @@
+.mission-control-container {
+    padding: 2rem;
+    color: #e2e8f0;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(to right, #60a5fa, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.page-subtitle {
+    color: #94a3b8;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Channel Selector */
+.channel-selector {
+    display: flex;
+    gap: 0.5rem;
+    background: #0f172a;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #334155;
+}
+
+.btn-channel {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    padding: 0.5rem 0.8rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.btn-channel:hover {
+    color: #cbd5e1;
+    background: #1e293b;
+}
+
+.btn-channel.active {
+    background: #3b82f6;
+    /* Blue Primary */
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+}
+
+.channel-label {
+    text-transform: capitalize;
+}
+
+/* Grid Layout (Bento Grid) */
+.mission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    grid-auto-rows: minmax(350px, auto);
+}
+
+.grid-item.wide {
+    grid-column: span 2;
+}
+
+@media (max-width: 1024px) {
+    .grid-item.wide {
+        grid-column: span 1;
+    }
+}
+
+/* Placeholders */
+.placeholder-item {
+    background: #1e293b;
+    border: 1px dashed #475569;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.placeholder-content {
+    text-align: center;
+    opacity: 0.6;
+}
+
+.placeholder-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+}
+
+.placeholder-content p {
+    margin: 0 0 1rem 0;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.badge-soon {
+    background: #0f172a;
+    color: #64748b;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border: 1px solid #334155;
+}

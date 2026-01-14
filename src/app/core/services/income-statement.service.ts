@@ -19,49 +19,67 @@ export class IncomeStatementService {
      */
     generateIncomeStatement(startDate: Date, endDate: Date): Observable<IncomeStatement> {
         return combineLatest([
-            this.orderService.getOrders(),
+            this.orderService.getOrdersByDateRange(startDate, endDate),
             this.productService.getProducts(),
             this.expenseService.getExpenseSummary(startDate, endDate)
         ]).pipe(
-            map(([orders, products, expenseSummary]) => {
-                // Filter orders in period
-                const periodOrders = orders.filter(o => {
-                    const orderDate = this.getOrderDate(o);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
-
-                // Calculate Revenue
+            map(([periodOrders, products, expenseSummary]) => {
+                // Calculate Revenue & Returns
                 let grossSales = 0;
                 let discounts = 0;
+                let returns = 0;
                 let totalCOGS = 0;
 
                 periodOrders.forEach(order => {
-                    grossSales += order.total;
+                    // Logic: Count revenue for all non-cancelled orders? 
+                    // Or only shipped/delivered? 
+                    // Let's exclude 'cancelled' fully from Gross Sales usually.
+                    // But if it was Returned, it means it WAS sold.
 
-                    // Calculate discounts from coupons
+                    if (order.status === 'cancelled') return;
+
+                    // Returns (Refunding)
+                    if (order.status === 'returned' || order.status === 'refunded') {
+                        returns += order.total;
+                        // For filtered output, we might want to still show them in Gross but subtract in Returns
+                        grossSales += order.total;
+                    } else {
+                        grossSales += order.total;
+                    }
+
+                    // Calculate Discounts
                     const orderWithCoupon = order as any;
                     if (orderWithCoupon.couponCode && orderWithCoupon.discount) {
                         discounts += orderWithCoupon.discount;
                     }
 
                     // Calculate COGS
-                    order.items?.forEach(item => {
-                        const product = products.find(p => p.id === item.productId);
-                        if (product) {
-                            const costPrice = (product as any).costPrice || 0;
-                            totalCOGS += costPrice * item.quantity;
-                        }
-                    });
+                    // Should we count COGS for returned items? 
+                    // Accounting: COGS is reversed on return.
+                    // So we only add COGS if NOT returned? Or we calculate Net COGS?
+                    // Let's calculate Gross COGS and if returned we strictly don't count it?
+                    // Simpler: If returned, COGS is effectively 0 (item back in stock).
+
+                    if (order.status !== 'returned' && order.status !== 'refunded') {
+                        order.items?.forEach(item => {
+                            const product = products.find(p => p.id === item.productId);
+                            if (product) {
+                                // Prefer Average Cost (Kardex), fallback to Last Purchase Price
+                                const unitCost = product.averageCost || product.costPrice || 0;
+                                totalCOGS += unitCost * item.quantity;
+                            }
+                        });
+                    }
                 });
 
-                const returns = 0; // TODO: Implement returns tracking
                 const netSales = grossSales - returns - discounts;
 
-                // COGS (Simplified - using product costs)
-                const beginningInventory = 0; // TODO: Implement inventory snapshots
-                const purchases = 0; // TODO: Implement purchase tracking
-                const endingInventory = 0; // TODO: Implement inventory snapshots
-                const cogs = totalCOGS; // Simplified: direct product costs
+                // Inventory Snapshots (Placeholder until InventoryLedger snapshots)
+                // We use Direct COGS method instead of "Beg + Purch - End"
+                const beginningInventory = 0;
+                const purchases = 0;
+                const endingInventory = 0;
+                const cogs = totalCOGS;
 
                 // Gross Profit
                 const grossProfit = netSales - cogs;
@@ -80,12 +98,16 @@ export class IncomeStatementService {
                 const operatingMargin = netSales > 0 ? (operatingIncome / netSales) * 100 : 0;
 
                 // Other Income/Expenses
-                const otherIncome = 0; // TODO: Implement other income tracking
-                const otherExpenses = 0; // TODO: Implement other expenses tracking
+                const otherIncome = 0;
+                const otherExpenses = 0;
 
                 // Net Income
                 const incomeBeforeTaxes = operatingIncome + otherIncome - otherExpenses;
-                const taxExpense = 0; // TODO: Implement tax calculation
+
+                // Estimated Tax (30% of Positive Income)
+                const taxRate = 0.30;
+                const taxExpense = incomeBeforeTaxes > 0 ? incomeBeforeTaxes * taxRate : 0;
+
                 const netIncome = incomeBeforeTaxes - taxExpense;
                 const netMargin = netSales > 0 ? (netIncome / netSales) * 100 : 0;
 
@@ -93,41 +115,26 @@ export class IncomeStatementService {
                     period: this.getPeriodLabel(startDate, endDate),
                     startDate,
                     endDate,
-
-                    // Revenue
                     grossSales,
                     returns,
                     discounts,
                     netSales,
-
-                    // COGS
                     beginningInventory,
                     purchases,
                     endingInventory,
                     cogs,
-
-                    // Gross Profit
                     grossProfit,
                     grossMargin,
-
-                    // Operating Expenses
                     operatingExpenses,
                     totalOperatingExpenses,
-
-                    // Operating Income
                     operatingIncome,
                     operatingMargin,
-
-                    // Other
                     otherIncome,
                     otherExpenses,
-
-                    // Net Income
                     incomeBeforeTaxes,
                     taxExpense,
                     netIncome,
                     netMargin,
-
                     generatedAt: Timestamp.now()
                 };
             })

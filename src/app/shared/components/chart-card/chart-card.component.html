@@ -20,39 +20,39 @@
         </div>
     </div>
 
-    <!-- Data Table Panel (Collapsible) -->
-    <div class="data-panel" *ngIf="isTableVisible">
-        <div class="table-container">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th *ngFor="let col of tableColumns">{{ col.label | translate }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let row of tableData">
-                        <td *ngFor="let col of tableColumns">
-                            <ng-container *ngIf="col.format === 'category'; else defaultFormat">
-                                {{ 'CATEGORIES.' + (row[col.key] | uppercase) | translate }}
-                            </ng-container>
-                            <ng-template #defaultFormat>
-                                {{ formatValue(row[col.key], col.format) }}
-                            </ng-template>
-                        </td>
-                    </tr>
-                    <tr *ngIf="tableData.length === 0">
-                        <td [attr.colspan]="tableColumns.length" class="empty-cell">
-                            {{ 'COMMAND_CENTER.LABELS.NO_DATA' | translate }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <div class="card-body">
+        <!-- Chart Content (Always Visible, resize when table shows) -->
+        <div class="chart-content">
+            <ng-content></ng-content>
+            <!-- Fallback for internal chart usage -->
+            <app-metric-chart *ngIf="data" [type]="type" [data]="$any(data)" [options]="options" [height]="height"
+                [format]="format">
+            </app-metric-chart>
         </div>
-    </div>
 
-    <!-- Chart Content -->
-    <div class="chart-content">
-        <app-metric-chart [type]="type" [data]="$any(data)" [options]="options" [height]="height" [format]="format">
-        </app-metric-chart>
+        <!-- Data Table Panel (Appears Below Chart) -->
+        <div class="data-panel" *ngIf="isTableVisible">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th *ngFor="let col of tableColumns">{{ col.label | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="tableData.length === 0">
+                            <td [attr.colspan]="tableColumns.length" class="empty-cell">
+                                {{ 'COMMAND_CENTER.LABELS.NO_DATA' | translate }}
+                            </td>
+                        </tr>
+                        <tr *ngFor="let row of tableData">
+                            <td *ngFor="let col of tableColumns">
+                                {{ formatValue(row[col.key], col.format) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>

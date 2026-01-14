@@ -27,10 +27,27 @@ Chart.register(...registerables);
         }
     `]
 })
-export class MetricChartComponent implements AfterViewInit, OnDestroy, OnChanges {
+export class MetricChartComponent implements AfterViewInit, OnDestroy {
     @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
     @Input() type: ChartType = 'line';
-    @Input() data!: ChartData;
+
+    // Internal state for data to handle setters
+    private _data!: ChartData;
+
+    @Input()
+    set data(value: ChartData) {
+        this._data = value;
+        if (this.chart) {
+            this.updateChart();
+        } else if (this.chartCanvas) {
+            // If canvas exists but chart doesn't (initial load), create it
+            this.createChart();
+        }
+    }
+    get data(): ChartData {
+        return this._data;
+    }
+
     @Input() format: 'currency' | 'percentage' | 'number' = 'currency';
     @Input() height: number = 300;
     @Input() options?: ChartConfiguration['options'];
@@ -40,15 +57,7 @@ export class MetricChartComponent implements AfterViewInit, OnDestroy, OnChanges
     private ngZone = inject(NgZone);
 
     ngAfterViewInit() {
-        this.createChart();
-    }
-
-    ngOnChanges(changes: SimpleChanges) {
-        if (changes['data'] && !changes['data'].isFirstChange()) {
-            this.updateChart();
-        }
-        if (changes['options'] && !changes['options'].isFirstChange()) {
-            // Re-create chart if options change significantly, or just update
+        if (this._data) {
             this.createChart();
         }
     }

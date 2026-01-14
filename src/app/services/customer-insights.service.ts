@@ -13,6 +13,14 @@ export interface CustomerProfile {
     averageOrderValue: number;
     churnRiskScore: number; // 0-100 (0=Safe, 100=Lost)
     segment: 'Champion' | 'Loyal' | 'Audio Potential' | 'At Risk' | 'Lost' | 'New';
+    acquisitionChannel?: string; // e.g., 'GOOGLE_ADS', 'WALK_IN'
+}
+
+export interface AcquisitionMetric {
+    channel: string;
+    customerCount: number;
+    totalRevenue: number;
+    avgLTV: number;
 }
 
 export interface Cohort {
@@ -65,7 +73,8 @@ export class CustomerInsightsService {
             const entry = customerMap.get(uid) || {
                 orders: [] as any[],
                 name: data['customer']?.name || 'Unknown',
-                email: data['customer']?.email || 'No Email'
+                email: data['customer']?.email || 'No Email',
+                acquisitionChannel: data['customer']?.acquisitionChannel || 'UNKNOWN'
             };
 
             entry.orders.push({
@@ -133,7 +142,8 @@ export class CustomerInsightsService {
                 firstOrderDate: firstOrder.createdAt,
                 averageOrderValue: avgOrderValue,
                 churnRiskScore: Math.round(churnRisk),
-                segment
+                segment,
+                acquisitionChannel: (entry as any).acquisitionChannel
             });
 
             // Cohort Pre-processing
@@ -247,5 +257,30 @@ export class CustomerInsightsService {
         months -= d1.getMonth();
         months += d2.getMonth();
         return months <= 0 ? 0 : months;
+    }
+
+    getAcquisitionMetrics(): Observable<AcquisitionMetric[]> {
+        return this.getInsights().pipe(
+            map(data => {
+                const metricsMap = new Map<string, { count: number, revenue: number }>();
+
+                data.profiles.forEach(p => {
+                    const channel = p.acquisitionChannel || 'DIRECT';
+                    const current = metricsMap.get(channel) || { count: 0, revenue: 0 };
+
+                    metricsMap.set(channel, {
+                        count: current.count + 1,
+                        revenue: current.revenue + p.totalSpent
+                    });
+                });
+
+                return Array.from(metricsMap.entries()).map(([channel, data]) => ({
+                    channel,
+                    customerCount: data.count,
+                    totalRevenue: data.revenue,
+                    avgLTV: data.count > 0 ? data.revenue / data.count : 0
+                })).sort((a, b) => b.totalRevenue - a.totalRevenue);
+            })
+        );
     }
 }

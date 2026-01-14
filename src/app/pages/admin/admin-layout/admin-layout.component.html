@@ -1,87 +1,10 @@
 <div class="admin-layout">
-    <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
-        <!-- Sidebar Navigation -->
-        <div class="sidebar-header">
-            <div class="header-content">
-                <h3>Admin <span class="text-xs text-zinc-500 font-mono">{{ adminVersion }}</span></h3>
-                <button class="toggle-btn" (click)="toggleSidebar()">
-                    <app-icon [name]="isSidebarCollapsed ? 'menu' : 'chevron-left'" [size]="20"></app-icon>
-                </button>
-            </div>
-        </div>
-        <nav class="sidebar-nav">
-            <!-- Dynamic Sections -->
-            <ng-container *ngFor="let item of navigationItems">
+    <app-sidebar [items]="navigationItems" (collapseChange)="onSidebarCollapse($event)" (onLogout)="logout()">
+    </app-sidebar>
 
-                <!-- Single Link (No Children) -->
-                <a *ngIf="!item.children" [routerLink]="item.route" routerLinkActive="active"
-                    [title]="item.title | translate" class="sidebar-link">
-                    <app-icon [name]="item.icon" [size]="20" class="nav-icon"></app-icon>
-                    <span class="text">{{ item.title | translate }}</span>
-
-                    <span *ngIf="item.badge" class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
-                        [ngClass]="item.badge.color || 'bg-red-500'">
-                        {{ item.badge.text }}
-                    </span>
-                </a>
-
-                <!-- Section with Children -->
-                <div *ngIf="item.children" class="nav-section">
-                    <button class="section-header" (click)="toggleSection(item.id)"
-                        [class.collapsed]="!isExpanded(item.id)" [title]="item.title | translate">
-
-                        <app-icon [name]="item.icon" [size]="20" class="section-icon"></app-icon>
-                        <span class="section-title">{{ item.title | translate }}</span>
-                        <span class="toggle-icon">
-                            <app-icon [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'" [size]="16">
-                            </app-icon>
-                        </span>
-                    </button>
-
-                    <div class="section-items" [class.expanded]="isExpanded(item.id)">
-                        <ng-container *ngFor="let child of item.children">
-                            <a *ngIf="child.roles ? hasRole(child.roles) : true" [routerLink]="child.route"
-                                routerLinkActive="active" [title]="child.title | translate" class="child-link">
-                                <app-icon [name]="child.icon" [size]="18" class="icon"></app-icon>
-                                <span class="text">{{ child.title | translate }}</span>
-
-                                <span *ngIf="child.badge"
-                                    class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
-                                    [ngClass]="child.badge.color">
-                                    {{ child.badge.text }}
-                                </span>
-                            </a>
-                        </ng-container>
-                    </div>
-                </div>
-            </ng-container>
-        </nav>
-        <div class="sidebar-footer">
-            @if (user$ | async; as user) {
-            <div class="user-profile" [title]="(userProfile$ | async)?.displayName || user.displayName || user.email">
-                <div class="user-avatar">
-                    @if (user.photoURL) {
-                    <img [src]="user.photoURL" [alt]="(userProfile$ | async)?.displayName || user.displayName">
-                    } @else {
-                    <div class="avatar-placeholder">{{ getUserInitials((userProfile$ | async)?.displayName ||
-                        user.displayName || user.email) }}</div>
-                    }
-                </div>
-                <div class="user-info">
-                    <span class="user-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'Admin'
-                        }}</span>
-                    <span class="user-email">{{ user.email }}</span>
-                </div>
-            </div>
-            }
-            <button (click)="logout()" class="logout-link" [title]="'ADMIN.SIDEBAR.LOGOUT' | translate">
-                <app-icon name="log-out" [size]="20" class="logout-icon"></app-icon>
-                <span class="text">{{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}</span>
-            </button>
-        </div>
-    </aside>
     <main class="admin-content" [class.expanded]="isSidebarCollapsed">
         <header class="admin-header">
+            <!-- Optional: Hamburger if we wanted one here, but Sidebar handles it -->
             <div class="spacer"></div>
 
             <div class="header-actions-group">

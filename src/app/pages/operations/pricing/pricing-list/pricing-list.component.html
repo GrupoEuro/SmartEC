@@ -19,7 +19,7 @@
 
     <div class="grid-wrapper">
         <ag-grid-angular class="ag-theme-alpine-dark" style="width: 100%; height: 100%;" [rowData]="rowData()"
-            [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+            [columnDefs]="columnDefs()" [defaultColDef]="defaultColDef"
             [loadingOverlayComponentParams]="{ loadingMessage: 'Calculating optimized prices...' }"
             (cellValueChanged)="onCellValueChanged($event)">
         </ag-grid-angular>

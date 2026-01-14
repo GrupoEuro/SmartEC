@@ -51,6 +51,13 @@ export interface HourlyData {
     count: number;
 }
 
+export interface ChannelMetrics {
+    channel: string;
+    revenue: number;
+    orderCount: number;
+    avgOrderValue: number;
+}
+
 export interface SLAStatus {
     isCompliant: boolean;
     isAtRisk: boolean;
@@ -439,5 +446,60 @@ export class OperationalMetricsService {
             return timestamp.toDate();
         }
         return new Date(timestamp);
+    }
+
+    /**
+     * Get revenue and order counts broken down by Channel
+     */
+    getChannelMetrics(startDate: Date, endDate: Date): Observable<ChannelMetrics[]> {
+        const cacheKey = `channelMetrics_${startDate.getTime()}_${endDate.getTime()}`;
+        const cached = this.getFromCache(cacheKey);
+        if (cached) return of(cached);
+
+        return this.orderService.getOrders().pipe(
+            map(orders => {
+                console.log(`🔍 [Metrics] Filtering Orders: ${orders.length} total available.`);
+                console.log(`🔍 [Metrics] Range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+
+                const periodOrders = orders.filter(o => {
+                    const orderDate = this.getOrderDate(o);
+                    const inRange = orderDate >= startDate && orderDate <= endDate;
+                    if (!inRange && Math.random() < 0.01) {
+                        // Sample log for rejected orders
+                        console.log(`   [Excluded] Order Date: ${orderDate.toISOString()} (Outside Range)`);
+                    }
+                    return inRange;
+                });
+
+                console.log(`✅ [Metrics] ${periodOrders.length} orders found in range.`);
+
+                const channelMap = new Map<string, { revenue: number; count: number }>();
+
+                periodOrders.forEach(o => {
+                    // Normalize channel name
+                    const channelRaw = o.channel || 'WEB'; // Default to web if missing
+                    const channel = channelRaw.toUpperCase().replace('_', ' ');
+
+                    const current = channelMap.get(channel) || { revenue: 0, count: 0 };
+
+                    channelMap.set(channel, {
+                        revenue: current.revenue + (o.total || 0),
+                        count: current.count + 1
+                    });
+                });
+
+                const metrics: ChannelMetrics[] = Array.from(channelMap.entries())
+                    .map(([channel, data]) => ({
+                        channel,
+                        revenue: data.revenue,
+                        orderCount: data.count,
+                        avgOrderValue: data.count > 0 ? data.revenue / data.count : 0
+                    }))
+                    .sort((a, b) => b.revenue - a.revenue);
+
+                this.setCache(cacheKey, metrics);
+                return metrics;
+            })
+        );
     }
 }

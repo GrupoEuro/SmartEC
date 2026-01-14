@@ -148,6 +148,12 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent)
             },
             {
+                path: 'staff',
+                loadComponent: () => import('./system/staff/staff-list/staff-list.component').then(m => m.StaffListComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] }
+            },
+            {
                 path: 'users',
                 loadComponent: () => import('./users/user-list/user-list.component')
                     .then(m => m.UserListComponent),
@@ -169,6 +175,18 @@ export const ADMIN_ROUTES: Routes = [
             {
                 path: 'warehouses/:id',
                 loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent)
+            },
+            {
+                path: 'integrations/callback',
+                loadComponent: () => import('./settings/integrations/callback/integration-callback.component').then(m => m.IntegrationCallbackComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
+            },
+            {
+                path: 'integrations',
+                loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
             },
             {
                 path: 'settings',

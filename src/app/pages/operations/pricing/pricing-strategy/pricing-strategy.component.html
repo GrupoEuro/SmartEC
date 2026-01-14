@@ -10,173 +10,215 @@
                 </div>
             </div>
 
-            @if (selectedProduct()) {
-            <button class="btn-save" (click)="savePricingStrategy()">
-                <app-icon name="save"></app-icon>
-                {{ 'PRICING_STRATEGY.SAVE_STRATEGY' | translate }}
-            </button>
-            }
+            <div class="pricing-header-actions">
+                <button class="btn-simulator-toggle" [class.active]="isSimulatorMode()" (click)="toggleSimulator()">
+                    <app-icon name="science"></app-icon>
+                    Simulator Mode
+                </button>
+                <button class="btn-calculate-header" (click)="calculatePrices()"
+                    [disabled]="!selectedProduct() || calculating()">
+                    @if (calculating()) {
+                    <app-icon name="refresh_cw" class="spin" [size]="18"></app-icon>
+                    } @else {
+                    <app-icon name="calculator" [size]="18"></app-icon>
+                    }
+                    {{ 'PRICING_STRATEGY.CALCULATE' | translate }}
+                </button>
+
+                @if (selectedProduct()) {
+                <button class="btn-save" (click)="savePricingStrategy()">
+                    <app-icon name="save"></app-icon>
+                    {{ 'PRICING_STRATEGY.SAVE_STRATEGY' | translate }}
+                </button>
+                }
+            </div>
         </div>
     </div>
 
-    <div class="content-grid">
-        <!-- Left Panel: Inputs -->
-        <div class="input-panel">
-            <!-- Product Selection -->
-            <div class="card">
-                <h2 class="card-title">
-                    <app-icon name="inventory_2"></app-icon>
-                    {{ 'PRICING_STRATEGY.PRODUCT_SELECTION' | translate }}
-                </h2>
-
-                <div class="search-box">
-                    <app-icon name="search" class="search-icon"></app-icon>
-                    <input type="text" [placeholder]="'PRICING_STRATEGY.SEARCH_PLACEHOLDER' | translate"
-                        [(ngModel)]="searchQuery" class="search-input" />
-                </div>
-
-                @if (selectedProduct()) {
-                <div class="selected-product">
-                    <div class="product-info">
-                        <span class="product-sku">{{ selectedProduct()!.sku }}</span>
-                        <span class="product-name">{{ selectedProduct()!.name.es }}</span>
-                    </div>
-                    <button class="btn-icon" (click)="selectedProduct.set(null)">
-                        <app-icon name="close"></app-icon>
-                    </button>
-                </div>
-                } @else if (searchQuery()) {
-                <div class="product-list">
-                    @for (product of filteredProducts(); track product.id) {
-                    <div class="product-item" (click)="selectProduct(product)">
-                        <span class="product-sku">{{ product.sku }}</span>
-                        <span class="product-name">{{ product.name.es }}</span>
-                    </div>
-                    }
-                    @empty {
-                    <div class="empty-state">{{ 'PRICING_STRATEGY.NO_PRODUCTS_FOUND' | translate }}</div>
-                    }
-                </div>
-                }
+    <!-- Simulator Mode UI -->
+    @if (isSimulatorMode()) {
+    <div class="simulator-container">
+        <div class="simulator-header">
+            <div class="simulator-title">
+                <app-icon name="science"></app-icon>
+                <span>Pricing Simulator ("What-If")</span>
             </div>
-
-            <!-- Cost Inputs -->
-            <div class="card">
-                <h2 class="card-title">
-                    <app-icon name="payments"></app-icon>
-                    {{ 'PRICING_STRATEGY.BASE_COSTS' | translate }}
-                </h2>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.COG' | translate }}</label>
-                    <div class="input-with-currency">
-                        <span class="currency">$</span>
-                        <input type="number" [(ngModel)]="cog" class="number-input" />
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.INBOUND_SHIPPING' | translate }}</label>
-                    <div class="input-with-currency">
-                        <span class="currency">$</span>
-                        <input type="number" [(ngModel)]="inboundShipping" class="number-input" />
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.PACKAGING' | translate }}</label>
-                    <div class="input-with-currency">
-                        <span class="currency">$</span>
-                        <input type="number" [(ngModel)]="packaging" class="number-input" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Product Specs -->
-            <div class="card">
-                <h2 class="card-title">
-                    <app-icon name="straighten"></app-icon>
-                    {{ 'PRICING_STRATEGY.PRODUCT_SPECS' | translate }}
-                </h2>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.WEIGHT' | translate }}</label>
-                    <input type="number" step="0.1" [(ngModel)]="weight" class="number-input" />
-                </div>
-
-                <div class="dimensions-grid">
-                    <div class="input-group">
-                        <label>{{ 'PRICING_STRATEGY.LENGTH' | translate }}</label>
-                        <input type="number" [(ngModel)]="length" class="number-input" />
-                    </div>
-                    <div class="input-group">
-                        <label>{{ 'PRICING_STRATEGY.WIDTH' | translate }}</label>
-                        <input type="number" [(ngModel)]="width" class="number-input" />
-                    </div>
-                    <div class="input-group">
-                        <label>{{ 'PRICING_STRATEGY.HEIGHT' | translate }}</label>
-                        <input type="number" [(ngModel)]="height" class="number-input" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Margin Targets -->
-            <div class="card">
-                <h2 class="card-title">
-                    <app-icon name="trending_up"></app-icon>
-                    {{ 'PRICING_STRATEGY.PROFIT_TARGETS' | translate }}
-                </h2>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.TARGET_GROSS_MARGIN' | translate }}: {{
-                        formatPercent(targetGrossMargin())
-                        }}</label>
-                    <input type="range" min="0" max="100" [(ngModel)]="targetGrossMargin" class="slider" />
-                    <div class="slider-labels">
-                        <span>0%</span>
-                        <span>100%</span>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.TARGET_NET_MARGIN' | translate }}: {{ formatPercent(targetNetMargin())
-                        }}</label>
-                    <input type="range" min="0" max="50" [(ngModel)]="targetNetMargin" class="slider" />
-                    <div class="slider-labels">
-                        <span>0%</span>
-                        <span>50%</span>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>{{ 'PRICING_STRATEGY.MIN_ACCEPTABLE_MARGIN' | translate }}: {{
-                        formatPercent(minAcceptableMargin()) }}</label>
-                    <input type="range" min="0" max="30" [(ngModel)]="minAcceptableMargin" class="slider" />
-                    <div class="slider-labels">
-                        <span>0%</span>
-                        <span>30%</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Calculate Button -->
-            <button class="btn-calculate" (click)="calculatePrices()" [disabled]="!selectedProduct() || calculating()">
-                @if (calculating()) {
-                <app-icon name="autorenew" class="spin"></app-icon>
-                {{ 'PRICING_STRATEGY.CALCULATING' | translate }}
-                } @else {
-                <app-icon name="calculate"></app-icon>
-                {{ 'PRICING_STRATEGY.CALCULATE_PRICES' | translate }}
-                }
+            <button class="btn-apply-sim" (click)="applySimulation()">
+                Apply Strategy
             </button>
         </div>
 
-        <!-- Right Panel: Results -->
-        <div class="results-panel">
-            @if (channelPrices() && Object.keys(channelPrices()).length > 0) {
+        <div class="simulator-controls">
+            <!-- Price Control -->
+            <div class="control-group">
+                <label>Simulated Price ({{ simulatedChannel() }})</label>
+                <div class="sim-price">{{ formatCurrency(simulatedPrice()) }}</div>
+                <input type="range" class="price-slider" [min]="cog()" [max]="anchorBasePrice() * 2" step="10"
+                    [value]="simulatedPrice()" (input)="onSimulatedPriceChange($event)">
+                <div class="text-xs text-slate-500 mt-1">Base Price: {{ formatCurrency(anchorBasePrice()) }}</div>
+            </div>
 
-            <!-- Global Expand/Collapse & View Mode -->
-            <div class="expand-controls">
+            <!-- Discount Control (Linked) -->
+            <div class="control-group">
+                <label>Discount % ("What-If")</label>
+                <div class="sim-price text-purple-400">{{ simulatedDiscount() }}%</div>
+                <input type="range" class="price-slider" min="0" max="80" step="1" [value]="simulatedDiscount()"
+                    (input)="onDiscountChange($event)">
+            </div>
+
+            <!-- Result Control -->
+            <div class="control-group">
+                <label>Resulting Net Margin</label>
+                <div class="sim-price"
+                    [class]="getMarginColor(simulationResults()[simulatedChannel()!].netMargin || 0, 0)">
+                    {{ formatPercent(simulationResults()[simulatedChannel()!].netMargin || 0) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="simulation-results-grid">
+            @for (channel of channels; track channel.channel) {
+            @if (simulationResults()[channel.channel]) {
+            <div class="sim-result-card" [class.anchor]="channel.channel === simulatedChannel()">
+                <div class="text-slate-400 text-sm mb-2">{{ channel.channelName }}</div>
+                <div class="sim-price text-xl">
+                    {{ formatCurrency(simulationResults()[channel.channel].sellingPrice) }}
+                </div>
+                <div class="sim-margin" [class]="getMarginColor(simulationResults()[channel.channel].netMargin, 0)">
+                    {{ formatPercent(simulationResults()[channel.channel].netMargin) }} Margin
+                </div>
+            </div>
+            }
+            }
+        </div>
+    </div>
+    }
+
+    <div class="content-grid">
+        <!-- Input Row: 3 Cards Horizontal -->
+        <div class="input-row">
+            <!-- Card 1: Product Selection -->
+            <div class="strategy-card">
+                <div class="card-header">
+                    <app-icon name="inventory_2"></app-icon>
+                    <h2>{{ 'PRICING_STRATEGY.PRODUCT_SELECTION' | translate }}</h2>
+                </div>
+
+                <div class="form-group search-box">
+                    <app-icon name="search" class="search-icon"></app-icon>
+                    <input type="text" [placeholder]="'PRICING_STRATEGY.SEARCH_PLACEHOLDER' | translate"
+                        [(ngModel)]="searchQuery" class="search-input" />
+
+                    @if (searchQuery() && !selectedProduct()) {
+                    <div class="search-results mt-2">
+                        @for (product of filteredProducts(); track product.id) {
+                        <div class="search-item p-2 hover:bg-slate-700 cursor-pointer rounded"
+                            (click)="selectProduct(product)">
+                            <span class="font-bold text-slate-200">{{ product.sku }}</span>
+                            <span class="text-slate-400 ml-2">{{ product.name.es }}</span>
+                        </div>
+                        }
+                        @empty {
+                        <div class="text-slate-500 p-2">{{ 'PRICING_STRATEGY.NO_PRODUCTS_FOUND' | translate }}</div>
+                        }
+                    </div>
+                    }
+                </div>
+
+                @if (selectedProduct()) {
+                <div class="selected-product compact mt-4">
+                    <div class="product-info-row">
+                        <span class="product-sku">{{ selectedProduct()!.sku }}</span>
+                        <span class="product-name truncate">{{ selectedProduct()!.name.es }}</span>
+                    </div>
+                    <button class="btn-icon text-slate-400 hover:text-white" (click)="selectedProduct.set(null)">
+                        <app-icon name="close" [size]="16"></app-icon>
+                    </button>
+                </div>
+                }
+            </div>
+
+            <!-- Card 2: Cost Inputs -->
+            <div class="strategy-card">
+                <div class="card-header">
+                    <app-icon name="credit_card"></app-icon>
+                    <h2>{{ 'PRICING_STRATEGY.BASE_COSTS' | translate }}</h2>
+                </div>
+
+                <div class="costs-grid">
+                    <div class="form-group full-width">
+                        <label>{{ 'PRICING_STRATEGY.COG' | translate }}</label>
+                        <div class="input-wrapper">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" [ngModel]="cog()" (ngModelChange)="cog.set($event); onInputChange()"
+                                placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ 'PRICING_STRATEGY.INBOUND_SHIPPING' | translate }}</label>
+                        <div class="input-wrapper">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" [ngModel]="inboundShipping()"
+                                (ngModelChange)="inboundShipping.set($event); onInputChange()" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ 'PRICING_STRATEGY.PACKAGING' | translate }}</label>
+                        <div class="input-wrapper">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" [ngModel]="packaging()"
+                                (ngModelChange)="packaging.set($event); onInputChange()" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="strategy-card">
+                <div class="card-header">
+                    <app-icon name="target"></app-icon>
+                    <h2>{{ 'PRICING_STRATEGY.MARGIN_TARGETS' | translate }}</h2>
+                </div>
+
+                <div class="form-group compact">
+                    <div class="label-input-row">
+                        <label>{{ 'PRICING_STRATEGY.TARGET_NET_MARGIN' | translate }}</label>
+                        <div class="input-wrapper tiny-input">
+                            <input type="number" [ngModel]="targetNetMargin()"
+                                (ngModelChange)="targetNetMargin.set($event); onInputChange()" placeholder="20">
+                            <span class="suffix">%</span>
+                        </div>
+                    </div>
+                    <!-- Range Slider -->
+                    <input type="range"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-colors"
+                        min="0" max="60" step="0.5" [ngModel]="targetNetMargin()"
+                        (ngModelChange)="targetNetMargin.set($event); onInputChange()">
+                </div>
+
+                <div class="form-group compact">
+                    <div class="label-input-row">
+                        <label>{{ 'PRICING_STRATEGY.MIN_ACCEPTABLE_MARGIN' | translate }}</label>
+                        <div class="input-wrapper tiny-input">
+                            <input type="number" [ngModel]="minAcceptableMargin()"
+                                (ngModelChange)="minAcceptableMargin.set($event); onInputChange()" placeholder="12">
+                            <span class="suffix">%</span>
+                        </div>
+                    </div>
+                    <!-- Range Slider -->
+                    <input type="range"
+                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-colors"
+                        min="0" max="40" step="0.5" [ngModel]="minAcceptableMargin()"
+                        (ngModelChange)="minAcceptableMargin.set($event); onInputChange()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Results -->
+        <div class="results-panel full-width">
+            <!-- Global Expand/Collapse & View Mode - Always Visible -->
+            <div class="expand-controls mb-4">
                 <div class="view-toggles">
                     <button class="btn-icon" [class.active]="viewMode() === 'cards'" (click)="viewMode.set('cards')"
                         title="Card View">
@@ -188,13 +230,17 @@
                     </button>
                 </div>
 
-                <span class="switch-label" *ngIf="viewMode() === 'cards'">{{ 'PRICING_STRATEGY.SHOW_DETAILS' | translate
-                    }}</span>
-                <label class="switch" *ngIf="viewMode() === 'cards'">
-                    <input type="checkbox" [checked]="showDetails()" (change)="toggleAll($event)">
-                    <span class="slider-toggle round"></span>
-                </label>
+                <div class="flex items-center gap-2"
+                    *ngIf="viewMode() === 'cards' && channelPrices() && Object.keys(channelPrices()).length > 0">
+                    <span class="switch-label">{{ 'PRICING_STRATEGY.SHOW_DETAILS' | translate }}</span>
+                    <label class="switch">
+                        <input type="checkbox" [checked]="showDetails()" (change)="toggleAll($event)">
+                        <span class="slider-toggle round"></span>
+                    </label>
+                </div>
             </div>
+
+            @if (channelPrices() && Object.keys(channelPrices()).length > 0) {
 
             <!-- Matrix View -->
             @if (viewMode() === 'matrix') {
@@ -226,9 +272,14 @@
                         <tr class="highlight-row profit-row">
                             <td class="metric-label">Net Profit</td>
                             @for (channel of channels; track channel.channel) {
-                            <td [class]="getMarginColor(channel.price?.netMargin || 0, minAcceptableMargin())">
-                                {{ formatCurrency(channel.price?.netProfit || 0) }}
-                                <span class="sub-metric">({{ formatPercent(channel.price?.netMargin || 0) }})</span>
+                            <td>
+                                <div class="profit-pill" [class.positive]="(channel.price?.netMargin || 0) >= 20"
+                                    [class.warning]="(channel.price?.netMargin || 0) < 20 && (channel.price?.netMargin || 0) >= minAcceptableMargin()"
+                                    [class.negative]="(channel.price?.netMargin || 0) < minAcceptableMargin()">
+                                    {{ formatCurrency(channel.price?.netProfit || 0) }}
+                                </div>
+                                <span class="sub-metric" [class.text-red-500]="(channel.price?.netMargin || 0) < 0">{{
+                                    formatPercent(channel.price?.netMargin || 0) }} Margin</span>
                             </td>
                             }
                         </tr>
@@ -237,9 +288,11 @@
                         <tr class="highlight-row">
                             <td class="metric-label">ROI</td>
                             @for (channel of channels; track channel.channel) {
-                            <td [class.positive]="(channel.price?.roi || 0) > 0"
-                                [class.negative]="(channel.price?.roi || 0) < 0">
-                                {{ formatPercent(channel.price?.roi || 0) }}
+                            <td>
+                                <div class="profit-pill" [class.positive]="(channel.price?.roi || 0) > 0"
+                                    [class.negative]="(channel.price?.roi || 0) <= 0">
+                                    {{ formatPercent(channel.price?.roi || 0) }}
+                                </div>
                             </td>
                             }
                         </tr>
@@ -270,7 +323,8 @@
                         <tr>
                             <td class="metric-label">Total Cost</td>
                             @for (channel of channels; track channel.channel) {
-                            <td class="total-cost">{{ formatCurrency(channel.price?.breakdown?.totalCost || 0) }}</td>
+                            <td class="total-cost">{{ formatCurrency(channel.price?.breakdown?.totalCost || 0) }}
+                            </td>
                             }
                         </tr>
                     </tbody>
@@ -321,28 +375,34 @@
                         <div class="breakdown-item">
                             <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.FULFILLMENT' | translate
                                 }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.fulfillmentShipping)
+                            <span class="breakdown-value">{{
+                                formatCurrency(channel.price.breakdown.fulfillmentShipping)
                                 }}</span>
                         </div>
                         <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PAYMENT_PROCESSING' | translate
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PAYMENT_PROCESSING' |
+                                translate
                                 }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.paymentProcessing)
+                            <span class="breakdown-value">{{
+                                formatCurrency(channel.price.breakdown.paymentProcessing)
                                 }}</span>
                         </div>
                         <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.STORAGE' | translate }}</span>
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.STORAGE' | translate
+                                }}</span>
                             <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.storageFees)
                                 }}</span>
                         </div>
                         <div class="breakdown-item">
                             <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PACKAGING' | translate
                                 }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.packagingLabeling)
+                            <span class="breakdown-value">{{
+                                formatCurrency(channel.price.breakdown.packagingLabeling)
                                 }}</span>
                         </div>
                         <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.INBOUND_SHIPPING' | translate
+                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.INBOUND_SHIPPING' |
+                                translate
                                 }}</span>
                             <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.inboundShipping)
                                 }}</span>
@@ -350,7 +410,8 @@
                         <div class="breakdown-item total">
                             <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.TOTAL_COST' | translate
                                 }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.totalCost) }}</span>
+                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.totalCost)
+                                }}</span>
                         </div>
                     </div>
 
@@ -371,7 +432,8 @@
                                 <span [class]="getMarginColor(channel.price.netMargin, minAcceptableMargin())"
                                     class="net-profit-value">
                                     {{ formatCurrency(channel.price.netProfit) }}
-                                    <span class="margin-percent">({{ formatPercent(channel.price.netMargin) }})</span>
+                                    <span class="margin-percent">({{ formatPercent(channel.price.netMargin)
+                                        }})</span>
                                 </span>
                             </div>
                             <div class="margin-item">
@@ -418,7 +480,6 @@
         <p>{{ 'PRICING_STRATEGY.READY_DESC' | translate }}</p>
     </div>
     }
-</div>
 </div>
 </div>
 

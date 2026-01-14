@@ -495,4 +495,33 @@ export class PricingCalculatorService {
             warnings
         };
     }
+    /**
+     * REVERSE CALCULATION: Calculate profit/margin given a fixed selling price
+     * Used for "What-If" Simulator
+     */
+    async calculateProfitFromPrice(
+        product: Product,
+        channel: SalesChannel,
+        sellingPrice: number,
+        customCosts?: Partial<CostBreakdown>
+    ): Promise<ChannelPrice> {
+        const rules = await this.getCommissionRule(channel, product.category || 'general');
+        if (!rules) throw new Error(`No commission rules found for channel: ${channel}`);
+
+        const baseCost = product.cog || 0;
+        const inboundShipping = customCosts?.inboundShipping || 0;
+        const packagingCost = customCosts?.packagingLabeling || 0;
+
+        const breakdown = await this.calculateCostBreakdown(
+            sellingPrice,
+            baseCost,
+            inboundShipping,
+            packagingCost,
+            product.weight || 0,
+            product.dimensions || { length: 0, width: 0, height: 0 },
+            rules
+        );
+
+        return this.buildChannelPrice(sellingPrice, breakdown);
+    }
 }

@@ -56,6 +56,50 @@ export const APP_MAP: RouteNode[] = [
                 ]
             },
             {
+                path: 'pricing',
+                label: 'Pricing Engine',
+                icon: 'dollar-sign',
+                type: 'ops',
+                children: [
+                    { path: '', label: 'Pricing Strategy', icon: 'sliders', type: 'ops' },
+                    { path: 'pricing-grid', label: 'Smart Price Grid', icon: 'grid', type: 'ops' }
+                ]
+            },
+            {
+                path: 'inventory',
+                label: 'Inventory Management',
+                icon: 'box',
+                type: 'ops',
+                children: [
+                    { path: '', label: 'Inventory Lookup', icon: 'search', type: 'ops' },
+                    { path: 'locator', label: 'Warehouse Locator v2', icon: 'map-pin', type: 'ops' },
+                    { path: 'cycle-counting', label: 'Cycle Counting', icon: 'refresh-cw', type: 'ops' },
+                    { path: 'abc-analysis', label: 'ABC Analysis', icon: 'bar-chart', type: 'ops' },
+                    { path: 'kardex/:productId', label: 'Kardex History', icon: 'file-text', type: 'ops' }
+                ]
+            },
+            {
+                path: 'receiving',
+                label: 'Inbound Logistics',
+                icon: 'truck',
+                type: 'ops',
+                children: [
+                    { path: '', label: 'Receiving Dashboard', icon: 'activity', type: 'ops' },
+                    { path: 'receive', label: 'Receive Goods', icon: 'download', type: 'ops' },
+                    { path: 'putaway', label: 'Putaway Tasks', icon: 'log-in', type: 'ops' }
+                ]
+            },
+            {
+                path: 'procurement',
+                label: 'Procurement',
+                icon: 'shopping-bag',
+                type: 'ops',
+                children: [
+                    { path: '', label: 'Purchase Orders', icon: 'list', type: 'ops' },
+                    { path: ':id', label: 'PO Detail', icon: 'file-text', type: 'ops' }
+                ]
+            },
+            {
                 path: 'customers',
                 label: 'Customer Lookup',
                 icon: 'users',
@@ -64,8 +108,8 @@ export const APP_MAP: RouteNode[] = [
                     { path: ':id', label: 'Profile', icon: 'user', type: 'ops' }
                 ]
             },
-            { path: 'inventory', label: 'Inventory Lookup', icon: 'box', type: 'ops' },
-            { path: 'promotions', label: 'Promo Reference', icon: 'gift', type: 'ops' }
+            { path: 'promotions', label: 'Promo Reference', icon: 'gift', type: 'ops' },
+            { path: 'warehouses', label: 'Warehouse List', icon: 'home', type: 'ops' }
         ]
     },
     {
@@ -131,8 +175,46 @@ export const APP_MAP: RouteNode[] = [
             { path: 'firestore', label: 'Firestore Monitor', icon: 'activity', type: 'dev' },
             { path: 'i18n', label: 'I18n Studio', icon: 'globe', type: 'dev' },
             { path: 'config', label: 'System Config', icon: 'settings', type: 'dev' },
-
             { path: 'doc-generator', label: 'Document Generator', icon: 'file-text', type: 'dev' }
+        ]
+    },
+    {
+        path: '/roadmap',
+        label: 'Phase 6: Strategic Roadmap',
+        icon: 'flag',
+        type: 'system',
+        children: [
+            {
+                path: 'autonomous',
+                label: 'Autonomous Intelligence',
+                icon: 'cpu',
+                type: 'system',
+                children: [
+                    { path: 'stockout-predictions', label: 'Predictive PO Generator', icon: 'zap', type: 'system' },
+                    { path: 'dynamic-pricing', label: 'Competitor Price Agent', icon: 'trending-up', type: 'system' }
+                ]
+            },
+            {
+                path: 'visibility',
+                label: 'End-to-End Visibility',
+                icon: 'eye',
+                type: 'system',
+                children: [
+                    { path: 'inbound', label: 'Inbound Logistics Map', icon: 'map', type: 'system' },
+                    { path: 'last-mile', label: 'Last Mile Tracker', icon: 'truck', type: 'system' },
+                    { path: 'marketplace-health', label: 'Marketplace Sync Status', icon: 'activity', type: 'system' }
+                ]
+            },
+            {
+                path: 'omnichannel',
+                label: 'Omnichannel Experience',
+                icon: 'globe',
+                type: 'system',
+                children: [
+                    { path: 'unified-crm', label: 'Customer 360 (Unified)', icon: 'users', type: 'system' },
+                    { path: 'returns', label: 'Universal Returns Portal', icon: 'rotate-ccw', type: 'system' }
+                ]
+            }
         ]
     }
 ];

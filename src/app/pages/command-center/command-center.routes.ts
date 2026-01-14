@@ -20,6 +20,10 @@ export const commandCenterRoutes: Routes = [
                 data: { title: 'COMMAND_CENTER.DASHBOARD' }
             },
             {
+                path: 'mission-control',
+                loadComponent: () => import('./mission-control/mission-control.component').then(m => m.MissionControlComponent)
+            },
+            {
                 path: 'approvals',
                 loadComponent: () => import('./approvals/approvals-dashboard.component')
                     .then(m => m.ApprovalsDashboardComponent),

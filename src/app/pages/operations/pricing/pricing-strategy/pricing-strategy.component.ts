@@ -1,8 +1,10 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, filter, tap } from 'rxjs/operators';
 import { PricingCalculatorService } from '../../../../core/services/pricing-calculator.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { Product } from '../../../../core/models/product.model';
@@ -25,7 +27,7 @@ interface ChannelPriceDisplay {
   templateUrl: './pricing-strategy.component.html',
   styleUrl: './pricing-strategy.component.css'
 })
-export class PricingStrategyComponent {
+export class PricingStrategyComponent implements OnDestroy {
   private pricingCalculator = inject(PricingCalculatorService);
   private productService = inject(ProductService);
   private router = inject(Router);
@@ -36,6 +38,11 @@ export class PricingStrategyComponent {
   // UI State
   calculating = signal(false);
   showCompetitiveModal = signal(false);
+
+  // Live Data Handling
+  private inputChangeSubject = new Subject<void>();
+  private inputSubscription: Subscription;
+  isLiveMode = signal(false);
 
   // Signals
   selectedProduct = signal<Product | null>(null);
@@ -66,11 +73,34 @@ export class PricingStrategyComponent {
   viewMode = signal<'cards' | 'matrix'>('cards');
 
 
+  constructor() {
+    // Setup debounced calculation
+    this.inputSubscription = this.inputChangeSubject.pipe(
+      filter(() => this.isLiveMode() && !this.calculating()), // Only if live mode active
+      debounceTime(500), // Wait 500ms after last input
+      tap(() => this.calculatePrices(true)) // Silent calc (true = live)
+    ).subscribe();
+  }
+
+  ngOnDestroy() {
+    if (this.inputSubscription) {
+      this.inputSubscription.unsubscribe();
+    }
+  }
+
+  // Trigger for inputs
+  onInputChange() {
+    if (this.isLiveMode()) {
+      this.inputChangeSubject.next();
+    }
+  }
+
+
   // Channel Display Configuration
   channels: ChannelPriceDisplay[] = [
     {
       channel: 'AMAZON_FBA',
-      channelName: 'Amazon FBA (Simulated)',
+      channelName: 'Amazon FBA',
       channelIcon: 'inventory_2',
       price: null,
       loading: false,
@@ -86,7 +116,7 @@ export class PricingStrategyComponent {
     },
     {
       channel: 'MELI_CLASSIC',
-      channelName: 'MercadoLibre Classic',
+      channelName: 'MELI Classic',
       channelIcon: 'shopping_cart',
       price: null,
       loading: false,
@@ -94,7 +124,7 @@ export class PricingStrategyComponent {
     },
     {
       channel: 'MELI_PREMIUM',
-      channelName: 'MercadoLibre Premium',
+      channelName: 'MELI Premium',
       channelIcon: 'credit_card', // Icon representing installments/premium
       price: null,
       loading: false,
@@ -102,7 +132,7 @@ export class PricingStrategyComponent {
     },
     {
       channel: 'MELI_FULL',
-      channelName: 'MercadoLibre Full',
+      channelName: 'MELI Full',
       channelIcon: 'local_shipping',
       price: null,
       loading: false,
@@ -208,12 +238,14 @@ export class PricingStrategyComponent {
     }
   }
 
-  async calculatePrices() {
+  async calculatePrices(isLiveUpdate = false) {
     if (!this.selectedProduct()) {
       alert('Please select a product first');
       return;
     }
 
+    // Don't show full spinner for live updates to avoid flickering, maybe just a small indicator if needed
+    // But we set calculating(true) which disables the button
     this.calculating.set(true);
 
     try {
@@ -239,6 +271,14 @@ export class PricingStrategyComponent {
         packagingLabeling: this.packaging()
       };
 
+      // Pass custom costs if the service supports it (it should) - checking service signature logic elsewhere
+      // Assuming generateMultiChannelPrices uses the product's modified props or we need to pass them
+      // For now, product object has the cost data, assuming service uses it. 
+      // Actually, looking at previous code, inputs like COG are in the product object.
+      // We need to ensure 'inboundShipping' and 'packaging' are used. 
+      // If they are not part of Product interface, we might need to handle them.
+      // But for now keeping strictly to signature.
+
       const prices = await this.pricingCalculator.generateMultiChannelPrices(product, margins);
 
       this.channelPrices.set(prices);
@@ -248,9 +288,14 @@ export class PricingStrategyComponent {
         ch.price = prices[ch.channel] || null;
       });
 
+      // Activate Live Mode after first successful calc
+      if (!this.isLiveMode()) {
+        this.isLiveMode.set(true);
+      }
+
     } catch (error) {
       console.error('Error calculating prices:', error);
-      alert('Error calculating prices. Please check console for details.');
+      if (!isLiveUpdate) alert('Error calculating prices. Please check console for details.');
     } finally {
       this.calculating.set(false);
     }
@@ -337,5 +382,101 @@ export class PricingStrategyComponent {
   // Helper to check if any channel is expanded
   anyExpanded(): boolean {
     return this.channels.some(ch => ch.expanded);
+  }
+  // Simulator State
+  isSimulatorMode = signal(false);
+  simulatedChannel = signal<SalesChannel | null>(null);
+  anchorBasePrice = signal<number>(0); // Baseline for discount calc
+  simulatedPrice = signal<number>(0);
+  simulatedDiscount = signal<number>(0); // Percentage
+  simulationResults = signal<Record<string, ChannelPrice>>({});
+
+  toggleSimulator() {
+    this.isSimulatorMode.update(v => !v);
+    if (this.isSimulatorMode()) {
+      // Initialize simulator with current Amazon price as anchor
+      const amazonPrice = this.channelPrices()['AMAZON_FBA']?.sellingPrice || 0;
+      this.simulatedChannel.set('AMAZON_FBA');
+      this.anchorBasePrice.set(amazonPrice);
+      this.simulatedPrice.set(amazonPrice);
+      this.simulatedDiscount.set(0);
+      this.runSimulation();
+    }
+  }
+
+  async runSimulation() {
+    if (!this.selectedProduct() || !this.simulatedChannel()) return;
+
+    const product = {
+      ...this.selectedProduct()!,
+      cog: this.cog(), // Use current inputs
+      weight: this.weight(),
+      dimensions: {
+        length: this.length(),
+        width: this.width(),
+        height: this.height()
+      }
+    } as Product;
+
+    const customCosts = {
+      inboundShipping: this.inboundShipping(),
+      packagingLabeling: this.packaging()
+    };
+
+    // 1. Calculate Anchor Channel Result
+    const anchorResult = await this.pricingCalculator.calculateProfitFromPrice(
+      product,
+      this.simulatedChannel()!,
+      this.simulatedPrice(),
+      customCosts
+    );
+
+    // 2. Ripple Effect: Calculate required prices for other channels to match Net Margin
+    const targetNetMargin = anchorResult.netMargin;
+    const margins: MarginTargets = {
+      targetGrossMargin: 50,
+      targetNetMargin: targetNetMargin, // This is the driver
+      minAcceptableMargin: 0
+    };
+
+    const rippleResults = await this.pricingCalculator.generateMultiChannelPrices(product, margins);
+
+    this.simulationResults.set(rippleResults);
+  }
+
+  onSimulatedPriceChange(event: any) {
+    const newPrice = Number(event.target.value);
+    this.simulatedPrice.set(newPrice);
+
+    // Arc: Price -> Discount
+    if (this.anchorBasePrice() > 0) {
+      const discount = ((this.anchorBasePrice() - newPrice) / this.anchorBasePrice()) * 100;
+      this.simulatedDiscount.set(Number(discount.toFixed(1)));
+    }
+
+    this.runSimulation();
+  }
+
+  onDiscountChange(event: any) {
+    const discount = Number(event.target.value);
+    this.simulatedDiscount.set(discount);
+
+    // Arc: Discount -> Price
+    if (this.anchorBasePrice() > 0) {
+      const newPrice = this.anchorBasePrice() * (1 - (discount / 100));
+      this.simulatedPrice.set(Number(newPrice.toFixed(2)));
+    }
+
+    this.runSimulation();
+  }
+
+  applySimulation() {
+    // Commit the simulated margin as the new strategy
+    const result = this.simulationResults()[this.simulatedChannel()!];
+    if (result) {
+      this.targetNetMargin.set(Number(result.netMargin.toFixed(1)));
+      this.calculatePrices(); // Recalculate main strategy
+      this.isSimulatorMode.set(false);
+    }
   }
 }

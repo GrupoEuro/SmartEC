@@ -55,22 +55,23 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "ssr": false,
+              "prerender": false
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
-          "options": {
-            "poll": 2000
-          },
+          "options": {},
           "configurations": {
             "production": {
               "buildTarget": "importadora-euro:build:production"
             },
             "development": {
-              "buildTarget": "importadora-euro:build:development"
+              "buildTarget": "importadora-euro:build:development",
+              "hmr": true
             }
           },
           "defaultConfiguration": "development"
@@ -103,6 +104,11 @@
     }
   },
   "cli": {
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      "enabled": true,
+      "path": ".angular/cache",
+      "environment": "all"
+    }
   }
 }

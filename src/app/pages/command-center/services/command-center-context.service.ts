@@ -10,9 +10,21 @@ export type PeriodType = 'today' | 'yesterday' | 'last7days' | 'last30days' | 't
 export class CommandCenterContextService {
     // State - Initialize with default period to prevent null dateRange
     selectedPeriod = signal<string>('thisMonth'); // CRITICAL: Must start with value, not null
+    selectedChannels = signal<string[]>([]); // Empty array = All Channels
     customDateRange = signal<{ start: Date; end: Date } | null>(null);
     refreshSignal = signal<number>(0);
     isInitialized = signal(true); // Already initialized since we have default period
+
+    // Available Channels (Hardcoded for now, could be dynamic)
+    availableChannels = [
+        { id: 'WEB', label: 'Web Store', icon: 'globe' },
+        { id: 'POS', label: 'Point of Sale', icon: 'monitor' },
+        { id: 'AMAZON_MFN', label: 'Amazon MFN', icon: 'shopping-bag' },
+        { id: 'AMAZON_FBA', label: 'Amazon FBA', icon: 'box' },
+        { id: 'MELI_CLASSIC', label: 'MercadoLibre', icon: 'shopping_cart' }, // Snake case matches registry
+        { id: 'MELI_FULL', label: 'MercadoLibre Full', icon: 'zap' },
+        { id: 'ON_BEHALF', label: 'On Behalf (B2B)', icon: 'phone' }
+    ];
 
     constructor() {
         const registry = inject(StateRegistryService);
@@ -22,11 +34,13 @@ export class CommandCenterContextService {
             name: 'CommandCenterContext',
             get: () => ({
                 selectedPeriod: this.selectedPeriod(),
+                selectedChannels: this.selectedChannels(),
                 customDateRange: this.customDateRange(),
                 dateRange: this.dateRange() // computed, included for view only
             }),
             set: (state: any) => {
                 if (state.selectedPeriod) this.selectedPeriod.set(state.selectedPeriod);
+                if (state.selectedChannels) this.selectedChannels.set(state.selectedChannels);
                 if (state.customDateRange) this.customDateRange.set(state.customDateRange);
             }
         });
@@ -153,6 +167,24 @@ export class CommandCenterContextService {
     setPeriod(period: string) {
         console.log(`📅 [ContextService] Setting period to: ${period}`);
         this.selectedPeriod.set(period);
+    }
+
+    toggleChannel(channelId: string | null) {
+        if (!channelId) {
+            // Clear all
+            console.log(`📡 [ContextService] Clearing channel selection (All)`);
+            this.selectedChannels.set([]);
+            return;
+        }
+
+        this.selectedChannels.update(current => {
+            if (current.includes(channelId)) {
+                return current.filter(c => c !== channelId);
+            } else {
+                return [...current, channelId];
+            }
+        });
+        console.log(`📡 [ContextService] Selected channels:`, this.selectedChannels());
     }
 
     setCustomRange(start: Date, end: Date) {

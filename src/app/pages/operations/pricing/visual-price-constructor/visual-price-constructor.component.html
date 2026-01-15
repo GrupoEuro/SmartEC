@@ -1,0 +1,281 @@
+<!-- Visual Price Constructor v1.0 -->
+<div class="bg-red-600 text-white font-mono text-center font-bold p-1">DEBUG: V991 - ALIGNMENT FIX APPLIED</div>
+<div class="h-full w-full bg-slate-900 p-6 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-100 flex items-center gap-2">
+                <app-icon name="construction" class="text-purple-500" [size]="28"></app-icon>
+                Visual Price Constructor
+            </h1>
+            <p class="text-slate-400 text-sm">Drag and drop components to build your pricing structure.</p>
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="flex items-center gap-4 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+            <button (click)="mode.set('FORWARD')" class="px-4 py-2 rounded-md text-sm font-medium transition-all"
+                [class.bg-purple-600]="mode() === 'FORWARD'" [class.text-white]="mode() === 'FORWARD'"
+                [class.text-slate-400]="mode() !== 'FORWARD'">
+                Cost ➔ Price
+            </button>
+            <button (click)="mode.set('INVERSE')" class="px-4 py-2 rounded-md text-sm font-medium transition-all"
+                [class.bg-emerald-600]="mode() === 'INVERSE'" [class.text-white]="mode() === 'INVERSE'"
+                [class.text-slate-400]="mode() !== 'INVERSE'">
+                Target ➔ Margin
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-1 gap-6 overflow-hidden">
+
+        <!-- Left: Configuration & Palette -->
+        <div class="w-80 flex flex-col gap-6 overflow-y-auto pr-2">
+
+            <!-- Context Config -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-sm relative">
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">Context</h3>
+
+                <div class="flex flex-col gap-4">
+                    <!-- Product Reference -->
+                    <div class="relative z-20">
+                        <label class="text-xs text-slate-500 mb-1 block">{{ 'PRICING_STRATEGY.PRODUCT_SELECTION' |
+                            translate }}</label>
+                        <div class="relative">
+                            <div
+                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                <app-icon name="search" [size]="16"></app-icon>
+                            </div>
+                            <input type="text" [value]="selectedProduct()?.name?.en || ''"
+                                (input)="search($any($event.target).value)"
+                                [placeholder]="'PRICING_STRATEGY.SEARCH_PLACEHOLDER' | translate"
+                                class="w-full bg-slate-900 border border-slate-600 rounded p-2 pl-10 text-sm text-slate-200 focus:border-purple-500 outline-none">
+
+                            <!-- Clear Btn -->
+                            <button *ngIf="selectedProduct()" (click)="clearProduct()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                                <app-icon name="close" [size]="14"></app-icon>
+                            </button>
+                        </div>
+
+                        <!-- Dropdown -->
+                        <div *ngIf="searchResults()?.length"
+                            class="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                            <div *ngFor="let prod of searchResults()" (click)="selectProduct(prod)"
+                                class="p-2 hover:bg-slate-700 cursor-pointer flex flex-col gap-0.5 border-b border-slate-700/50 last:border-0">
+                                <div class="text-sm text-slate-200 font-medium truncate">{{ prod.name.en }}</div>
+                                <div class="flex justify-between text-xs text-slate-500">
+                                    <span>{{ prod.sku }}</span>
+                                    <span>{{ prod.price | currency }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Channel Selector -->
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1 block">{{ 'PRICING_STRATEGY.UI.SALES_CHANNEL' |
+                            translate }}</label>
+                        <select [ngModel]="channel()" (ngModelChange)="setChannel($event)"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-slate-200 focus:border-purple-500 outline-none">
+                            <option value="MANUAL">Manual Build</option>
+                            <option value="AMAZON_FBA">Amazon FBA (MX)</option>
+                            <option value="AMAZON_FBM">Amazon FBM (MX)</option>
+                            <option value="MELI_CLASSIC">MercadoLibre Classic</option>
+                            <option value="MELI_PREMIUM">MercadoLibre Premium</option>
+                            <option value="MELI_FULL">MercadoLibre Full</option>
+                            <option value="POS">Point of Sale (POS)</option>
+                            <option value="WEB">Web Store</option>
+                        </select>
+                    </div>
+
+                    <!-- Start Value Input -->
+                    <div>
+                        <label class="text-xs text-slate-500 mb-1 block">
+                            {{ (mode() === 'FORWARD' ? 'PRICING_STRATEGY.INPUTS.STARTING_COST' :
+                            'PRICING_STRATEGY.INPUTS.TARGET_PRICE') | translate }}
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                            <input type="number" [ngModel]="startValue()" (ngModelChange)="startValue.set($event)"
+                                class="w-full bg-slate-900 border border-slate-600 rounded p-2 pl-6 text-sm text-slate-100 font-mono focus:border-purple-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block Palette -->
+            <div class="flex-1 flex flex-col gap-2">
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Add Blocks</h3>
+
+                <div *ngFor="let block of displayedBlocks()" (click)="toggleBlock(block)"
+                    class="p-3 rounded-lg bg-slate-800 hover:bg-slate-750 border cursor-pointer transition-all flex items-center gap-3 group relative overflow-hidden"
+                    [class.border-purple-500]="isBlockActive(block.id)"
+                    [class.border-slate-700]="!isBlockActive(block.id)">
+
+                    <!-- Active Indicator (Background Tint) -->
+                    <div *ngIf="isBlockActive(block.id)" class="absolute inset-0 bg-purple-500/10 pointer-events-none">
+                    </div>
+
+                    <div
+                        [class]="'w-8 h-8 rounded-full flex items-center justify-center bg-opacity-20 text-' + block.color + '-400 bg-' + block.color +-500">
+                        <app-icon [name]="block.icon || 'extension'" [size]="18"></app-icon>
+                    </div>
+                    <div class="flex-1 relative z-10">
+                        <div class="text-sm font-medium text-slate-300 group-hover:text-white"
+                            [class.text-purple-400]="isBlockActive(block.id)">{{ block.label | translate }}</div>
+                        <div class="text-xs text-slate-500">{{ 'PRICING_STRATEGY.BASIS.' + block.basis | translate }}
+                        </div>
+                    </div>
+
+                    <!-- Toggle Icon -->
+                    <div class="relative z-10 transition-transform duration-200"
+                        [class.scale-125]="isBlockActive(block.id)">
+                        <app-icon [name]="isBlockActive(block.id) ? 'check' : 'add'"
+                            [class]="isBlockActive(block.id) ? 'text-green-500' : 'text-slate-500 group-hover:text-purple-400'"
+                            [size]="18"></app-icon>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Center: The Stack (Drag Drop) -->
+        <div
+            class="flex-1 bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6 flex flex-col relative overflow-hidden">
+
+            <!-- Start Node -->
+            <div class="flex justify-center mb-4">
+                <div
+                    class="bg-slate-800 text-slate-400 text-xs font-mono px-3 py-1 rounded-full border border-slate-700">
+                    START: {{ startValue() | currency }}
+                </div>
+            </div>
+
+            <!-- Table Based Layout -->
+            <div class="flex-1 overflow-y-auto min-h-[200px] relative">
+                <table class="w-full border-separate border-spacing-y-2">
+                    <thead class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur shadow-sm">
+                        <tr class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="w-8 py-2"></th> <!-- Drag -->
+                            <th class="w-2 py-2"></th> <!-- Color -->
+                            <th class="text-left py-2 px-3 w-4/12">Component</th>
+                            <th class="text-right py-2 px-3 w-3/12 pr-8">Input</th>
+                            <th class="text-right py-2 px-3 w-2/12">Amount</th>
+                            <th class="text-right py-2 px-3 w-3/12">Subtotal</th>
+                            <th class="w-8 py-2"></th> <!-- Delete -->
+                        </tr>
+                    </thead>
+                    <tbody cdkDropList (cdkDropListDropped)="drop($event)">
+                        <tr *ngFor="let block of calculatedStack(); let i = index" cdkDrag
+                            class="bg-slate-800 group hover:border-slate-600 shadow-sm relative">
+
+                            <!-- Drag Handle -->
+                            <td class="rounded-l-lg py-3 pl-3 text-center cursor-grab text-slate-600 hover:text-slate-400 align-middle"
+                                cdkDragHandle>
+                                <app-icon name="drag_indicator" [size]="20"></app-icon>
+                            </td>
+
+                            <!-- Color Bar -->
+                            <td class="py-3 align-middle">
+                                <div [class]="'w-1 h-8 rounded-full bg-' + block.color + '-500'"></div>
+                            </td>
+
+                            <!-- Label -->
+                            <td class="py-3 px-3 align-middle">
+                                <input type="text" [ngModel]="block.label"
+                                    (ngModelChange)="updateBlockLabel(block.id, $event)"
+                                    class="bg-transparent text-slate-200 font-medium text-sm w-full outline-none focus:text-purple-400">
+                            </td>
+
+                            <!-- Input Field -->
+                            <td class="py-3 px-3 align-middle">
+                                <!-- Case 1: MARGIN (Dual Input) -->
+                                <div class="flex flex-col gap-1" *ngIf="block.type === 'MARGIN'">
+                                    <div class="relative flex items-center w-full">
+                                        <input type="number" [ngModel]="block.value"
+                                            (ngModelChange)="updateBlockValue(block.id, $event)"
+                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-green-500 outline-none pl-6 pr-8"
+                                            placeholder="Margin %">
+                                        <span
+                                            class="absolute right-2 text-slate-500 text-sm pointer-events-none">%</span>
+                                    </div>
+                                    <div class="relative flex items-center w-full">
+                                        <span
+                                            class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
+                                        <input type="number" [value]="(block.calculatedAmount || 0).toFixed(2)"
+                                            (input)="updateMarginFromAbsolute(block, $event)"
+                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-green-400 focus:border-green-500 outline-none pl-6 pr-8"
+                                            placeholder="Profit $">
+                                    </div>
+                                </div>
+
+                                <!-- Case 2: COG (Forward Mode Sync) -->
+                                <div class="w-full relative flex items-center"
+                                    *ngIf="block.type !== 'MARGIN' && block.id === 'cog' && mode() === 'FORWARD'">
+                                    <span class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
+                                    <input type="number" [ngModel]="startValue()"
+                                        (ngModelChange)="startValue.set($event)"
+                                        class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none pl-6 pr-8">
+                                </div>
+
+                                <!-- Case 3: Standard Input (Default) -->
+                                <div class="w-full relative flex items-center"
+                                    *ngIf="block.type !== 'MARGIN' && (block.id !== 'cog' || mode() !== 'FORWARD')">
+                                    <span *ngIf="block.basis === 'FIXED'"
+                                        class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
+                                    <input type="number" [ngModel]="block.value"
+                                        (ngModelChange)="updateBlockValue(block.id, $event)"
+                                        [disabled]="!!block.isLocked && block.id !== 'cog'"
+                                        class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed pl-6 pr-8">
+                                    <span *ngIf="block.basis.includes('PERCENT')"
+                                        class="absolute right-2 text-slate-500 text-sm pointer-events-none">%</span>
+                                </div>
+                            </td>
+
+                            <!-- Amount -->
+                            <td class="py-3 px-3 text-right font-mono text-sm align-middle"
+                                [class.text-rose-400]="block.type === 'COST' || block.type === 'FEE' || block.type === 'TAX'"
+                                [class.text-emerald-400]="block.type === 'MARGIN'">
+                                {{ (block.id === 'cog' && mode() === 'FORWARD' ? startValue() : block.calculatedAmount)
+                                | currency }}
+                            </td>
+
+                            <!-- Subtotal -->
+                            <td class="py-3 px-3 text-right font-bold text-slate-200 font-mono align-middle">
+                                {{ block.subtotalAfter | currency }}
+                            </td>
+
+                            <!-- Remove Btn -->
+                            <td class="rounded-r-lg py-3 pr-3 text-center align-middle">
+                                <button *ngIf="!block.isLocked" (click)="removeBlock(i)"
+                                    class="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                                    title="Remove Block">
+                                    <app-icon name="close" [size]="16"></app-icon>
+                                </button>
+                            </td>
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- End Node: Final Result -->
+            <div
+                class="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center bg-slate-800/80 p-4 rounded-xl">
+                <div>
+                    <div class="text-sm text-slate-400 uppercase tracking-wider font-bold">
+                        {{ mode() === 'FORWARD' ? 'Final Retail Price' : 'Net Margin Amount' }}
+                    </div>
+                    <div class="text-xs text-slate-500" *ngIf="mode() === 'INVERSE'">
+                        {{ ((finalResult() / (startValue() / 1.16)) * 100) | number:'1.1-2' }}% of Net Revenue
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-white font-mono">
+                    {{ finalResult() | currency }}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>

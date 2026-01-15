@@ -12,6 +12,7 @@ export interface IntegrationConfig {
         refreshToken?: string;
         expiresAt?: number;
         connected: boolean;
+        userId?: number;
     };
     amazon?: {
         clientId: string;

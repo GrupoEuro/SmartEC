@@ -76,12 +76,19 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
       flex-direction: column;
       gap: 1.5rem;
       padding: 0.5rem 0;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
 
     .po-item {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
     }
 
     .po-header {
@@ -91,29 +98,37 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
       font-size: 0.9rem;
     }
 
-    .po-id { font-weight: 600; color: #fff; }
-    .po-supplier { font-size: 0.8rem; color: #94a3b8; }
+    .po-id { font-weight: 700; color: #f8fafc; font-family: monospace; letter-spacing: 0.05em; }
+    .po-supplier { font-size: 0.85rem; color: #94a3b8; }
     .po-eta { 
       font-size: 0.8rem; 
       color: #64748b; 
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      background: rgba(100, 116, 139, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
     }
-    .po-eta.delayed { color: #ef4444; font-weight: 600; }
+    .po-eta.delayed { 
+        color: #fca5a5; 
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
 
     /* Timeline Styles */
     .timeline-progress {
       position: relative;
-      padding: 10px 0;
+      padding: 10px 0 20px 0;
+      margin-top: 0.5rem;
     }
 
     .progress-track {
       height: 4px;
-      background: #334155;
+      background: #1e293b;
       border-radius: 2px;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       margin-top: 5px;
     }
 
@@ -122,6 +137,7 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
       background: linear-gradient(90deg, #3b82f6, #8b5cf6);
       border-radius: 2px;
       transition: width 0.5s ease-out;
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
     }
 
     .milestones {
@@ -129,42 +145,45 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
       justify-content: space-between;
       position: relative;
       margin-top: -9px; /* Pull up to align dots on line */
+      z-index: 2;
     }
 
     .milestone {
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 20px;
+      width: 24px;
     }
 
     .dot {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
-      background: #1e293b;
-      border: 2px solid #475569;
-      z-index: 2;
+      background: #0f172a;
+      border: 2px solid #334155;
       transition: all 0.3s;
     }
 
     .milestone.active .dot {
       background: #8b5cf6;
       border-color: #8b5cf6;
-      box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+      transform: scale(1.2);
     }
     
     .milestone.warning-zone.active .dot {
         background: #f59e0b;
         border-color: #f59e0b;
-        box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+        box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
     }
 
     .label {
-      margin-top: 4px;
+      margin-top: 8px;
       font-size: 0.65rem;
-      color: #64748b;
+      color: #475569;
       white-space: nowrap;
+      font-weight: 500;
+      transition: color 0.3s;
     }
     
     .milestone.active .label {
@@ -172,11 +191,19 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
     }
     
     .empty-state {
-        text-align: center;
-        padding: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 180px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px dashed rgba(255, 255, 255, 0.05);
         color: #64748b;
         font-style: italic;
     }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
   `]
 })
 export class InboundLogisticsWidgetComponent {

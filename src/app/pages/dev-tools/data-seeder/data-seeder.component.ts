@@ -332,7 +332,7 @@ export class DataSeederComponent {
     seedMultiLevelWarehouse() { this.runAction('Seed Multi-Level Warehouse', () => this.seeder.populateMultiLevelWarehouse(l => this.addLog(l)), 'Warning: This will clear existing warehouse data.'); }
     seedWarehouseLayout() { this.runAction('Reset Warehouse Layout', () => this.seeder.populateWarehouseLayout(l => this.addLog(l)), 'Warning: Clears warehouse data.'); }
 
-    seedPricingRules() { this.runAction('Seed Pricing Rules', () => this.seeder.seedChannelCommissionRules((l: string) => this.addLog(l))); }
+    seedPricingRules() { this.runAction('Seed Pricing Rules', () => this.seeder.populatePricingRules((l: string) => this.addLog(l))); }
     seedCoupons() { this.runAction('Seed Coupons', () => this.seeder.populateCoupons((l: string) => this.addLog(l))); }
     seedPraxisHistory() { this.runAction('Backfill History', () => this.seeder.seedPraxisHistory((l: string) => this.addLog(l))); }
 

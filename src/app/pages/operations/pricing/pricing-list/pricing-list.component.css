@@ -93,6 +93,34 @@
     font-weight: 600;
 }
 
+
+/* Filters */
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #1e293b;
+    padding: 0 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    height: 38px;
+}
+
+.filter-select {
+    background: transparent;
+    border: none;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+    outline: none;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.filter-select option {
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
 /* Editable Cell Indicator */
 ::ng-deep .editable-cell {
     background-color: rgba(56, 189, 248, 0.05);

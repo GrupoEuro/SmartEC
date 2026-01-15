@@ -91,14 +91,22 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Pricing Strategies: Admin read/write
-    match /pricing_strategies/{document} {
-      allow read, write: if request.auth != null;
+    // Pricing Rules: Public read, Admin write
+    match /pricing_rules/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
-    // Pricing History: Admin read/write
+    // Pricing Strategies: Public read, Admin write (Relaxed for Dev)
+    match /pricing_strategies/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Pricing History: Public read, Admin write (Relaxed for Dev)
     match /pricing_history/{document} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Customers: Admin read/write, owner read/write

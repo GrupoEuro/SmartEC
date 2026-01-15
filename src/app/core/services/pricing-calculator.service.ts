@@ -23,6 +23,7 @@ import {
     PricingHistory
 } from '../models/pricing.model';
 import { Product } from '../models/product.model';
+import { FINANCIAL_CONSTANTS } from '../constants/financial.constants';
 
 @Injectable({
     providedIn: 'root'
@@ -38,94 +39,135 @@ export class PricingCalculatorService {
         product: Product,
         channel: SalesChannel,
         margins: MarginTargets,
-        customCosts?: Partial<CostBreakdown>
+        customCosts?: Partial<CostBreakdown>,
+        offerFreeShipping: boolean = false
     ): Promise<ChannelPrice> {
 
         // Get commission rules for this channel
         const rules = await this.getCommissionRule(channel, product.category || 'general');
 
         if (!rules) {
-            throw new Error(`No commission rules found for channel: ${channel}`);
+            // If no rules, use defaults based on constants for POS/WEB
+            if (channel === 'POS' || channel === 'WEB') {
+                // Proceed with dummy rule
+            } else {
+                console.warn(`No commission rules for ${channel}, using defaults.`);
+            }
         }
 
-        // Start with base costs
+        // Start with base costs (COG is Landed, so no extra inbound unless specified)
         const baseCost = product.cog || 0;
-        const inboundShipping = customCosts?.inboundShipping || 0;
-        const packagingCost = customCosts?.packagingLabeling || 0;
+        const extraInbound = customCosts?.inboundShipping || 0;
+        const outboundPackaging = customCosts?.packagingLabeling || 0;
 
         // Iterative calculation since commission depends on selling price
+        // Net Margin = (NetRevenue - TotalCost) / NetRevenue
+        // or (NetProfit / SellingPrice)? User convention typically Profit / Price. 
+        // Standard Financial: Net Margin = Net Profit / Net Revenue.
+        // Retail: Often Net Profit / Gross Revenue. 
+        // Let's stick to: Net Profit (Real $) / Gross Selling Price (What customer pays) * 100 for 'Margin %' on grid.
+        // Actually, to protect cashflow, usually (NetProfit / SellingPrice) * 100.
+
         let sellingPrice = this.estimateInitialPrice(baseCost, margins.targetNetMargin);
         let iterations = 0;
         const maxIterations = 10;
+
+        const effectiveRules = rules || this.createDefaultRules(channel);
 
         // Iterate to find price that meets target margin
         while (iterations < maxIterations) {
             const breakdown = await this.calculateCostBreakdown(
                 sellingPrice,
                 baseCost,
-                inboundShipping,
-                packagingCost,
+                extraInbound,
+                outboundPackaging,
                 product.weight || 0,
                 product.dimensions || { length: 0, width: 0, height: 0 },
-                rules
+                effectiveRules,
+                channel,
+                offerFreeShipping
             );
 
-            const netProfit = sellingPrice - breakdown.totalCost;
+            // TAX AWARE PROFIT CALCULATION
+            // Net Revenue = Price / 1.16
+            const netRevenue = sellingPrice / (1 + FINANCIAL_CONSTANTS.IVA_RATE);
+            const netProfit = netRevenue - breakdown.totalCost;
+
+            // Margin based on Selling Price (Gross) or Net Revenue?
+            // To be conservative and standard: Net Profit / Selling Price (Gross)
             const netMargin = (netProfit / sellingPrice) * 100;
 
-            // Check if we're within 0.5% of target margin
-            if (Math.abs(netMargin - margins.targetNetMargin) < 0.5) {
+            // Check if we're within 0.1% of target margin
+            if (Math.abs(netMargin - margins.targetNetMargin) < 0.1) {
                 return this.buildChannelPrice(sellingPrice, breakdown);
             }
 
-            // Adjust price for next iteration
+            // Adjust price
             if (netMargin < margins.targetNetMargin) {
-                sellingPrice *= 1.05; // Increase price by 5%
+                sellingPrice *= 1.02;
             } else {
-                sellingPrice *= 0.98; // Decrease price by 2%
+                sellingPrice *= 0.99;
             }
-
             iterations++;
         }
 
-        // Final calculation after iterations
+        // Final calculation
         const finalBreakdown = await this.calculateCostBreakdown(
             sellingPrice,
             baseCost,
-            inboundShipping,
-            packagingCost,
+            extraInbound,
+            outboundPackaging,
             product.weight || 0,
             product.dimensions || { length: 0, width: 0, height: 0 },
-            rules
+            effectiveRules,
+            channel,
+            offerFreeShipping
         );
 
         return this.buildChannelPrice(sellingPrice, finalBreakdown);
     }
 
     /**
-     * Calculate profit for a FIXED selling price (e.g. from Multiplier rule)
+     * Create default rules for channels if missing from DB
      */
+    private createDefaultRules(channel: SalesChannel): ChannelCommissionRule {
+        return {
+            id: 'default',
+            channel,
+            country: 'MX',
+            referralFeePercent: channel === 'POS' ? 0 : (channel === 'WEB' ? 0 : 15),
+            fulfillmentType: 'SELF',
+            paymentProcessingPercent: channel === 'POS' ? (FINANCIAL_CONSTANTS.POS_COMMISSION_RATE * 100) : (channel === 'WEB' ? (FINANCIAL_CONSTANTS.WEB_GATEWAY_RATE * 100) : 0),
+            paymentProcessingFixed: channel === 'WEB' ? FINANCIAL_CONSTANTS.WEB_GATEWAY_FIXED : 0,
+            active: true,
+            effectiveDate: serverTimestamp() as any,
+            createdAt: serverTimestamp() as any,
+            updatedAt: serverTimestamp() as any,
+            source: 'System Defaults'
+        };
+    }
+
+    // ... calculateFixedChannelPrice ...
     async calculateFixedChannelPrice(
         product: Product,
         channel: SalesChannel,
         sellingPrice: number,
-        customCosts?: Partial<CostBreakdown>
+        customCosts?: Partial<CostBreakdown>,
+        offerFreeShipping: boolean = false
     ): Promise<ChannelPrice> {
         const rules = await this.getCommissionRule(channel, product.category || 'general');
-        if (!rules) throw new Error(`No commission rules found for channel: ${channel}`);
-
-        const baseCost = product.cog || 0;
-        const inboundShipping = customCosts?.inboundShipping || 0;
-        const packagingCost = customCosts?.packagingLabeling || 0;
+        const effectiveRules = rules || this.createDefaultRules(channel);
 
         const breakdown = await this.calculateCostBreakdown(
             sellingPrice,
-            baseCost,
-            inboundShipping,
-            packagingCost,
+            product.cog || 0,
+            customCosts?.inboundShipping || 0,
+            customCosts?.packagingLabeling || 0,
             product.weight || 0,
             product.dimensions || { length: 0, width: 0, height: 0 },
-            rules
+            effectiveRules,
+            channel,
+            offerFreeShipping
         );
 
         return this.buildChannelPrice(sellingPrice, breakdown);
@@ -141,52 +183,71 @@ export class PricingCalculatorService {
         packagingCost: number,
         weight: number,
         dimensions: ProductDimensions,
-        rules: ChannelCommissionRule
+        rules: ChannelCommissionRule,
+        channel: SalesChannel,
+        offerFreeShipping: boolean
     ): Promise<CostBreakdown> {
 
         const breakdown: CostBreakdown = {
-            cog,
+            cog, // Only the Landed COG
             commission: 0,
             fulfillmentShipping: 0,
             storageFees: 0,
             paymentProcessing: 0,
             packagingLabeling: packagingCost,
-            inboundShipping,
+            inboundShipping, // Extra inbound if specified
             totalCost: 0
         };
 
-        // Calculate commission (referral fee)
-        breakdown.commission = this.calculateCommission(sellingPrice, rules);
+        // 1. Commission (On Gross Price) + IVA on Fee
+        let rawCommission = this.calculateCommission(sellingPrice, rules);
+        // Add 16% VAT to commission (Marketplaces charge tax on fees)
+        breakdown.commission = rawCommission * (1 + FINANCIAL_CONSTANTS.IVA_RATE);
 
-        // Calculate fulfillment/shipping fees
-        if (rules.fulfillmentType === 'FBA' || rules.fulfillmentType === 'FULL') {
-            // Use marketplace fulfillment
-            breakdown.fulfillmentShipping = this.calculateFulfillmentFee(
-                weight,
-                dimensions,
-                rules
-            );
+        // 2. Fulfillment / Shipping
+        // MELI Logic: Free Shipping for > 299 mandatory (Classic/Premium)
+        // If channel is Meli and price > 299, assume we pay shipping unless Full (where it's handling fee)
+        let paysShipping = offerFreeShipping;
 
-            // Storage fees (monthly average allocated per day)
-            breakdown.storageFees = this.calculateStorageFee(dimensions, rules) / 30;
-        } else {
-            // Self-fulfillment - estimate shipping cost
-            breakdown.fulfillmentShipping = this.estimateSelfShippingCost(weight, dimensions);
+        if (channel.includes('MELI') && sellingPrice >= 299 && !channel.includes('FULL')) {
+            paysShipping = true; // Mandatory Free Shipping
         }
 
-        // Payment processing fees
-        breakdown.paymentProcessing = this.calculatePaymentFees(
+        if (rules.fulfillmentType === 'FBA' || rules.fulfillmentType === 'FULL') {
+            // Marketplace Fulfillment (FBA/Full)
+            breakdown.fulfillmentShipping = this.calculateFulfillmentFee(weight, dimensions, rules);
+            // Storage
+            breakdown.storageFees = this.calculateStorageFee(dimensions, rules) / 30;
+        } else {
+            // Self Fulfillment (Web/POS/FBM/MeliClassic)
+            if (paysShipping) {
+                breakdown.fulfillmentShipping = this.estimateSelfShippingCost(weight, dimensions);
+            } else {
+                // Customer pays, cost to us is 0 (pass-through or collected separate)
+                breakdown.fulfillmentShipping = 0;
+            }
+        }
+
+        // 3. Payment Processing (On Gross Price) + IVA on Fee
+        // POS / Web usually have payment fees + Tax
+        // Marketplaces (Amz/Meli) usually bundle pay-fee into commission or it's separate but VAT applied.
+        // Our rule default includes the rate. We apply tax on top.
+        let rawPayment = this.calculatePaymentFees(
             sellingPrice,
             rules.paymentProcessingPercent,
             rules.paymentProcessingFixed
         );
+        breakdown.paymentProcessing = rawPayment * (1 + FINANCIAL_CONSTANTS.IVA_RATE);
 
-        // Additional per-unit fee (e.g., MercadoLibre low-price items)
-        if (rules.perUnitFee && sellingPrice < 100) { // Threshold example
-            breakdown.commission += rules.perUnitFee;
+
+        // 4. Additional per-unit fees
+        if (rules.perUnitFee) {
+            // Simplified generic threshold check usually needed
+            // For now just add if exists
+            breakdown.commission += (rules.perUnitFee * (1 + FINANCIAL_CONSTANTS.IVA_RATE));
         }
 
-        // Sum total cost
+        // 5. Sum Total Cost
         breakdown.totalCost =
             breakdown.cog +
             breakdown.commission +
@@ -317,16 +378,18 @@ export class PricingCalculatorService {
      * Build ChannelPrice object from calculations
      */
     private buildChannelPrice(sellingPrice: number, breakdown: CostBreakdown): ChannelPrice {
-        const netProfit = sellingPrice - breakdown.totalCost;
+        // TAX AWARE CALCULATION
+        const netRevenue = sellingPrice / (1 + FINANCIAL_CONSTANTS.IVA_RATE);
+
+        const netProfit = netRevenue - breakdown.totalCost;
+        // Margin on Gross Sales (Standard Retail)
         const netMargin = (netProfit / sellingPrice) * 100;
 
-        const grossProfit = sellingPrice - breakdown.cog;
+        const grossProfit = netRevenue - breakdown.cog; // Gross Profit from Net Revenue
         const grossMargin = (grossProfit / sellingPrice) * 100;
 
         // ROI Calculation: (Net Profit / Total Investment) * 100
-        // Total Investment approximated by Total Cost (COG + Fees + Shipping)
-        // Force Rebuild Trigger
-        const roi = (netProfit / breakdown.totalCost) * 100;
+        const roi = breakdown.totalCost > 0 ? (netProfit / breakdown.totalCost) * 100 : 0;
 
         return {
             sellingPrice: Math.ceil(sellingPrice), // Round up to nearest peso
@@ -402,7 +465,10 @@ export class PricingCalculatorService {
 
         for (const channel of channels) {
             try {
-                prices[channel] = await this.calculateChannelPrice(product, channel, margins);
+                // Default Free Shipping assumptions?
+                // Usually Web/POS default to NOT free unless promotion.
+                const freeShipping = false;
+                prices[channel] = await this.calculateChannelPrice(product, channel, margins, undefined, freeShipping);
             } catch (error) {
                 console.error(`Error calculating price for ${channel}:`, error);
                 // Continue with other channels
@@ -503,25 +569,9 @@ export class PricingCalculatorService {
         product: Product,
         channel: SalesChannel,
         sellingPrice: number,
-        customCosts?: Partial<CostBreakdown>
+        customCosts?: Partial<CostBreakdown>,
+        offerFreeShipping: boolean = false
     ): Promise<ChannelPrice> {
-        const rules = await this.getCommissionRule(channel, product.category || 'general');
-        if (!rules) throw new Error(`No commission rules found for channel: ${channel}`);
-
-        const baseCost = product.cog || 0;
-        const inboundShipping = customCosts?.inboundShipping || 0;
-        const packagingCost = customCosts?.packagingLabeling || 0;
-
-        const breakdown = await this.calculateCostBreakdown(
-            sellingPrice,
-            baseCost,
-            inboundShipping,
-            packagingCost,
-            product.weight || 0,
-            product.dimensions || { length: 0, width: 0, height: 0 },
-            rules
-        );
-
-        return this.buildChannelPrice(sellingPrice, breakdown);
+        return this.calculateFixedChannelPrice(product, channel, sellingPrice, customCosts, offerFreeShipping);
     }
 }

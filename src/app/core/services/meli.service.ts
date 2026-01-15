@@ -1,4 +1,3 @@
-
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -12,7 +11,7 @@ export interface MeliTokens {
     scope: string;
     user_id: number;
     refresh_token: string;
-    created_at?: number; // Timestamp when token was received
+    created_at?: number;
 }
 
 @Injectable({
@@ -24,10 +23,6 @@ export class MeliService {
     private router = inject(Router);
 
     private readonly API_URL = 'https://api.mercadolibre.com';
-
-    // This should ideally be handled by a backend/Cloud Function to avoid CORS and exposing secrets,
-    // but for this implementation we are doing it client-side as per the SecretsService pattern.
-    // Note: MELI Oauth endpoint might block CORS. If so, a proxy is needed.
 
     async handleAuthCallback(code: string): Promise<void> {
         try {
@@ -49,27 +44,25 @@ export class MeliService {
                 })
             );
 
-            // Save tokens to Secrets (or dedicated token store)
-            // SecretsService seems to store 'Config'. 
-            // We should store tokens securely. For now, let's append to config or uses separate method if existed.
-            // Looking at IntegrationConfig interface in IntegrationManager, it had 'connected'.
-            // We might need to extend SecretsService or store just 'connected' status and keep tokens in localStorage/Firestore separate collection?
-            // For now, I will update the 'connected' status in Secrets and save tokens to a helper method in Secrets if available, or just log for now?
+            // Map external token response to internal config format
+            const now = Date.now();
+            const expiresAt = now + (tokens.expires_in * 1000);
 
-            // Actually, SecretsService likely has a method to save sensitive data?
-            // If not, I'll store it in the 'meli' object of config for now (simplest, though not mostly secure for tokens if config is readable by all admins).
-
-            const updatedConfig = {
+            // We use 'any' to robustly merge fields that might not be in the strict Interface yet (like userId)
+            const updatedConfig: any = {
                 ...config,
                 meli: {
                     ...config.meli,
                     connected: true,
-                    tokens: tokens // Ensure IntegrationConfig interface supports this or loose typing
+                    accessToken: tokens.access_token,
+                    refreshToken: tokens.refresh_token,
+                    expiresAt: expiresAt,
+                    userId: tokens.user_id,
+                    scope: tokens.scope
                 }
             };
 
             await this.secrets.saveConfig(updatedConfig);
-
             return;
 
         } catch (error) {
@@ -78,5 +71,8 @@ export class MeliService {
         }
     }
 
-    // Helper to refresh token if needed (Future impl)
+    getAuthUrl(appId: string, redirectUri: string): string {
+        // Default to Mexico site for this project
+        return `https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    }
 }

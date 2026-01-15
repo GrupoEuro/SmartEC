@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, combineLatest, map, of } from 'rxjs';
 import { ProductService } from '../core/services/product.service';
 import { OrderService } from '../core/services/order.service';
+import { SmartRestockService, RestockSuggestion } from '../core/services/ai/smart-restock.service';
 
 export interface StockoutPrediction {
     productId: string;
@@ -10,9 +11,9 @@ export interface StockoutPrediction {
     currentStock: number;
     velocity: number; // Avg units sold per day
     daysRemaining: number;
-    stockoutDate: Date;
+    stockoutDate: Date | null;
     status: 'critical' | 'warning' | 'healthy' | 'overstock';
-    channel?: string; // Optional: velocity per channel
+    suggestedReorder: number;
 }
 
 @Injectable({
@@ -21,10 +22,10 @@ export interface StockoutPrediction {
 export class InventoryIntelligenceService {
     private productService = inject(ProductService);
     private orderService = inject(OrderService);
+    private smartRestockService = inject(SmartRestockService);
 
     /**
-     * Get products at risk of stockout
-     * @param thresholdDays Days of coverage to consider "Critical" (default 14)
+     * Get products at risk of stockout using AI analysis
      */
     getStockoutPredictions(thresholdDays = 30): Observable<StockoutPrediction[]> {
         return combineLatest([
@@ -32,57 +33,70 @@ export class InventoryIntelligenceService {
             this.orderService.getOrders()
         ]).pipe(
             map(([products, orders]) => {
-                // 1. Calculate Velocity (Last 30 Days)
+                // 1. Build Daily Sales History (Last 30 Days)
+                const historyLength = 30;
                 const now = new Date();
-                const thirtyDaysAgo = new Date(now);
-                thirtyDaysAgo.setDate(now.getDate() - 30);
+                const startDate = new Date(now);
+                startDate.setDate(now.getDate() - historyLength);
 
-                const recentOrders = orders.filter(o => {
-                    const d = this.getDate(o.createdAt);
-                    return d >= thirtyDaysAgo;
+                // Map<productId, number[]> - Index 0 is 30 days ago, Index 29 is yesterday/today
+                const productHistory = new Map<string, number[]>();
+
+                // Initialize history arrays
+                products.forEach(p => {
+                    if (p.id) productHistory.set(p.id, new Array(historyLength).fill(0));
                 });
 
-                // Map Product ID -> Units Sold
-                const salesMap = new Map<string, number>();
-                recentOrders.forEach(order => {
-                    order.items.forEach((item: any) => {
-                        const pid = item.productId || item.id;
-                        salesMap.set(pid, (salesMap.get(pid) || 0) + item.quantity);
-                    });
-                });
+                // Populate history from orders
+                orders.forEach(order => {
+                    const orderDate = this.getDate(order.createdAt);
+                    if (orderDate >= startDate && orderDate <= now) {
+                        // Calculate day index (0 to 29)
+                        const dayIndex = Math.floor((orderDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-                // 2. Predict Stockouts
-                const predictions: StockoutPrediction[] = products.map(p => {
-                    const soldLast30 = salesMap.get(p.id!) || 0;
-                    const velocity = soldLast30 / 30; // units per day
-
-                    let daysRemaining = 999;
-                    if (velocity > 0) {
-                        daysRemaining = p.stockQuantity / velocity;
+                        if (dayIndex >= 0 && dayIndex < historyLength) {
+                            order.items.forEach((item: any) => {
+                                const pid = item.productId || item.id;
+                                const history = productHistory.get(pid);
+                                if (history) {
+                                    history[dayIndex] += (item.quantity || 0);
+                                }
+                            });
+                        }
                     }
+                });
 
-                    const stockoutDate = new Date();
-                    stockoutDate.setDate(stockoutDate.getDate() + daysRemaining);
+                // 2. Analyze each product with SmartRestockService
+                const predictions: StockoutPrediction[] = products.map(p => {
+                    const history = productHistory.get(p.id!) || new Array(historyLength).fill(0);
 
+                    const analysis = this.smartRestockService.analyzeProduct(
+                        p.id!,
+                        p.name.es,
+                        p.stockQuantity,
+                        history
+                    );
+
+                    // Map AI result to UI model
                     let status: StockoutPrediction['status'] = 'healthy';
-                    if (daysRemaining <= 7) status = 'critical';
-                    else if (daysRemaining <= 21) status = 'warning';
-                    else if (daysRemaining > 90) status = 'overstock';
+                    if (analysis.priority === 'CRITICAL' || analysis.priority === 'HIGH') status = 'critical';
+                    else if (analysis.priority === 'MEDIUM') status = 'warning';
+                    else if (analysis.priority === 'OK' && analysis.daysRemaining > 90) status = 'overstock';
 
                     return {
                         productId: p.id!,
-                        productName: p.name.es, // Default to ES
+                        productName: p.name.es,
                         sku: p.sku,
                         currentStock: p.stockQuantity,
-                        velocity,
-                        daysRemaining,
-                        stockoutDate,
-                        status
+                        velocity: analysis.dailyVelocity,
+                        daysRemaining: analysis.daysRemaining,
+                        stockoutDate: analysis.stockoutDate,
+                        status: status,
+                        suggestedReorder: analysis.suggestedReorderQuantity
                     };
                 });
 
-                // Filter to show only relevant items (at risk or warning)
-                // sort by most critical
+                // Filter and sort
                 return predictions
                     .filter(p => p.status === 'critical' || p.status === 'warning')
                     .sort((a, b) => a.daysRemaining - b.daysRemaining);

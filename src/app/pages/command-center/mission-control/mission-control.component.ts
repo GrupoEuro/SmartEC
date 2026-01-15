@@ -5,6 +5,7 @@ import { MarketingRoiWidgetComponent } from './widgets/marketing-roi-widget/mark
 import { StockoutPredictionWidgetComponent } from './widgets/stockout-prediction-widget/stockout-prediction-widget.component';
 import { InboundLogisticsWidgetComponent } from './widgets/inbound-logistics-widget/inbound-logistics-widget.component';
 import { UnifiedCrmWidgetComponent } from './widgets/unified-crm-widget/unified-crm-widget.component';
+import { QuestionsDashboardWidgetComponent } from './widgets/questions-dashboard-widget/questions-dashboard-widget.component';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { CommandCenterContextService } from '../services/command-center-context.service';
 import { DashboardDiagnosticsComponent } from '../../../shared/components/dashboard-diagnostics/dashboard-diagnostics.component';
@@ -19,6 +20,7 @@ import { DashboardDiagnosticsComponent } from '../../../shared/components/dashbo
         StockoutPredictionWidgetComponent,
         InboundLogisticsWidgetComponent,
         UnifiedCrmWidgetComponent,
+        QuestionsDashboardWidgetComponent,
         AppIconComponent,
         DashboardDiagnosticsComponent
     ],

@@ -1,8 +1,10 @@
-
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SecretsService, IntegrationConfig } from '../../../../core/services/config/secrets.service';
+import { MeliService } from '../../../../core/services/meli.service';
+import { MeliSyncService } from '../../../../core/services/meli-sync.service';
+import { MeliOrderService } from '../../../../core/services/meli-order.service';
 
 @Component({
     selector: 'app-integration-manager',
@@ -49,15 +51,38 @@ import { SecretsService, IntegrationConfig } from '../../../../core/services/con
                 <p class="text-[10px] text-slate-500 mt-1">Paste this into your MELI App settings.</p>
              </div>
 
-             <div class="flex justify-between items-center">
-                 <button (click)="saveMeli()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition">
-                    Save Keys
-                 </button>
+             <div class="flex justify-between items-center flex-wrap gap-2">
+                 <div class="flex gap-2">
+                     <button (click)="saveMeli()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition">
+                        Save Keys
+                     </button>
+                     
+                     <!-- Sync Inventory -->
+                     <button *ngIf="config()?.meli?.connected" (click)="syncInventory()" [disabled]="isSyncing"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-sm font-bold shadow-lg shadow-indigo-500/20 transition flex items-center gap-2">
+                        <i class="fas fa-box-open" [class.fa-spin]="isSyncing"></i>
+                        <span>{{ isSyncing ? 'Syncing...' : 'Sync Items' }}</span>
+                     </button>
+
+                     <!-- Import Orders -->
+                     <button *ngIf="config()?.meli?.connected" (click)="importOrders()" [disabled]="isOrderImporting"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-sm font-bold shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+                        <i class="fas fa-shopping-cart" [class.fa-spin]="isOrderImporting"></i>
+                        <span>{{ isOrderImporting ? 'Importing...' : 'Get Orders' }}</span>
+                     </button>
+                 </div>
                  
-                 <button *ngIf="config()?.meli?.appId" (click)="connectMeli()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-bold shadow-lg shadow-blue-500/20 transition flex items-center gap-2">
+                 <button *ngIf="!config()?.meli?.connected && config()?.meli?.appId" (click)="connectMeli()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-bold shadow-lg shadow-blue-500/20 transition flex items-center gap-2">
                     <span>Login & Connect</span>
                     <i class="fas fa-external-link-alt"></i>
                  </button>
+             </div>
+             
+             <!-- Sync Status -->
+             <div *ngIf="syncResult" class="mt-4 p-2 bg-slate-900/50 rounded text-xs text-center border border-slate-700">
+                <span [class.text-green-400]="!syncResult.includes('Failed')" [class.text-red-400]="syncResult.includes('Failed')">
+                    {{ syncResult }}
+                </span>
              </div>
         </div>
 
@@ -70,8 +95,8 @@ import { SecretsService, IntegrationConfig } from '../../../../core/services/con
              </div>
 
              <div class="form-group mb-4">
-                <label class="block text-xs uppercase text-slate-500 mb-1">Sell Partner App ID</label>
-                <input type="text" disabled placeholder="Coming Soon" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-600 cursor-not-allowed">
+                 <label class="block text-xs uppercase text-slate-500 mb-1">Sell Partner App ID</label>
+                 <input type="text" disabled placeholder="Coming Soon" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-600 cursor-not-allowed">
              </div>
         </div>
 
@@ -84,6 +109,9 @@ import { SecretsService, IntegrationConfig } from '../../../../core/services/con
 })
 export class IntegrationManagerComponent implements OnInit {
     private secrets = inject(SecretsService);
+    private meliService = inject(MeliService);
+    private syncService = inject(MeliSyncService);
+    private orderService = inject(MeliOrderService);
 
     config = signal<IntegrationConfig | null>(null);
 
@@ -91,6 +119,11 @@ export class IntegrationManagerComponent implements OnInit {
     meliAppId = '';
     meliSecret = '';
     meliRedirect = window.location.origin + '/admin/integrations/callback';
+
+    // Sync State
+    isSyncing = false;
+    isOrderImporting = false;
+    syncResult: string | null = null;
 
     async ngOnInit() {
         await this.loadConfig();
@@ -102,15 +135,7 @@ export class IntegrationManagerComponent implements OnInit {
         if (conf.meli) {
             this.meliAppId = conf.meli.appId;
             this.meliSecret = conf.meli.clientSecret;
-
-            // Auto-migrate or load saved URI
-            const savedUri = conf.meli.redirectUri;
-            if (savedUri && savedUri.includes('/settings/integrations/callback')) {
-                // Fix old path if detected
-                this.meliRedirect = window.location.origin + '/admin/integrations/callback';
-            } else {
-                this.meliRedirect = savedUri || this.meliRedirect;
-            }
+            this.meliRedirect = window.location.origin + '/admin/settings/integrations/callback';
         }
     }
 
@@ -133,11 +158,53 @@ export class IntegrationManagerComponent implements OnInit {
 
     connectMeli() {
         if (!this.meliAppId) return;
-        // OAuth URL Construction
-        // https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=$APP_ID&redirect_uri=$REDIRECT_URI
-        const countryTld = 'com.mx'; // Hardcoded for Mexico for now
-        const authUrl = `https://auth.mercadolibre.${countryTld}/authorization?response_type=code&client_id=${this.meliAppId}&redirect_uri=${encodeURIComponent(this.meliRedirect)}`;
+        window.location.href = this.meliService.getAuthUrl(this.meliAppId, this.meliRedirect);
+    }
 
-        window.location.href = authUrl;
+    async syncInventory() {
+        const conf = this.config();
+
+        if (!conf?.meli?.connected) {
+            alert('Please connect MercadoLibre first.');
+            return;
+        }
+
+        this.isSyncing = true;
+        this.syncResult = null;
+
+        try {
+            // Fallback ID if not in config
+            const userId = conf.meli.userId || 0;
+            const result = await this.syncService.syncAccountItems(userId);
+            this.syncResult = `Catalog Sync: ${result.updated} updated, ${result.errors} errors.`;
+        } catch (e) {
+            console.error(e);
+            this.syncResult = 'Catalog Sync Failed. See console.';
+        } finally {
+            this.isSyncing = false;
+        }
+    }
+
+    async importOrders() {
+        const conf = this.config();
+
+        if (!conf?.meli?.connected) {
+            alert('Please connect MercadoLibre first.');
+            return;
+        }
+
+        this.isOrderImporting = true;
+        this.syncResult = null;
+
+        try {
+            const userId = conf.meli.userId || 0;
+            const result = await this.orderService.importOrders(userId);
+            this.syncResult = `Orders Imported: ${result.imported} new orders.`;
+        } catch (e) {
+            console.error(e);
+            this.syncResult = 'Order Import Failed. See console.';
+        } finally {
+            this.isOrderImporting = false;
+        }
     }
 }

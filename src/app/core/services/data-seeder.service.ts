@@ -299,6 +299,153 @@ export class DataSeederService {
         this.log(`[Seeder] Warehouse data cleared. Total: ${totalDeleted} documents deleted.`, onLog);
     }
 
+    // --- 0. PRICING RULES (NEW) ---
+    async populatePricingRules(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Pricing Rules (Mexico 2025)...', onLog);
+        const batch = writeBatch(this.firestore);
+
+        const rules: any[] = [
+            // MELI CLASSIC
+            {
+                id: 'meli_classic_mx',
+                channel: 'MELI_CLASSIC',
+                country: 'MX',
+                referralFeePercent: 17.5, // Avg category
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 0, // Included in referral
+                active: true,
+                minReferralFee: 0,
+                source: 'MercadoLibre 2025 Standard',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // MELI PREMIUM (Installments)
+            {
+                id: 'meli_premium_mx',
+                channel: 'MELI_PREMIUM',
+                country: 'MX',
+                referralFeePercent: 22.5, // Avg category (+5%)
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 0,
+                active: true,
+                minReferralFee: 0,
+                source: 'MercadoLibre 2025 Premium',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // MELI FULL (FBA equiv)
+            {
+                id: 'meli_full_mx',
+                channel: 'MELI_FULL',
+                country: 'MX',
+                referralFeePercent: 17.5,
+                fulfillmentType: 'FULL',
+                paymentProcessingPercent: 0,
+                active: true,
+                // Simplified Fulfillment Tiers (approx)
+                fulfillmentTiers: [
+                    {
+                        sizeCategory: 'standard',
+                        weightTiers: [
+                            { maxWeight: 0.5, baseFee: 65, perKgOver: 0 },
+                            { maxWeight: 1, baseFee: 75, perKgOver: 0 },
+                            { maxWeight: 2, baseFee: 85, perKgOver: 0 },
+                            { maxWeight: 5, baseFee: 110, perKgOver: 15 }, // +15 per kg over 2 (simplified)
+                            { maxWeight: 10, baseFee: 160, perKgOver: 12 },
+                            { maxWeight: 20, baseFee: 250, perKgOver: 10 }
+                        ]
+                    }
+                ],
+                monthlyStoragePerCubicMeter: 350, // Approx
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // AMAZON FBA
+            {
+                id: 'amazon_fba_mx',
+                channel: 'AMAZON_FBA',
+                country: 'MX',
+                referralFeePercent: 15.0, // Standard
+                fulfillmentType: 'FBA',
+                paymentProcessingPercent: 0, // Amazon pays this
+                active: true,
+                fulfillmentTiers: [
+                    {
+                        sizeCategory: 'standard',
+                        weightTiers: [
+                            { maxWeight: 0.25, baseFee: 62, perKgOver: 0 },
+                            { maxWeight: 0.5, baseFee: 66, perKgOver: 0 },
+                            { maxWeight: 1.0, baseFee: 74, perKgOver: 0 },
+                            { maxWeight: 2.0, baseFee: 91, perKgOver: 0 },
+                            { maxWeight: 3.0, baseFee: 112, perKgOver: 0 }
+                        ]
+                    },
+                    {
+                        sizeCategory: 'large',
+                        weightTiers: [
+                            { maxWeight: 5.0, baseFee: 145, perKgOver: 9 }, // Base for 5kg + 9 per extra kg? Simplified logic
+                            { maxWeight: 10.0, baseFee: 190, perKgOver: 9 },
+                            { maxWeight: 20.0, baseFee: 280, perKgOver: 9 },
+                            { maxWeight: 30.0, baseFee: 370, perKgOver: 9 }
+                        ]
+                    }
+                ],
+                monthlyStoragePerCubicMeter: 450, // High season avg
+                closingFee: 0,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // AMAZON FBM (Merchant Fulfilled)
+            {
+                id: 'amazon_fbm_mx',
+                channel: 'AMAZON_FBM',
+                country: 'MX',
+                referralFeePercent: 15.0,
+                fulfillmentType: 'FBM',
+                paymentProcessingPercent: 0,
+                active: true,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // POS (Terminal)
+            {
+                id: 'pos_clip_mx',
+                channel: 'POS',
+                country: 'MX',
+                referralFeePercent: 0,
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 3.5, // 3.5%
+                paymentProcessingFixed: 0,
+                active: true,
+                source: 'Clip/Zettle Standard',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            },
+            // WEB (Stripe/MP)
+            {
+                id: 'web_stripe_mx',
+                channel: 'WEB',
+                country: 'MX',
+                referralFeePercent: 0,
+                fulfillmentType: 'SELF',
+                paymentProcessingPercent: 3.6,
+                paymentProcessingFixed: 4.00, // $4 MXN
+                active: true,
+                source: 'Stripe Mexico',
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            }
+        ];
+
+        rules.forEach(r => {
+            const ref = doc(this.firestore, `channel_commission_rules/${r.id}`);
+            batch.set(ref, r);
+        });
+
+        await batch.commit();
+        this.log('[Seeder] Pricing Rules Seeded.', onLog);
+    }
+
     // --- 0. LOCATIONS ---
     async populateLocations(onLog?: (message: string) => void): Promise<void> {
         this.log('[Seeder] Seeding Locations...', onLog);

@@ -99,6 +99,10 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./procurement/purchase-order-detail/purchase-order-detail.component').then(m => m.PurchaseOrderDetailComponent)
             },
             {
+                path: 'pricing/constructor',
+                loadComponent: () => import('./pricing/visual-price-constructor/visual-price-constructor.component').then(m => m.VisualPriceConstructorComponent)
+            },
+            {
                 path: 'pricing-grid',
                 loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
             },

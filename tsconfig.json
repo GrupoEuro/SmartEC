@@ -18,6 +18,8 @@
     "target": "ES2022",
     "module": "ES2022",
     "useDefineForClassFields": false,
+    "incremental": true,
+    "tsBuildInfoFile": ".angular/cache/tsconfig.tsbuildinfo",
     "lib": [
       "ES2022",
       "dom"

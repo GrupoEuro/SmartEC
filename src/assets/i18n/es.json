@@ -62,7 +62,26 @@
         "COLLAPSE_ALL": "Colapsar Todo",
         "SHOW_DETAILS": "Mostrar Detalles",
         "PRICE_GRID_TITLE": "Smart Price Grid",
-        "PRICE_GRID_SUBTITLE": "Gestione todos los precios de los canales en una sola vista"
+        "PRICE_GRID_SUBTITLE": "Gestione todos los precios de los canales en una sola vista",
+        "BLOCKS": {
+            "DISCOUNT": "Descuento",
+            "SHIPPING": "Costo de Envío",
+            "WARRANTY": "Garantía Ext.",
+            "PACKAGING": "Empaque Especial"
+        },
+        "BASIS": {
+            "PERCENT_OF_TOTAL": "% del Total",
+            "PERCENT_OF_BASE": "% del Producto Base",
+            "FIXED": "Monto Fijo"
+        },
+        "UI": {
+            "SALES_CHANNEL": "Canal de Venta",
+            "ADD_BLOCKS": "Agregar Bloques"
+        },
+        "INPUTS": {
+            "STARTING_COST": "Costo Inicial (COG)",
+            "TARGET_PRICE": "Precio Objetivo"
+        }
     },
     "CATEGORIES": {
         "SPORT": "Deportivas",

@@ -70,7 +70,26 @@
         },
         "EXPAND_ALL": "Expand All",
         "COLLAPSE_ALL": "Collapse All",
-        "SHOW_DETAILS": "Show Details"
+        "SHOW_DETAILS": "Show Details",
+        "BLOCKS": {
+            "DISCOUNT": "Discount",
+            "SHIPPING": "Shipping Cost",
+            "WARRANTY": "Ext. Warranty",
+            "PACKAGING": "Special Packaging"
+        },
+        "BASIS": {
+            "PERCENT_OF_TOTAL": "% of Total",
+            "PERCENT_OF_BASE": "% of Base Product",
+            "FIXED": "Fixed Amount"
+        },
+        "UI": {
+            "SALES_CHANNEL": "Sales Channel",
+            "ADD_BLOCKS": "Add Blocks"
+        },
+        "INPUTS": {
+            "STARTING_COST": "Starting Cost (COG)",
+            "TARGET_PRICE": "Target Retail Price"
+        }
     },
     "HERO": {
         "BADGE": "Leading Importers in Mexico",

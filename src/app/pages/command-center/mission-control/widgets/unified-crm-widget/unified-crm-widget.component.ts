@@ -8,10 +8,10 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
 import { UnifiedCustomer } from '../../../../../core/models/unified-customer.model';
 
 @Component({
-    selector: 'app-unified-crm-widget',
-    standalone: true,
-    imports: [CommonModule, ChartCardComponent, AppIconComponent],
-    template: `
+   selector: 'app-unified-crm-widget',
+   standalone: true,
+   imports: [CommonModule, ChartCardComponent, AppIconComponent],
+   template: `
     <app-chart-card
       [title]="'Omnichannel Customer 360'"
       subtitle="Unified Identity & LTV Analysis"
@@ -64,9 +64,9 @@ import { UnifiedCustomer } from '../../../../../core/models/unified-customer.mod
 
     </app-chart-card>
   `,
-    styles: [`
+   styles: [`
     :host { display: block; height: auto; min-height: 100%; }
-
+    
     .crm-overview {
       display: flex;
       flex-direction: column;
@@ -81,16 +81,20 @@ import { UnifiedCustomer } from '../../../../../core/models/unified-customer.mod
     .metric-card {
        flex: 1;
        background: rgba(255,255,255,0.03);
-       border-radius: 8px;
-       padding: 1rem;
+       border-radius: 12px;
+       border: 1px solid rgba(255,255,255,0.05);
+       padding: 1.25rem;
        display: flex;
        flex-direction: column;
        align-items: center;
+       justify-content: center;
+       transition: background 0.2s;
     }
+    .metric-card:hover { background: rgba(255,255,255,0.05); }
 
-    .metric-card .label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.25rem; }
-    .metric-card .value { font-size: 1.25rem; font-weight: 700; color: #e2e8f0; }
-    .metric-card .value.highlight { color: #8b5cf6; }
+    .metric-card .label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .metric-card .value { font-size: 1.75rem; font-weight: 700; color: #e2e8f0; }
+    .metric-card .value.highlight { color: #a78bfa; text-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
 
     .top-customers-list {
        display: flex;
@@ -98,39 +102,46 @@ import { UnifiedCustomer } from '../../../../../core/models/unified-customer.mod
        gap: 0.75rem;
     }
     
-    .list-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .list-header { 
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; 
+        color: #64748b; font-weight: 600;
+    }
 
     .customer-item {
        display: flex;
        align-items: center;
        justify-content: space-between;
-       padding: 0.75rem;
+       padding: 0.85rem 1rem;
        background: rgba(255,255,255,0.02);
        border: 1px solid rgba(255,255,255,0.05);
-       border-radius: 8px;
-       transition: background 0.2s;
+       border-radius: 10px;
+       transition: all 0.2s;
     }
-    .customer-item:hover { background: rgba(255,255,255,0.05); }
+    .customer-item:hover { 
+        background: rgba(255,255,255,0.06); 
+        transform: translateX(4px);
+    }
 
-    .cust-info { display: flex; align-items: center; gap: 0.75rem; flex: 2; }
+    .cust-info { display: flex; align-items: center; gap: 1rem; flex: 2; }
     
     .cust-avatar {
-       width: 32px; height: 32px;
+       width: 36px; height: 36px;
        border-radius: 50%;
-       background: linear-gradient(135deg, #cbd5e1, #94a3b8);
-       color: #1e293b;
+       background: linear-gradient(135deg, #475569, #1e293b);
+       color: #e2e8f0;
+       border: 1px solid rgba(255,255,255,0.1);
        display: flex; align-items: center; justify-content: center;
-       font-weight: 700;
+       font-weight: 600;
        font-size: 0.9rem;
     }
 
-    .cust-details { display: flex; flex-direction: column; }
-    .cust-name { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; }
+    .cust-details { display: flex; flex-direction: column; gap: 2px; }
+    .cust-name { font-size: 0.95rem; font-weight: 500; color: #f1f5f9; }
     .cust-email { font-size: 0.75rem; color: #64748b; }
 
     .cust-channels { 
         display: flex; 
-        gap: 0.25rem; 
+        gap: 0.4rem; 
         flex: 1; 
         justify-content: center;
         flex-wrap: wrap;
@@ -138,66 +149,71 @@ import { UnifiedCustomer } from '../../../../../core/models/unified-customer.mod
 
     .channel-badge {
        font-size: 0.65rem;
-       padding: 2px 6px;
+       padding: 3px 8px;
        border-radius: 4px;
        font-weight: 600;
        background: #334155;
-       color: #fff;
+       color: #f8fafc;
+       border: 1px solid rgba(255,255,255,0.05);
     }
     
-    .channel-badge.amazon_fba, .channel-badge.amazon_mfn { background: #f59e0b; color: #000; }
-    .channel-badge.meli_classic, .channel-badge.meli_full { background: #fee600; color: #000; }
-    .channel-badge.web { background: #3b82f6; }
-    .channel-badge.pos { background: #10b981; }
+    .channel-badge.amazon_fba, .channel-badge.amazon_mfn { 
+        background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); 
+    }
+    .channel-badge.meli_classic, .channel-badge.meli_full { 
+        background: rgba(254, 240, 138, 0.1); color: #fef08a; border-color: rgba(254, 240, 138, 0.3); 
+    }
+    .channel-badge.web { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+    .channel-badge.pos { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
 
-    .cust-ltv { display: flex; flex-direction: column; align-items: flex-end; flex: 1; }
-    .cust-ltv .value { font-weight: 700; color: #e2e8f0; }
-    .cust-ltv .label { font-size: 0.65rem; color: #64748b; }
+    .cust-ltv { display: flex; flex-direction: column; align-items: flex-end; flex: 1; min-width: 80px; }
+    .cust-ltv .value { font-weight: 700; font-size: 1rem; color: #e2e8f0; }
+    .cust-ltv .label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
 
   `]
 })
 export class UnifiedCrmWidgetComponent {
-    private crmService = inject(CustomerUnificationService);
+   private crmService = inject(CustomerUnificationService);
 
-    unifiedCustomers = toSignal(this.crmService.getUnifiedCustomers(), { initialValue: [] });
+   unifiedCustomers = toSignal(this.crmService.getUnifiedCustomers(), { initialValue: [] });
 
-    crossChannelCount = computed(() => this.unifiedCustomers().filter(c => c.channels.length > 1).length);
+   crossChannelCount = computed(() => this.unifiedCustomers().filter(c => c.channels.length > 1).length);
 
-    avgUnifiedLtv = computed(() => {
-        const crossChannel = this.unifiedCustomers().filter(c => c.channels.length > 1);
-        if (crossChannel.length === 0) return 0;
-        const total = crossChannel.reduce((sum, c) => sum + c.totalLifetimeValue, 0);
-        return total / crossChannel.length;
-    });
+   avgUnifiedLtv = computed(() => {
+      const crossChannel = this.unifiedCustomers().filter(c => c.channels.length > 1);
+      if (crossChannel.length === 0) return 0;
+      const total = crossChannel.reduce((sum, c) => sum + c.totalLifetimeValue, 0);
+      return total / crossChannel.length;
+   });
 
-    topCustomers = computed(() => this.unifiedCustomers().slice(0, 5));
+   topCustomers = computed(() => this.unifiedCustomers().slice(0, 5));
 
-    tableColumns: TableColumn[] = [
-        { key: 'displayName', label: 'Customer' },
-        { key: 'email', label: 'Identity' },
-        { key: 'channelsDisplay', label: 'Channels' },
-        { key: 'totalLifetimeValue', label: 'LTV', format: 'currency' }
-    ];
+   tableColumns: TableColumn[] = [
+      { key: 'displayName', label: 'Customer' },
+      { key: 'email', label: 'Identity' },
+      { key: 'channelsDisplay', label: 'Channels' },
+      { key: 'totalLifetimeValue', label: 'LTV', format: 'currency' }
+   ];
 
-    tableData = computed(() => {
-        return this.unifiedCustomers().map(c => ({
-            displayName: c.displayName,
-            email: c.email,
-            channelsDisplay: c.channels.map(ch => this.getChannelLabel(ch)).join(', '),
-            totalLifetimeValue: c.totalLifetimeValue
-        }));
-    });
+   tableData = computed(() => {
+      return this.unifiedCustomers().map(c => ({
+         displayName: c.displayName,
+         email: c.email,
+         channelsDisplay: c.channels.map(ch => this.getChannelLabel(ch)).join(', '),
+         totalLifetimeValue: c.totalLifetimeValue
+      }));
+   });
 
-    getChannelLabel(id: string): string {
-        const map: any = {
-            'WEB': 'Web',
-            'POS': 'Store',
-            'AMAZON_FBA': 'Amz FBA',
-            'AMAZON_MFN': 'Amz MFN',
-            'MELI_CLASSIC': 'MeLi',
-            'MELI_FULL': 'MeLi Full',
-            'ON_BEHALF': 'Phone'
-        };
-        return map[id] || id;
-    }
+   getChannelLabel(id: string): string {
+      const map: any = {
+         'WEB': 'Web',
+         'POS': 'Store',
+         'AMAZON_FBA': 'Amz FBA',
+         'AMAZON_MFN': 'Amz MFN',
+         'MELI_CLASSIC': 'MeLi',
+         'MELI_FULL': 'MeLi Full',
+         'ON_BEHALF': 'Phone'
+      };
+      return map[id] || id;
+   }
 }

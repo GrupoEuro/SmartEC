@@ -13,7 +13,8 @@
                 {{ 'HERO.SUBTITLE' | translate }}
             </p>
             <div class="hero-actions">
-                <button class="btn-large btn-primary">{{ 'HERO.BTN_CATALOG' | translate }}</button>
+                <button class="btn-large btn-primary" routerLink="/catalog">{{ 'HERO.BTN_CATALOG' | translate
+                    }}</button>
                 <button class="btn-large btn-outline" (click)="scrollToContact()">{{ 'HERO.BTN_CONTACT' | translate
                     }}</button>
             </div>
@@ -37,7 +38,7 @@
                     </div>
                     <div class="store-content">
                         <div class="store-badge">{{ 'HERO.STORE_BADGE' | translate }}</div>
-                        <h3>{{ 'HERO.STORE_TITLE' | translate }}</h3>
+                        <h3>{{ 'HERO.STORE_TITLE_PRAXIS' | translate }}</h3>
                         <p>{{ 'HERO.STORE_DESC' | translate }}</p>
                         <div class="store-platforms">
                             <a href="https://www.mercadolibre.com.mx/tienda/praxis" target="_blank"
@@ -64,14 +65,8 @@
 
                 <div class="floating-product badge-top-left">
                     <div class="product-mini">
-                        <div class="product-icon">🏍️</div>
-                        <span>Michelin</span>
-                    </div>
-                </div>
-                <div class="floating-product badge-top-right">
-                    <div class="product-mini">
                         <div class="product-icon">⚡</div>
-                        <span>Praxis</span>
+                        <img src="assets/images/praxis-logo-white.png" alt="Praxis" style="height: 30px; width: auto;">
                     </div>
                 </div>
                 <div class="floating-product badge-bottom">

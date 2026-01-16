@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
+import { Component, inject, signal, effect, computed, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,9 @@ import { Product } from '../../../../core/models/catalog.model';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { MatrixComparatorComponent } from './matrix-comparator/matrix-comparator.component';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 
 /**
  * TAILWIND CLASS SAFELIST
@@ -31,7 +34,7 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
   // Trigger Rebuild v3
   selector: 'app-visual-price-constructor',
   standalone: true,
-  imports: [CommonModule, DragDropModule, FormsModule, AppIconComponent, TranslateModule],
+  imports: [CommonModule, DragDropModule, FormsModule, AppIconComponent, TranslateModule, MatrixComparatorComponent, BaseChartDirective],
   templateUrl: './visual-price-constructor.component.html',
   styleUrls: ['./visual-price-constructor.component.css']
 })
@@ -55,6 +58,7 @@ export class VisualPriceConstructorComponent {
   // State
   mode = signal<'FORWARD' | 'INVERSE'>('FORWARD');
   channel = signal<string>('MANUAL');
+  showChart = signal<boolean>(false);
 
   // Core Values
   startValue = signal<number>(100); // COG or Target Price
@@ -86,6 +90,83 @@ export class VisualPriceConstructorComponent {
     const stack = this.calculatedStack();
     if (stack.length === 0) return this.startValue();
     return stack[stack.length - 1].subtotalAfter || 0;
+  });
+
+  // Margin Analysis
+  effectiveMargin = computed(() => {
+    const stack = this.calculatedStack();
+    const sellingPrice = this.finalResult();
+    const cog = this.mode() === 'FORWARD' ? this.startValue() : 0;
+
+    if (sellingPrice <= 0) return 0;
+
+    // Calculate Net Profit
+    // Strategy: Revenue - COG - Total Fees/Taxes - Discounts
+    // Or simpler: Just look at the "Margin" blocks? No, that relies on them being defined.
+    // "Profit" is what's left.
+    // Let's sum up all 'COST', 'FEE', 'TAX', 'SHIPPING', 'DISCOUNT' blocks
+    // Note: DISCOUNT reduces value, effectively a 'cost' to revenue if we consider list price?
+    // Actually, FinalResult IS the discounted price.
+    // So Net Profit = FinalResult (Revenue) - StartValue (COG) - Sum(FEES/TAXES/SHIPPING)
+
+    // Wait, let's iterate blocks to find non-profit subtractions
+    // Actually, `calculatedAmount` is what is added/subtracted.
+
+    let totalCosts = 0;
+
+    // In Forward mode, startValue is COG.
+    // We need to verify if COG is already a block. In 'getChannelTemplates', COG is block 0.
+    // But in `calculatedStack`, the loop adds/subtracts.
+
+    // Let's look at the blocks:
+    // COST, FEE, TAX, SHIPPING -> Reductions from potential profit.
+    // MARGIN -> This IS the profit.
+
+    // If the model is correct, sum of all MARGIN blocks IS the Net Profit?
+    // Let's verify: 
+    // COG 100. Margin 20 (Total 120). Fee 10 (Total 130).
+    // Final Price 130.
+    // Profit = 130 - 100 (COG) - 10 (Fee) = 20.
+    // Matches the Margin block.
+
+    // What if we have a Discount?
+    // COG 100. Margin 50. Price 150. Discount 50. Price 100.
+    // Profit = 100 - 100 = 0.
+    // Margin Block was 50. So sum of Margin blocks (50) - Discount (50) = 0.
+
+    // Algorithm: Sum(MARGIN) - Sum(DISCOUNT).
+    // Fees are pass-through? No, Fees are costs.
+    // If I add a Fee, Price increases (Cost Plus). Profit stays same (20).
+    // So `(20 / 130) * 100 = 15.3%`.
+    // If I add Discount 10. Price 120.
+    // Profit = 20 - 10 (Discount) = 10?
+    // Or does Discount reduce the Margin block? No, it's a separate block.
+
+    let netProfit = 0;
+
+    stack.forEach(b => {
+      if (b.type === 'MARGIN') {
+        netProfit += b.calculatedAmount || 0;
+      }
+      if (b.type === 'DISCOUNT') {
+        netProfit -= b.calculatedAmount || 0;
+      }
+      // What about 'COST' added later? e.g. Packing Material.
+      // COG 100. Pack 10. Margin 20. Price 130.
+      // Profit 20. Match.
+      // So additional Costs are passed on to customer in Price, they don't eat margin unless they are NOT added to price (which is impossible in this Cost-Plus model).
+      // Wait, if I add a Cost Block 10.
+      // Price goes up by 10. Profit (Margin block) stays 20.
+      // Margin % = 20 / 140 = 14.2% (Lower!).
+      // So we just need to track the Net Profit Amount.
+    });
+
+    return (netProfit / sellingPrice) * 100;
+  });
+
+  marginAlert = computed(() => {
+    // Logic: If margin < 15%
+    return this.effectiveMargin() < FINANCIAL_CONSTANTS.MIN_MARGIN_PERCENT;
   });
 
   constructor() {
@@ -173,45 +254,145 @@ export class VisualPriceConstructorComponent {
     this.activeBlocks.update(blocks => blocks.map(b => b.id === id ? { ...b, label } : b));
   }
 
-  updateMarginFromAbsolute(block: PriceBlock, event: Event) {
-    const input = event.target as HTMLInputElement;
-    const amount = parseFloat(input.value);
-    if (isNaN(amount) || amount < 0) return;
+  // --- 3-Way Margin Logic ---
 
-    // Calculate Context
-    let fixedCosts = this.startValue();
-    let variableRate = 0; // Sum of % fees (of Total)
-    let taxRate = 0;      // Sum of % taxes (of Base)
+  updateMarginStrategy(block: PriceBlock, strategy: 'MARGIN' | 'MARKUP' | 'PROFIT', value: number) {
+    if (block.type !== 'MARGIN') return;
 
-    this.activeBlocks().forEach(b => {
-      // Must match by ID because 'block' might be a computed copy
-      if (b.id === block.id || !b.active) return;
+    // Mutate local block first to set intent
+    const newBasis = strategy === 'MARGIN' ? 'PERCENT_OF_TOTAL' :
+      strategy === 'MARKUP' ? 'PERCENT_OF_BASE' : 'FIXED';
 
-      if (b.basis === 'FIXED' || b.type === 'COST' || b.type === 'SHIPPING') {
-        fixedCosts += b.value;
-      } else if (b.basis === 'PERCENT_OF_TOTAL' && b.type !== 'MARGIN') {
-        variableRate += (b.value / 100);
-      } else if (b.type === 'TAX' && b.basis === 'PERCENT_OF_BASE') {
-        taxRate += (b.value / 100);
+    // Update Signal to trigger reactivity
+    this.activeBlocks.update(blocks => blocks.map(b => {
+      if (b.id === block.id) {
+        return { ...b, basis: newBasis, value: value };
       }
-    });
-
-    // Formula: Price = (FixedCost + Profit) / ( (1/(1+Tax)) - VariableRate )
-    const denominator = (1 / (1 + taxRate)) - variableRate;
-
-    // Guard against divide by zero or negative
-    if (denominator <= 0) return;
-
-    const estimatedGrossPrice = (fixedCosts + amount) / denominator;
-
-    // New Margin % = Profit / GrossPrice
-    const newPercent = (amount / estimatedGrossPrice) * 100;
-
-    // Update Source Signal
-    this.updateBlockValue(block.id, parseFloat(newPercent.toFixed(2)));
+      return b;
+    }));
   }
 
+  trackByBlock(index: number, block: PriceBlock): string {
+    return block.id;
+  }
+
+  getEquivalentMargin(block: PriceBlock): number {
+    if (block.type !== 'MARGIN') return 0;
+    const stack = this.activeBlocks();
+    if (!stack.length) return 0;
+
+    // Last block Subtotal is Selling Price
+    const total = stack[stack.length - 1].subtotalAfter || 0;
+    const profit = block.calculatedAmount || 0;
+
+    if (total <= 0) return 0;
+    return parseFloat(((profit / total) * 100).toFixed(2));
+  }
+
+  getEquivalentMarkup(block: PriceBlock): number {
+    if (block.type !== 'MARGIN') return 0;
+    const cost = this.startValue();
+    const profit = block.calculatedAmount || 0;
+
+    if (cost <= 0) return 0;
+    return parseFloat(((profit / cost) * 100).toFixed(2));
+  }
+
+  getEquivalentProfit(block: PriceBlock): number {
+    return parseFloat((block.calculatedAmount || 0).toFixed(2));
+  }
   removeBlock(index: number) {
     this.activeBlocks.update(blocks => blocks.filter((_, i) => i !== index));
   }
+
+  // --- Chart Logic --- //
+
+  toggleChart() {
+    this.showChart.update(v => !v);
+  }
+
+  chartData = computed<ChartConfiguration<'bar'>['data']>(() => {
+    const stack = this.calculatedStack();
+    const datasets: ChartConfiguration<'bar'>['data']['datasets'] = [];
+
+    // We want to stack components.
+    // X-Axis: "Breakdown"
+    // Series: COG, Fees, Tax, Margin
+
+    // Helper to map color names to hex
+    const colorMap: Record<string, string> = {
+      teal: '#14b8a6',   // COG
+      rose: '#f43f5e',   // TAX/IVA
+      blue: '#3b82f6',   // SHIPPING
+      orange: '#f97316', // FEE
+      yellow: '#eab308', // FEE
+      purple: '#a855f7', // DISCOUNT
+      red: '#ef4444',    // PACKAGING
+      emerald: '#10b981',// MARGIN
+      cyan: '#06b6d4',
+    };
+
+    // Create a dataset for each block
+    // Reverse order so the bottom of stack is at bottom of chart
+    [...stack].forEach(block => {
+      let label = block.label;
+      if (block.id === 'cog') label = 'Product Cost';
+      if (block.id === 'margin') label = 'Net Margin';
+
+      datasets.push({
+        data: [block.calculatedAmount || 0],
+        label: label,
+        backgroundColor: colorMap[block.color] || '#cbd5e1',
+        stack: 'a', // Stack Key
+        barPercentage: 0.6
+      });
+    });
+
+    return {
+      labels: ['Price Composition'],
+      datasets: datasets
+    };
+  });
+
+  chartOptions: ChartConfiguration<'bar'>['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false, // Too many blocks usually
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed.y !== null) {
+              label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        display: false, // Cleaner look
+        stacked: true
+      },
+      y: {
+        stacked: true,
+        grid: {
+          color: '#334155'
+        },
+        ticks: {
+          color: '#94a3b8',
+          callback: function (value: any) {
+            return '$' + value;
+          }
+        }
+      }
+    }
+  };
 }

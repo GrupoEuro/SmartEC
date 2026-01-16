@@ -1,5 +1,4 @@
 <!-- Visual Price Constructor v1.0 -->
-<div class="bg-red-600 text-white font-mono text-center font-bold p-1">DEBUG: V991 - ALIGNMENT FIX APPLIED</div>
 <div class="h-full w-full bg-slate-900 p-6 flex flex-col overflow-hidden">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
@@ -143,120 +142,183 @@
         <div
             class="flex-1 bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6 flex flex-col relative overflow-hidden">
 
-            <!-- Start Node -->
-            <div class="flex justify-center mb-4">
+            <!-- Start Node & Controls -->
+            <div class="flex justify-between items-center mb-4 px-2">
                 <div
                     class="bg-slate-800 text-slate-400 text-xs font-mono px-3 py-1 rounded-full border border-slate-700">
                     START: {{ startValue() | currency }}
                 </div>
+
+                <!-- Chart Toggle -->
+                <button (click)="toggleChart()"
+                    class="flex items-center gap-2 px-3 py-1 rounded-full border transition-all text-xs font-bold uppercase tracking-wide"
+                    [class.bg-purple-600]="showChart()" [class.border-purple-500]="showChart()"
+                    [class.text-white]="showChart()" [class.bg-slate-800]="!showChart()"
+                    [class.border-slate-700]="!showChart()" [class.text-slate-400]="!showChart()">
+                    <app-icon [name]="showChart() ? 'visibility_off' : 'bar_chart'" [size]="16"></app-icon>
+                    {{ showChart() ? 'Hide Graph' : 'Show Graph' }}
+                </button>
             </div>
 
-            <!-- Table Based Layout -->
-            <div class="flex-1 overflow-y-auto min-h-[200px] relative">
-                <table class="w-full border-separate border-spacing-y-2">
-                    <thead class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur shadow-sm">
-                        <tr class="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            <th class="w-8 py-2"></th> <!-- Drag -->
-                            <th class="w-2 py-2"></th> <!-- Color -->
-                            <th class="text-left py-2 px-3 w-4/12">Component</th>
-                            <th class="text-right py-2 px-3 w-3/12 pr-8">Input</th>
-                            <th class="text-right py-2 px-3 w-2/12">Amount</th>
-                            <th class="text-right py-2 px-3 w-3/12">Subtotal</th>
-                            <th class="w-8 py-2"></th> <!-- Delete -->
-                        </tr>
-                    </thead>
-                    <tbody cdkDropList (cdkDropListDropped)="drop($event)">
-                        <tr *ngFor="let block of calculatedStack(); let i = index" cdkDrag
-                            class="bg-slate-800 group hover:border-slate-600 shadow-sm relative">
+            <!-- Split Layout Container -->
+            <div class="flex-1 flex gap-4 min-h-0 overflow-hidden">
 
-                            <!-- Drag Handle -->
-                            <td class="rounded-l-lg py-3 pl-3 text-center cursor-grab text-slate-600 hover:text-slate-400 align-middle"
-                                cdkDragHandle>
-                                <app-icon name="drag_indicator" [size]="20"></app-icon>
-                            </td>
+                <!-- Left: List (Scrollable) -->
+                <div class="flex-1 overflow-y-auto relative flex flex-col transition-all duration-300"
+                    [ngClass]="{'w-1/2': showChart(), 'flex-1': !showChart()}">
+                    <table class="w-full border-separate border-spacing-y-2">
+                        <thead class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur shadow-sm">
+                            <tr class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="w-8 py-2"></th> <!-- Drag -->
+                                <th class="w-2 py-2"></th> <!-- Color -->
+                                <th class="text-left py-2 px-3 w-4/12">Component</th>
+                                <th class="text-right py-2 px-3 w-3/12 pr-8">Input</th>
+                                <th class="text-right py-2 px-3 w-2/12">Amount</th>
+                                <th class="text-right py-2 px-3 w-3/12">Subtotal</th>
+                                <th class="w-8 py-2"></th> <!-- Delete -->
+                            </tr>
+                        </thead>
+                        <tbody cdkDropList (cdkDropListDropped)="drop($event)">
+                            <tr *ngFor="let block of calculatedStack(); let i = index; trackBy: trackByBlock" cdkDrag
+                                class="bg-slate-800 group hover:border-slate-600 shadow-sm relative">
 
-                            <!-- Color Bar -->
-                            <td class="py-3 align-middle">
-                                <div [class]="'w-1 h-8 rounded-full bg-' + block.color + '-500'"></div>
-                            </td>
+                                <!-- Drag Handle -->
+                                <td class="rounded-l-lg py-3 pl-3 text-center cursor-grab text-slate-600 hover:text-slate-400 align-middle"
+                                    cdkDragHandle>
+                                    <app-icon name="drag_indicator" [size]="20"></app-icon>
+                                </td>
 
-                            <!-- Label -->
-                            <td class="py-3 px-3 align-middle">
-                                <input type="text" [ngModel]="block.label"
-                                    (ngModelChange)="updateBlockLabel(block.id, $event)"
-                                    class="bg-transparent text-slate-200 font-medium text-sm w-full outline-none focus:text-purple-400">
-                            </td>
+                                <!-- Color Bar -->
+                                <td class="py-3 align-middle">
+                                    <div [class]="'w-1 h-8 rounded-full bg-' + block.color + '-500'"></div>
+                                </td>
 
-                            <!-- Input Field -->
-                            <td class="py-3 px-3 align-middle">
-                                <!-- Case 1: MARGIN (Dual Input) -->
-                                <div class="flex flex-col gap-1" *ngIf="block.type === 'MARGIN'">
-                                    <div class="relative flex items-center w-full">
-                                        <input type="number" [ngModel]="block.value"
-                                            (ngModelChange)="updateBlockValue(block.id, $event)"
-                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-green-500 outline-none pl-6 pr-8"
-                                            placeholder="Margin %">
-                                        <span
-                                            class="absolute right-2 text-slate-500 text-sm pointer-events-none">%</span>
+                                <!-- Label -->
+                                <td class="py-3 px-3 align-middle">
+                                    <input type="text" [ngModel]="block.label"
+                                        (ngModelChange)="updateBlockLabel(block.id, $event)"
+                                        class="bg-transparent text-slate-200 font-medium text-sm w-full outline-none focus:text-purple-400">
+                                </td>
+
+                                <!-- Input Field -->
+                                <td class="py-3 px-3 align-middle">
+                                    <!-- Case 1: MARGIN (3-Way Input) -->
+                                    <div class="flex flex-col gap-1" *ngIf="block.type === 'MARGIN'">
+
+                                        <!-- Row 1: Margin % -->
+                                        <div class="relative flex items-center w-full group/margin">
+                                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500 rounded-l"
+                                                *ngIf="block.basis === 'PERCENT_OF_TOTAL'"></div>
+                                            <span
+                                                class="absolute left-2 text-[10px] text-slate-500 font-bold tracking-tight">MGN</span>
+                                            <input type="number" [ngModel]="getEquivalentMargin(block)"
+                                                (ngModelChange)="updateMarginStrategy(block, 'MARGIN', $event)"
+                                                class="w-full h-7 bg-slate-900 border rounded px-2 text-xs text-right text-slate-300 focus:border-purple-500 outline-none pl-10 pr-6 transition-colors"
+                                                [class.border-purple-500]="block.basis === 'PERCENT_OF_TOTAL'"
+                                                [class.border-slate-700]="block.basis !== 'PERCENT_OF_TOTAL'">
+                                            <span
+                                                class="absolute right-2 text-slate-500 text-xs pointer-events-none">%</span>
+                                        </div>
+
+                                        <!-- Row 2: Markup % -->
+                                        <div class="relative flex items-center w-full group/markup">
+                                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-l"
+                                                *ngIf="block.basis === 'PERCENT_OF_BASE'"></div>
+                                            <span
+                                                class="absolute left-2 text-[10px] text-slate-500 font-bold tracking-tight">MKP</span>
+                                            <input type="number" [ngModel]="getEquivalentMarkup(block)"
+                                                (ngModelChange)="updateMarginStrategy(block, 'MARKUP', $event)"
+                                                class="w-full h-7 bg-slate-900 border rounded px-2 text-xs text-right text-slate-300 focus:border-blue-500 outline-none pl-10 pr-6 transition-colors"
+                                                [class.border-blue-500]="block.basis === 'PERCENT_OF_BASE'"
+                                                [class.border-slate-700]="block.basis !== 'PERCENT_OF_BASE'">
+                                            <span
+                                                class="absolute right-2 text-slate-500 text-xs pointer-events-none">%</span>
+                                        </div>
+
+                                        <!-- Row 3: Profit $ -->
+                                        <div class="relative flex items-center w-full group/profit">
+                                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l"
+                                                *ngIf="block.basis === 'FIXED'"></div>
+                                            <span
+                                                class="absolute left-2 text-[10px] text-slate-500 font-bold tracking-tight">PRF</span>
+                                            <input type="number" [ngModel]="getEquivalentProfit(block)"
+                                                (ngModelChange)="updateMarginStrategy(block, 'PROFIT', $event)"
+                                                class="w-full h-7 bg-slate-900 border rounded px-2 text-xs text-right text-emerald-400 font-bold focus:border-emerald-500 outline-none pl-10 pr-2 transition-colors"
+                                                [class.border-emerald-500]="block.basis === 'FIXED'"
+                                                [class.border-slate-700]="block.basis !== 'FIXED'">
+                                        </div>
                                     </div>
-                                    <div class="relative flex items-center w-full">
+
+                                    <!-- Case 2: COG (Forward Mode Sync) -->
+                                    <div class="w-full relative flex items-center"
+                                        *ngIf="block.type !== 'MARGIN' && block.id === 'cog' && mode() === 'FORWARD'">
                                         <span
                                             class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
-                                        <input type="number" [value]="(block.calculatedAmount || 0).toFixed(2)"
-                                            (input)="updateMarginFromAbsolute(block, $event)"
-                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-green-400 focus:border-green-500 outline-none pl-6 pr-8"
-                                            placeholder="Profit $">
+                                        <input type="number" [ngModel]="startValue()"
+                                            (ngModelChange)="startValue.set($event)"
+                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none pl-6 pr-8">
                                     </div>
-                                </div>
 
-                                <!-- Case 2: COG (Forward Mode Sync) -->
-                                <div class="w-full relative flex items-center"
-                                    *ngIf="block.type !== 'MARGIN' && block.id === 'cog' && mode() === 'FORWARD'">
-                                    <span class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
-                                    <input type="number" [ngModel]="startValue()"
-                                        (ngModelChange)="startValue.set($event)"
-                                        class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none pl-6 pr-8">
-                                </div>
+                                    <!-- Case 3: Standard Input (Default) -->
+                                    <div class="w-full relative flex items-center"
+                                        *ngIf="block.type !== 'MARGIN' && (block.id !== 'cog' || mode() !== 'FORWARD')">
+                                        <span *ngIf="block.basis === 'FIXED'"
+                                            class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
+                                        <input type="number" [ngModel]="block.value"
+                                            (ngModelChange)="updateBlockValue(block.id, $event)"
+                                            [disabled]="!!block.isLocked && block.id !== 'cog'"
+                                            class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed pl-6 pr-8">
+                                        <span *ngIf="block.basis.includes('PERCENT')"
+                                            class="absolute right-2 text-slate-500 text-sm pointer-events-none">%</span>
+                                    </div>
+                                </td>
 
-                                <!-- Case 3: Standard Input (Default) -->
-                                <div class="w-full relative flex items-center"
-                                    *ngIf="block.type !== 'MARGIN' && (block.id !== 'cog' || mode() !== 'FORWARD')">
-                                    <span *ngIf="block.basis === 'FIXED'"
-                                        class="absolute left-2 text-slate-500 text-sm pointer-events-none">$</span>
-                                    <input type="number" [ngModel]="block.value"
-                                        (ngModelChange)="updateBlockValue(block.id, $event)"
-                                        [disabled]="!!block.isLocked && block.id !== 'cog'"
-                                        class="w-full h-8 bg-slate-900 border border-slate-700 rounded px-2 text-sm text-right text-slate-300 focus:border-purple-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed pl-6 pr-8">
-                                    <span *ngIf="block.basis.includes('PERCENT')"
-                                        class="absolute right-2 text-slate-500 text-sm pointer-events-none">%</span>
-                                </div>
-                            </td>
+                                <!-- Amount -->
+                                <td class="py-3 px-3 text-right font-mono text-sm align-middle"
+                                    [class.text-rose-400]="block.type === 'COST' || block.type === 'FEE' || block.type === 'TAX'"
+                                    [class.text-emerald-400]="block.type === 'MARGIN'">
+                                    {{ (block.id === 'cog' && mode() === 'FORWARD' ? startValue() :
+                                    block.calculatedAmount)
+                                    | currency }}
+                                </td>
 
-                            <!-- Amount -->
-                            <td class="py-3 px-3 text-right font-mono text-sm align-middle"
-                                [class.text-rose-400]="block.type === 'COST' || block.type === 'FEE' || block.type === 'TAX'"
-                                [class.text-emerald-400]="block.type === 'MARGIN'">
-                                {{ (block.id === 'cog' && mode() === 'FORWARD' ? startValue() : block.calculatedAmount)
-                                | currency }}
-                            </td>
+                                <!-- Subtotal -->
+                                <td class="py-3 px-3 text-right font-bold text-slate-200 font-mono align-middle">
+                                    {{ block.subtotalAfter | currency }}
+                                </td>
 
-                            <!-- Subtotal -->
-                            <td class="py-3 px-3 text-right font-bold text-slate-200 font-mono align-middle">
-                                {{ block.subtotalAfter | currency }}
-                            </td>
+                                <!-- Remove Btn -->
+                                <td class="rounded-r-lg py-3 pr-3 text-center align-middle">
+                                    <button *ngIf="!block.isLocked" (click)="removeBlock(i)"
+                                        class="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                                        title="Remove Block">
+                                        <app-icon name="close" [size]="16"></app-icon>
+                                    </button>
+                                </td>
 
-                            <!-- Remove Btn -->
-                            <td class="rounded-r-lg py-3 pr-3 text-center align-middle">
-                                <button *ngIf="!block.isLocked" (click)="removeBlock(i)"
-                                    class="text-slate-500 hover:text-rose-400 p-1 transition-colors"
-                                    title="Remove Block">
-                                    <app-icon name="close" [size]="16"></app-icon>
-                                </button>
-                            </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- Right: Chart (Toggled) -->
+                <div *ngIf="showChart()"
+                    class="w-1/2 border-l border-slate-700 p-4 transition-all duration-300 bg-slate-900/30">
+                    <canvas baseChart [data]="chartData()" [options]="chartOptions" [type]="'bar'">
+                    </canvas>
+                </div>
+            </div>
+
+            <!-- Alert: Low Margin -->
+            <div *ngIf="marginAlert()"
+                class="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-xl flex items-start gap-3 animate-pulse">
+                <app-icon name="warning" class="text-red-500" [size]="20"></app-icon>
+                <div>
+                    <div class="text-red-400 font-bold text-sm">Low Margin Warning</div>
+                    <div class="text-red-300 text-xs">
+                        Effective margin is {{ effectiveMargin() | number:'1.1-1' }}% (Min: 15%).
+                    </div>
+                </div>
             </div>
 
             <!-- End Node: Final Result -->
@@ -269,6 +331,10 @@
                     <div class="text-xs text-slate-500" *ngIf="mode() === 'INVERSE'">
                         {{ ((finalResult() / (startValue() / 1.16)) * 100) | number:'1.1-2' }}% of Net Revenue
                     </div>
+                    <!-- Forward Mode Margin Display (Info) -->
+                    <div class="text-xs text-slate-500" *ngIf="mode() === 'FORWARD'">
+                        Margin: {{ effectiveMargin() | number:'1.1-1' }}%
+                    </div>
                 </div>
                 <div class="text-3xl font-bold text-white font-mono">
                     {{ finalResult() | currency }}
@@ -278,4 +344,7 @@
         </div>
 
     </div>
+
+    <!-- Matrix Comparator -->
+    <app-matrix-comparator [cog]="startValue()" [activeChannel]="channel()"></app-matrix-comparator>
 </div>

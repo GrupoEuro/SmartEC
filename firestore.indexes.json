@@ -115,6 +115,20 @@
                     "order": "DESCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.category",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

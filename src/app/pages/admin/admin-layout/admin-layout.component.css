@@ -1,21 +1,24 @@
 /* Clean Admin Layout */
 .admin-layout {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    /* Fixed height! */
+    overflow: hidden;
+    /* Prevent body scroll */
     background-color: #f4f4f4;
-    /* Match content bg */
 }
 
 /* New Sidebar is a flex item, no styles needed here for it */
 
 .admin-content {
     flex: 1;
-    /* margin-left removed: Flexbox handles positioning */
     background-color: #f4f4f4;
-    min-height: 100vh;
+    height: 100%;
+    /* Fill layout */
+    overflow: hidden;
+    /* Prevent this container from scrolling, let wrapper scroll */
     display: flex;
     flex-direction: column;
-    /* width: 0; Prevent flex overflow */
     min-width: 0;
 }
 

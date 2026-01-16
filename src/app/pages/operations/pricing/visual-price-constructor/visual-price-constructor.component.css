@@ -8,3 +8,10 @@ input[type=number]::-webkit-outer-spin-button {
 input[type=number] {
     -moz-appearance: textfield;
 }
+
+/* 3-Way Input Group Styles */
+.group\/margin input:focus~span,
+.group\/markup input:focus~span,
+.group\/profit input:focus~span {
+    color: white;
+}

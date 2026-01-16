@@ -1,0 +1,149 @@
+<div class="bg-slate-900 border border-slate-700/50 rounded-2xl overflow-hidden mt-6 shadow-2xl">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-700 bg-slate-800/50">
+                    <th
+                        class="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider sticky left-0 bg-slate-800 z-10 w-32">
+                        Metric</th>
+
+                    <th *ngFor="let res of matrixResults()"
+                        class="p-4 min-w-[160px] text-center relative group transition-colors duration-300"
+                        [class.bg-purple-500-10]="res.channel === activeChannel()"
+                        [class.bg-slate-800-50]="res.channel !== activeChannel()">
+
+                        <!-- Highlight Indicator -->
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute top-0 left-0 right-0 h-1 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
+                        </div>
+
+                        <div class="flex flex-col items-center gap-2 mb-1">
+                            <div
+                                class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 group-hover:text-purple-400 group-hover:bg-slate-600 transition-all">
+                                <app-icon [name]="getChannelIcon(res.channel)" [size]="20"></app-icon>
+                            </div>
+                            <span class="text-xs font-bold text-slate-300 group-hover:text-white transition-colors"
+                                [class.text-purple-300]="res.channel === activeChannel()">
+                                {{ getChannelName(res.channel) }}
+                            </span>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700/50">
+
+                <!-- Selling Price -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-sm font-bold text-slate-300 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        Selling Price</td>
+                    <td *ngFor="let res of matrixResults()"
+                        class="p-4 text-center text-sm font-mono font-bold text-white relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+                        {{ res.totalPrice | currency }}
+                    </td>
+                </tr>
+
+                <!-- Net Profit -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-sm font-bold text-slate-300 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        Net Profit</td>
+                    <td *ngFor="let res of matrixResults()" class="p-4 text-center relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+
+                        <div class="flex flex-col items-center gap-1">
+                            <span class="font-mono font-bold text-emerald-400">
+                                {{ res.profit | currency }}
+                            </span>
+                            <span
+                                class="text-[10px] uppercase font-bold text-emerald-500/80 tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                                {{ res.margin | number:'1.1-1' }}% Margin
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- ROI -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-sm font-bold text-slate-300 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        ROI</td>
+                    <td *ngFor="let res of matrixResults()" class="p-4 text-center relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+
+                        <span
+                            class="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-300 border border-slate-600">
+                            {{ res.roi | number:'1.0-1' }}%
+                        </span>
+                    </td>
+                </tr>
+
+                <!-- Spacer / Divider -->
+                <tr class="bg-slate-800 h-2">
+                    <td [colSpan]="matrixResults().length + 1"></td>
+                </tr>
+
+                <!-- Costs Breakdown -->
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-xs font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        COG</td>
+                    <td *ngFor="let res of matrixResults()"
+                        class="p-4 text-center text-xs text-slate-400 font-mono relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+                        {{ cog() | currency }}
+                    </td>
+                </tr>
+
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-xs font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        Commission</td>
+                    <td *ngFor="let res of matrixResults()"
+                        class="p-4 text-center text-xs text-slate-400 font-mono relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+                        {{ getCostComponent(res, 'COMMISSION') | currency }}
+                    </td>
+                </tr>
+
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td
+                        class="p-4 text-xs font-medium text-slate-500 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        Fulfillment</td>
+                    <td *ngFor="let res of matrixResults()"
+                        class="p-4 text-center text-xs text-slate-400 font-mono relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+                        {{ getCostComponent(res, 'FULFILLMENT') | currency }}
+                    </td>
+                </tr>
+
+                <!-- Total Cost -->
+                <tr class="hover:bg-slate-800/30 transition-colors border-t border-slate-700/30">
+                    <td
+                        class="p-4 text-xs font-bold text-slate-400 sticky left-0 bg-slate-900 z-10 border-r border-slate-700/50">
+                        Total Cost</td>
+                    <td *ngFor="let res of matrixResults()"
+                        class="p-4 text-center text-xs font-bold text-slate-300 font-mono relative">
+                        <div *ngIf="res.channel === activeChannel()"
+                            class="absolute inset-0 bg-purple-500/5 pointer-events-none"></div>
+                        {{ (res.totalPrice - res.profit) | currency }}
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="p-12 flex justify-center items-center text-slate-500">
+            <app-icon name="sync" class="animate-spin mr-2" [size]="20"></app-icon>
+            Calculating Matrix...
+        </div>
+    </div>
+</div>

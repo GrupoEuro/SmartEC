@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SecretsService, IntegrationConfig } from '../../../../core/services/config/secrets.service';
 import { MeliService } from '../../../../core/services/meli.service';
 import { MeliSyncService } from '../../../../core/services/meli-sync.service';
@@ -70,6 +71,13 @@ import { MeliOrderService } from '../../../../core/services/meli-order.service';
                         <i class="fas fa-shopping-cart" [class.fa-spin]="isOrderImporting"></i>
                         <span>{{ isOrderImporting ? 'Importing...' : 'Get Orders' }}</span>
                      </button>
+
+                     <!-- Link Products -->
+                     <button *ngIf="config()?.meli?.connected" (click)="goToLinking()"
+                        class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-bold shadow-lg shadow-slate-900/20 transition flex items-center gap-2">
+                        <i class="fas fa-link"></i>
+                        <span>Manage Links</span>
+                     </button>
                  </div>
                  
                  <button *ngIf="!config()?.meli?.connected && config()?.meli?.appId" (click)="connectMeli()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm font-bold shadow-lg shadow-blue-500/20 transition flex items-center gap-2">
@@ -111,7 +119,9 @@ export class IntegrationManagerComponent implements OnInit {
     private secrets = inject(SecretsService);
     private meliService = inject(MeliService);
     private syncService = inject(MeliSyncService);
+
     private orderService = inject(MeliOrderService);
+    private router = inject(Router);
 
     config = signal<IntegrationConfig | null>(null);
 
@@ -206,5 +216,9 @@ export class IntegrationManagerComponent implements OnInit {
         } finally {
             this.isOrderImporting = false;
         }
+    }
+
+    goToLinking() {
+        this.router.navigate(['/admin/integrations/products']);
     }
 }

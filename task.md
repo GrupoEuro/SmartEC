@@ -1,5 +1,15 @@
 # Active Tasks: v1.1 Push (Pricing & Locator)
 
+## ✅ 0. Image & Media Architecture (COMPLETED)
+- [x] **Admin Media Library**
+    - [x] Create `media_assets` Firestore collection & Service.
+    - [x] Build Media Library UI (Gallery, Upload, Filters).
+    - [x] Implement Reusable Media Picker Dialog.
+- [x] **Frontend Optimization**
+    - [x] Integrate `NgOptimizedImage` (`ngSrc`) in Catalog.
+    - [x] Integrate `NgOptimizedImage` in Home.
+    - [x] Verify Production Build.
+
 ## 🚧 1. Pricing Strategy Engine (Immediate Focus)
 - [ ] **Matrix Implementation**
     - [ ] Finalize `PricingRulesManagerComponent`.

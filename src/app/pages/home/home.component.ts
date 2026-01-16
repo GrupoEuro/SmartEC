@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgOptimizedImage } from '@angular/common';
 import { HeroComponent } from '../../components/hero/hero.component';
 import { StatsComponent } from '../../components/stats/stats.component';
 import { AboutComponent } from '../../components/about/about.component';
@@ -19,6 +19,7 @@ import { MetaService } from '../../core/services/meta.service';
   standalone: true,
   imports: [
     CommonModule,
+    NgOptimizedImage,
     HeroComponent,
     StatsComponent,
     AboutComponent,

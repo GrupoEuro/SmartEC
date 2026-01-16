@@ -60,6 +60,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/admin/admin.routes').then(m => m.ADMIN_ROUTES)
     },
     {
+        path: 'view/:slug',
+        loadComponent: () => import('./pages/public/document-viewer/document-viewer.component').then(m => m.DocumentViewerComponent)
+    },
+    {
         path: '**',
         loadComponent: () => import('./pages/not-found/not-found.component').then(m => m.NotFoundComponent)
     }

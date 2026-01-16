@@ -1,5 +1,6 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
+import { provideImageLoader } from './core/services/config/image-loader.config';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration } from '@angular/platform-browser';
@@ -45,6 +46,7 @@ export const appConfig: ApplicationConfig = {
       const app = getApp();
       return getStorage(app);
     }),
+    provideImageLoader(),
     provideCharts(withDefaultRegisterables()),
     provideAnimations()
   ]

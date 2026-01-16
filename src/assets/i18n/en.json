@@ -84,7 +84,16 @@
         },
         "UI": {
             "SALES_CHANNEL": "Sales Channel",
-            "ADD_BLOCKS": "Add Blocks"
+            "ADD_BLOCKS": "Add Blocks",
+            "CHANNELS": {
+                "AMAZON_FBA": "Amazon FBA",
+                "AMAZON_FBM": "Amazon Mexico (FBM)",
+                "MELI_CLASSIC": "MELI Classic",
+                "MELI_PREMIUM": "MELI Premium",
+                "MELI_FULL": "MELI Full",
+                "POS": "POS / In-Store",
+                "WEB": "Web Store"
+            }
         },
         "INPUTS": {
             "STARTING_COST": "Starting Cost (COG)",
@@ -101,6 +110,7 @@
         "BTN_CONTACT": "Contact Us",
         "STORE_BADGE": "New",
         "STORE_TITLE": "Shop Online",
+        "STORE_TITLE_PRAXIS": "Praxis Official Store",
         "STORE_DESC": "Visit our online stores and get home delivery",
         "FLOATING_SHIPPING": "Free Shipping"
     },
@@ -179,7 +189,19 @@
         "TITLE": "OUR BRANDS",
         "PRAXIS_DESC": "Indian engineering product with almost 10 years of experience. International quality at affordable prices, perfect for the Mexican market.",
         "PRAXIS_FEAT_1": "Superior warranty backed",
-        "PRAXIS_FEAT_2": "Designed for demanding roads"
+        "PRAXIS_FEAT_2": "Designed for demanding roads",
+        "PRAXIS_HERO": {
+            "TAGLINE": "SUPERIOR PERFORMANCE",
+            "SUBTITLE": "Tires designed with Global Technology to offer maximum grip and durability in every kilometer.",
+            "STAT_1_VAL": "+10 Years",
+            "STAT_1_LABEL": "Experience",
+            "STAT_2_VAL": "Global",
+            "STAT_2_LABEL": "Technology",
+            "STAT_3_VAL": "Heavy Duty",
+            "STAT_3_LABEL": "Focus",
+            "CTA_CATALOG": "View Catalog",
+            "CTA_CONTACT": "Become a Distributor"
+        }
     },
     "SERVICES": {
         "OVERLINE": "Our Services",

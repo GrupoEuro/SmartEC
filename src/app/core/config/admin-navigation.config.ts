@@ -93,6 +93,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 route: '/admin/blog'
             },
             {
+                id: 'media_library',
+                title: 'Media Library',
+                icon: 'image',
+                route: '/admin/media-library'
+            },
+            {
                 id: 'pdf_library',
                 title: 'ADMIN.SIDEBAR.PDF_LIBRARY',
                 icon: 'document',

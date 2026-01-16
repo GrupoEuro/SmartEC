@@ -108,6 +108,10 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./blog/blog-form/blog-form.component').then(m => m.BlogFormComponent)
             },
             {
+                path: 'media-library',
+                loadComponent: () => import('./media-library/media-library.component').then(m => m.MediaLibraryComponent)
+            },
+            {
                 path: 'pdfs',
                 loadComponent: () => import('./pdfs/pdf-list/pdf-list.component').then(m => m.PdfListComponent)
             },
@@ -185,6 +189,12 @@ export const ADMIN_ROUTES: Routes = [
             {
                 path: 'integrations',
                 loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
+            },
+            {
+                path: 'integrations/products',
+                loadComponent: () => import('./settings/integrations/product-link/product-link.component').then(m => m.ProductLinkComponent),
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },

@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgOptimizedImage } from '@angular/common'; // Import NgOptimizedImage
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -14,7 +14,7 @@ import { Category, ProductSortBy } from '../../core/models/catalog.model';
 @Component({
     selector: 'app-catalog',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, NgOptimizedImage],
     templateUrl: './catalog.component.html',
     styleUrl: './catalog.component.css'
 })

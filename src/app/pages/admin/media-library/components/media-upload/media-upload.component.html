@@ -1,0 +1,129 @@
+<div class="flex flex-col h-[500px]">
+    <!-- Top Bar: Settings -->
+    <div class="px-6 py-4 border-b border-gray-100 flex gap-4 items-end bg-white">
+        <div class="flex-1">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Destination Category</label>
+            <div class="relative">
+                <select [(ngModel)]="selectedCategory"
+                    class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 pr-8 font-medium cursor-pointer transition-colors hover:border-indigo-300">
+                    <option *ngFor="let cat of CATEGORIES" [value]="cat">{{ cat | titlecase }}</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                    <app-icon name="chevron_down" [size]="16"></app-icon>
+                </div>
+            </div>
+        </div>
+        <div class="flex-none flex items-end pb-0.5">
+            <!-- Praxis Import Removed -->
+        </div>
+        <div class="flex-1" *ngIf="pendingFiles().length > 0">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Bulk Tags</label>
+            <div class="flex gap-2">
+                <input type="text" [(ngModel)]="globalTags" placeholder="e.g. summer, offer"
+                    (keyup.enter)="applyGlobalTags()"
+                    class="flex-1 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2.5 focus:ring-indigo-500 focus:border-indigo-500">
+                <button (click)="applyGlobalTags()"
+                    class="p-2.5 bg-slate-100 rounded-lg hover:bg-slate-200 text-slate-600">
+                    <app-icon name="check" [size]="18"></app-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-hidden relative bg-slate-50">
+
+        <!-- Empty State: Drop Zone -->
+        <div *ngIf="pendingFiles().length === 0" class="h-full p-6 flex flex-col justify-center">
+            <div class="border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 cursor-pointer bg-white h-full flex flex-col items-center justify-center gap-4"
+                [class.border-indigo-500]="isDragging" [class.bg-indigo-50]="isDragging"
+                [class.scale-[1.02]]="isDragging" [class.border-slate-300]="!isDragging"
+                [class.hover:border-indigo-400]="!isDragging" (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave($event)" (drop)="onDrop($event)" (click)="fileInput.click()">
+
+                <input #fileInput type="file" class="hidden" multiple (change)="onFileSelected($event)"
+                    accept="image/*,application/pdf">
+
+                <div class="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2">
+                    <app-icon name="cloud_upload" [size]="32"></app-icon>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-700">Drop files here</h3>
+                    <p class="text-sm text-slate-500 mt-1">or click to browse</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staging List -->
+        <div *ngIf="pendingFiles().length > 0" class="h-full overflow-y-auto p-6 space-y-3">
+            <div *ngFor="let item of pendingFiles(); let i = index"
+                class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
+
+                <!-- Preview -->
+                <div class="w-12 h-12 rounded bg-slate-100 flex-shrink-0 overflow-hidden relative">
+                    <img *ngIf="item.previewUrl" [src]="item.previewUrl" class="w-full h-full object-cover">
+                    <div *ngIf="!item.previewUrl"
+                        class="w-full h-full flex items-center justify-center text-slate-400 text-xs font-bold">PDF
+                    </div>
+
+                    <!-- Progress Overlay -->
+                    <div *ngIf="item.status === 'uploading'"
+                        class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span class="text-white text-[10px] font-bold">{{ item.progress }}%</span>
+                    </div>
+                    <div *ngIf="item.status === 'success'"
+                        class="absolute inset-0 bg-green-500/80 flex items-center justify-center text-white">
+                        <app-icon name="check" [size]="20"></app-icon>
+                    </div>
+                </div>
+
+                <!-- Fields -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start mb-1">
+                        <h4 class="text-sm font-medium text-slate-800 truncate pr-2" [title]="item.file.name">{{
+                            item.file.name }}</h4>
+                        <span class="text-xs text-slate-400 whitespace-nowrap">{{ (item.file.size / 1024 /
+                            1024).toFixed(1) }} MB</span>
+                    </div>
+                    <input type="text" [(ngModel)]="item.tags" placeholder="Add tags..."
+                        [disabled]="item.status !== 'pending'"
+                        class="w-full bg-transparent border-0 border-b border-dashed border-slate-300 py-1 px-0 text-xs focus:ring-0 focus:border-indigo-500 placeholder-slate-400">
+                </div>
+
+                <!-- Actions -->
+                <button *ngIf="item.status === 'pending'" (click)="removeFile(i)"
+                    class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                    <app-icon name="trash" [size]="18"></app-icon>
+                </button>
+            </div>
+
+            <!-- Add More Button -->
+            <button (click)="fileInputAdd.click()"
+                class="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2">
+                <app-icon name="plus" [size]="20"></app-icon>
+                <span class="font-medium">Add more files</span>
+            </button>
+            <input #fileInputAdd type="file" class="hidden" multiple (change)="onFileSelected($event)"
+                accept="image/*,application/pdf">
+        </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="p-4 border-t border-gray-100 bg-white flex justify-between items-center"
+        *ngIf="pendingFiles().length > 0">
+        <div class="text-xs text-slate-500">
+            {{ pendingFiles().length }} files ready
+        </div>
+        <div class="flex gap-3">
+            <button (click)="pendingFiles.set([])"
+                class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800">
+                Clear All
+            </button>
+            <button (click)="uploadAll()" [disabled]="pendingFiles().length === 0"
+                class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                <span>Start Upload</span>
+                <app-icon name="arrow_right" [size]="16"></app-icon>
+            </button>
+        </div>
+    </div>
+</div>

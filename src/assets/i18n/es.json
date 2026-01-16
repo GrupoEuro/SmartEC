@@ -76,7 +76,16 @@
         },
         "UI": {
             "SALES_CHANNEL": "Canal de Venta",
-            "ADD_BLOCKS": "Agregar Bloques"
+            "ADD_BLOCKS": "Agregar Bloques",
+            "CHANNELS": {
+                "AMAZON_FBA": "Amazon FBA",
+                "AMAZON_FBM": "Amazon México (FBM)",
+                "MELI_CLASSIC": "MELI Clásica",
+                "MELI_PREMIUM": "MELI Premium",
+                "MELI_FULL": "MELI Full",
+                "POS": "Punto de Venta / Tienda",
+                "WEB": "Tienda Web"
+            }
         },
         "INPUTS": {
             "STARTING_COST": "Costo Inicial (COG)",
@@ -112,6 +121,7 @@
         "BTN_CONTACT": "Contáctanos",
         "STORE_BADGE": "Nuevo",
         "STORE_TITLE": "Compra en Línea",
+        "STORE_TITLE_PRAXIS": "Tienda Oficial Praxis",
         "STORE_DESC": "Visita nuestras tiendas online y recibe en tu domicilio",
         "FLOATING_SHIPPING": "Envío Gratis"
     },
@@ -305,15 +315,13 @@
         "HERO": {
             "BADGE": "🏆 Marca Líder en México",
             "TITLE": "LLANTAS PRAXIS<br>RENDIMIENTO<br>SUPERIOR",
-            "SUBTITLE": "Experimenta la máxima adherencia, durabilidad y seguridad en cada kilómetro. Marca líder con casi 10 años de experiencia en productos automotrices de alta calidad.",
-            "BTN_BUY": "Compra",
-            "BTN_CONTACT": "Contáctanos",
-            "BADGE_1_LABEL": "Garantía",
-            "BADGE_1_VALUE": "Superior",
-            "BADGE_2_LABEL": "El Mejor",
-            "BADGE_2_VALUE": "Kilometraje",
-            "BADGE_3_LABEL": "Eficiencia",
-            "BADGE_3_VALUE": "A+"
+            "SUBTITLE": "Llantas diseñadas con Tecnología Global para ofrecer máxima adherencia y durabilidad en cada kilómetro.",
+            "STAT_1_VAL": "+10 Años",
+            "STAT_1_LABEL": "Experiencia",
+            "STAT_2_VAL": "Global",
+            "STAT_2_LABEL": "Tecnología",
+            "STAT_3_VAL": "Uso Rudo",
+            "STAT_3_LABEL": "Enfoque"
         },
         "STATS": {
             "YEARS": "Años de Experiencia",
@@ -2469,9 +2477,21 @@
     },
     "BRANDS": {
         "TITLE": "OUR BRANDS",
-        "PRAXIS_DESC": "Indian engineering product with almost 10 years of experience. International quality at affordable prices, perfect for the Mexican market.",
-        "PRAXIS_FEAT_1": "Superior warranty backed",
-        "PRAXIS_FEAT_2": "Designed for demanding roads"
+        "PRAXIS_DESC": "Ingeniería india con casi 10 años de experiencia. Calidad internacional a precios accesibles, perfecta para el mercado mexicano.",
+        "PRAXIS_FEAT_1": "Garantía superior",
+        "PRAXIS_FEAT_2": "Diseñada para caminos exigentes",
+        "PRAXIS_HERO": {
+            "TAGLINE": "RENDIMIENTO SUPERIOR",
+            "SUBTITLE": "Llantas diseñadas con tecnología alemana para ofrecer el máximo agarre y durabilidad en cada kilómetro.",
+            "STAT_1_VAL": "+10 Años",
+            "STAT_1_LABEL": "De Excelencia",
+            "STAT_2_VAL": "+15 Países",
+            "STAT_2_LABEL": "Presencia Global",
+            "STAT_3_VAL": "1M+",
+            "STAT_3_LABEL": "Llantas Vendidas",
+            "CTA_CATALOG": "Ver Catálogo",
+            "CTA_CONTACT": "Se Distribuidor"
+        }
     },
     "PRODUCT_DETAIL": {
         "BREADCRUMB_HOME": "Home",

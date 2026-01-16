@@ -1,0 +1,27 @@
+/* Matrix Comparator Styles */
+
+/* Ensure the sticky first column has a shadow to indicate scrolling */
+th.sticky,
+td.sticky {
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    clip-path: inset(0px -15px 0px 0px);
+    /* Show shadow only on right */
+}
+
+/* Scrollbar Styling for the table overflow */
+.overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}

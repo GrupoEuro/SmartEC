@@ -16,16 +16,16 @@ export class CoverageComponent implements OnInit {
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     this.isBrowser = isPlatformBrowser(this.platformId);
   }
-  // Center of Mexico
-  center: google.maps.LatLngLiteral = { lat: 23.6345, lng: -102.5528 };
-  zoom = 5;
+  // Center of Las Gaviotas, SLP
+  center: google.maps.LatLngLiteral = { lat: 22.1392, lng: -100.9572 };
+  zoom = 12; // Zoomed out to see the city
 
   // San Luis Potosí Hub
   markerOptions: google.maps.MarkerOptions = {
     draggable: false
   };
   markerPositions: google.maps.LatLngLiteral[] = [
-    { lat: 22.1566, lng: -100.9855 } // SLP
+    { lat: 22.1392, lng: -100.9572 } // Salvador Nava Martinez 704
   ];
 
   mapOptions: google.maps.MapOptions = {

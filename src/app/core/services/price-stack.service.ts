@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, query, where, getDocs } from '@angular/fire/firestore';
 import { PriceBlock } from '../models/price-constructor.model';
+import { CommissionRule } from '../models/commission-rule.model';
 import { FINANCIAL_CONSTANTS } from '../constants/financial.constants';
 
 @Injectable({
@@ -15,6 +16,10 @@ export class PriceStackService {
      * End: Retail Price
      */
     calculateForward(startValue: number, blocks: PriceBlock[]): PriceBlock[] {
+        if (startValue <= 0) {
+            console.warn('[PriceStack] COG is <= 0. Skipping calculation.');
+            return blocks;
+        }
         let currentTotal = startValue; // Running Subtotal
         const activeBlocks = blocks.filter(b => b.active);
 
@@ -44,12 +49,21 @@ export class PriceStackService {
                     amount = estimatedTotal * (block.value / 100);
                 }
 
-                block.calculatedAmount = amount;
+                // MX LOGIC: Tax on Fees
+                // If this is a Commission/Fee, it attracts IVA (16%)
+                let finalAmount = amount;
+                if (block.type === 'FEE' && FINANCIAL_CONSTANTS.TAX_RATE_MX > 0) {
+                    // e.g. amount is 15. finalAmount = 15 * 1.16 = 17.4
+                    // We store the inclusive amount so the total price covers it.
+                    finalAmount = amount * (1 + FINANCIAL_CONSTANTS.TAX_RATE_MX);
+                }
+
+                block.calculatedAmount = finalAmount;
 
                 if (block.type === 'DISCOUNT') {
-                    runningSum -= amount; // Paradox: Discount reduces total?
+                    runningSum -= finalAmount;
                 } else {
-                    runningSum += amount;
+                    runningSum += finalAmount;
                 }
 
                 block.subtotalAfter = runningSum;
@@ -105,6 +119,56 @@ export class PriceStackService {
     /**
      * Generate blocks for a channel (Async from Firestore)
      */
+    /**
+     * Channels supported for Matrix Comparison
+     */
+    readonly COMPARISON_CHANNELS = [
+        'AMAZON_FBA', 'AMAZON_FBM',
+        'MELI_CLASSIC', 'MELI_PREMIUM', 'MELI_FULL',
+        'POS', 'WEB'
+    ];
+
+    /**
+     * Calculate Price Matrix for a given COG across all channels
+     */
+    async calculateMatrix(cog: number): Promise<any[]> {
+        const results = [];
+
+        for (const channel of this.COMPARISON_CHANNELS) {
+            // 1. Get Templates
+            const templates = await this.getChannelTemplates(channel);
+
+            // 2. Set COG
+            const costBlock = templates.find(b => b.type === 'COST');
+            if (costBlock) costBlock.value = cog;
+
+            // 3. Calculate Forward (Cost + Margin = Price)
+            const calculated = this.calculateForward(cog, templates);
+
+            // 4. Extract Key Metrics
+            // In Forward mode, the sum of all calculated amounts IS the Selling Price.
+            const totalPrice = calculated.reduce((acc, b) => acc + (b.calculatedAmount || 0), 0);
+
+            const profitBlock = calculated.find(b => b.type === 'MARGIN');
+            const profit = profitBlock ? (profitBlock.calculatedAmount || 0) : 0;
+
+            const cost = calculated.find(b => b.type === 'COST')?.calculatedAmount || 0;
+
+            const roi = cost > 0 ? (profit / cost) * 100 : 0;
+            const margin = totalPrice > 0 ? (profit / totalPrice) * 100 : 0;
+
+            results.push({
+                channel,
+                totalPrice,
+                profit,
+                roi,
+                margin,
+                breakdown: calculated
+            });
+        }
+        return results;
+    }
+
     async getChannelTemplates(channel: string): Promise<PriceBlock[]> {
         const internalColor = 'teal';
         const taxColor = 'rose';
@@ -131,15 +195,19 @@ export class PriceStackService {
                 return this.getFallbackTemplates(channel);
             }
 
-            const rule = snap.docs[0].data() as any;
+            const rule = snap.docs[0].data() as CommissionRule;
             const blocks = [...baseBlocks];
 
             // 2. Margin (Internal) - Moved to Position 2 (Next to COG)
+            // Default to WEB margin (20%) unless channel implies otherwise
+            let defaultMargin = FINANCIAL_CONSTANTS.DEFAULT_MARGINS.WEB * 100;
+            if (channel === 'POS') defaultMargin = FINANCIAL_CONSTANTS.DEFAULT_MARGINS.POS * 100;
+
             blocks.push({
                 id: 'margin',
                 type: 'MARGIN',
                 label: 'Net Margin',
-                value: 20,
+                value: defaultMargin,
                 basis: 'PERCENT_OF_TOTAL',
                 color: internalColor,
                 active: true,
@@ -188,11 +256,12 @@ export class PriceStackService {
 
             // 5. Fulfillment
             if (rule.fulfillmentType === 'FBA' || rule.fulfillmentType === 'FULL') {
+                const estFee = rule.fulfillmentCostFixed || FINANCIAL_CONSTANTS.FALLBACK_FEES.FBA_FIXED;
                 blocks.push({
                     id: 'fulfillment',
                     type: 'FEE',
-                    label: `${rule.channel.split('_')[1]} Fee (Est.)`,
-                    value: 85,
+                    label: `${rule.channel.split('_')[1] || 'Fulfillment'} Fee (Est.)`,
+                    value: estFee,
                     basis: 'FIXED',
                     color: channelColor,
                     active: true,
@@ -205,8 +274,8 @@ export class PriceStackService {
             blocks.push({
                 id: 'iva',
                 type: 'TAX',
-                label: 'IVA (16%)',
-                value: 16,
+                label: `IVA (${FINANCIAL_CONSTANTS.IVA_RATE * 100}%)`,
+                value: FINANCIAL_CONSTANTS.IVA_RATE * 100,
                 basis: 'PERCENT_OF_BASE',
                 color: taxColor,
                 active: true,
@@ -231,21 +300,25 @@ export class PriceStackService {
             { id: 'cog', type: 'COST', label: 'Landed COG', value: 0, basis: 'FIXED', color: internalColor, active: true, isLocked: true, icon: 'inventory' },
         ];
 
+        // Access constants
+        const { DEFAULT_MARGINS, FALLBACK_FEES, IVA_RATE, POS_COMMISSION_RATE } = FINANCIAL_CONSTANTS;
+        const ivaPercent = IVA_RATE * 100;
+
         switch (channel) {
             case 'AMAZON_FBA':
                 return [
                     ...baseBlocks,
-                    { id: 'margin', type: 'MARGIN', label: 'Net Margin', value: 20, basis: 'PERCENT_OF_TOTAL', color: internalColor, active: true, icon: 'trending_up' },
-                    { id: 'referral', type: 'FEE', label: 'Referral Fee', value: 15, basis: 'PERCENT_OF_TOTAL', color: channelColor, active: true, icon: 'handshake' },
-                    { id: 'fba', type: 'FEE', label: 'FBA Fulfillment', value: 85, basis: 'FIXED', color: channelColor, active: true, icon: 'local_shipping' },
-                    { id: 'iva', type: 'TAX', label: 'IVA (16%)', value: 16, basis: 'PERCENT_OF_BASE', color: taxColor, active: true, icon: 'account_balance' }
+                    { id: 'margin', type: 'MARGIN', label: 'Net Margin', value: DEFAULT_MARGINS.AMAZON * 100, basis: 'PERCENT_OF_TOTAL', color: internalColor, active: true, icon: 'trending_up' },
+                    { id: 'referral', type: 'FEE', label: 'Referral Fee', value: FALLBACK_FEES.REFERRAL_PERCENT, basis: 'PERCENT_OF_TOTAL', color: channelColor, active: true, icon: 'handshake' },
+                    { id: 'fba', type: 'FEE', label: 'FBA Fulfillment', value: FALLBACK_FEES.FBA_FIXED, basis: 'FIXED', color: channelColor, active: true, icon: 'local_shipping' },
+                    { id: 'iva', type: 'TAX', label: `IVA (${ivaPercent}%)`, value: ivaPercent, basis: 'PERCENT_OF_BASE', color: taxColor, active: true, icon: 'account_balance' }
                 ];
             case 'POS':
                 return [
                     ...baseBlocks,
-                    { id: 'margin', type: 'MARGIN', label: 'Net Margin', value: 30, basis: 'PERCENT_OF_TOTAL', color: internalColor, active: true, icon: 'trending_up' },
-                    { id: 'bank', type: 'FEE', label: 'Bank Commission', value: FINANCIAL_CONSTANTS.POS_COMMISSION_RATE * 100, basis: 'PERCENT_OF_TOTAL', color: channelColor, active: true, icon: 'credit_card' },
-                    { id: 'iva', type: 'TAX', label: 'IVA (16%)', value: 16, basis: 'PERCENT_OF_BASE', color: taxColor, active: true, icon: 'account_balance' }
+                    { id: 'margin', type: 'MARGIN', label: 'Net Margin', value: DEFAULT_MARGINS.POS * 100, basis: 'PERCENT_OF_TOTAL', color: internalColor, active: true, icon: 'trending_up' },
+                    { id: 'bank', type: 'FEE', label: 'Bank Commission', value: POS_COMMISSION_RATE * 100, basis: 'PERCENT_OF_TOTAL', color: channelColor, active: true, icon: 'credit_card' },
+                    { id: 'iva', type: 'TAX', label: `IVA (${ivaPercent}%)`, value: ivaPercent, basis: 'PERCENT_OF_BASE', color: taxColor, active: true, icon: 'account_balance' }
                 ];
             default: return baseBlocks;
         }

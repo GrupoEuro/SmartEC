@@ -1,0 +1,412 @@
+<div class="media-library-container h-full flex flex-col">
+    <!-- Header -->
+    <div class="header flex justify-between items-center p-6 border-b border-gray-200">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Media Library</h1>
+            <p class="text-gray-500">Manage your images and documents</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button (click)="toggleUpload()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                <span>Upload New</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        <!-- Sidebar Filters -->
+        <!-- Sidebar Filters -->
+        <aside class="w-64 border-r border-slate-200 bg-white flex flex-col hidden md:flex h-full">
+            <div class="flex-1 overflow-y-auto p-4">
+                <h3 class="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3 px-2">Library</h3>
+                <div class="space-y-1">
+                    <button (click)="onCategoryChange('')" [class.bg-indigo-50]="selectedCategory() === ''"
+                        [class.text-indigo-700]="selectedCategory() === ''"
+                        [class.text-slate-600]="selectedCategory() !== ''"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-3">
+                        <app-icon name="folder" [size]="18" [class.text-indigo-600]="selectedCategory() === ''"
+                            [class.text-slate-400]="selectedCategory() !== ''"></app-icon>
+                        All Files
+                    </button>
+                    <button *ngFor="let cat of CATEGORIES" (click)="onCategoryChange(cat.id)"
+                        [class.bg-indigo-50]="selectedCategory() === cat.id"
+                        [class.text-indigo-700]="selectedCategory() === cat.id"
+                        [class.text-slate-600]="selectedCategory() !== cat.id"
+                        class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-3">
+                        <app-icon [name]="cat.icon" [size]="18" [class.text-indigo-600]="selectedCategory() === cat.id"
+                            [class.text-slate-400]="selectedCategory() !== cat.id"></app-icon>
+                        {{ cat.label }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Storage Status -->
+            <div class="p-4 border-t border-slate-100 bg-white" *ngIf="storageStats$ | async as stats">
+                <div class="bg-slate-50 rounded-lg p-3 group relative cursor-pointer" (click)="recalculateStats()">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold text-slate-500">Storage</span>
+                        <span class="text-xs text-slate-400">{{ (stats.totalBytes / 1024 / 1024 / 1024).toFixed(2) }} GB
+                            / 1 GB</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-indigo-500 h-1.5 rounded-full transition-all duration-1000"
+                            [style.width.%]="(stats.totalBytes / stats.maxCapacity) * 100"></div>
+                    </div>
+                    <!-- Hover Tooltip/Action -->
+                    <div
+                        class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+                        <span class="text-[10px] bg-white px-2 py-1 rounded shadow text-slate-600">Click to
+                            Recalculate</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Grid -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-slate-50/50 relative">
+
+            <!-- Fixed Toolbar Area -->
+            <div class="p-6 pb-0 z-10 shrink-0">
+                <!-- Toolbar -->
+                <div
+                    class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+
+                    <div class="flex items-center gap-3 pl-2">
+                        <span class="text-sm font-semibold text-slate-700">{{ assets().length }} Assets</span>
+                        <span class="h-4 w-px bg-slate-200"></span>
+                        <button (click)="selectAll(assets())"
+                            class="text-xs font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800 transition-colors">
+                            {{ selectedAssets().size === assets().length && assets().length > 0 ? 'Deselect All' :
+                            'Select
+                            All Loaded' }}
+                        </button>
+                        <!-- Loading Indicator -->
+                        <div *ngIf="isLoading()" class="ml-4 flex items-center gap-2">
+                            <div
+                                class="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full">
+                            </div>
+                            <span class="text-xs text-indigo-500 font-medium">Synced...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Sort Controls -->
+                        <div class="flex items-center bg-slate-100 rounded-lg p-1 gap-1 mr-2">
+                            <button (click)="onSortChange('createdAt')" [class.bg-white]="sortField() === 'createdAt'"
+                                [class.shadow-sm]="sortField() === 'createdAt'"
+                                [class.text-indigo-600]="sortField() === 'createdAt'"
+                                class="px-2 py-1.5 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                Date
+                                <app-icon *ngIf="sortField() === 'createdAt'"
+                                    [name]="sortDirection() === 'desc' ? 'arrow_down' : 'arrow_up'"
+                                    [size]="12"></app-icon>
+                            </button>
+                            <button (click)="onSortChange('size')" [class.bg-white]="sortField() === 'size'"
+                                [class.shadow-sm]="sortField() === 'size'"
+                                [class.text-indigo-600]="sortField() === 'size'"
+                                class="px-2 py-1.5 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                                Size
+                                <app-icon *ngIf="sortField() === 'size'"
+                                    [name]="sortDirection() === 'desc' ? 'arrow_down' : 'arrow_up'"
+                                    [size]="12"></app-icon>
+                            </button>
+                        </div>
+                        <!-- View Toggle -->
+                        <div class="flex items-center bg-slate-100 rounded-lg p-1">
+                            <button (click)="viewMode.set('grid')" [class.bg-white]="viewMode() === 'grid'"
+                                [class.shadow-sm]="viewMode() === 'grid'"
+                                [class.text-indigo-600]="viewMode() === 'grid'"
+                                class="p-1.5 rounded-md transition-all text-slate-400 hover:text-slate-600">
+                                <app-icon name="view_grid" [size]="18"></app-icon>
+                            </button>
+                            <button (click)="viewMode.set('list')" [class.bg-white]="viewMode() === 'list'"
+                                [class.shadow-sm]="viewMode() === 'list'"
+                                [class.text-indigo-600]="viewMode() === 'list'"
+                                class="p-1.5 rounded-md transition-all text-slate-400 hover:text-slate-600">
+                                <app-icon name="view_list" [size]="18"></app-icon>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+
+                <!-- GRID VIEW -->
+                <div *ngIf="viewMode() === 'grid'"
+                    class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-6 pb-8">
+                    <div *ngFor="let asset of assets()" (click)="toggleSelection(asset)"
+                        [class.ring-2]="selectedAssets().has(asset.id!)"
+                        [class.ring-indigo-500]="selectedAssets().has(asset.id!)"
+                        [class.ring-offset-2]="selectedAssets().has(asset.id!)"
+                        class="group relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer animate-in fade-in zoom-in-95 fill-mode-both">
+
+                        <!-- Selection Checkbox Overlay -->
+                        <div class="absolute top-2 left-2 z-10 transition-all duration-200"
+                            [class.opacity-0]="!selectedAssets().has(asset.id!)" [class.group-hover:opacity-100]="true"
+                            [class.scale-90]="!selectedAssets().has(asset.id!)" [class.group-hover:scale-100]="true">
+                            <div class="w-5 h-5 rounded-md border shadow-sm flex items-center justify-center transition-colors"
+                                [class.border-indigo-600]="selectedAssets().has(asset.id!)"
+                                [class.bg-indigo-600]="selectedAssets().has(asset.id!)"
+                                [class.border-white]="!selectedAssets().has(asset.id!)"
+                                [class.bg-white]="!selectedAssets().has(asset.id!)">
+                                <app-icon *ngIf="selectedAssets().has(asset.id!)" name="check" [size]="14"
+                                    class="text-white"></app-icon>
+                            </div>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div class="aspect-square bg-slate-100 relative overflow-hidden">
+                            <img [src]="asset.publicUrl" [alt]="asset.metadata.altText" loading="lazy"
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+
+                            <!-- Overlay Actions (Only visible if NOT selecting) -->
+                            <div *ngIf="!isBulkMode()"
+                                class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center gap-2 backdrop-blur-[2px]"
+                                (click)="$event.stopPropagation()">
+                                <button (click)="copyUrl(asset.publicUrl)"
+                                    class="p-2 bg-white rounded-full hover:bg-indigo-50 text-slate-700 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-75"
+                                    title="Copy URL">
+                                    <app-icon name="copy" [size]="16"></app-icon>
+                                </button>
+                                <button (click)="shareAsset(asset)"
+                                    class="p-2 bg-white rounded-full hover:bg-green-50 text-green-600 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-100"
+                                    title="Share Securely">
+                                    <app-icon name="share" [size]="16"></app-icon>
+                                </button>
+                                <button (click)="editAsset(asset)"
+                                    class="p-2 bg-white rounded-full hover:bg-indigo-50 text-indigo-600 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-100"
+                                    title="Edit Metadata">
+                                    <app-icon name="edit" [size]="16"></app-icon>
+                                </button>
+                                <button (click)="deleteAsset(asset)"
+                                    class="p-2 bg-white rounded-full hover:bg-red-50 text-red-600 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-150"
+                                    title="Delete">
+                                    <app-icon name="trash" [size]="16"></app-icon>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="p-3">
+                            <h4 class="text-xs font-semibold text-slate-700 truncate mb-1" [title]="asset.filename">{{
+                                asset.filename }}</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-slate-500">{{ asset.metadata.width }}x{{
+                                    asset.metadata.height
+                                    }}</span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{{
+                                    asset.contentType.split('/')[1] }}</span>
+                            </div>
+                            <!-- Tags Preview -->
+                            <div class="flex gap-1 mt-2 overflow-hidden h-5"
+                                *ngIf="asset.metadata.tags && asset.metadata.tags.length">
+                                <span *ngFor="let tag of asset.metadata.tags.slice(0, 3)"
+                                    class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-sm">
+                                    #{{ tag }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Skeleton Loader for Grid -->
+                    <ng-container *ngIf="isLoading()">
+                        <div *ngFor="let i of [1,2,3,4,5]"
+                            class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
+                            <div class="aspect-square bg-slate-200"></div>
+                            <div class="p-3 space-y-2">
+                                <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+                                <div class="h-2 bg-slate-100 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    </ng-container>
+                </div>
+
+                <!-- LIST VIEW -->
+                <div *ngIf="viewMode() === 'list' && selectedCategory() !== 'shared-links'" class="pb-8">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead
+                                class="bg-slate-50 text-xs uppercase font-bold text-slate-400 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-4 w-12 text-center">
+                                        <app-icon name="check" [size]="14"></app-icon>
+                                    </th>
+                                    <th class="p-4 w-20">Preview</th>
+                                    <th class="p-4">Filename</th>
+                                    <th class="p-4">Category</th>
+                                    <th class="p-4">Dimensions</th>
+                                    <th class="p-4">Size</th>
+                                    <th class="p-4">Tags</th>
+                                    <th class="p-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr *ngFor="let asset of assets()" (click)="toggleSelection(asset)"
+                                    [class.bg-indigo-50]="selectedAssets().has(asset.id!)"
+                                    class="hover:bg-slate-50 transition-colors cursor-pointer group">
+
+                                    <td class="p-4 text-center">
+                                        <div class="w-4 h-4 rounded border bg-white inline-flex items-center justify-center transition-colors"
+                                            [class.border-indigo-600]="selectedAssets().has(asset.id!)"
+                                            [class.bg-indigo-600]="selectedAssets().has(asset.id!)"
+                                            [class.border-slate-300]="!selectedAssets().has(asset.id!)">
+                                            <app-icon *ngIf="selectedAssets().has(asset.id!)" name="check" [size]="10"
+                                                class="text-white"></app-icon>
+                                        </div>
+                                    </td>
+                                    <td class="p-4">
+                                        <div
+                                            class="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 ring-1 ring-black/5">
+                                            <img [src]="asset.publicUrl" class="w-full h-full object-cover">
+                                        </div>
+                                    </td>
+                                    <td class="p-4 font-semibold text-slate-700">
+                                        {{ asset.filename }}
+                                    </td>
+                                    <td class="p-4">
+                                        <span
+                                            class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-600 capitalize">
+                                            {{ asset.metadata.category || 'Uncategorized' }}
+                                        </span>
+                                    </td>
+                                    <td class="p-4 font-mono text-xs text-slate-500">
+                                        {{ asset.metadata.width }}x{{ asset.metadata.height }}
+                                    </td>
+                                    <td class="p-4 text-xs font-mono text-slate-500">
+                                        {{ (asset.size / 1024).toFixed(1) }} KB
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex gap-1 flex-wrap">
+                                            <span *ngFor="let tag of asset.metadata.tags"
+                                                class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md border border-slate-200">
+                                                #{{ tag }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <div
+                                            class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button (click)="$event.stopPropagation(); copyUrl(asset.publicUrl)"
+                                                class="p-1.5 hover:bg-slate-200 rounded text-slate-500"
+                                                title="Copy URL">
+                                                <app-icon name="copy" [size]="16"></app-icon>
+                                            </button>
+                                            <button (click)="$event.stopPropagation(); shareAsset(asset)"
+                                                class="p-1.5 hover:bg-green-50 hover:text-green-600 rounded text-slate-500"
+                                                title="Share Securely">
+                                                <app-icon name="share" [size]="16"></app-icon>
+                                            </button>
+                                            <button (click)="$event.stopPropagation(); editAsset(asset)"
+                                                class="p-1.5 hover:bg-indigo-50 hover:text-indigo-600 rounded text-slate-500"
+                                                title="Edit">
+                                                <app-icon name="edit" [size]="16"></app-icon>
+                                            </button>
+                                            <button (click)="$event.stopPropagation(); deleteAsset(asset)"
+                                                class="p-1.5 hover:bg-red-50 hover:text-red-500 rounded text-slate-500"
+                                                title="Delete">
+                                                <app-icon name="trash" [size]="16"></app-icon>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+
+                            <!-- Skeleton Loader for List (Table Footer/Body) -->
+                            <ng-container *ngIf="isLoading()">
+                                <tr *ngFor="let i of [1,2,3]" class="animate-pulse">
+                                    <td colspan="8" class="p-4">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-10 h-10 bg-slate-100 rounded"></div>
+                                            <div class="flex-1 space-y-2">
+                                                <div class="h-3 bg-slate-100 rounded w-1/4"></div>
+                                                <div class="h-2 bg-slate-50 rounded w-1/6"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-container>
+                        </table>
+                    </div>
+                </div>
+
+                <div *ngIf="assets().length === 0 && !isLoading()" class="text-center py-20 text-slate-500">
+                    <div class="text-4xl mb-4">🖼️</div>
+                    <p>No media found in this category.</p>
+                </div>
+
+                <!-- Load More Trigger -->
+                <div class="flex justify-center pb-20 pt-4" *ngIf="hasMore() && assets().length > 0">
+                    <button (click)="loadMore()" [disabled]="isLoading()"
+                        class="px-6 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium rounded-full shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <span *ngIf="!isLoading()">Load More</span>
+                        <span *ngIf="isLoading()">Loading...</span>
+                    </button>
+                </div>
+
+                <!-- Bulk Action Bar -->
+                <div *ngIf="isBulkMode()"
+                    class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-slate-200 p-2 flex items-center gap-4 z-40 animate-in slide-in-from-bottom-6">
+
+                    <div class="pl-4 text-sm font-bold text-slate-700 border-r border-slate-200 pr-4">
+                        {{ selectedAssets().size }} Selected
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="text" [(ngModel)]="bulkTags" placeholder="Add tags to selected..."
+                            (keyup.enter)="applyBulkTags()"
+                            class="bg-slate-50 border-0 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 w-48">
+
+                        <button (click)="applyBulkTags()"
+                            class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-colors"
+                            title="Apply Tags">
+                            <app-icon name="check" [size]="20"></app-icon>
+                        </button>
+                    </div>
+
+                    <div class="w-px h-8 bg-slate-200"></div>
+
+                    <button (click)="deleteSelected()"
+                        class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors pr-4"
+                        title="Delete Selected">
+                        <app-icon name="trash" [size]="20"></app-icon>
+                    </button>
+
+                    <button (click)="selectedAssets().clear(); isBulkMode.set(false)"
+                        class="absolute -top-2 -right-2 bg-slate-200 hover:bg-slate-300 rounded-full p-1 text-slate-500">
+                        <app-icon name="x_mark" [size]="12"></app-icon>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Edit Modal Overlay -->
+<app-edit-media-dialog *ngIf="editingAsset()" [asset]="editingAsset()!" [categories]="CATEGORIES"
+    (saveComplete)="onEditComplete()" (cancel)="editingAsset.set(null)">
+</app-edit-media-dialog>
+
+<!-- Create Link Modal -->
+<app-create-link-dialog *ngIf="sharingAsset()" [asset]="sharingAsset()!" (close)="sharingAsset.set(null)"
+    (linkCreated)="onShareComplete($event)">
+</app-create-link-dialog>
+
+<!-- Stats Dialog -->
+<app-link-stats-dialog *ngIf="viewingStats()" [link]="viewingStats()!" (close)="viewingStats.set(null)">
+</app-link-stats-dialog>
+
+<!-- Upload Modal Overlay -->
+<div *ngIf="isUploadOpen()"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-semibold">Upload Media</h3>
+            <button (click)="toggleUpload()" class="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        <div class="p-0">
+            <app-media-upload (uploadComplete)="onUploadSuccess($event)"></app-media-upload>
+        </div>
+    </div>
+</div>

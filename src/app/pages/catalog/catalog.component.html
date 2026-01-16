@@ -170,7 +170,9 @@
                 <a [routerLink]="['/product', product.slug]" class="product-card-link">
                     <div class="product-card">
                         <div class="product-image">
-                            <img [src]="product.images.main" [alt]="product.name.es">
+                            <!-- Use NgOptimizedImage for automatic optimization (WebP, resizing, lazy loading) -->
+                            <img [ngSrc]="product.images.main" [alt]="product.name.es" width="300" height="300"
+                                class="product-img-optimized">
                             <div class="product-badges">
                                 <span *ngIf="product.newArrival" class="badge badge-new">{{ 'ADMIN.CATALOG.NEW' |
                                     translate

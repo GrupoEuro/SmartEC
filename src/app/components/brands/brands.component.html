@@ -1,19 +1,55 @@
-<section class="brands-section">
-    <div class="brands-container">
-        <h2 class="brands-title">{{ 'BRANDS.TITLE' | translate }}</h2>
+<section class="brands-section py-20 relative">
+    <!-- Background is transparent to let global dark theme show, or subtle gradient -->
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/50 pointer-events-none"></div>
 
-        <div class="brands-grid">
+    <div class="container mx-auto px-4 relative z-10">
+        <h2 class="text-3xl md:text-5xl font-black text-center text-white mb-12 uppercase tracking-tight">
+            {{ 'BRANDS.TITLE' | translate }}
+        </h2>
 
+        <!-- Full Width Brand Card (Dark Mode) -->
+        <div
+            class="bg-zinc-900 rounded-3xl shadow-2xl p-8 md:p-12 border border-zinc-800 relative overflow-hidden group">
 
-            <div class="brand-card">
-                <div class="brand-logo praxis">PRAXIS</div>
-                <p class="brand-description">
-                    {{ 'BRANDS.PRAXIS_DESC' | translate }}
-                </p>
-                <div class="brand-features">
-                    <div class="brand-feature">{{ 'BRANDS.PRAXIS_FEAT_1' | translate }}</div>
-                    <div class="brand-feature">{{ 'BRANDS.PRAXIS_FEAT_2' | translate }}</div>
+            <!-- Subtle Hover Glow Effect -->
+            <div
+                class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+            </div>
+
+            <div class="flex flex-col items-start gap-6 relative z-10">
+
+                <!-- Logo/Title -->
+                <div class="brand-logo praxis text-4xl md:text-6xl font-black text-white leading-none">
+                    PRAXIS <span class="text-orange-500">TIRES</span>
                 </div>
+
+                <!-- Description -->
+                <p class="text-lg text-slate-400 leading-relaxed max-w-4xl">
+                    {{ 'BRANDS.PRAXIS_HERO.SUBTITLE' | translate }}
+                </p>
+
+                <!-- Features/Stats -->
+                <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 mt-2 border-t border-zinc-800">
+                    <div class="flex flex-col">
+                        <span class="text-3xl font-black text-white">{{ 'BRANDS.PRAXIS_HERO.STAT_1_VAL' | translate
+                            }}</span>
+                        <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
+                            'BRANDS.PRAXIS_HERO.STAT_1_LABEL' | translate }}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-3xl font-black text-white">{{ 'BRANDS.PRAXIS_HERO.STAT_2_VAL' | translate
+                            }}</span>
+                        <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
+                            'BRANDS.PRAXIS_HERO.STAT_2_LABEL' | translate }}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-3xl font-black text-white">{{ 'BRANDS.PRAXIS_HERO.STAT_3_VAL' | translate
+                            }}</span>
+                        <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
+                            'BRANDS.PRAXIS_HERO.STAT_3_LABEL' | translate }}</span>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

@@ -1,5 +1,4 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
-import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { provideImageLoader } from './core/services/config/image-loader.config';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
@@ -8,8 +7,9 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { HttpClient, provideHttpClient, withFetch } from '@angular/common/http';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { getFirestore, provideFirestore, initializeFirestore, memoryLocalCache } from '@angular/fire/firestore';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { getStorage, provideStorage } from '@angular/fire/storage';
 import { environment } from '../environments/environment';
@@ -23,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled', scrollPositionRestoration: 'enabled' })),
     provideClientHydration(),
     provideHttpClient(withFetch()),
+    provideCharts(withDefaultRegisterables()),
     importProvidersFrom(
       TranslateModule.forRoot({
         defaultLanguage: 'es',
@@ -36,7 +37,9 @@ export const appConfig: ApplicationConfig = {
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideFirestore(() => {
       const app = getApp();
-      return getFirestore(app);
+      return initializeFirestore(app, {
+        localCache: memoryLocalCache()
+      });
     }),
     provideAuth(() => {
       const app = getApp();
@@ -47,7 +50,6 @@ export const appConfig: ApplicationConfig = {
       return getStorage(app);
     }),
     provideImageLoader(),
-    provideCharts(withDefaultRegisterables()),
     provideAnimations()
   ]
 };

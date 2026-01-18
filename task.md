@@ -5,6 +5,7 @@
     - [x] Create `media_assets` Firestore collection & Service.
     - [x] Build Media Library UI (Gallery, Upload, Filters).
     - [x] Implement Reusable Media Picker Dialog.
+    - [x] Create Folder Tree Component
 - [x] **Frontend Optimization**
     - [x] Integrate `NgOptimizedImage` (`ngSrc`) in Catalog.
     - [x] Integrate `NgOptimizedImage` in Home.

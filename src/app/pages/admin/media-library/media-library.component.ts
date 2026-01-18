@@ -1,18 +1,19 @@
-import { CreateLinkDialogComponent } from './components/create-link-dialog/create-link-dialog.component';
-
-import { SharedLink } from '../../../core/models/shared-link.model';
-import { LinkStatsDialogComponent } from './components/link-stats-dialog/link-stats-dialog.component';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MediaUploadComponent } from './components/media-upload/media-upload.component';
-import { EditMediaDialogComponent } from './components/edit-media-dialog/edit-media-dialog.component';
-import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { MediaAsset, MediaFilter } from '../../../core/models/media.model';
-import { MediaService } from '../../../core/services/media.service';
 import { BehaviorSubject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-
+import { FolderTreeComponent } from './components/folder-tree/folder-tree.component';
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { EditMediaDialogComponent } from './components/edit-media-dialog/edit-media-dialog.component';
+import { ImageEditorDialogComponent } from './components/image-editor-dialog/image-editor-dialog.component';
+import { MoveAssetsDialogComponent } from './components/move-assets-dialog/move-assets-dialog.component'; // Added
+import { MediaUploadComponent } from './components/media-upload/media-upload.component';
+import { CreateLinkDialogComponent } from './components/create-link-dialog/create-link-dialog.component';
+import { LinkStatsDialogComponent } from './components/link-stats-dialog/link-stats-dialog.component';
+import { MediaAsset, MediaFilter, MediaFolder } from '../../../core/models/media.model';
+import { MediaService } from '../../../core/services/media.service';
+import { SharedLink } from '../../../core/models/shared-link.model';
 import { DocumentSharingService } from '../../../core/services/document-sharing.service';
 
 @Component({
@@ -23,9 +24,12 @@ import { DocumentSharingService } from '../../../core/services/document-sharing.
     FormsModule,
     MediaUploadComponent,
     EditMediaDialogComponent,
+    ImageEditorDialogComponent,
+    MoveAssetsDialogComponent, // Added
     CreateLinkDialogComponent,
     LinkStatsDialogComponent,
-    AppIconComponent
+    AppIconComponent,
+    FolderTreeComponent
   ],
   templateUrl: './media-library.component.html',
   styleUrls: ['./media-library.component.css']
@@ -34,68 +38,30 @@ export class MediaLibraryComponent implements OnInit {
   private mediaService = inject(MediaService);
   private sharingService = inject(DocumentSharingService);
 
-  // ... existing code ...
+  // State
+  filter$ = new BehaviorSubject<MediaFilter>({ limit: 30 });
+  assets = signal<MediaAsset[]>([]);
 
   editingAsset = signal<MediaAsset | null>(null);
+  editingImage = signal<MediaAsset | null>(null);
   sharingAsset = signal<MediaAsset | null>(null);
+  movingAssets = signal<MediaAsset[]>([]); // Added
   sharedLinks = signal<SharedLink[]>([]);
-  viewingStats = signal<SharedLink | null>(null); // Added
+  viewingStats = signal<SharedLink | null>(null);
 
-  // ... existing code ...
+  // Bulk Actions
+  isBulkMode = signal(false);
+  bulkTags = '';
 
-  shareAsset(asset: MediaAsset) {
-    this.sharingAsset.set(asset);
-  }
-
-  onShareComplete(slug: string) {
-    // Optional: could show toast details here
-    this.sharingAsset.set(null);
-    // Refresh if in shared links view to show new link
-    if (this.selectedCategory() === 'shared-links') {
-      this.loadSharedLinks();
-    }
-  }
-
-  loadSharedLinks() {
-    this.isLoading.set(true);
-    this.sharingService.getLinks().subscribe({
-      next: (links) => {
-        this.sharedLinks.set(links);
-        this.isLoading.set(false);
-      },
-      error: (e) => {
-        console.error(e);
-        this.isLoading.set(false);
-      }
-    });
-  }
-
-  copyLink(url: string) {
-    navigator.clipboard.writeText(url);
-    // Optional: Toast
-  }
-
-  openStats(link: SharedLink) {
-    this.viewingStats.set(link);
-  }
-
-  // ... existing code ...
-
-  // Strings for UI
   readonly CATEGORIES = [
-    { id: 'products', label: 'Products', icon: 'package' },
-    { id: 'banners', label: 'Banners', icon: 'layers' },
-    { id: 'site-assets', label: 'Site Assets', icon: 'layout' },
+    { id: 'products', label: 'Products', icon: 'tag' },
+    { id: 'banners', label: 'Banners', icon: 'image' },
+    { id: 'site-assets', label: 'Site Assets', icon: 'monitor' },
     { id: 'documents', label: 'Documents', icon: 'file_text' },
-    { id: 'blog', label: 'Blog', icon: 'edit' },
-    { id: 'icons', label: 'Icons', icon: 'image' }
+    { id: 'blog', label: 'Blog', icon: 'pencil' },
+    { id: 'icons', label: 'Icons', icon: 'star' }
   ];
 
-  // State
-  filter$ = new BehaviorSubject<MediaFilter>({ limit: 50 });
-
-  // Signals for Data
-  assets = signal<MediaAsset[]>([]);
   isLoading = signal(false);
   hasMore = signal(true);
   private lastDoc: any = null;
@@ -106,6 +72,10 @@ export class MediaLibraryComponent implements OnInit {
   viewMode = signal<'grid' | 'list'>('grid');
 
 
+
+  // Folder State
+  currentFolderId = signal<string | null>(null);
+  breadcrumbs = signal<MediaFolder[]>([]);
 
   // Stats
   storageStats$ = this.mediaService.getStorageStats();
@@ -119,6 +89,50 @@ export class MediaLibraryComponent implements OnInit {
     ).subscribe(() => {
       this.loadAssets(true);
     });
+  }
+
+  // Folder Actions
+  onFolderSelected(folder: MediaFolder) {
+    this.currentFolderId.set(folder.id || null);
+    this.selectedCategory.set(''); // Clear category when entering folder 
+    this.updateFilter();
+    this.buildBreadcrumbs(folder);
+  }
+
+  async buildBreadcrumbs(folder: MediaFolder) {
+    const crumbs = [folder];
+    let current = folder;
+    // Should probably move this recursive fetch to service for performance or structure it differently
+    // For now, naive approach:
+    while (current.parentId) {
+      const parent = await this.mediaService.getFolder(current.parentId);
+      if (parent) {
+        crumbs.unshift(parent);
+        current = parent;
+      } else {
+        break;
+      }
+    }
+    this.breadcrumbs.set(crumbs);
+  }
+
+  navigateToRoot() {
+    this.currentFolderId.set(null);
+    this.breadcrumbs.set([]);
+    this.updateFilter();
+  }
+
+  async createFolder() {
+    const name = prompt('Folder Name:');
+    if (name) {
+      await this.mediaService.createFolder(name, this.currentFolderId(), this.getCurrentPath());
+      // Refresh tree? The tree component handles its own loading. 
+      // We might need a signal to trigger refresh if we want it instant.
+    }
+  }
+
+  getCurrentPath(): string {
+    return this.breadcrumbs().map(f => f.name).join('/');
   }
 
   ngOnInit() { }
@@ -189,6 +203,7 @@ export class MediaLibraryComponent implements OnInit {
     this.filter$.next({
       ...current,
       category: this.selectedCategory() || undefined,
+      folderId: this.currentFolderId() !== null ? this.currentFolderId()! : undefined,
       sortField: this.sortField(),
       sortDirection: this.sortDirection()
       // search: this.searchQuery() || undefined 
@@ -213,9 +228,38 @@ export class MediaLibraryComponent implements OnInit {
 
   // Selection State
   selectedAssets = signal<Set<string>>(new Set());
-  isBulkMode = signal(false);
-  bulkTags = '';
+  async migrateCategories() {
+    if (!confirm('This will move all assets from legacy categories into new Folders. Continue?')) return;
+    this.isLoading.set(true);
+    try {
+      const result = await this.mediaService.migrateLegacyCategories(this.CATEGORIES);
+      alert(`Migration Complete. Moved ${result.migrated} assets.`);
+      this.loadAssets(true);
+    } catch (e) {
+      alert('Migration failed');
+      console.error(e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
 
+  async duplicateAsset(asset: MediaAsset) {
+    this.isLoading.set(true);
+    try {
+      await this.mediaService.duplicateAsset(asset.id!);
+      // Refresh list
+      // We could also just push to local state but full reload is safer for consistency
+      this.loadAssets(true);
+      // Optional toast
+    } catch (e) {
+      console.error('Duplicate failed', e);
+      alert('Failed to duplicate asset');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  // Helpers
   toggleSelection(asset: MediaAsset) {
     const current = new Set(this.selectedAssets());
     if (current.has(asset.id!)) {
@@ -235,6 +279,12 @@ export class MediaLibraryComponent implements OnInit {
       this.selectedAssets.set(allIds);
     }
     this.isBulkMode.set(this.selectedAssets().size > 0);
+  }
+
+  moveSelected() {
+    const ids = Array.from(this.selectedAssets());
+    const assets = this.assets().filter(a => ids.includes(a.id!));
+    this.launchMoveDialog(assets);
   }
 
   async applyBulkTags() {
@@ -273,6 +323,97 @@ export class MediaLibraryComponent implements OnInit {
   onEditComplete() {
     this.editingAsset.set(null);
     this.updateFilter();
+  }
+
+  // Drag & Drop
+  isDragging = signal(false);
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      // Open upload dialog or handle directly
+      // For now, let's just open the upload dialog with these files 
+      // (assuming we pass them, or just open the dialog and user re-selects - MVP)
+      this.isUploadOpen.set(true);
+      // Ideally: this.mediaUpload.handleFiles(files);
+    }
+  }
+
+  shareAsset(asset: MediaAsset) {
+    this.sharingAsset.set(asset);
+  }
+
+  onShareComplete(linkOrString: SharedLink | string) {
+    this.sharingAsset.set(null);
+    // If it's a string, we might just reload or ignore updating the local list if we don't have the full object
+    if (typeof linkOrString !== 'string') {
+      this.sharedLinks.update(links => [linkOrString, ...links]);
+    }
+    // Show stats?
+    // this.viewingStats.set(link);
+  }
+
+  launchImageEditor(asset: MediaAsset) {
+    if (asset.contentType.startsWith('image/') || asset.contentType === 'image/svg+xml') {
+      this.editingImage.set(asset);
+    } else {
+      alert('Only images can be edited');
+    }
+  }
+
+  onImageEditComplete(saved: boolean) {
+    this.editingImage.set(null);
+    if (saved) this.loadAssets(true);
+  }
+
+  // Move
+  launchMoveDialog(assets: MediaAsset[]) {
+    this.movingAssets.set(assets);
+  }
+
+  onMoveComplete(success: boolean) {
+    this.movingAssets.set([]);
+    if (success) {
+      this.selectedAssets.set(new Set()); // Clear selection
+      this.isBulkMode.set(false);
+      this.loadAssets(true); // Refresh
+    }
+  }
+
+  // File Type Helpers
+  isImage(asset: MediaAsset): boolean {
+    return asset.contentType.startsWith('image/') && asset.contentType !== 'image/tiff';
+  }
+
+  getFileIcon(asset: MediaAsset): string {
+    const type = asset.contentType;
+    if (type.includes('pdf')) return 'file_text';
+    if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv')) return 'bar_chart';
+    if (type.includes('word') || type.includes('document')) return 'file_text';
+    if (type.includes('video')) return 'video';
+    if (type.includes('audio')) return 'mic';
+    if (type.includes('zip') || type.includes('compressed')) return 'archive';
+    return 'file';
+  }
+
+  getFileExtension(asset: MediaAsset): string {
+    return asset.filename.split('.').pop()?.toUpperCase() || 'FILE';
   }
 
   async recalculateStats() {

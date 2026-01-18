@@ -1,0 +1,158 @@
+<div class="h-full flex flex-col bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative">
+
+    <!-- Header -->
+    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+        <div class="flex items-center gap-3">
+            <app-icon name="calendar_month" class="text-indigo-400" [size]="20"></app-icon>
+            <h3 class="text-white font-bold text-lg">Seasonal Strategy</h3>
+            <div class="flex items-center gap-2 bg-slate-800 rounded-lg p-1 ml-4 border border-slate-700">
+                <button (click)="changeYear(-1)"
+                    class="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors">
+                    <app-icon name="chevron_left" [size]="16"></app-icon>
+                </button>
+                <span class="text-sm font-mono font-bold text-white px-2">{{ currentYear() }}</span>
+                <button (click)="changeYear(1)"
+                    class="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors">
+                    <app-icon name="chevron_right" [size]="16"></app-icon>
+                </button>
+            </div>
+        </div>
+
+        <button (click)="openAddModal()"
+            class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+            <app-icon name="add" [size]="16"></app-icon> Add Campaign
+        </button>
+    </div>
+
+    <!-- Calendar Body -->
+    <div class="flex-1 overflow-x-auto relative">
+
+        <!-- Timeline Header -->
+        <div class="calendar-grid border-b border-slate-800 bg-slate-900/50 sticky top-0 z-10">
+            <div
+                class="p-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-r border-slate-800 flex items-center">
+                Campaign / Rule</div>
+            <div *ngFor="let m of months"
+                class="p-3 text-center text-xs font-mono text-slate-400 border-r border-slate-800 last:border-0 border-dashed">
+                {{ m }}
+            </div>
+        </div>
+
+        <!-- Rows (One per Rule for simplicity in MVP) -->
+        <div *ngFor="let item of timelineItems()"
+            class="calendar-grid border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors group relative h-14 items-center">
+            <div class="p-3 text-sm font-medium text-slate-300 border-r border-slate-800 flex flex-col justify-center">
+                <span class="truncate">{{ item.name }}</span>
+                <span class="text-[10px] text-slate-500">{{ item.targetType }} > {{ item.targetValue }}</span>
+            </div>
+
+            <!-- Grid Cells -->
+            <div *ngFor="let m of months" class="border-r border-slate-800/30 h-full"></div>
+
+            <!-- Strategy Bar -->
+            <div class="absolute left-[200px] right-0 top-0 bottom-0 pointer-events-none">
+                <div class="absolute top-3 bottom-3 rounded-md border text-white text-[10px] font-bold flex items-center px-2 cursor-pointer pointer-events-auto hover:brightness-110 transition-all shadow-md group-hover/bar:scale-[1.01]"
+                    [ngClass]="[item.color, 'bg-opacity-20 border-opacity-50']" [style.left]="item.style.left"
+                    [style.width]="item.style.width" (click)="openAddModal(item)">
+
+                    <div class="flex items-center gap-1 overflow-hidden w-full">
+                        <span class="whitespace-nowrap">{{ item.action === 'SET_MARGIN' ? 'Margin' : 'Discount' }} {{
+                            item.value }}%</span>
+
+                        <div class="ml-auto pl-2 border-l border-white/20 h-full flex items-center"
+                            (click)="deleteRule(item.id, $event)">
+                            <app-icon name="delete" [size]="12"
+                                class="opacity-0 group-hover:opacity-100 hover:text-red-300 transition-opacity"></app-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="timelineItems().length === 0"
+            class="p-12 text-center text-slate-500 flex flex-col items-center justify-center mt-8">
+            <div class="bg-slate-800/50 p-4 rounded-full mb-4">
+                <app-icon name="event_busy" [size]="32" class="opacity-50"></app-icon>
+            </div>
+            <p class="font-medium">No seasonal strategies for {{ currentYear() }}.</p>
+            <button (click)="openAddModal()"
+                class="text-indigo-400 hover:text-indigo-300 text-sm mt-2 font-bold hover:underline">Create a
+                Strategy</button>
+        </div>
+
+    </div>
+
+    <!-- Create Modal Overlay -->
+    <div *ngIf="isModalOpen()"
+        class="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div
+            class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-6 w-full max-w-md space-y-4 ring-1 ring-white/10">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-white">{{ editingRuleId() ? 'Edit Strategy' : 'New Seasonal Strategy'
+                    }}</h3>
+                <button (click)="closeModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <app-icon name="close" [size]="20"></app-icon>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <!-- Name -->
+                <div>
+                    <label class="text-xs text-slate-400 uppercase font-bold">Campaign Name</label>
+                    <input type="text" [(ngModel)]="newRule.name"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none"
+                        placeholder="e.g. Summer Sale 2026">
+                </div>
+
+                <!-- Dates -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase font-bold">Start Date</label>
+                        <input type="date" [(ngModel)]="newRule.startStr"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase font-bold">End Date</label>
+                        <input type="date" [(ngModel)]="newRule.endStr"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Rule Logic -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase font-bold">Target Category</label>
+                        <select [(ngModel)]="newRule.targetValue"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none">
+                            <option value="Sport">Sport</option>
+                            <option value="Off-Road">Off-Road</option>
+                            <option value="Touring">Touring</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase font-bold">Margin Value %</label>
+                        <input type="number" [(ngModel)]="newRule.value"
+                            class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm focus:border-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <input type="checkbox" id="recur" [(ngModel)]="newRule.recurrence"
+                        class="rounded bg-slate-700 border-slate-600 text-indigo-500">
+                    <label for="recur" class="text-sm text-slate-300">Repeats Annually (Ignore Year)</label>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4">
+                <button (click)="closeModal()"
+                    class="px-4 py-2 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-sm">Cancel</button>
+                <button (click)="saveRule()"
+                    class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg">
+                    {{ editingRuleId() ? 'Save Changes' : 'Create Strategy' }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -34,7 +34,9 @@ export class PriceStackService {
             previousTotal = estimatedTotal;
 
             // Running sum for this iteration
-            let runningSum = startValue;
+            // FIX: If we have a explicit 'COST' block (like Landed COG), do not start with startValue, otherwise we double count.
+            const hasCostBlock = activeBlocks.some(b => b.type === 'COST');
+            let runningSum = hasCostBlock ? 0 : startValue;
 
             calculatedBlocks.forEach(block => {
                 let amount = 0;

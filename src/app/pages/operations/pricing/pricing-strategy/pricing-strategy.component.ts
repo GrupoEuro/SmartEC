@@ -1,482 +1,171 @@
-import { Component, inject, signal, computed, effect, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, filter, tap } from 'rxjs/operators';
-import { PricingCalculatorService } from '../../../../core/services/pricing-calculator.service';
+import { TranslateService, TranslateModule } from '@ngx-translate/core';
+import { PricingRulesService } from '../../../../core/services/pricing-rules.service';
 import { ProductService } from '../../../../core/services/product.service';
-import { Product } from '../../../../core/models/product.model';
-import { ChannelPrice, MarginTargets, SalesChannel } from '../../../../core/models/pricing.model';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
-
-interface ChannelPriceDisplay {
-  channel: SalesChannel;
-  channelName: string;
-  channelIcon: string;
-  price: ChannelPrice | null;
-  loading: boolean;
-  expanded: boolean; // For collapsible cards
-}
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 
 @Component({
   selector: 'app-pricing-strategy',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppIconComponent, TranslateModule],
+  imports: [CommonModule, AppIconComponent, TranslateModule, BaseChartDirective],
   templateUrl: './pricing-strategy.component.html',
   styleUrl: './pricing-strategy.component.css'
 })
-export class PricingStrategyComponent implements OnDestroy {
-  private pricingCalculator = inject(PricingCalculatorService);
+export class PricingStrategyComponent implements OnInit {
+  private rulesService = inject(PricingRulesService);
   private productService = inject(ProductService);
-  private router = inject(Router);
+  public router = inject(Router);
+  private translate = inject(TranslateService);
 
-  // Expose Object for template use
-  Object = Object;
+  // Loading State
+  loading = signal(true);
 
-  // UI State
-  calculating = signal(false);
-  showCompetitiveModal = signal(false);
+  // KPI Signals
+  totalProducts = signal(0);
+  activeStrategies = signal(0);
+  avgGrossMargin = signal(0); // Percentage
+  strategyCoverage = signal(0); // Percentage
 
-  // Live Data Handling
-  private inputChangeSubject = new Subject<void>();
-  private inputSubscription: Subscription;
-  isLiveMode = signal(false);
+  // Charts Data
+  marginDistributionData = signal<ChartData<'bar'> | null>(null);
 
-  // Signals
-  selectedProduct = signal<Product | null>(null);
-  showDetails = signal<boolean>(false);
+  // Actionable Lists
+  lowMarginProducts = signal<any[]>([]); // Products below min margin
+  recentActivity = signal<any[]>([]);
 
-  // Cost Signals
-  products = signal<Product[]>([]);
-  searchQuery = signal('');
-
-  // Pricing Inputs - FIX: Must all be signals
-  cog = signal(1000);
-  inboundShipping = signal(50);
-  packaging = signal(15);
-  weight = signal(2.5);
-  length = signal(40);
-  width = signal(30);
-  height = signal(15);
-
-  // Margin Targets
-  targetGrossMargin = signal(50);
-  targetNetMargin = signal(20);
-  minAcceptableMargin = signal(12);
-
-  // Calculated Prices
-  channelPrices = signal<Record<string, ChannelPrice>>({});
-
-  // View Mode
-  viewMode = signal<'cards' | 'matrix'>('cards');
-
-
-  constructor() {
-    // Setup debounced calculation
-    this.inputSubscription = this.inputChangeSubject.pipe(
-      filter(() => this.isLiveMode() && !this.calculating()), // Only if live mode active
-      debounceTime(500), // Wait 500ms after last input
-      tap(() => this.calculatePrices(true)) // Silent calc (true = live)
-    ).subscribe();
-  }
-
-  ngOnDestroy() {
-    if (this.inputSubscription) {
-      this.inputSubscription.unsubscribe();
+  // Chart Config
+  public barChartOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e293b',
+        titleColor: '#f8fafc',
+        bodyColor: '#cbd5e1',
+        borderColor: '#334155',
+        borderWidth: 1
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#334155', drawTicks: false },
+        ticks: { color: '#94a3b8' }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#94a3b8' }
+      }
     }
-  }
-
-  // Trigger for inputs
-  onInputChange() {
-    if (this.isLiveMode()) {
-      this.inputChangeSubject.next();
-    }
-  }
-
-
-  // Channel Display Configuration
-  channels: ChannelPriceDisplay[] = [
-    {
-      channel: 'AMAZON_FBA',
-      channelName: 'Amazon FBA',
-      channelIcon: 'inventory_2',
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'AMAZON_FBM',
-      channelName: 'Amazon Mexico (FBM)',
-      channelIcon: 'package',
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'MELI_CLASSIC',
-      channelName: 'MELI Classic',
-      channelIcon: 'shopping_cart',
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'MELI_PREMIUM',
-      channelName: 'MELI Premium',
-      channelIcon: 'credit_card', // Icon representing installments/premium
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'MELI_FULL',
-      channelName: 'MELI Full',
-      channelIcon: 'local_shipping',
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'POS',
-      channelName: 'POS / In-Store',
-      channelIcon: 'storefront',
-      price: null,
-      loading: false,
-      expanded: false
-    },
-    {
-      channel: 'WEB',
-      channelName: 'Web Store',
-      channelIcon: 'language',
-      price: null,
-      loading: false,
-      expanded: false
-    }
-  ];
-
-  // Computed Properties
-  filteredProducts = computed(() => {
-    const query = this.searchQuery().toLowerCase();
-    if (!query) return this.products().slice(0, 10);
-
-    return this.products().filter(p =>
-      p.sku.toLowerCase().includes(query) ||
-      p.name.es.toLowerCase().includes(query) ||
-      p.name.en.toLowerCase().includes(query)
-    ).slice(0, 10);
-  });
+  };
+  public barChartType: ChartType = 'bar';
 
   ngOnInit() {
-    this.loadProducts();
+    this.loadDashboardData();
   }
 
-  loadProducts() {
-    this.productService.getProducts().subscribe({
-      next: (products) => {
-        this.products.set(products);
-      },
-      error: (error) => {
-        console.error('Error loading products:', error);
-      }
-    });
-  }
-
-  async selectProduct(product: Product) {
-    this.selectedProduct.set(product);
-    this.searchQuery.set(product.sku); // Show SKU in search box
-
-    // Auto-fill product specs if available
-    // Original cog auto-populate removed as it will be loaded from strategy if exists
-    if (product.weight) this.weight.set(product.weight);
-    if (product.dimensions) {
-      if (product.dimensions.length) this.length.set(product.dimensions.length);
-      if (product.dimensions.width) this.width.set(product.dimensions.width);
-      if (product.dimensions.height) this.height.set(product.dimensions.height);
-    }
-
-    // Reset results
-    this.channelPrices.set({}); // Set to empty object instead of null
-    this.channels.forEach(ch => {
-      ch.price = null;
-      ch.expanded = false;
-    });
-
-    // Check for existing strategy
-    this.calculating.set(true);
+  async loadDashboardData() {
+    this.loading.set(true);
     try {
-      const existingStrategy = await this.pricingCalculator.getPricingStrategy(product.id!);
+      // Parallel fetch for speed
+      const [products, rules, templates] = await Promise.all([
+        this.productService.getProducts().toPromise() as Promise<any[]>,
+        this.rulesService.getRules() as Promise<any[]>,
+        this.rulesService.getTemplates() as Promise<any[]>
+      ]);
 
-      if (existingStrategy) {
-        // Populate inputs from strategy
-        this.cog.set(existingStrategy.cog);
-        if (existingStrategy.inboundShipping) this.inboundShipping.set(existingStrategy.inboundShipping);
-        if (existingStrategy.packagingCost) this.packaging.set(existingStrategy.packagingCost);
+      if (!products) return;
 
-        this.targetGrossMargin.set(existingStrategy.targetGrossMargin);
-        this.targetNetMargin.set(existingStrategy.targetNetMargin);
-        this.minAcceptableMargin.set(existingStrategy.minAcceptableMargin);
+      // 1. Calculate Statistics
+      this.totalProducts.set(products.length);
 
-        // Auto-calculate
-        this.calculatePrices();
+      // Approximating "Active Strategies" by products that have a non-default Price or linked rule
+      // For V2, we assume if a product has a 'pricingStrategy' in DB it's active.
+      // Since we don't have a direct "getAllStrategies" API in the service yet, we'll estimate based on Rules count for now
+      // OR better, we iterate products to check if they have a specialized price setup? 
+      // Actually, let's use the Rules count as a proxy for "Automated Strategies"
+      // AND we can mock some distribution data for the histogram based on product 'price' vs 'cost'
 
-        // Notification (optional, maybe console for now to avoid UI clutter or add a toast service later)
-        console.log('Existing pricing strategy loaded');
-      } else {
-        // If no strategy, set default cog or product's cog if available
-        if (product.cog) this.cog.set(product.cog);
-        else this.cog.set(1000); // Default if no product cog
-      }
-    } catch (error) {
-      console.error('Error loading existing strategy:', error);
-      // Optionally reset to product's cog if strategy loading fails
-      if (product.cog) this.cog.set(product.cog);
-      else this.cog.set(1000);
-    } finally {
-      this.calculating.set(false);
-    }
-  }
+      this.activeStrategies.set(rules.length); // Proxy
+      this.strategyCoverage.set(Math.round((rules.length / products.length) * 100) || 0);
 
-  async calculatePrices(isLiveUpdate = false) {
-    if (!this.selectedProduct()) {
-      alert('Please select a product first');
-      return;
-    }
+      // 2. Calculate Margins (Client-side Aggregation)
+      let totalMargin = 0;
+      let validProductCount = 0;
+      // Use simple keys for logic
+      const marginBuckets: Record<string, number> = { 'CRITICAL': 0, 'LOW': 0, 'HEALTHY': 0, 'HIGH': 0 };
+      const lowMarginList: any[] = [];
 
-    // Don't show full spinner for live updates to avoid flickering, maybe just a small indicator if needed
-    // But we set calculating(true) which disables the button
-    this.calculating.set(true);
+      products.forEach((p: any) => {
+        if (p.costPrice && p.price && p.price > 0) {
+          const margin = ((p.price - p.costPrice) / p.price) * 100;
+          totalMargin += margin;
+          validProductCount++;
 
-    try {
-      const product: Product = {
-        ...this.selectedProduct()!,
-        cog: this.cog(),
-        weight: this.weight(),
-        dimensions: {
-          length: this.length(),
-          width: this.width(),
-          height: this.height()
+          // Bucket Logic
+          if (margin < 10) marginBuckets['CRITICAL']++;
+          else if (margin < 20) marginBuckets['LOW']++;
+          else if (margin < 40) marginBuckets['HEALTHY']++;
+          else marginBuckets['HIGH']++;
+
+          // Action List
+          if (margin < 15) {
+            lowMarginList.push({
+              name: p.name.es,
+              sku: p.sku,
+              margin: margin.toFixed(1),
+              price: p.price
+            });
+          }
         }
-      };
-
-      const margins: MarginTargets = {
-        targetGrossMargin: this.targetGrossMargin(),
-        targetNetMargin: this.targetNetMargin(),
-        minAcceptableMargin: this.minAcceptableMargin()
-      };
-
-      const customCosts = {
-        inboundShipping: this.inboundShipping(),
-        packagingLabeling: this.packaging()
-      };
-
-      // Pass custom costs if the service supports it (it should) - checking service signature logic elsewhere
-      // Assuming generateMultiChannelPrices uses the product's modified props or we need to pass them
-      // For now, product object has the cost data, assuming service uses it. 
-      // Actually, looking at previous code, inputs like COG are in the product object.
-      // We need to ensure 'inboundShipping' and 'packaging' are used. 
-      // If they are not part of Product interface, we might need to handle them.
-      // But for now keeping strictly to signature.
-
-      const prices = await this.pricingCalculator.generateMultiChannelPrices(product, margins);
-
-      this.channelPrices.set(prices);
-
-      // Update channel display
-      this.channels.forEach(ch => {
-        ch.price = prices[ch.channel] || null;
       });
 
-      // Activate Live Mode after first successful calc
-      if (!this.isLiveMode()) {
-        this.isLiveMode.set(true);
-      }
+      this.avgGrossMargin.set(validProductCount > 0 ? parseFloat((totalMargin / validProductCount).toFixed(1)) : 0);
+      this.lowMarginProducts.set(lowMarginList.slice(0, 5)); // Top 5 worst
 
-    } catch (error) {
-      console.error('Error calculating prices:', error);
-      if (!isLiveUpdate) alert('Error calculating prices. Please check console for details.');
+      // 3. Setup Chart (with Translations)
+      // We need to fetch translated labels. Since this is async/signal based, we can just grab current snapshot or use simple hardcoded fallback if translation not fast enough, 
+      // but usually 'instant' works if loaded.
+      const t = this.translate.instant.bind(this.translate);
+
+      const labels = [
+        t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.CRITICAL'),
+        t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.LOW'),
+        t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.HEALTHY'),
+        t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.HIGH')
+      ];
+
+      this.marginDistributionData.set({
+        labels: labels,
+        datasets: [{
+          data: [marginBuckets['CRITICAL'], marginBuckets['LOW'], marginBuckets['HEALTHY'], marginBuckets['HIGH']],
+          backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6'],
+          borderRadius: 4,
+          barThickness: 40
+        }]
+      });
+
+      // 4. Mock Recent Activity (until backend supports audit log)
+      this.recentActivity.set([
+        { action: 'Strategy Updated', target: 'Michelin Pilot Sport 4', time: '2 hours ago', user: 'Admin' },
+        { action: 'Seasonal Rule', target: 'Summer Sale 2026', time: '5 hours ago', user: 'System' },
+        { action: 'Price Drop', target: 'Pirelli P Zero', time: '1 day ago', user: 'Auto-Repricer' },
+      ]);
+
+    } catch (e) {
+      console.error('Error loading dashboard', e);
     } finally {
-      this.calculating.set(false);
+      this.loading.set(false);
     }
   }
 
-  getMarginColor(margin: number, min: number): string {
-    if (margin < 0) return 'text-red-500';
-    if (margin < min) return 'text-yellow-500';
-    if (margin < 20) return 'text-blue-500';
-    return 'text-green-500';
-  }
-
-  getMarginBgColor(margin: number, min: number): string {
-    if (margin < 0) return 'bg-red-500/10';
-    if (margin < min) return 'bg-yellow-500/10';
-    if (margin < 20) return 'bg-blue-500/10';
-    return 'bg-green-500/10';
-  }
-
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(value);
-  }
-
-  formatPercent(value: number): string {
-    return `${value.toFixed(1)}%`;
-  }
-
-  openCompetitiveModal() {
-    this.showCompetitiveModal.set(true);
-  }
-
-  closeCompetitiveModal() {
-    this.showCompetitiveModal.set(false);
-  }
-
-  async savePricingStrategy() {
-    if (!this.selectedProduct()) return;
-
-    try {
-      const strategy = {
-        productId: this.selectedProduct()!.id!,
-        sku: this.selectedProduct()!.sku,
-        productName: this.selectedProduct()!.name.es,
-        cog: this.cog(),
-        inboundShipping: this.inboundShipping(),
-        packagingCost: this.packaging(),
-        targetGrossMargin: this.targetGrossMargin(),
-        targetNetMargin: this.targetNetMargin(),
-        minAcceptableMargin: this.minAcceptableMargin(),
-        weight: this.weight(),
-        dimensions: {
-          length: this.length(),
-          width: this.width(),
-          height: this.height()
-        },
-        channelPrices: this.channelPrices(),
-        active: true,
-        lastCalculated: new Date() as any
-      };
-
-      await this.pricingCalculator.savePricingStrategy(strategy as any);
-      alert('Pricing strategy saved successfully!');
-    } catch (error) {
-      console.error('Error saving pricing strategy:', error);
-      alert('Error saving pricing strategy. Please check console.');
-    }
-  }
-
-  // Collapsible Logic
-  toggleChannel(channel: ChannelPriceDisplay) {
-    channel.expanded = !channel.expanded;
-    // Update global toggle if all are consistent, optional but good UX
-  }
-
-  toggleAll(event: Event) {
-    const isChecked = (event.target as HTMLInputElement).checked;
-    this.showDetails.set(isChecked);
-    this.channels.forEach(ch => ch.expanded = isChecked);
-  }
-
-  // Helper to check if any channel is expanded
-  anyExpanded(): boolean {
-    return this.channels.some(ch => ch.expanded);
-  }
-  // Simulator State
-  isSimulatorMode = signal(false);
-  simulatedChannel = signal<SalesChannel | null>(null);
-  anchorBasePrice = signal<number>(0); // Baseline for discount calc
-  simulatedPrice = signal<number>(0);
-  simulatedDiscount = signal<number>(0); // Percentage
-  simulationResults = signal<Record<string, ChannelPrice>>({});
-
-  toggleSimulator() {
-    this.isSimulatorMode.update(v => !v);
-    if (this.isSimulatorMode()) {
-      // Initialize simulator with current Amazon price as anchor
-      const amazonPrice = this.channelPrices()['AMAZON_FBA']?.sellingPrice || 0;
-      this.simulatedChannel.set('AMAZON_FBA');
-      this.anchorBasePrice.set(amazonPrice);
-      this.simulatedPrice.set(amazonPrice);
-      this.simulatedDiscount.set(0);
-      this.runSimulation();
-    }
-  }
-
-  async runSimulation() {
-    if (!this.selectedProduct() || !this.simulatedChannel()) return;
-
-    const product = {
-      ...this.selectedProduct()!,
-      cog: this.cog(), // Use current inputs
-      weight: this.weight(),
-      dimensions: {
-        length: this.length(),
-        width: this.width(),
-        height: this.height()
-      }
-    } as Product;
-
-    const customCosts = {
-      inboundShipping: this.inboundShipping(),
-      packagingLabeling: this.packaging()
-    };
-
-    // 1. Calculate Anchor Channel Result
-    const anchorResult = await this.pricingCalculator.calculateProfitFromPrice(
-      product,
-      this.simulatedChannel()!,
-      this.simulatedPrice(),
-      customCosts
-    );
-
-    // 2. Ripple Effect: Calculate required prices for other channels to match Net Margin
-    const targetNetMargin = anchorResult.netMargin;
-    const margins: MarginTargets = {
-      targetGrossMargin: 50,
-      targetNetMargin: targetNetMargin, // This is the driver
-      minAcceptableMargin: 0
-    };
-
-    const rippleResults = await this.pricingCalculator.generateMultiChannelPrices(product, margins);
-
-    this.simulationResults.set(rippleResults);
-  }
-
-  onSimulatedPriceChange(event: any) {
-    const newPrice = Number(event.target.value);
-    this.simulatedPrice.set(newPrice);
-
-    // Arc: Price -> Discount
-    if (this.anchorBasePrice() > 0) {
-      const discount = ((this.anchorBasePrice() - newPrice) / this.anchorBasePrice()) * 100;
-      this.simulatedDiscount.set(Number(discount.toFixed(1)));
-    }
-
-    this.runSimulation();
-  }
-
-  onDiscountChange(event: any) {
-    const discount = Number(event.target.value);
-    this.simulatedDiscount.set(discount);
-
-    // Arc: Discount -> Price
-    if (this.anchorBasePrice() > 0) {
-      const newPrice = this.anchorBasePrice() * (1 - (discount / 100));
-      this.simulatedPrice.set(Number(newPrice.toFixed(2)));
-    }
-
-    this.runSimulation();
-  }
-
-  applySimulation() {
-    // Commit the simulated margin as the new strategy
-    const result = this.simulationResults()[this.simulatedChannel()!];
-    if (result) {
-      this.targetNetMargin.set(Number(result.netMargin.toFixed(1)));
-      this.calculatePrices(); // Recalculate main strategy
-      this.isSimulatorMode.set(false);
-    }
+  // Navigation Helpers
+  navigateTo(path: string) {
+    this.router.navigate([path]);
   }
 }

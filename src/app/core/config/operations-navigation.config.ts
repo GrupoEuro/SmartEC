@@ -102,6 +102,45 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
         ]
     },
     {
+        id: 'pricing_mgmt',
+        title: 'Pricing Management',
+        icon: 'price_check',
+        children: [
+            {
+                id: 'dashboard',
+                title: 'OPERATIONS.DASHBOARD.TITLE', // Or custom: Pricing Dashboard
+                icon: 'layout-dashboard',
+                route: '/operations/pricing/dashboard'
+            },
+            {
+                id: 'smart_builder',
+                title: 'Smart Builder',
+                icon: 'psychology',
+                route: '/operations/pricing/constructor',
+                badge: {
+                    text: 'V2',
+                    color: 'bg-purple-600'
+                }
+            },
+            {
+                id: 'calendar',
+                title: 'Campaign Calendar',
+                icon: 'calendar_month',
+                route: '/operations/pricing/calendar'
+            },
+            {
+                id: 'grid',
+                title: 'Smart Price Grid',
+                icon: 'table_view',
+                route: '/operations/pricing/grid',
+                badge: {
+                    text: 'BULK',
+                    color: 'bg-emerald-600'
+                }
+            }
+        ]
+    },
+    {
         id: 'commercial',
         title: 'OPERATIONS.SIDEBAR.COMMERCIAL',
         icon: 'briefcase',
@@ -117,26 +156,6 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'OPERATIONS.SIDEBAR.PROMOTIONS',
                 icon: 'tag',
                 route: '/operations/promotions'
-            },
-            {
-                id: 'pricing',
-                title: 'Pricing Strategy',
-                icon: 'price_check',
-                route: '/operations/pricing',
-                badge: {
-                    text: 'NEW',
-                    color: 'bg-purple-500'
-                }
-            },
-            {
-                id: 'pricing_lists',
-                title: 'Smart Price Grid',
-                icon: 'table_view',
-                route: '/operations/pricing-grid',
-                badge: {
-                    text: 'NEW',
-                    color: 'bg-green-500'
-                }
             }
         ]
     }

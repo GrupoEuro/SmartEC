@@ -92,9 +92,12 @@
 
             <!-- Badges -->
             <div class="product-badges-info">
-                <span *ngIf="product.newArrival" class="info-badge badge-new">🆕 New Arrival</span>
-                <span *ngIf="product.bestSeller" class="info-badge badge-bestseller">🔥 Best Seller</span>
-                <span *ngIf="product.featured" class="info-badge badge-featured">⭐ Featured</span>
+                <span *ngIf="product.newArrival" class="info-badge badge-new">{{ 'PRODUCT_DETAIL.BADGES.NEW' | translate
+                    }}</span>
+                <span *ngIf="product.bestSeller" class="info-badge badge-bestseller">{{
+                    'PRODUCT_DETAIL.BADGES.BESTSELLER' | translate }}</span>
+                <span *ngIf="product.featured" class="info-badge badge-featured">{{ 'PRODUCT_DETAIL.BADGES.FEATURED' |
+                    translate }}</span>
             </div>
         </div>
     </div>
@@ -129,7 +132,8 @@
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_TUBELESS' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.tubeless ? 'Yes' : 'No' }}</span>
+                <span class="spec-value">{{ product.specifications.tubeless ? ('PRODUCT_DETAIL.SPEC_TUBELESS_YES' |
+                    translate) : ('PRODUCT_DETAIL.SPEC_TUBELESS_NO' | translate) }}</span>
             </div>
         </div>
     </div>

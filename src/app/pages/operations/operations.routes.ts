@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { operationsGuard } from '../../core/guards/operations.guard';
 import { OperationsLayoutComponent } from './operations-layout/operations-layout.component';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 export const operationsRoutes: Routes = [
     {
@@ -99,18 +100,34 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./procurement/purchase-order-detail/purchase-order-detail.component').then(m => m.PurchaseOrderDetailComponent)
             },
             {
-                path: 'pricing/constructor',
-                loadComponent: () => import('./pricing/visual-price-constructor/visual-price-constructor.component').then(m => m.VisualPriceConstructorComponent)
+                path: 'pricing',
+                redirectTo: 'pricing/dashboard',
+                pathMatch: 'full'
             },
             {
-                path: 'pricing-grid',
+                path: 'pricing/dashboard',
+                loadComponent: () => import('./pricing/pricing-strategy/pricing-strategy.component').then(m => m.PricingStrategyComponent)
+            },
+            {
+                path: 'pricing/constructor',
+                loadComponent: () => import('./pricing/smart-price-constructor/smart-price-constructor.component').then(m => m.SmartPriceConstructorComponent)
+            },
+            {
+                path: 'pricing/calendar',
+                loadComponent: () => import('./pricing/pricing-calendar/pricing-calendar.component').then(m => m.PricingCalendarComponent)
+            },
+            {
+                path: 'pricing/grid',
                 loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
             },
+            // Legacy / Redirects
             {
-                path: 'pricing',
-                loadComponent: () => import('./pricing/pricing-strategy/pricing-strategy.component').then(m => m.PricingStrategyComponent),
-                pathMatch: 'full'
+                path: 'pricing-grid',
+                redirectTo: 'pricing/grid'
             }
+        ],
+        providers: [
+            provideCharts(withDefaultRegisterables())
         ]
     }
 ];

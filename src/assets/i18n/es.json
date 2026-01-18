@@ -9,6 +9,44 @@
     "PRICING_STRATEGY": {
         "TITLE": "Estrategia de Precios",
         "SUBTITLE": "Calcule precios óptimos en todos los canales de venta",
+        "DASHBOARD": {
+            "TITLE": "Tablero Ejecutivo",
+            "SUBTITLE": "Visión general de la salud de precios y márgenes"
+        },
+        "DASHBOARD_V2": {
+            "BUTTONS": {
+                "SMART_BUILDER": "Constructor Inteligente",
+                "CALENDAR": "Calendario"
+            },
+            "LOADING": "Cargando Métricas...",
+            "KPIS": {
+                "TOTAL_PRODUCTS": "Total Productos",
+                "ACTIVE_CATALOG": "Items Activos en Catálogo",
+                "STRATEGY_COVERAGE": "Cobertura de Estrategia",
+                "MANUAL_RULES": "Reglas Manuales",
+                "DEFINED_RULES": "Reglas de Precios Definidas",
+                "AVG_MARGIN": "Margen Bruto Prom.",
+                "TARGET_LABEL": "Objetivo"
+            },
+            "CHARTS": {
+                "MARGIN_DISTRIBUTION": "Distribución de Margen",
+                "LEGEND": {
+                    "CRITICAL": "Crítico",
+                    "LOW": "Bajo",
+                    "HEALTHY": "Saludable",
+                    "HIGH": "Alto"
+                }
+            },
+            "ATTENTION": {
+                "TITLE": "Atención Requerida",
+                "VIEW_ALL": "Ver Todos los Items Críticos",
+                "ALL_GOOD": "¡Todos los márgenes se ven saludables!",
+                "MARGIN_LABEL": "Margen"
+            },
+            "ACTIVITY": {
+                "TITLE": "Actividad Reciente"
+            }
+        },
         "PRODUCT_SELECTION": "Selección de Producto",
         "SEARCH_PLACEHOLDER": "Buscar por SKU o nombre...",
         "NO_PRODUCTS_FOUND": "No se encontraron productos",
@@ -20,7 +58,6 @@
         "TARGET_NET_MARGIN": "Margen Neto Objetivo",
         "MIN_ACCEPTABLE_MARGIN": "Margen Mínimo Aceptable",
         "CALCULATE": "Calcular Precios",
-        "SHOW_DETAILS": "Mostrar Detalles",
         "SAVE_STRATEGY": "Guardar Estrategia",
         "READY_TO_CALCULATE": "Listo para calcular precios",
         "READY_DESC": "Seleccione un producto, establezca sus costos y márgenes, y haga clic en \"Calcular Precios\" para ver la estrategia óptima en todos los canales.",
@@ -370,7 +407,33 @@
         },
         "CERTIFICATIONS": {
             "TITLE": "CERTIFICACIONES Y ESTÁNDARES INTERNACIONALES",
-            "DESCRIPTION": "Calidad respaldada por las certificaciones más exigentes de la industria"
+            "DESCRIPTION": "Calidad respaldada por las certificaciones más exigentes de la industria",
+            "CERT_CARDS": {
+                "DOT": {
+                    "TITLE": "DOT",
+                    "DESC": "Departamento de Transporte de EE.UU."
+                },
+                "ECE": {
+                    "TITLE": "ECE",
+                    "DESC": "Comisión Económica para Europa"
+                },
+                "ISO": {
+                    "TITLE": "ISO 9001",
+                    "DESC": "Gestión de Calidad"
+                },
+                "INMETRO": {
+                    "TITLE": "INMETRO",
+                    "DESC": "Instituto Nacional de Metrología"
+                },
+                "CCC": {
+                    "TITLE": "CCC",
+                    "DESC": "Certificación China Obligatoria"
+                },
+                "GSO": {
+                    "TITLE": "GSO",
+                    "DESC": "Organización de Normalización del Golfo"
+                }
+            }
         },
         "CTA": {
             "TITLE": "ADQUIERE TUS LLANTAS PRAXIS HOY",
@@ -842,7 +905,9 @@
             "RETURNING": "Recurrentes",
             "RETURNING_CUSTOMERS": "Clientes Recurrentes",
             "NO_DATA": "No hay datos disponibles",
-            "LOADING": "Cargando métricas..."
+            "LOADING": "Cargando métricas...",
+            "LOADING_SYSTEM": "Cargando sistema...",
+            "LOADING_DATA_FOR": "Cargando datos para"
         },
         "ACTIONS": {
             "VIEW_DATA": "Ver Datos",
@@ -858,9 +923,7 @@
             "STATUS": "Estado",
             "COUNT": "Cantidad",
             "PRODUCT": "Producto",
-            "SEGMENT": "Segmento"
-        },
-        "CHARTS": {
+            "SEGMENT": "Segmento",
             "REVENUE_TREND": "Tendencia de Ingresos",
             "LAST_7_DAYS": "Últimos 7 días",
             "LAST_30_DAYS": "Últimos 30 Días",
@@ -868,16 +931,6 @@
             "TOP_PRODUCTS": "Productos Destacados",
             "TOP_3_BY_REVENUE": "Top 3 por Ingresos",
             "CUSTOMER_COMPOSITION": "Composición de Clientes"
-        },
-        "LABELS": {
-            "TOTAL": "Total",
-            "NEW": "Nuevos",
-            "NEW_CUSTOMERS": "Nuevos Clientes",
-            "RETURNING": "Recurrentes",
-            "RETURNING_CUSTOMERS": "Clientes Recurrentes",
-            "LOADING": "Cargando métricas...",
-            "LOADING_SYSTEM": "Cargando sistema...",
-            "LOADING_DATA_FOR": "Cargando datos para"
         },
         "BRIEFING": {
             "GREETING": "Informe Diario",
@@ -2517,6 +2570,13 @@
         "SPEC_SPEED_RATING": "Speed Rating",
         "SPEC_CONSTRUCTION": "Construction",
         "SPEC_TUBELESS": "Tubeless",
+        "SPEC_TUBELESS_YES": "Sí",
+        "SPEC_TUBELESS_NO": "No",
+        "BADGES": {
+            "NEW": "Nuevo",
+            "BESTSELLER": "Más Vendido",
+            "FEATURED": "Destacado"
+        },
         "TABS": {
             "OVERVIEW": "Overview",
             "FEATURES": "Features",

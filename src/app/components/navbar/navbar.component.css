@@ -26,6 +26,16 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    position: relative;
+    width: 250px;
+    /* Reserve space for the overlapping logo */
+}
+
+.logo-img {
+    height: 75px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
 }
 
 .logo-icon {

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, orderBy } from '@angular/fire/firestore';
 import { PricingRule } from '../models/pricing-rules.model';
+import { PricingTemplate, PricingTemplate as SimplePricingTemplate } from '../models/pricing-template.model';
 import { Product } from '../models/product.model';
 
 @Injectable({
@@ -67,5 +68,34 @@ export class PricingRulesService {
         }
 
         return null;
+    }
+
+    // --- TEMPLATE LOGIC ---
+    private templatesCollection = collection(this.firestore, 'pricing_templates');
+
+    async getTemplates(): Promise<PricingTemplate[]> {
+        const q = query(this.templatesCollection, orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PricingTemplate));
+    }
+
+    async createTemplate(template: SimplePricingTemplate): Promise<string> {
+        const docRef = await addDoc(this.templatesCollection, {
+            ...template,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+        });
+        return docRef.id;
+    }
+
+    async updateTemplate(id: string, template: Partial<PricingTemplate>): Promise<void> {
+        await updateDoc(doc(this.firestore, 'pricing_templates', id), {
+            ...template,
+            updatedAt: Timestamp.now()
+        });
+    }
+
+    async deleteTemplate(id: string): Promise<void> {
+        await deleteDoc(doc(this.firestore, 'pricing_templates', id));
     }
 }

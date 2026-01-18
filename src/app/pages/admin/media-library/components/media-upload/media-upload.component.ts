@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -26,6 +26,7 @@ export class MediaUploadComponent {
   private mediaService = inject(MediaService);
   private http = inject(HttpClient);
 
+  @Input() targetFolderId: string | null = null;
   @Output() uploadComplete = new EventEmitter<MediaAsset[]>();
 
   isDragging = false;
@@ -66,7 +67,7 @@ export class MediaUploadComponent {
     }
   }
 
-  private addFiles(fileList: FileList) {
+  public addFiles(fileList: FileList) {
     const newFiles: PendingFile[] = Array.from(fileList).map(file => ({
       file,
       previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '', // simple preview
@@ -117,7 +118,7 @@ export class MediaUploadComponent {
       const tagArray = pf.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
 
       await new Promise<void>((resolve) => {
-        this.mediaService.uploadFile(pf.file, this.selectedCategory, tagArray).subscribe({
+        this.mediaService.uploadFile(pf.file, this.selectedCategory, tagArray, this.targetFolderId).subscribe({
           next: (event) => {
             this.pendingFiles.update(files => {
               const newFiles = [...files];

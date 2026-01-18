@@ -38,7 +38,8 @@
             <div class="form-group">
                 <label>Action</label>
                 <select [(ngModel)]="currentRule.action">
-                    <option value="SET_MARGIN">Set Net Margin %</option>
+                    <option value="SET_MARGIN">Set Net Margin % (Retail)</option>
+                    <option value="SET_MARKUP">Set Markup % (Wholesale)</option>
                     <option value="MULTIPLIER">Multiplier (Price = Cost * X)</option>
                 </select>
             </div>
@@ -47,6 +48,7 @@
                 <label>Value</label>
                 <input type="number" [(ngModel)]="currentRule.value">
                 <small *ngIf="currentRule.action === 'SET_MARGIN'">e.g. 20 for 20% Net Margin</small>
+                <small *ngIf="currentRule.action === 'SET_MARKUP'">e.g. 30 for Cost + 30%</small>
                 <small *ngIf="currentRule.action === 'MULTIPLIER'">e.g. 1.25 for 25% Markup</small>
             </div>
 
@@ -85,8 +87,11 @@
                             }}</strong>
                     </span>
                     <span class="detail-pill">
-                        Action: <strong>{{ rule.action === 'SET_MARGIN' ? 'Net Margin' : 'Multiplier' }} {{ rule.value
-                            }}{{ rule.action === 'SET_MARGIN' ? '%' : 'x' }}</strong>
+                        Action: <strong>
+                            {{ rule.action === 'SET_MARGIN' ? 'Net Margin' : (rule.action === 'SET_MARKUP' ? 'Markup' :
+                            'Multiplier') }}
+                            {{ rule.value }}{{ rule.action === 'MULTIPLIER' ? 'x' : '%' }}
+                        </strong>
                     </span>
                 </div>
             </div>

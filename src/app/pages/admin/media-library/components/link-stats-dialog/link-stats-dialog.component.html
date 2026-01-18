@@ -63,7 +63,7 @@
                             <td class="p-4 font-mono">{{ formatDuration(session.durationSeconds) }}</td>
                             <td class="p-4">
                                 <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">
-                                    {{ session.pagesViewed?.length || 0 }} Pages
+                                    {{ session.pagesViewed.length || 0 }} Pages
                                 </span>
                             </td>
                             <td class="p-4 text-xs text-slate-400 truncate max-w-[200px]" [title]="session.userAgent">

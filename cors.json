@@ -1,0 +1,21 @@
+[
+    {
+        "origin": [
+            "http://localhost:4200",
+            "https://tiendapraxis.web.app",
+            "https://tiendapraxis.firebaseapp.com"
+        ],
+        "method": [
+            "GET",
+            "HEAD",
+            "PUT",
+            "POST",
+            "DELETE"
+        ],
+        "responseHeader": [
+            "Content-Type",
+            "Access-Control-Allow-Origin"
+        ],
+        "maxAgeSeconds": 3600
+    }
+]

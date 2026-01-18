@@ -68,12 +68,24 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
                                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow">
                     </div>
 
-                    <!-- Tags -->
+                    <!-- Tags (Chips) -->
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags (comma separated)</label>
-                        <input type="text" [(ngModel)]="formData.tags" 
-                               class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                               placeholder="e.g. product, summer, sale">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tags</label>
+                        <div class="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm flex flex-wrap gap-2 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-shadow">
+                             <span *ngFor="let tag of formData.tags; let i = index" 
+                                   class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+                                 #{{ tag }}
+                                 <button (click)="removeTag(i)" class="hover:text-indigo-900 rounded-full p-0.5">
+                                     <app-icon name="x" [size]="12"></app-icon>
+                                 </button>
+                             </span>
+                             <input type="text" [(ngModel)]="tagInput" 
+                                    (keydown.enter)="addTag()"
+                                    (keydown.backspace)="onBackspace()"
+                                    class="flex-1 bg-transparent border-none p-0 focus:ring-0 text-sm placeholder-slate-400 min-w-[60px]"
+                                    placeholder="Add tag...">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Press Enter to add tags</p>
                     </div>
                 </div>
             </div>
@@ -105,8 +117,9 @@ export class EditMediaDialogComponent {
     formData = {
         category: '',
         altText: '',
-        tags: ''
+        tags: [] as string[]
     };
+    tagInput = '';
 
     isSaving = signal(false);
 
@@ -114,8 +127,25 @@ export class EditMediaDialogComponent {
         this.formData = {
             category: this.asset.metadata.category,
             altText: this.asset.metadata.altText || '',
-            tags: this.asset.metadata.tags ? this.asset.metadata.tags.join(', ') : ''
+            tags: this.asset.metadata.tags ? [...this.asset.metadata.tags] : []
         };
+    }
+
+    addTag() {
+        if (this.tagInput.trim()) {
+            this.formData.tags.push(this.tagInput.trim());
+            this.tagInput = '';
+        }
+    }
+
+    removeTag(index: number) {
+        this.formData.tags.splice(index, 1);
+    }
+
+    onBackspace() {
+        if (!this.tagInput && this.formData.tags.length > 0) {
+            this.formData.tags.pop();
+        }
     }
 
     async save() {
@@ -123,12 +153,10 @@ export class EditMediaDialogComponent {
         this.isSaving.set(true);
 
         try {
-            const tags = this.formData.tags.split(',').map(t => t.trim()).filter(Boolean);
-
             await this.mediaService.updateMetadata(this.asset.id!, {
                 category: this.formData.category,
                 altText: this.formData.altText,
-                tags: tags
+                tags: this.formData.tags
             });
 
             this.saveComplete.emit();

@@ -1,551 +1,184 @@
-<div class="pricing-strategy-container">
+<div class="p-6 space-y-6">
     <!-- Header -->
-    <div class="header">
-        <div class="header-content">
-            <div class="title-section">
-                <app-icon name="price_check" class="title-icon"></app-icon>
-                <div>
-                    <h1 class="title">{{ 'PRICING_STRATEGY.TITLE' | translate }}</h1>
-                    <p class="subtitle">{{ 'PRICING_STRATEGY.SUBTITLE' | translate }}</p>
-                </div>
-            </div>
-
-            <div class="pricing-header-actions">
-                <button class="btn-simulator-toggle" [class.active]="isSimulatorMode()" (click)="toggleSimulator()">
-                    <app-icon name="science"></app-icon>
-                    Simulator Mode
-                </button>
-                <button class="btn-calculate-header" (click)="calculatePrices()"
-                    [disabled]="!selectedProduct() || calculating()">
-                    @if (calculating()) {
-                    <app-icon name="refresh_cw" class="spin" [size]="18"></app-icon>
-                    } @else {
-                    <app-icon name="calculator" [size]="18"></app-icon>
-                    }
-                    {{ 'PRICING_STRATEGY.CALCULATE' | translate }}
-                </button>
-
-                @if (selectedProduct()) {
-                <button class="btn-save" (click)="savePricingStrategy()">
-                    <app-icon name="save"></app-icon>
-                    {{ 'PRICING_STRATEGY.SAVE_STRATEGY' | translate }}
-                </button>
-                }
-            </div>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-100 flex items-center gap-3">
+                <app-icon name="price_check" class="text-purple-500"></app-icon>
+                {{ 'PRICING_STRATEGY.DASHBOARD.TITLE' | translate }}
+            </h1>
+            <p class="text-slate-400 mt-1">{{ 'PRICING_STRATEGY.DASHBOARD.SUBTITLE' | translate }}</p>
         </div>
-    </div>
-
-    <!-- Simulator Mode UI -->
-    @if (isSimulatorMode()) {
-    <div class="simulator-container">
-        <div class="simulator-header">
-            <div class="simulator-title">
-                <app-icon name="science"></app-icon>
-                <span>Pricing Simulator ("What-If")</span>
-            </div>
-            <button class="btn-apply-sim" (click)="applySimulation()">
-                Apply Strategy
+        <div class="flex gap-3">
+            <button (click)="navigateTo('/operations/pricing/constructor')"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-2 transition-colors font-medium text-sm">
+                <app-icon name="psychology" [size]="18"></app-icon>
+                {{ 'PRICING_STRATEGY.DASHBOARD_V2.BUTTONS.SMART_BUILDER' | translate }}
+            </button>
+            <button (click)="navigateTo('/operations/pricing/calendar')"
+                class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-2 transition-colors font-medium text-sm">
+                <app-icon name="calendar_month" [size]="18"></app-icon>
+                {{ 'PRICING_STRATEGY.DASHBOARD_V2.BUTTONS.CALENDAR' | translate }}
             </button>
         </div>
-
-        <div class="simulator-controls">
-            <!-- Price Control -->
-            <div class="control-group">
-                <label>Simulated Price ({{ simulatedChannel() }})</label>
-                <div class="sim-price">{{ formatCurrency(simulatedPrice()) }}</div>
-                <input type="range" class="price-slider" [min]="cog()" [max]="anchorBasePrice() * 2" step="10"
-                    [value]="simulatedPrice()" (input)="onSimulatedPriceChange($event)">
-                <div class="text-xs text-slate-500 mt-1">Base Price: {{ formatCurrency(anchorBasePrice()) }}</div>
-            </div>
-
-            <!-- Discount Control (Linked) -->
-            <div class="control-group">
-                <label>Discount % ("What-If")</label>
-                <div class="sim-price text-purple-400">{{ simulatedDiscount() }}%</div>
-                <input type="range" class="price-slider" min="0" max="80" step="1" [value]="simulatedDiscount()"
-                    (input)="onDiscountChange($event)">
-            </div>
-
-            <!-- Result Control -->
-            <div class="control-group">
-                <label>Resulting Net Margin</label>
-                <div class="sim-price"
-                    [class]="getMarginColor(simulationResults()[simulatedChannel()!].netMargin || 0, 0)">
-                    {{ formatPercent(simulationResults()[simulatedChannel()!].netMargin || 0) }}
-                </div>
-            </div>
-        </div>
-
-        <div class="simulation-results-grid">
-            @for (channel of channels; track channel.channel) {
-            @if (simulationResults()[channel.channel]) {
-            <div class="sim-result-card" [class.anchor]="channel.channel === simulatedChannel()">
-                <div class="text-slate-400 text-sm mb-2">{{ channel.channelName }}</div>
-                <div class="sim-price text-xl">
-                    {{ formatCurrency(simulationResults()[channel.channel].sellingPrice) }}
-                </div>
-                <div class="sim-margin" [class]="getMarginColor(simulationResults()[channel.channel].netMargin, 0)">
-                    {{ formatPercent(simulationResults()[channel.channel].netMargin) }} Margin
-                </div>
-            </div>
-            }
-            }
-        </div>
-    </div>
-    }
-
-    <div class="content-grid">
-        <!-- Input Row: 3 Cards Horizontal -->
-        <div class="input-row">
-            <!-- Card 1: Product Selection -->
-            <div class="strategy-card">
-                <div class="card-header">
-                    <app-icon name="inventory_2"></app-icon>
-                    <h2>{{ 'PRICING_STRATEGY.PRODUCT_SELECTION' | translate }}</h2>
-                </div>
-
-                <div class="form-group search-box">
-                    <app-icon name="search" class="search-icon"></app-icon>
-                    <input type="text" [placeholder]="'PRICING_STRATEGY.SEARCH_PLACEHOLDER' | translate"
-                        [(ngModel)]="searchQuery" class="search-input" />
-
-                    @if (searchQuery() && !selectedProduct()) {
-                    <div class="search-results mt-2">
-                        @for (product of filteredProducts(); track product.id) {
-                        <div class="search-item p-2 hover:bg-slate-700 cursor-pointer rounded"
-                            (click)="selectProduct(product)">
-                            <span class="font-bold text-slate-200">{{ product.sku }}</span>
-                            <span class="text-slate-400 ml-2">{{ product.name.es }}</span>
-                        </div>
-                        }
-                        @empty {
-                        <div class="text-slate-500 p-2">{{ 'PRICING_STRATEGY.NO_PRODUCTS_FOUND' | translate }}</div>
-                        }
-                    </div>
-                    }
-                </div>
-
-                @if (selectedProduct()) {
-                <div class="selected-product compact mt-4">
-                    <div class="product-info-row">
-                        <span class="product-sku">{{ selectedProduct()!.sku }}</span>
-                        <span class="product-name truncate">{{ selectedProduct()!.name.es }}</span>
-                    </div>
-                    <button class="btn-icon text-slate-400 hover:text-white" (click)="selectedProduct.set(null)">
-                        <app-icon name="close" [size]="16"></app-icon>
-                    </button>
-                </div>
-                }
-            </div>
-
-            <!-- Card 2: Cost Inputs -->
-            <div class="strategy-card">
-                <div class="card-header">
-                    <app-icon name="credit_card"></app-icon>
-                    <h2>{{ 'PRICING_STRATEGY.BASE_COSTS' | translate }}</h2>
-                </div>
-
-                <div class="costs-grid">
-                    <div class="form-group full-width">
-                        <label>{{ 'PRICING_STRATEGY.COG' | translate }}</label>
-                        <div class="input-wrapper">
-                            <span class="currency-symbol">$</span>
-                            <input type="number" [ngModel]="cog()" (ngModelChange)="cog.set($event); onInputChange()"
-                                placeholder="0.00">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>{{ 'PRICING_STRATEGY.INBOUND_SHIPPING' | translate }}</label>
-                        <div class="input-wrapper">
-                            <span class="currency-symbol">$</span>
-                            <input type="number" [ngModel]="inboundShipping()"
-                                (ngModelChange)="inboundShipping.set($event); onInputChange()" placeholder="0.00">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>{{ 'PRICING_STRATEGY.PACKAGING' | translate }}</label>
-                        <div class="input-wrapper">
-                            <span class="currency-symbol">$</span>
-                            <input type="number" [ngModel]="packaging()"
-                                (ngModelChange)="packaging.set($event); onInputChange()" placeholder="0.00">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="strategy-card">
-                <div class="card-header">
-                    <app-icon name="target"></app-icon>
-                    <h2>{{ 'PRICING_STRATEGY.MARGIN_TARGETS' | translate }}</h2>
-                </div>
-
-                <div class="form-group compact">
-                    <div class="label-input-row">
-                        <label>{{ 'PRICING_STRATEGY.TARGET_NET_MARGIN' | translate }}</label>
-                        <div class="input-wrapper tiny-input">
-                            <input type="number" [ngModel]="targetNetMargin()"
-                                (ngModelChange)="targetNetMargin.set($event); onInputChange()" placeholder="20">
-                            <span class="suffix">%</span>
-                        </div>
-                    </div>
-                    <!-- Range Slider -->
-                    <input type="range"
-                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-colors"
-                        min="0" max="60" step="0.5" [ngModel]="targetNetMargin()"
-                        (ngModelChange)="targetNetMargin.set($event); onInputChange()">
-                </div>
-
-                <div class="form-group compact">
-                    <div class="label-input-row">
-                        <label>{{ 'PRICING_STRATEGY.MIN_ACCEPTABLE_MARGIN' | translate }}</label>
-                        <div class="input-wrapper tiny-input">
-                            <input type="number" [ngModel]="minAcceptableMargin()"
-                                (ngModelChange)="minAcceptableMargin.set($event); onInputChange()" placeholder="12">
-                            <span class="suffix">%</span>
-                        </div>
-                    </div>
-                    <!-- Range Slider -->
-                    <input type="range"
-                        class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400 transition-colors"
-                        min="0" max="40" step="0.5" [ngModel]="minAcceptableMargin()"
-                        (ngModelChange)="minAcceptableMargin.set($event); onInputChange()">
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Row: Results -->
-        <div class="results-panel full-width">
-            <!-- Global Expand/Collapse & View Mode - Always Visible -->
-            <div class="expand-controls mb-4">
-                <div class="view-toggles">
-                    <button class="btn-icon" [class.active]="viewMode() === 'cards'" (click)="viewMode.set('cards')"
-                        title="Card View">
-                        <app-icon name="view_agenda"></app-icon>
-                    </button>
-                    <button class="btn-icon" [class.active]="viewMode() === 'matrix'" (click)="viewMode.set('matrix')"
-                        title="Matrix Comparison">
-                        <app-icon name="table_chart"></app-icon>
-                    </button>
-                </div>
-
-                <div class="flex items-center gap-2"
-                    *ngIf="viewMode() === 'cards' && channelPrices() && Object.keys(channelPrices()).length > 0">
-                    <span class="switch-label">{{ 'PRICING_STRATEGY.SHOW_DETAILS' | translate }}</span>
-                    <label class="switch">
-                        <input type="checkbox" [checked]="showDetails()" (change)="toggleAll($event)">
-                        <span class="slider-toggle round"></span>
-                    </label>
-                </div>
-            </div>
-
-            @if (channelPrices() && Object.keys(channelPrices()).length > 0) {
-
-            <!-- Matrix View -->
-            @if (viewMode() === 'matrix') {
-            <div class="matrix-container">
-                <table class="comparison-table">
-                    <thead>
-                        <tr>
-                            <th>Metric</th>
-                            @for (channel of channels; track channel.channel) {
-                            <th>
-                                <div class="th-content">
-                                    <app-icon [name]="channel.channelIcon"></app-icon>
-                                    {{ channel.channelName }}
-                                </div>
-                            </th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Selling Price -->
-                        <tr class="highlight-row">
-                            <td class="metric-label">Selling Price</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td class="price-cell">{{ formatCurrency(channel.price?.sellingPrice || 0) }}</td>
-                            }
-                        </tr>
-
-                        <!-- Net Profit -->
-                        <tr class="highlight-row profit-row">
-                            <td class="metric-label">Net Profit</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td>
-                                <div class="profit-pill" [class.positive]="(channel.price?.netMargin || 0) >= 20"
-                                    [class.warning]="(channel.price?.netMargin || 0) < 20 && (channel.price?.netMargin || 0) >= minAcceptableMargin()"
-                                    [class.negative]="(channel.price?.netMargin || 0) < minAcceptableMargin()">
-                                    {{ formatCurrency(channel.price?.netProfit || 0) }}
-                                </div>
-                                <span class="sub-metric" [class.text-red-500]="(channel.price?.netMargin || 0) < 0">{{
-                                    formatPercent(channel.price?.netMargin || 0) }} Margin</span>
-                            </td>
-                            }
-                        </tr>
-
-                        <!-- ROI -->
-                        <tr class="highlight-row">
-                            <td class="metric-label">ROI</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td>
-                                <div class="profit-pill" [class.positive]="(channel.price?.roi || 0) > 0"
-                                    [class.negative]="(channel.price?.roi || 0) <= 0">
-                                    {{ formatPercent(channel.price?.roi || 0) }}
-                                </div>
-                            </td>
-                            }
-                        </tr>
-
-                        <tr class="spacer-row">
-                            <td [attr.colspan]="channels.length + 1"></td>
-                        </tr>
-
-                        <!-- Costs Details -->
-                        <tr>
-                            <td class="metric-label">COG</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td>{{ formatCurrency(channel.price?.breakdown?.cog || 0) }}</td>
-                            }
-                        </tr>
-                        <tr>
-                            <td class="metric-label">Commission</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td>{{ formatCurrency(channel.price?.breakdown?.commission || 0) }}</td>
-                            }
-                        </tr>
-                        <tr>
-                            <td class="metric-label">Fulfillment</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td>{{ formatCurrency(channel.price?.breakdown?.fulfillmentShipping || 0) }}</td>
-                            }
-                        </tr>
-                        <tr>
-                            <td class="metric-label">Total Cost</td>
-                            @for (channel of channels; track channel.channel) {
-                            <td class="total-cost">{{ formatCurrency(channel.price?.breakdown?.totalCost || 0) }}
-                            </td>
-                            }
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            }
-
-            <!-- Card View -->
-            @if (viewMode() === 'cards') {
-            @for (channel of channels; track channel.channel) {
-            @if (channel.price) {
-            <div class="channel-card" [class.collapsed]="!channel.expanded">
-                <div class="channel-header" (click)="toggleChannel(channel)">
-                    <div class="channel-info">
-                        <app-icon [name]="channel.channelIcon" class="channel-icon"></app-icon>
-                        <h3 class="channel-name">{{ channel.channelName }}</h3>
-                    </div>
-
-                    <div class="header-right">
-                        <div class="channel-price">{{ formatCurrency(channel.price.sellingPrice) }}</div>
-                        <div class="profit-summary" *ngIf="!channel.expanded">
-                            <span class="roi-badge" [title]="'Return on Investment'">ROI: {{
-                                formatPercent(channel.price.roi) }}</span>
-                            <span [class]="getMarginColor(channel.price.netMargin, minAcceptableMargin())">
-                                Net: {{ formatPercent(channel.price.netMargin) }}
-                            </span>
-                        </div>
-                        <button class="btn-icon">
-                            <app-icon [name]="channel.expanded ? 'expand_less' : 'expand_more'"></app-icon>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card-content" *ngIf="channel.expanded">
-                    <div class="breakdown-grid">
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.COG' | translate }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.cog) }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label"
-                                title="Includes Referral Fee + Payment Processing (if applicable)">
-                                {{ 'PRICING_STRATEGY.BREAKDOWN.COMMISSION' | translate }} ℹ️
-                            </span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.commission)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.FULFILLMENT' | translate
-                                }}</span>
-                            <span class="breakdown-value">{{
-                                formatCurrency(channel.price.breakdown.fulfillmentShipping)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PAYMENT_PROCESSING' |
-                                translate
-                                }}</span>
-                            <span class="breakdown-value">{{
-                                formatCurrency(channel.price.breakdown.paymentProcessing)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.STORAGE' | translate
-                                }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.storageFees)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.PACKAGING' | translate
-                                }}</span>
-                            <span class="breakdown-value">{{
-                                formatCurrency(channel.price.breakdown.packagingLabeling)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.INBOUND_SHIPPING' |
-                                translate
-                                }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.inboundShipping)
-                                }}</span>
-                        </div>
-                        <div class="breakdown-item total">
-                            <span class="breakdown-label">{{ 'PRICING_STRATEGY.BREAKDOWN.TOTAL_COST' | translate
-                                }}</span>
-                            <span class="breakdown-value">{{ formatCurrency(channel.price.breakdown.totalCost)
-                                }}</span>
-                        </div>
-                    </div>
-
-                    <div class="margin-section">
-                        <div class="margin-bar"
-                            [class]="getMarginBgColor(channel.price.netMargin, minAcceptableMargin())">
-                            <div class="margin-item">
-                                <span class="margin-label">{{ 'PRICING_STRATEGY.MARGINS.GROSS_PROFIT' | translate
-                                    }}</span>
-                                <span [class]="getMarginColor(channel.price.grossMargin, targetGrossMargin())">
-                                    {{ formatCurrency(channel.price.grossProfit) }} ({{
-                                    formatPercent(channel.price.grossMargin) }})
-                                </span>
-                            </div>
-                            <div class="margin-item">
-                                <span class="margin-label">{{ 'PRICING_STRATEGY.MARGINS.NET_PROFIT' | translate
-                                    }}</span>
-                                <span [class]="getMarginColor(channel.price.netMargin, minAcceptableMargin())"
-                                    class="net-profit-value">
-                                    {{ formatCurrency(channel.price.netProfit) }}
-                                    <span class="margin-percent">({{ formatPercent(channel.price.netMargin)
-                                        }})</span>
-                                </span>
-                            </div>
-                            <div class="margin-item">
-                                <span class="margin-label">ROI (Return on Investment)</span>
-                                <span class="roi-value" [class.positive]="channel.price.roi > 0"
-                                    [class.negative]="channel.price.roi < 0">
-                                    {{ formatPercent(channel.price.roi) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (channel.price.netMargin < minAcceptableMargin()) { <div class="warning-banner">
-                        <app-icon name="warning"></app-icon>
-                        {{ 'PRICING_STRATEGY.MARGINS.WARNING_LOW_MARGIN' | translate }}
-                </div>
-                }
-                @if (channel.price.netMargin < 0) { <div class="error-banner">
-                    <app-icon name="error"></app-icon>
-                    {{ 'PRICING_STRATEGY.MARGINS.CRITICAL_LOSS' | translate }}
-            </div>
-            }
-        </div>
     </div>
 
-    }
-    }
-    }
-
-
-    <!-- Competitive Intelligence CTA -->
-    <div class="competitive-cta" (click)="openCompetitiveModal()">
-        <app-icon name="insights" class="cta-icon"></app-icon>
-        <div class="cta-content">
-            <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.CTA_TITLE' | translate }}</h3>
-            <p>{{ 'PRICING_STRATEGY.COMPETITIVE.CTA_DESC' | translate }}</p>
-        </div>
-        <app-icon name="arrow_forward"></app-icon>
+    @if (loading()) {
+    <div class="h-64 flex items-center justify-center text-slate-500 gap-3">
+        <app-icon name="refresh_cw" class="animate-spin"></app-icon>
+        {{ 'PRICING_STRATEGY.DASHBOARD_V2.LOADING' | translate }}
     </div>
     } @else {
-    <div class="empty-results">
-        <app-icon name="calculate" class="empty-icon"></app-icon>
-        <h3>{{ 'PRICING_STRATEGY.READY_TO_CALCULATE' | translate }}</h3>
-        <p>{{ 'PRICING_STRATEGY.READY_DESC' | translate }}</p>
+
+    <!-- KPI Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Products -->
+        <div
+            class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-slate-600 transition-colors">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-slate-400 text-sm font-medium">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.TOTAL_PRODUCTS'
+                    | translate }}</span>
+                <app-icon name="inventory_2" class="text-slate-500"></app-icon>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ totalProducts() }}</div>
+            <div class="text-xs text-slate-500 mt-1">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.ACTIVE_CATALOG' | translate
+                }}</div>
+        </div>
+
+        <!-- Strategy Coverage -->
+        <div
+            class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-slate-600 transition-colors">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-slate-400 text-sm font-medium">{{
+                    'PRICING_STRATEGY.DASHBOARD_V2.KPIS.STRATEGY_COVERAGE' | translate }}</span>
+                <app-icon name="donut_large" class="text-purple-500"></app-icon>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ strategyCoverage() }}%</div>
+            <div class="w-full bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div class="bg-purple-500 h-full rounded-full" [style.width.%]="strategyCoverage()"></div>
+            </div>
+        </div>
+
+        <!-- Active Strategies -->
+        <div
+            class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-slate-600 transition-colors">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-slate-400 text-sm font-medium">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.MANUAL_RULES' |
+                    translate }}</span>
+                <app-icon name="rule" class="text-blue-500"></app-icon>
+            </div>
+            <div class="text-2xl font-bold text-white">{{ activeStrategies() }}</div>
+            <div class="text-xs text-slate-500 mt-1">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.DEFINED_RULES' | translate
+                }}</div>
+        </div>
+
+        <!-- Avg Gross Margin -->
+        <div
+            class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-lg hover:border-slate-600 transition-colors">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-slate-400 text-sm font-medium">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.AVG_MARGIN' |
+                    translate }}</span>
+                <app-icon name="trending_up" class="text-emerald-500"></app-icon>
+            </div>
+            <div class="text-2xl font-bold" [class.text-emerald-400]="avgGrossMargin() >= 20"
+                [class.text-yellow-400]="avgGrossMargin() < 20">
+                {{ avgGrossMargin() }}%
+            </div>
+            <div class="text-xs text-slate-500 mt-1">{{ 'PRICING_STRATEGY.DASHBOARD_V2.KPIS.TARGET_LABEL' | translate
+                }}: >20%</div>
+        </div>
+    </div>
+
+    <!-- Main Chart & Sidebar -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Margin Distribution Chart -->
+        <div class="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+            <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <app-icon name="bar_chart"></app-icon>
+                {{ 'PRICING_STRATEGY.DASHBOARD_V2.CHARTS.MARGIN_DISTRIBUTION' | translate }}
+            </h3>
+            <div class="h-[300px] w-full">
+                <canvas baseChart [data]="marginDistributionData()!" [options]="barChartOptions" [type]="barChartType">
+                </canvas>
+            </div>
+            <div class="mt-4 flex justify-between text-xs text-slate-500 px-4">
+                <span>{{ 'PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.CRITICAL' | translate }}: <span
+                        class="text-red-400 font-bold">
+                        < 10%</span>
+                    </span>
+                    <span>{{ 'PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.LOW' | translate }}: <span
+                            class="text-amber-400 font-bold">10-20%</span></span>
+                    <span>{{ 'PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.HEALTHY' | translate }}: <span
+                            class="text-emerald-400 font-bold">20-40%</span></span>
+                    <span>{{ 'PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.HIGH' | translate }}: <span
+                            class="text-blue-400 font-bold">> 40%</span></span>
+            </div>
+        </div>
+
+        <!-- Action Center -->
+        <div class="space-y-6">
+            <!-- Attention Required -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2 text-red-400">
+                    <app-icon name="warning"></app-icon>
+                    {{ 'PRICING_STRATEGY.DASHBOARD_V2.ATTENTION.TITLE' | translate }}
+                </h3>
+
+                @if (lowMarginProducts().length > 0) {
+                <div class="space-y-3">
+                    @for (item of lowMarginProducts(); track item.sku) {
+                    <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex justify-between items-center group hover:border-slate-600 transition-colors cursor-pointer"
+                        (click)="navigateTo('/operations/pricing/constructor')"> <!-- Deep link later -->
+                        <div class="truncate mr-2">
+                            <div class="text-sm font-bold text-slate-200 truncate">{{ item.sku }}</div>
+                            <div class="text-xs text-slate-500 truncate">{{ item.name }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-red-400 font-bold text-sm">{{ item.margin }}%</div>
+                            <div class="text-xs text-slate-600">{{
+                                'PRICING_STRATEGY.DASHBOARD_V2.ATTENTION.MARGIN_LABEL' | translate }}</div>
+                        </div>
+                    </div>
+                    }
+                </div>
+                <button (click)="navigateTo('/operations/pricing/grid')"
+                    class="w-full mt-4 py-2 text-xs text-slate-400 hover:text-white transition-colors border border-dashed border-slate-700 rounded-lg hover:border-slate-500">
+                    {{ 'PRICING_STRATEGY.DASHBOARD_V2.ATTENTION.VIEW_ALL' | translate }}
+                </button>
+                } @else {
+                <div
+                    class="text-emerald-400 text-sm flex items-center gap-2 bg-emerald-900/10 p-4 rounded-lg border border-emerald-900/20">
+                    <app-icon name="check_circle"></app-icon>
+                    {{ 'PRICING_STRATEGY.DASHBOARD_V2.ATTENTION.ALL_GOOD' | translate }}
+                </div>
+                }
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <app-icon name="history"></app-icon>
+                    {{ 'PRICING_STRATEGY.DASHBOARD_V2.ACTIVITY.TITLE' | translate }}
+                </h3>
+                <div class="space-y-4">
+                    @for (act of recentActivity(); track act.time) {
+                    <div
+                        class="flex gap-3 items-start relative pb-4 border-l border-slate-700 last:border-0 pl-4 last:pb-0">
+                        <div
+                            class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-slate-600 border border-slate-900">
+                        </div>
+                        <div>
+                            <div class="text-xs text-indigo-400 font-bold">{{ act.action }}</div>
+                            <div class="text-xs text-slate-300 mt-0.5">{{ act.target }}</div>
+                            <div class="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+                                <span>{{ act.time }}</span> • <span>{{ act.user }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
     }
 </div>
-</div>
-
-
-
-<!-- Competitive Intelligence Modal -->
-@if (showCompetitiveModal()) {
-<div class="modal-overlay" (click)="closeCompetitiveModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-            <h2>{{ 'PRICING_STRATEGY.COMPETITIVE.MODAL_TITLE' | translate }}</h2>
-            <button class="btn-icon" (click)="closeCompetitiveModal()">
-                <app-icon name="close"></app-icon>
-            </button>
-        </div>
-
-        <div class="modal-body">
-            <div class="info-section">
-                <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.WHAT_IS_TITLE' | translate }}</h3>
-                <p>{{ 'PRICING_STRATEGY.COMPETITIVE.WHAT_IS_DESC' | translate }}</p>
-            </div>
-
-            <div class="info-section">
-                <h3>{{ 'PRICING_STRATEGY.COMPETITIVE.BENEFITS_TITLE' | translate }}</h3>
-                <ul>
-                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_1' | translate }}</li>
-                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_2' | translate }}</li>
-                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_3' | translate }}</li>
-                    <li>✓ {{ 'PRICING_STRATEGY.COMPETITIVE.BENEFIT_4' | translate }}</li>
-                </ul>
-            </div>
-
-            <div class="info-section">
-                <h3>Legal & Ethical Approach</h3>
-                <p>We only recommend tools that:</p>
-                <ul>
-                    <li>Monitor publicly available data</li>
-                    <li>Respect robots.txt and Terms of Service</li>
-                    <li>Comply with GDPR/CCPA</li>
-                    <li>Focus on your specific product categories</li>
-                </ul>
-            </div>
-
-            <div class="tool-grid">
-                <div class="tool-card">
-                    <h4>Prisync AI</h4>
-                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.PRISYNC_DESC' | translate }}</p>
-                    <a href="https://prisync.com" target="_blank" class="btn-secondary">{{
-                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Prisync →</a>
-                </div>
-
-                <div class="tool-card">
-                    <h4>Priceva</h4>
-                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.PRICEVA_DESC' | translate }}</p>
-                    <a href="https://priceva.com" target="_blank" class="btn-secondary">{{
-                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Priceva →</a>
-                </div>
-
-                <div class="tool-card">
-                    <h4>Boardfy</h4>
-                    <p>{{ 'PRICING_STRATEGY.COMPETITIVE.TOOLS.BOARDFY_DESC' | translate }}</p>
-                    <a href="https://boardfy.com" target="_blank" class="btn-secondary">{{
-                        'PRICING_STRATEGY.COMPETITIVE.VISIT' | translate }} Boardfy →</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-}

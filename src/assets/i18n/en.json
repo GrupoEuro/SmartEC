@@ -9,6 +9,44 @@
     "PRICING_STRATEGY": {
         "TITLE": "Pricing Strategy Planner",
         "SUBTITLE": "Calculate optimal prices across all sales channels",
+        "DASHBOARD": {
+            "TITLE": "Executive Dashboard",
+            "SUBTITLE": "Overview of pricing health and margins"
+        },
+        "DASHBOARD_V2": {
+            "BUTTONS": {
+                "SMART_BUILDER": "Smart Builder",
+                "CALENDAR": "Calendar"
+            },
+            "LOADING": "Loading Metrics...",
+            "KPIS": {
+                "TOTAL_PRODUCTS": "Total Products",
+                "ACTIVE_CATALOG": "Active Catalog Items",
+                "STRATEGY_COVERAGE": "Strategy Coverage",
+                "MANUAL_RULES": "Manual Rules",
+                "DEFINED_RULES": "Defined Pricing Rules",
+                "AVG_MARGIN": "Avg. Gross Margin",
+                "TARGET_LABEL": "Target"
+            },
+            "CHARTS": {
+                "MARGIN_DISTRIBUTION": "Margin Distribution",
+                "LEGEND": {
+                    "CRITICAL": "Critical",
+                    "LOW": "Low",
+                    "HEALTHY": "Healthy",
+                    "HIGH": "High"
+                }
+            },
+            "ATTENTION": {
+                "TITLE": "Attention Required",
+                "VIEW_ALL": "View All Critical Items",
+                "ALL_GOOD": "All margins look healthy!",
+                "MARGIN_LABEL": "Margin"
+            },
+            "ACTIVITY": {
+                "TITLE": "Recent Activity"
+            }
+        },
         "PRICE_GRID_TITLE": "Smart Price Grid",
         "PRICE_GRID_SUBTITLE": "Manage all channel prices in one view",
         "SAVE_STRATEGY": "Save Strategy",

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /view/
+Disallow: /auth/
+
+Sitemap: https://tiendapraxis.web.app/sitemap.xml

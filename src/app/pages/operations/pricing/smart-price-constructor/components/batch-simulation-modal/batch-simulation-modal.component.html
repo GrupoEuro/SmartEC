@@ -1,0 +1,176 @@
+<div *ngIf="isOpen()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200" (click)="close()">
+    </div>
+
+    <!-- Modal Content -->
+    <div
+        class="relative w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+
+        <!-- Header -->
+        <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+                    <app-icon name="dataset" [size]="24"></app-icon>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-tight">Batch Strategy Simulator</h2>
+                    <p class="text-sm text-slate-400">Apply current stack to an entire category</p>
+                </div>
+            </div>
+            <button (click)="close()" class="text-slate-500 hover:text-white transition-colors">
+                <app-icon name="close" [size]="24"></app-icon>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-8 flex-1 overflow-y-auto">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <!-- Selectors -->
+                <div class="space-y-4">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Target Scope</label>
+                    <div class="space-y-2">
+                        <div>
+                            <span class="text-xs text-slate-400 mb-1 block">Brand</span>
+                            <select [ngModel]="selectedBrand()" (ngModelChange)="selectedBrand.set($event)"
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm outline-none focus:border-indigo-500">
+                                <option *ngFor="let b of brands" [value]="b">{{ b }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 mb-1 block">Category</span>
+                            <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)"
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm outline-none focus:border-indigo-500">
+                                <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Simulation Parameters Summary -->
+                    <div class="bg-slate-800/50 rounded-lg p-4 border border-slate-700 space-y-3">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Applied Strategy
+                        </div>
+
+                        <!-- Margin -->
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-slate-400">Target Net Margin</span>
+                            <span class="font-mono font-bold text-emerald-400">{{ summaryMargin() }}%</span>
+                        </div>
+
+                        <!-- Rounding -->
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-slate-400">Rounding Rule</span>
+                            <span class="font-mono text-purple-400 text-xs uppercase">{{ summaryRounding() }}</span>
+                        </div>
+
+                        <!-- Fees -->
+                        <div class="pt-2 border-t border-slate-700/50">
+                            <span class="text-xs text-slate-500 block mb-1">Included Fees</span>
+                            <div class="flex flex-wrap gap-1">
+                                <span *ngFor="let fee of summaryFees().split(', ')"
+                                    class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600">
+                                    {{ fee }}
+                                </span>
+                                <span *ngIf="!summaryFees()" class="text-[10px] text-slate-600 italic">None</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button (click)="runBatchSimulation()" [disabled]="isSimulating()"
+                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex justify-center items-center gap-2 mt-6">
+                        <app-icon *ngIf="!isSimulating()" name="play_arrow" [size]="20"></app-icon>
+                        <app-icon *ngIf="isSimulating()" name="sync" class="animate-spin" [size]="20"></app-icon>
+                        {{ isSimulating() ? 'Simulating...' : 'Run Simulation' }}
+                    </button>
+                </div>
+
+                <!-- Visualization / Placeholder -->
+                <div
+                    class="col-span-2 bg-slate-950 rounded-xl border border-slate-800 p-6 flex flex-col justify-center items-center relative overflow-hidden">
+
+                    <!-- Empty State -->
+                    <div *ngIf="!report() && !isSimulating()" class="text-center opacity-50">
+                        <app-icon name="bar_chart" [size]="48" class="text-slate-600 mb-4 inline-block"></app-icon>
+                        <p class="text-slate-400">Select filters and run simulation to see impact.</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div *ngIf="isSimulating()" class="w-full max-w-xs text-center">
+                        <div class="mb-2 text-indigo-400 font-mono text-sm">Processing {{ progress() }}%</div>
+                        <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 transition-all duration-300" [style.width.%]="progress()">
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-4 animate-pulse">Calculating margins for ~50 SKUs...</p>
+                    </div>
+
+                    <!-- Results -->
+                    <div *ngIf="report()"
+                        class="w-full grid grid-cols-2 gap-6 animate-in fade-in zoom-in-95 duration-500">
+
+                        <!-- Revenue Impact -->
+                        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 text-center">
+                            <div class="text-xs text-slate-500 uppercase tracking-widest mb-2">Projected Revenue Delta
+                            </div>
+                            <div class="text-3xl font-black tracking-tight"
+                                [class.text-emerald-400]="report()!.totalRevenueDelta >= 0"
+                                [class.text-rose-400]="report()!.totalRevenueDelta < 0">
+                                {{ report()!.totalRevenueDelta | currency:'USD':'symbol':'1.0-0' }}
+                            </div>
+                            <div class="text-xs text-slate-600 mt-1">Annualized Impact</div>
+                        </div>
+
+                        <!-- Profit Impact -->
+                        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 text-center">
+                            <div class="text-xs text-slate-500 uppercase tracking-widest mb-2">Projected Profit Delta
+                            </div>
+                            <div class="text-3xl font-black tracking-tight"
+                                [class.text-emerald-400]="report()!.totalProfitDelta >= 0"
+                                [class.text-rose-400]="report()!.totalProfitDelta < 0">
+                                {{ report()!.totalProfitDelta | currency:'USD':'symbol':'1.0-0' }}
+                            </div>
+                            <div class="text-xs text-slate-600 mt-1">Annualized Impact</div>
+                        </div>
+
+                        <!-- Margin Impact -->
+                        <div
+                            class="col-span-2 p-4 rounded-lg bg-indigo-900/10 border border-indigo-500/20 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                                    <app-icon name="trending_up" [size]="20"></app-icon>
+                                </div>
+                                <div class="text-sm text-indigo-200">
+                                    Analyzed <strong class="text-white">{{ report()!.productsAnalyzed }}</strong>
+                                    products.
+                                    Average margin shift:
+                                </div>
+                            </div>
+                            <div class="text-xl font-bold font-mono"
+                                [class.text-emerald-400]="report()!.avgMarginDelta >= 0"
+                                [class.text-rose-400]="report()!.avgMarginDelta < 0">
+                                {{ report()!.avgMarginDelta > 0 ? '+' : '' }}{{ report()!.avgMarginDelta |
+                                percent:'1.2-2' }}
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div
+                class="bg-amber-900/20 border border-amber-500/30 p-4 rounded-lg text-amber-200 text-xs flex items-start gap-3">
+                <app-icon name="info" class="shrink-0 mt-0.5" [size]="16"></app-icon>
+                <p>
+                    <strong>Note:</strong> This simulation applies your current active stack (Discounts, Fees, Rounding)
+                    to the <code>Cost Price</code> of every product in the selected segment. It assumes sales volume
+                    remains constant to isolate price impact.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+</div>

@@ -1,7 +1,14 @@
 import { Timestamp } from '@angular/fire/firestore';
 
 export type PricingRuleTargetType = 'BRAND' | 'CATEGORY' | 'GLOBAL';
-export type PricingRuleAction = 'SET_MARGIN' | 'MULTIPLIER';
+export type PricingRuleAction = 'SET_MARGIN' | 'MULTIPLIER' | 'SET_MARKUP';
+
+export interface PricingSchedule {
+    startDate: Date | Timestamp; // When the rule becomes active
+    endDate?: Date | Timestamp;  // When it expires (optional)
+    recurrence?: 'ANNUAL' | 'NONE'; // If 'ANNUAL', ignores the year
+    isActiveNow?: boolean; // Helper for UI
+}
 
 export interface PricingRule {
     id?: string;
@@ -12,8 +19,12 @@ export interface PricingRule {
     targetValue?: string; // e.g. "Michelin" or "Tires" (null for GLOBAL)
 
     // Action Logic
-    action: PricingRuleAction;
-    value: number; // e.g. 20 (for 20% margin) or 1.25 (for 1.25x multiplier)
+    action: PricingRuleAction | 'APPLY_TEMPLATE';
+    value?: number; // Optional if using template
+    templateId?: string; // Reference to a PricingTemplate
+
+    // Time Dimension (Phase 3)
+    schedule?: PricingSchedule;
 
     priority: number; // Higher number = Higher priority
     active: boolean;

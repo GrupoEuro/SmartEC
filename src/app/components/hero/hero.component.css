@@ -18,8 +18,8 @@
     align-items: center;
     position: relative;
     overflow: hidden;
-    background: radial-gradient(circle at top right, rgba(0, 172, 216, 0.1), transparent 40%),
-        radial-gradient(circle at bottom left, rgba(208, 44, 47, 0.1), transparent 40%);
+    background: radial-gradient(circle at top right, var(--theme-accent), transparent 40%),
+        radial-gradient(circle at bottom left, var(--theme-primary), transparent 40%);
     content-visibility: auto;
     contain: layout paint;
 }
@@ -49,7 +49,7 @@
     padding: 8px 16px;
     border-radius: 20px;
     font-size: 14px;
-    color: var(--cyan);
+    color: var(--theme-accent);
     font-weight: 600;
     margin-bottom: 24px;
     backdrop-filter: blur(5px);
@@ -92,15 +92,15 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-red), #a01013);
+    background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
     color: var(--white);
     border: none;
-    box-shadow: 0 10px 20px rgba(208, 44, 47, 0.3);
+    box-shadow: 0 10px 20px var(--theme-primary);
 }
 
 .btn-primary:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 30px rgba(208, 44, 47, 0.4);
+    box-shadow: 0 15px 30px var(--theme-primary);
 }
 
 .btn-outline {

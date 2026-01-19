@@ -4,7 +4,48 @@
         "PRAXIS": "Praxis",
         "ABOUT": "About Us",
         "CONTACT": "Contact",
-        "DISTRIBUTOR_CTA": "Become a Distributor"
+        "DISTRIBUTOR_CTA": "Become a Distributor",
+        "CATALOG": "Catalog",
+        "CHECKOUT": "Checkout",
+        "SEARCH_PLACEHOLDER": "Search by brand, size or model...",
+        "NO_RESULTS": "No results found for",
+        "TRY_SEARCH": "Try \"Michelin\", \"205/55\" or \"Sport\""
+    },
+    "CART": {
+        "TITLE": "Your Cart",
+        "ADD_MORE_SHIPPING": "Add {{amount}} more for Free Shipping! 🚚",
+        "FREE_SHIPPING_UNLOCKED": "🎉 Free Shipping unlocked!",
+        "EMPTY_MSG": "Your cart is empty",
+        "START_SHOPPING": "Start Shopping",
+        "SUBTOTAL": "Subtotal",
+        "TAX_NOTE": "Shipping & taxes calculated at checkout",
+        "CHECKOUT_SECURELY": "Checkout Securely 🔒",
+        "CONFIRM_REMOVE": "Remove this item from cart?"
+    },
+    "PORTAL": {
+        "WELCOME": "Welcome back,",
+        "SELECT_WORKSPACE": "Select a workspace to begin your session",
+        "LOGOUT": "Log Out",
+        "COMMAND_CENTER": {
+            "TITLE": "Command Center",
+            "DESC": "Strategic overview, high-level KPIs, and business control."
+        },
+        "OPERATIONS": {
+            "TITLE": "Operations Hub",
+            "DESC": "Inventory management, pricing strategies, and logistics."
+        },
+        "ADMIN": {
+            "TITLE": "Admin Panel",
+            "DESC": "User management, security settings, and system configuration."
+        },
+        "HELP": {
+            "TITLE": "Knowledge Base",
+            "DESC": "Documentation, guides, and support resources."
+        },
+        "DEV_TOOLS": {
+            "TITLE": "Developer Tools",
+            "DESC": "System debugging, data seeding, and technical diagnostics."
+        }
     },
     "PRICING_STRATEGY": {
         "TITLE": "Pricing Strategy Planner",
@@ -1441,6 +1482,30 @@
         }
     },
     "ADMIN": {
+        "CATALOG": {
+            "ADD_TO_CART": "Add to Cart",
+            "VIEW_DETAILS": "View Details",
+            "NO_PRODUCTS": "No products found",
+            "TRY_ADJUSTING_FILTERS": "Try adjusting your search filters",
+            "CLEAR_FILTERS": "Clear Filters",
+            "FILTERS": "Filters",
+            "SEARCH_PLACEHOLDER": "Search products...",
+            "CATEGORIES": "Categories",
+            "ALL_CATEGORIES": "All Categories",
+            "PRICE_RANGE": "Price Range",
+            "BRANDS": "Brands",
+            "TIRE_SIZE": "Size",
+            "WIDTH": "Width",
+            "ASPECT_RATIO": "Profile",
+            "DIAMETER": "Rim",
+            "PRODUCTS_FOUND": "Products Found",
+            "SORT": {
+                "FEATURED": "Featured",
+                "PRICE_LOW": "Price: Low to High",
+                "PRICE_HIGH": "Price: High to Low",
+                "NEWEST": "Newest"
+            }
+        },
         "WAREHOUSES": {
             "TITLE": "Warehouses",
             "LOCATOR": "Product Locator",
@@ -1825,6 +1890,7 @@
             "VIEW_DETAILS": "View Details",
             "IN_STOCK": "In Stock",
             "OUT_OF_STOCK": "Out of Stock",
+            "ADD_TO_CART": "Add to Cart",
             "NEW": "New",
             "BESTSELLER": "Bestseller",
             "SORT": {
@@ -2396,6 +2462,11 @@
         "ADD_TO_CART": "Add to Cart",
         "ADD_TO_WISHLIST": "Add to Wishlist",
         "SHARE": "Share",
+        "BADGES": {
+            "NEW": "New",
+            "BESTSELLER": "Bestseller",
+            "FEATURED": "Featured"
+        },
         "SPECIFICATIONS": "Specifications",
         "DESCRIPTION": "Description",
         "KEY_FEATURES": "Key Features",
@@ -2416,7 +2487,9 @@
             "TECHNICAL": "Technical Specs"
         },
         "RELATED_PRODUCTS": "You Might Also Like",
-        "LOADING": "Loading product..."
+        "LOADING": "Loading product...",
+        "SECURE_PAYMENT": "100% Secure Payment",
+        "SHIPPING_THRESHOLD": "> $5,000"
     },
     "VALIDATION": {
         "SUMMARY_TITLE": "Please fix the following errors:",

@@ -118,7 +118,7 @@ export class AuthService {
 
       const displayName = profile.displayName || profile.email.split('@')[0];
       this.toast.success(`Welcome back, ${displayName}!`);
-      this.router.navigate(['/admin/dashboard']);
+      this.router.navigate(['/portal']);
 
     } catch (error: any) {
       console.error('Login error:', error);

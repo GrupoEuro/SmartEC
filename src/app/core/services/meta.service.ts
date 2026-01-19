@@ -198,13 +198,18 @@ export class MetaService {
         name: product.brand
       },
       sku: product.sku,
-      offers: {
+      offer: {
         '@type': 'Offer',
         price: product.price,
         priceCurrency: 'MXN',
         availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
         url: `${this.DOMAIN}/product/${product.slug}`
-      }
+      },
+      aggregateRating: product.rating ? {
+        '@type': 'AggregateRating',
+        ratingValue: product.rating,
+        reviewCount: product.reviewCount || 1
+      } : undefined
     };
   }
 }

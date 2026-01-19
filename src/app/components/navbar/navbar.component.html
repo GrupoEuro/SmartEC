@@ -1,67 +1,106 @@
 <nav class="navbar">
-    <div class="navbar-content">
-        <div class="navbar-logo">
-            <img src="assets/images/importadora-euro-logo-v2.png" alt="Importadora Euro" class="logo-img">
-        </div>
-        <div class="navbar-menu">
-            <a [routerLink]="['/']" fragment="home" (click)="closeMobileMenu()">{{ 'NAVBAR.HOME' | translate }}</a>
+    <app-countdown-timer></app-countdown-timer>
 
-            <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate }}</a>
-            <a [routerLink]="['/blog']" (click)="closeMobileMenu()">Blog</a>
-            <a [routerLink]="['/']" fragment="about">{{ 'NAVBAR.ABOUT' | translate }}</a>
-            <a [routerLink]="['/']" fragment="contact">{{ 'NAVBAR.CONTACT' | translate }}</a>
-            <a [routerLink]="['/']" fragment="contact" class="navbar-cta">{{ 'NAVBAR.DISTRIBUTOR_CTA' | translate }}</a>
-            <button (click)="toggleLanguage()" class="lang-btn">
-                {{ languageService.currentLang() === 'es' ? 'EN' : 'ES' }}
-            </button>
+    <div class="navbar-container">
+        <!-- TOP ROW: Logo, Search, Actions -->
+        <div class="navbar-top">
+            <!-- Logo -->
+            <div class="navbar-logo">
+                <a [routerLink]="['/']">
+                    <img src="assets/images/importadora-euro-logo-v2.png" alt="Importadora Euro" class="logo-img">
+                </a>
+            </div>
 
-            <!-- User Avatar / Login Button -->
-            @if (authService.user$ | async; as user) {
-            <div class="user-menu-container">
-                <button class="user-avatar" (click)="toggleUserMenu()" [title]="user.displayName || user.email || ''">
-                    @if (user.photoURL) {
-                    <img [src]="user.photoURL" [alt]="user.displayName || 'User'">
-                    } @else {
-                    <span class="user-initials">{{ getUserInitials(user.displayName) }}</span>
+            <!-- Search Bar (Center, Prominent) -->
+            <div class="navbar-search">
+                <app-search-bar></app-search-bar>
+            </div>
+
+            <!-- Actions (Right) -->
+            <div class="navbar-actions">
+                <!-- Language Toggle -->
+                <button (click)="toggleLanguage()" class="lang-btn">
+                    {{ languageService.currentLang() === 'es' ? 'EN' : 'ES' }}
+                </button>
+
+                <!-- Cart -->
+                <button class="cart-btn" (click)="openCart()">
+                    <span class="icon">🛍️</span>
+                    @if (cartService.cartCount() > 0) {
+                    <span class="cart-badge">{{ cartService.cartCount() }}</span>
                     }
                 </button>
-                @if (isUserMenuOpen) {
-                <div class="user-dropdown">
-                    <div class="user-info">
-                        <div class="user-name">{{ user.displayName || 'User' }}</div>
-                        <div class="user-email">{{ user.email }}</div>
-                    </div>
-                    <div class="dropdown-divider"></div>
-                    <a [routerLink]="['/admin/dashboard']" (click)="closeUserMenu()" class="dropdown-item">
-                        <span>📊</span> Admin Panel
-                    </a>
-                    <button (click)="logout()" class="dropdown-item logout-btn">
-                        <span>🚪</span> Cerrar Sesión
+
+                <!-- User Menu -->
+                @if (authService.user$ | async; as user) {
+                <div class="user-menu-container">
+                    <button class="user-avatar" (click)="toggleUserMenu()"
+                        [title]="user.displayName || user.email || ''">
+                        @if (user.photoURL) {
+                        <img [src]="user.photoURL" [alt]="user.displayName || 'User'">
+                        } @else {
+                        <span class="user-initials">{{ getUserInitials(user.displayName) }}</span>
+                        }
                     </button>
+                    @if (isUserMenuOpen) {
+                    <div class="user-dropdown">
+                        <div class="user-info">
+                            <div class="user-name">{{ user.displayName || 'User' }}</div>
+                            <div class="user-email">{{ user.email }}</div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a [routerLink]="['/admin/dashboard']" (click)="closeUserMenu()" class="dropdown-item">
+                            <span>📊</span> {{ 'PORTAL.ADMIN.TITLE' | translate }}
+                        </a>
+                        <button (click)="logout()" class="dropdown-item logout-btn">
+                            <span>🚪</span> {{ 'PORTAL.LOGOUT' | translate }}
+                        </button>
+                    </div>
+                    }
                 </div>
+                } @else {
+                <button (click)="login()" class="login-btn">
+                    <span>🔐</span> Login
+                </button>
                 }
+
+                <!-- Mobile Toggle -->
+                <button class="mobile-menu-toggle" [class.active]="isMobileMenuOpen" (click)="toggleMobileMenu()"
+                    aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
-            } @else {
-            <button (click)="login()" class="login-btn">
-                <span>🔐</span> Iniciar Sesión
-            </button>
-            }
         </div>
-        <button class="mobile-menu-toggle" [class.active]="isMobileMenuOpen" (click)="toggleMobileMenu()"
-            aria-label="Menu">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
+
+        <!-- BOTTOM ROW: Navigation Links -->
+        <div class="navbar-bottom">
+            <div class="nav-links">
+                <a [routerLink]="['/']" fragment="home" (click)="closeMobileMenu()">{{ 'NAVBAR.HOME' | translate }}</a>
+                <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate }}</a>
+                <a [routerLink]="['/catalog']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
+                <!-- Added Explicit Catalog Link -->
+                <a [routerLink]="['/blog']" (click)="closeMobileMenu()">Blog</a>
+                <a [routerLink]="['/']" fragment="about">{{ 'NAVBAR.ABOUT' | translate }}</a>
+                <a [routerLink]="['/']" fragment="contact">{{ 'NAVBAR.CONTACT' | translate }}</a>
+                <a [routerLink]="['/']" fragment="contact" class="navbar-cta">{{ 'NAVBAR.DISTRIBUTOR_CTA' | translate
+                    }}</a>
+            </div>
+        </div>
     </div>
+
+    <!-- Mobile Menu Overlay -->
     <div class="mobile-menu" [class.active]="isMobileMenuOpen">
         <a [routerLink]="['/']" fragment="home" (click)="closeMobileMenu()">{{ 'NAVBAR.HOME' | translate }}</a>
-
-        <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate
-            }}</a>
+        <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate }}</a>
+        <a [routerLink]="['/catalog']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
         <a [routerLink]="['/blog']" (click)="closeMobileMenu()">Blog</a>
         <a [routerLink]="['/']" fragment="about" (click)="closeMobileMenu()">{{ 'NAVBAR.ABOUT' | translate }}</a>
         <a [routerLink]="['/']" fragment="contact" (click)="closeMobileMenu()">{{ 'NAVBAR.CONTACT' | translate }}</a>
+
+        <div class="mobile-divider"></div>
+
         <a [routerLink]="['/']" fragment="contact" class="mobile-cta" (click)="closeMobileMenu()">{{
             'NAVBAR.DISTRIBUTOR_CTA' | translate }}</a>
         <button (click)="toggleLanguage(); closeMobileMenu()" class="lang-btn-mobile">
@@ -86,12 +125,12 @@
                 📊 Admin Panel
             </a>
             <button (click)="logout()" class="mobile-logout-btn">
-                🚪 Cerrar Sesión
+                🚪 {{ 'PORTAL.LOGOUT' | translate }}
             </button>
         </div>
         } @else {
         <button (click)="login()" class="mobile-login-btn">
-            🔐 Iniciar Sesión
+            🔐 Login
         </button>
         }
     </div>

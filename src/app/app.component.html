@@ -1,10 +1,12 @@
 <app-toast></app-toast>
+<app-cart-drawer></app-cart-drawer>
+<app-exit-intent></app-exit-intent>
 <app-confirm-dialog></app-confirm-dialog>
 @if (!isAdminRoute()) {
 <app-navbar></app-navbar>
 }
 
-<main [style.padding-top]="isAdminRoute() ? '0' : '80px'" style="min-height: 100vh;">
+<main [style.padding-top]="isAdminRoute() ? '0' : '140px'" style="min-height: 100vh;">
   <router-outlet></router-outlet>
 </main>
 

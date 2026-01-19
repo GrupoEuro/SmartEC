@@ -8,13 +8,18 @@ import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ProductService } from '../../core/services/product.service';
 import { CategoryService } from '../../core/services/category.service';
 import { MetaService } from '../../core/services/meta.service';
+import { CartService } from '../../core/services/cart.service';
+import { DataSeederService } from '../../core/services/data-seeder.service';
+import { LanguageService } from '../../core/services/language.service';
 import { Product, ProductFilters } from '../../core/models/product.model';
 import { Category, ProductSortBy } from '../../core/models/catalog.model';
+
+import { SkeletonProductCardComponent } from '../../shared/components/skeleton-product-card/skeleton-product-card.component';
 
 @Component({
     selector: 'app-catalog',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, NgOptimizedImage],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, NgOptimizedImage, SkeletonProductCardComponent],
     templateUrl: './catalog.component.html',
     styleUrl: './catalog.component.css'
 })
@@ -22,6 +27,8 @@ export class CatalogComponent implements OnInit {
     private productService = inject(ProductService);
     private categoryService = inject(CategoryService);
     private metaService = inject(MetaService);
+    private cartService = inject(CartService); // Inject CartService
+    public languageService = inject(LanguageService); // Inject LanguageService public for template
     private route = inject(ActivatedRoute);
     private router = inject(Router);
 
@@ -35,7 +42,8 @@ export class CatalogComponent implements OnInit {
     currentPage = 1;
     itemsPerPage = 12;
     totalProducts = 0;
-    isLoading = true;
+
+    public isLoading = true; // Public for template access
     isSidebarOpen = false;
 
     // Filters
@@ -54,9 +62,9 @@ export class CatalogComponent implements OnInit {
 
     ngOnInit() {
         this.loadCategories();
-        this.loadProducts();
-        this.setupSearch();
+        this.setupSearch(); // Setup search first
         this.loadFiltersFromURL();
+        this.loadProducts(); // Then load products
         this.updateSEO();
     }
 
@@ -65,6 +73,7 @@ export class CatalogComponent implements OnInit {
     }
 
     loadProducts() {
+        this.isLoading = true;
         this.products$ = this.productService.getProducts(this.filters, this.sortBy);
 
         this.filteredProducts$ = combineLatest([
@@ -72,7 +81,6 @@ export class CatalogComponent implements OnInit {
             this.searchSubject.pipe(debounceTime(300), distinctUntilChanged())
         ]).pipe(
             map(([products, search]) => {
-                // Apply search filter
                 let filtered = search
                     ? products.filter(p =>
                         p.name.en.toLowerCase().includes(search.toLowerCase()) ||
@@ -82,26 +90,53 @@ export class CatalogComponent implements OnInit {
                     )
                     : products;
 
+                console.log('Catalog Debug: Raw Products:', products.length);
+                console.log('Catalog: Filtered count matches', filtered.length);
+
                 this.totalProducts = filtered.length;
 
-                // Extract unique brands for filter
-                this.brands = [...new Set(products.map(p => p.brand))].sort();
+                // AUTO-SEEDER CHECK (Dev Convenience)
+                if (products.length === 0 && !this.seederTriggered) {
+                    console.warn('Catalog: No products found in DB. Triggering Auto-Seed...');
+                    this.seederTriggered = true;
+                    this.seedCatalog();
+                }
 
-                // Apply pagination
+                // EXTRACT BRANDS SAFELY
+                const brandSet = new Set(products.map(p => p.brand).filter(b => !!b));
+                this.brands = [...brandSet].sort();
+
+                // Pagination
                 const start = (this.currentPage - 1) * this.itemsPerPage;
                 const end = start + this.itemsPerPage;
+
+                this.isLoading = false;
+
                 return filtered.slice(start, end);
             })
         );
+    }
 
-        // Set loading to false AFTER creating the observable, not inside it
-        this.isLoading = false;
+    // Flag to prevent infinite seed loops
+    private seederTriggered = false;
+    private dataSeeder = inject(DataSeederService);
+
+    async seedCatalog() {
+        this.isLoading = true;
+        try {
+            await this.dataSeeder.seedProducts((msg) => console.log(msg));
+            // Reload after seed
+            window.location.reload();
+        } catch (err) {
+            console.error('Auto-seed failed', err);
+            this.isLoading = false;
+        }
     }
 
     setupSearch() {
         this.searchSubject.subscribe(query => {
             this.searchQuery = query;
-            this.currentPage = 1; // Reset to first page on search
+            this.currentPage = 1;
         });
     }
 
@@ -116,7 +151,6 @@ export class CatalogComponent implements OnInit {
     }
 
     onSortChange(sort: ProductSortBy) {
-        console.log('Sort changed to:', sort);
         this.sortBy = sort;
         this.loadProducts();
         this.updateURL();
@@ -136,6 +170,8 @@ export class CatalogComponent implements OnInit {
         this.searchQuery = '';
         this.searchSubject.next('');
         this.currentPage = 1;
+
+        // Reset loading state safely
         this.loadProducts();
         this.updateURL();
     }
@@ -232,6 +268,13 @@ export class CatalogComponent implements OnInit {
             delete (this.filters as any)[feature];
         }
         this.onFilterChange();
+    }
+
+    addToCart(product: Product, event: Event) {
+        event.preventDefault(); // Prevent navigation to detail
+        event.stopPropagation();
+        this.cartService.addToCart(product);
+        this.cartService.openCart(); // Visual feedback: Open drawer
     }
 
     /**

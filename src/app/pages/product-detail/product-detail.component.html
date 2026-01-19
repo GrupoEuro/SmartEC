@@ -18,40 +18,54 @@
 
         <!-- Product Info -->
         <div class="hero-right">
-            <span class="product-brand-badge">{{ product.brand }}</span>
-            <h1 class="product-title">{{ product.name.es }}</h1>
-            <p class="product-sku">{{ 'PRODUCT_DETAIL.SKU' | translate }}: {{ product.sku }}</p>
-
-            <!-- Price -->
-            <div class="price-section">
-                <div class="price-main">
-                    <span class="current-price">${{ product.price }}</span>
-                    <span *ngIf="product.compareAtPrice" class="original-price">${{ product.compareAtPrice }}</span>
-                    <span *ngIf="product.compareAtPrice" class="discount-badge">
-                        -{{ ((product.compareAtPrice - product.price) / product.compareAtPrice * 100).toFixed(0) }}%
-                    </span>
-                </div>
+            <div class="product-header">
+                <span class="product-brand-badge">{{ product.brand }}</span>
+                <p class="product-sku">{{ 'PRODUCT_DETAIL.SKU' | translate }}: {{ product.sku }}</p>
             </div>
 
-            <!-- Stock Status -->
-            <div class="stock-status">
-                <span *ngIf="product.inStock" class="in-stock">
-                    ✓ {{ 'PRODUCT_DETAIL.IN_STOCK' | translate }}
-                </span>
-                <span *ngIf="!product.inStock" class="out-of-stock">
-                    ✗ {{ 'PRODUCT_DETAIL.OUT_OF_STOCK' | translate }}
-                </span>
-                <span *ngIf="product.inStock" class="stock-quantity">
-                    ({{ product.stockQuantity }} {{ 'PRODUCT_DETAIL.UNITS_AVAILABLE' | translate }})
-                </span>
+            <h1 class="product-title">{{ product.name.es }}</h1>
+
+            <!-- Price & Stock Group -->
+            <div class="price-stock-group">
+                <div class="price-section">
+                    <div class="price-main">
+                        <span class="current-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                        <span class="currency-label">MXN</span>
+                    </div>
+
+                    <div class="price-secondary" *ngIf="product.compareAtPrice">
+                        <span class="original-price">{{ product.compareAtPrice | currency:'MXN':'symbol-narrow':'1.2-2'
+                            }}</span>
+                        <span class="discount-badge">
+                            -{{ ((product.compareAtPrice - product.price) / product.compareAtPrice * 100).toFixed(0) }}%
+                        </span>
+                    </div>
+
+                    <div class="tax-info">{{ 'COMMON.IVA_INCLUDED' | translate }}</div>
+                </div>
+
+                <!-- Stock Status -->
+                <div class="stock-status" [class.is-available]="product.inStock"
+                    [class.not-available]="!product.inStock">
+                    <div class="stock-indicator"></div>
+                    <span *ngIf="product.inStock">
+                        {{ 'PRODUCT_DETAIL.IN_STOCK' | translate }}
+                        <span class="stock-qty">({{ product.stockQuantity }} {{ 'PRODUCT_DETAIL.UNITS_AVAILABLE' |
+                            translate }})</span>
+                    </span>
+                    <span *ngIf="!product.inStock">{{ 'PRODUCT_DETAIL.OUT_OF_STOCK' | translate }}</span>
+                </div>
             </div>
 
             <!-- Tire Size -->
             <div class="tire-size-display">
-                <label>{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</label>
-                <div class="size-value">
-                    {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
-                    product.specifications.diameter }}
+                <div class="size-icon">🛞</div>
+                <div class="size-content">
+                    <label>{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</label>
+                    <div class="size-value">
+                        {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
+                        product.specifications.diameter }}
+                    </div>
                 </div>
             </div>
 
@@ -80,14 +94,40 @@
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <button class="btn-add-cart" (click)="addToCart(product)" [disabled]="!product.inStock">
-                    🛒 {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
+                    <span class="btn-icon">🛒</span>
+                    {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
                 </button>
-                <button class="btn-wishlist" (click)="addToWishlist(product)">
+                <button class="btn-wishlist" (click)="addToWishlist(product)"
+                    title="{{ 'PRODUCT_DETAIL.ADD_TO_WISHLIST' | translate }}">
                     ♡
                 </button>
-                <button class="btn-share" (click)="shareProduct()">
+                <button class="btn-share" (click)="shareProduct()" title="{{ 'PRODUCT_DETAIL.SHARE' | translate }}">
                     ⤴
                 </button>
+            </div>
+
+            <!-- Trust Signals -->
+            <div class="trust-signals">
+                <div class="trust-item secure">
+                    <div class="trust-icon">🔒</div>
+                    <div class="trust-text">
+                        <strong>{{ 'PRODUCT_DETAIL.SECURE_PAYMENT' | translate }}</strong>
+                        <div class="payment-methods-row">
+                            <span class="pay-icon" title="Visa">VISA</span>
+                            <span class="pay-icon" title="Mastercard">MC</span>
+                            <span class="pay-icon" title="Amex">AMEX</span>
+                            <span class="pay-icon" title="OXXO">OXXO</span>
+                            <span class="pay-icon" title="MercadoPago">MP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="trust-item shipping">
+                    <div class="trust-icon">🚚</div>
+                    <div class="trust-text">
+                        <strong>{{ 'COMMON.FREE_SHIPPING' | translate }}</strong>
+                        <span>{{ 'PRODUCT_DETAIL.SHIPPING_THRESHOLD' | translate }}</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Badges -->
@@ -101,6 +141,10 @@
             </div>
         </div>
     </div>
+
+
+    <!-- Frequently Bought Together (Bundles) -->
+    <app-product-bundles [mainProduct]="product"></app-product-bundles>
 
     <!-- Specifications Table -->
     <div class="specifications-section">
@@ -164,6 +208,17 @@
                 </ul>
             </div>
         </div>
+    </div>
+
+    <!-- Mobile Sticky Buy Bar -->
+    <div class="sticky-buy-bar" *ngIf="product$ | async as product">
+        <div class="sticky-info">
+            <span class="sticky-title">{{ product.name.es }}</span>
+            <span class="sticky-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <button class="btn-sticky-add" (click)="addToCart(product)" [disabled]="!product.inStock">
+            {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
+        </button>
     </div>
 
     <!-- Related Products -->

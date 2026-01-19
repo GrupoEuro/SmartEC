@@ -4,22 +4,30 @@ import { RouterModule, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { LanguageService } from '../../core/services/language.service';
 import { AuthService } from '../../core/services/auth.service';
+import { CartService } from '../../core/services/cart.service';
+import { CountdownTimerComponent } from '../../shared/components/countdown-timer/countdown-timer.component';
+import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
 
 @Component({
     selector: 'app-navbar',
     standalone: true,
-    imports: [TranslateModule, CommonModule, RouterLink, RouterModule],
+    imports: [TranslateModule, CommonModule, RouterLink, RouterModule, CountdownTimerComponent, SearchBarComponent],
     templateUrl: './navbar.component.html',
     styleUrl: './navbar.component.css'
 })
 export class NavbarComponent {
     languageService = inject(LanguageService);
     authService = inject(AuthService);
+    cartService = inject(CartService);
     isMobileMenuOpen = false;
     isUserMenuOpen = false;
 
     toggleMobileMenu() {
         this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    }
+
+    openCart() {
+        this.cartService.openCart();
     }
 
     toggleLanguage() {

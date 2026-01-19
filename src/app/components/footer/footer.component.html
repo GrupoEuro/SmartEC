@@ -60,10 +60,48 @@
         </div>
 
         <div class="footer-links-column">
-            <h4>{{ 'FOOTER.LEGAL' | translate }}</h4>
+            <h4>{{ 'FOOTER.PAYMENT_METHODS' | translate }}</h4>
+            <div class="payment-methods-grid">
+                <!-- Visa -->
+                <svg class="pay-icon" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" width="38"
+                    height="24" aria-labelledby="pi-visa">
+                    <title id="pi-visa">Visa</title>
+                    <path opacity=".07"
+                        d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" />
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" />
+                    <path
+                        d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9h-1.9c-.1 0-.2 0-.2.2v.3c0 .1-.1.2-.2.2h-1.5v-.7l-.9-5.1h-1.1c-.2 0-.2 0-.2.2l-.2.5-.9 5.6h2c.2 0 .2 0 .3-.1l.1-.9h1.9c.1 0 .2 0 .2.2v.3c0 .1-.1.2-.2.2h1.5v-.4l1-5.7zM18.3 8.2l-2 4.9c-.2-.9-.4-1.6-.4-2.5 0-.5.1-.9.4-1.1.2-.3.7-.4 1.1-.4h.9V8.2h-3.6c-.1 0-.2.1-.2.2l-.1.6-3.3 6.8h2.2c.2 0 .2 0 .3-.2l.3-.7h3.1l.3 1.5c0 .2.2.4.5.4h2.1c.1 0 .2-.1.2-.2 0-.1 0-.2-.1-.2l-2.4-5.3-.9-2.9c0-.1 0-.2-.1-.2.1-.1 0 0 0 0zM12.4 11.2l-1.6 3.9h2.2c.2 0 .2 0 .3-.2l.3-.8h3.3l.3 1.5c0 .2.2.4.5.4h2.1c.1 0 .2-.1.2-.2 0-.1 0-.2-.1-.2l-2.6-5.8-.8-2.6c0-.1 0-.2-.1-.2 0-.1 0 0 0 0h-3.5c-.5 0-.8.3-.9.9l-1 4.2zM21 9.4c0-.9.9-1.4 1.7-1.5.3 0 .7.1 1.1.2l.2-1.6c-.4-.1-.9-.2-1.3-.2-.9 0-1.5.3-2 1-.3.5-.4 1.1-.4 1.7 0 1.4.9 2.5 2.1 2.8 1.1.3 1.5.5 1.5 1 0 .4-.6.6-1.1.6-.5 0-1.1-.2-1.6-.6l-.4 1.5c.5.3 1.1.4 1.7.4 2.1 0 3.2-1 3.2-2.6 0-1.6-1.1-2.6-2.6-2.9-.8-.2-1.3-.4-1.3-.8 0-.4.4-.7 1.1-.7.2 0 .4 0 .6.1l1.7.3c-.5-1.9-2.1-3.2-4.2-3.2-2.4 0-4.3 1.8-4.3 4.1 0 2.2 1.6 4.1 3.8 4.4 2.2.3 4.1-1.6 4.1-3.8V9h-1.4v.4H21z"
+                        fill="#142688" />
+                </svg>
+                <!-- Mastercard -->
+                <svg class="pay-icon" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" width="38"
+                    height="24" aria-labelledby="pi-master">
+                    <title id="pi-master">Mastercard</title>
+                    <path opacity=".07"
+                        d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" />
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" />
+                    <circle fill="#EB001B" cx="15" cy="12" r="7" />
+                    <circle fill="#F79E1B" cx="23" cy="12" r="7" />
+                    <path fill="#FF5F00"
+                        d="M22 12c0-2.4-1.2-4.5-3-5.7-1.8 1.3-3 3.4-3 5.7s1.2 4.5 3 5.7c1.8-1.2 3-3.3 3-5.7z" />
+                </svg>
+                <!-- Amex -->
+                <svg class="pay-icon" viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" role="img" width="38"
+                    height="24" aria-labelledby="pi-amex">
+                    <title id="pi-amex">American Express</title>
+                    <path opacity=".07"
+                        d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z" />
+                    <path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32" />
+                    <path fill="#006FCF"
+                        d="M22.01 16.08h1.83l.72-1.72h1.88l.68 1.72h1.83l-3.23-7.39h-1.6L22.01 16.08zm4.45-6.11l.95 2.58h-1.92l.97-2.58zM14.03 16.08h3.33l-.2-1.28h-1.72l.14-.94h1.74l-.15-1.13h-1.74l.14-1.02h1.79l-.2-1.3h-3.32l.19 5.67zm17.65 0h1.8L35 10.14l-1.42-1.45h-1.87l1.32 1.45-1.35 1.54V8.69h-1.63v7.39h1.63v-3.77l1.34 1.54-1.34 2.23zm-7.73 0h1.69l1.45-4.43 1.43 4.43h1.7l-2.22-6.02h-1.73l-2.32 6.02zm-3.14-2.73a1.905 1.905 0 0 1-1.74 1.05c-.6 0-1.04-.26-1.17-.67l-.68 2.35h-1.68l2.09-7.39h3.76c1.1 0 1.63.58 1.63 1.5 0 .96-.44 1.54-1.13 1.75.76.2 1.25.79 1.25 1.66 0 1.25-.8 2.05-2.06 2.05h-3.92v-7.39h2.38c.63 0 .97.35.97.85 0 .54-.38.86-1 .86h-2.35v1.27h2.64c.64 0 .98.39.98.89 0 .6-.38.93-.97.93h-1.38l-.68 2.35zm-8.81-.66V8.69H7.26l-3.3 5.43v1.96h7.68l.24-1.28H5.63l.63-1.05h4.81l.24-1.28H6.9l.63-1.05h4.47z" />
+                </svg>
+                <!-- OXXO (Using Placeholder or simple text if SVG is complex, will try generic "Cash" icon if OXXO unavailable, but using text for now) -->
+                <div class="pay-icon-text">OXXO</div>
+            </div>
+
+            <h4 style="margin-top: 15px;">{{ 'FOOTER.LEGAL' | translate }}</h4>
             <a [routerLink]="['/terms']">{{ 'FOOTER.LINKS.TERMS' | translate }}</a>
             <a [routerLink]="['/privacy']">{{ 'FOOTER.LINKS.PRIVACY' | translate }}</a>
-            <a [routerLink]="['/']" fragment="contact">{{ 'FOOTER.LINKS.BILLING' | translate }}</a>
         </div>
     </div>
 

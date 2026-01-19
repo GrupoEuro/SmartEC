@@ -9,6 +9,7 @@
 
 /* Global Styles & Variables */
 :root {
+  /* Legacy Variables (Keeping for safety) */
   --primary-blue: #1C355E;
   --primary-red: #D02C2F;
   --cyan: #00ACD8;
@@ -21,6 +22,17 @@
   --text-gray-dim: #a8a8a8;
   --text-gray-dark: #909090;
   --border-dark: #1a1a1a;
+
+  /* 🎨 Theme Engine Variables (Dynamic) */
+  --theme-primary: #2563eb;
+  /* Default: Blue-600 */
+  --theme-secondary: #0f172a;
+  /* Default: Slate-900 */
+  --theme-accent: #3b82f6;
+  /* Default: Blue-500 */
+  --theme-bg: #000000;
+  /* Default: Black */
+  --theme-pattern: none;
 }
 
 * {

@@ -2,9 +2,20 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
 import { PraxisComponent } from './pages/praxis/praxis.component';
 import { devModeGuard } from './core/guards/dev-mode.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
     { path: '', component: HomeComponent },
+    {
+        path: 'checkout',
+        loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent),
+        title: 'NAVBAR.CHECKOUT'
+    },
+    {
+        path: 'order-confirmation',
+        loadComponent: () => import('./pages/order-confirmation/order-confirmation.component').then(m => m.OrderConfirmationComponent),
+        title: 'Order Confirmation'
+    },
     { path: 'praxis', component: PraxisComponent },
     {
         path: 'blog',
@@ -58,6 +69,11 @@ export const routes: Routes = [
     {
         path: 'admin',
         loadChildren: () => import('./pages/admin/admin.routes').then(m => m.ADMIN_ROUTES)
+    },
+    {
+        path: 'portal',
+        loadComponent: () => import('./pages/admin/portal-launcher/portal-launcher.component').then(m => m.PortalLauncherComponent),
+        canActivate: [roleGuard] // Ensure at least logged in
     },
     {
         path: 'view/:slug',

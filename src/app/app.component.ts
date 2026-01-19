@@ -9,12 +9,15 @@ import { NavbarComponent } from './components/navbar/navbar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { ConfirmDialogComponent } from './components/shared/confirm-dialog/confirm-dialog.component';
+import { ExitIntentComponent } from './shared/components/exit-intent/exit-intent.component';
+import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer.component';
 import { AnalyticsService } from './core/services/analytics.service';
+import { CampaignService } from './core/services/campaign.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastComponent, ChatWidgetComponent, ConfirmDialogComponent],
+  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastComponent, ChatWidgetComponent, ConfirmDialogComponent, ExitIntentComponent, CartDrawerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -26,6 +29,7 @@ export class AppComponent implements OnInit {
   private titleService = inject(Title);
   private document: Document = inject(DOCUMENT);
   private analytics = inject(AnalyticsService);
+  private campaignService = inject(CampaignService); // Initializes Campaign Engine
 
   constructor() {
     console.log('%c App Version V9.0.1 (Product Locator v2.1 Debugging) ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');
@@ -86,7 +90,7 @@ export class AppComponent implements OnInit {
 
   isAdminRoute(): boolean {
     const url = this.router.url;
-    return url.includes('/admin') || url.includes('/operations') || url.includes('/command-center') || url.includes('/dev-tools') || url.includes('/help');
+    return url.includes('/admin') || url.includes('/operations') || url.includes('/command-center') || url.includes('/dev-tools') || url.includes('/help') || url.includes('/portal');
   }
 
   private dateLangAttribute() {

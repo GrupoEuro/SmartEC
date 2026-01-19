@@ -101,6 +101,10 @@ export interface Product {
     newArrival: boolean;
     bestSeller: boolean;
 
+    // Social Proof
+    rating?: number;       // 1-5 stars
+    reviewCount?: number;  // Total number of reviews
+
     // SEO Optimization (optional fields)
     seo?: {
         metaTitle?: string;

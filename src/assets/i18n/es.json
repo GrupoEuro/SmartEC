@@ -1,10 +1,107 @@
 {
     "NAVBAR": {
         "HOME": "Inicio",
-        "PRAXIS": "Praxis",
+        "CATALOG": "Catálogo",
+        "PRAXIS": "Llantas Praxis",
         "ABOUT": "Nosotros",
         "CONTACT": "Contacto",
-        "DISTRIBUTOR_CTA": "¿Quieres ser Distribuidor?"
+        "CHECKOUT": "Finalizar Compra",
+        "DISTRIBUTOR_CTA": "¿Quieres ser Distribuidor?",
+        "SEARCH_PLACEHOLDER": "Buscar por marca, medida o modelo...",
+        "NO_RESULTS": "No encontramos resultados para",
+        "TRY_SEARCH": "Intenta con \"Michelin\", \"205/55\" o \"Deportiva\""
+    },
+    "CART": {
+        "TITLE": "Tu Carrito",
+        "ADD_MORE_SHIPPING": "¡Agrega {{amount}} más para Envío Gratis! 🚚",
+        "FREE_SHIPPING_UNLOCKED": "🎉 ¡Envío Gratis desbloqueado!",
+        "EMPTY_MSG": "Tu carrito está vacío",
+        "START_SHOPPING": "Empezar a Comprar",
+        "SUBTOTAL": "Subtotal",
+        "TAX_NOTE": "Impuestos y envío calculados al finalizar compra",
+        "CHECKOUT_SECURELY": "Pagar de forma Segura 🔒",
+        "CONFIRM_REMOVE": "¿Eliminar este producto del carrito?"
+    },
+    "PRODUCT_DETAIL": {
+        "BREADCRUMB_HOME": "Inicio",
+        "BREADCRUMB_CATALOG": "Catálogo",
+        "SKU": "SKU",
+        "IN_STOCK": "Disponible",
+        "OUT_OF_STOCK": "Agotado",
+        "UNITS_AVAILABLE": "unidades disponibles",
+        "TIRE_SIZE": "Medida",
+        "LOAD_INDEX": "Índice de Carga",
+        "SPEED_RATING": "Rango de Velocidad",
+        "QUANTITY": "Cantidad",
+        "ADD_TO_CART": "Agregar al Carrito",
+        "BADGES": {
+            "NEW": "Nuevo",
+            "BESTSELLER": "Más Vendido",
+            "FEATURED": "Destacado"
+        },
+        "SPECIFICATIONS": "Especificaciones Técnicas",
+        "SPEC_WIDTH": "Ancho",
+        "SPEC_ASPECT_RATIO": "Perfil",
+        "SPEC_DIAMETER": "Rin",
+        "SPEC_LOAD_INDEX": "Carga",
+        "SPEC_SPEED_RATING": "Velocidad",
+        "SPEC_CONSTRUCTION": "Construcción",
+        "SPEC_TUBELESS": "Tipo de Montaje",
+        "SPEC_TUBELESS_YES": "Tubeless (Sin Cámara)",
+        "SPEC_TUBELESS_NO": "Tube Type (Con Cámara)",
+        "TABS": {
+            "OVERVIEW": "Descripción General",
+            "FEATURES": "Características Clave"
+        },
+        "DESCRIPTION": "Descripción del Producto",
+        "KEY_FEATURES": "Características Principales",
+        "LOADING": "Cargando información del producto...",
+        "SECURE_PAYMENT": "Pago 100% Seguro",
+        "SHIPPING_THRESHOLD": "> $5,000"
+    },
+    "CHECKOUT": {
+        "IDENTITY": "Identidad",
+        "SHIPPING": "Envío",
+        "PAYMENT": "Pago",
+        "FIRST_NAME": "Nombre",
+        "LAST_NAME": "Apellidos",
+        "STREET": "Calle",
+        "STREET_PLACEHOLDER": "Av. Reforma",
+        "EXT_NUM": "Num. Ext",
+        "INT_NUM": "Num. Int",
+        "COLONIA": "Colonia",
+        "ZIP": "Código Postal",
+        "CITY": "Ciudad / Municipio",
+        "STATE": "Estado",
+        "PHONE": "Teléfono",
+        "CONTINUE_SHIPPING": "Continuar a Envíos",
+        "CONTINUE_PAYMENT": "Continuar a Pago",
+        "PAY_NOW": "Pagar Ahora"
+    },
+    "PORTAL": {
+        "WELCOME": "Bienvenido de nuevo,",
+        "SELECT_WORKSPACE": "Selecciona un espacio de trabajo para comenzar",
+        "LOGOUT": "Cerrar Sesión",
+        "COMMAND_CENTER": {
+            "TITLE": "Centro de Comando",
+            "DESC": "Visión estratégica, KPIs de alto nivel y control del negocio."
+        },
+        "OPERATIONS": {
+            "TITLE": "Hub de Operaciones",
+            "DESC": "Gestión de inventario, estrategias de precios y logística."
+        },
+        "ADMIN": {
+            "TITLE": "Panel de Admin",
+            "DESC": "Gestión de usuarios, seguridad y configuración del sistema."
+        },
+        "HELP": {
+            "TITLE": "Base de Conocimiento",
+            "DESC": "Documentación, guías y recursos de soporte."
+        },
+        "DEV_TOOLS": {
+            "TITLE": "Herramientas de Desarrollador",
+            "DESC": "Depuración del sistema, siembra de datos y diagnósticos técnicos."
+        }
     },
     "PRICING_STRATEGY": {
         "TITLE": "Estrategia de Precios",
@@ -163,6 +260,7 @@
         "FLOATING_SHIPPING": "Envío Gratis"
     },
     "FOOTER": {
+        "PAYMENT_METHODS": "Métodos de Pago",
         "DESCRIPTION": "Importadores líderes de llantas para motocicleta en México y distribuidores exclusivos de Praxis.",
         "LOCATION_TITLE": "Ubicación",
         "LOCATION_TEXT": "Av. Salvador Nava No.704-1<br>Col. Nuevo Paseo<br>San Luis Potosí, S.L.P",
@@ -1492,6 +1590,30 @@
         }
     },
     "ADMIN": {
+        "CATALOG": {
+            "ADD_TO_CART": "Agregar al Carrito",
+            "VIEW_DETAILS": "Ver Detalles",
+            "NO_PRODUCTS": "No encontramos lo que buscas",
+            "TRY_ADJUSTING_FILTERS": "Intenta ajustar los filtros de búsqueda",
+            "CLEAR_FILTERS": "Limpiar Filtros",
+            "FILTERS": "Filtros",
+            "SEARCH_PLACEHOLDER": "Buscar productos...",
+            "CATEGORIES": "Categorías",
+            "ALL_CATEGORIES": "Todas las Categorías",
+            "PRICE_RANGE": "Rango de Precio",
+            "BRANDS": "Marcas",
+            "TIRE_SIZE": "Medida",
+            "WIDTH": "Ancho",
+            "ASPECT_RATIO": "Perfil",
+            "DIAMETER": "Rin",
+            "PRODUCTS_FOUND": "Productos Encontrados",
+            "SORT": {
+                "FEATURED": "Destacados",
+                "PRICE_LOW": "Precio: Menor a Mayor",
+                "PRICE_HIGH": "Precio: Mayor a Menor",
+                "NEWEST": "Más Nuevos"
+            }
+        },
         "WAREHOUSES": {
             "TITLE": "Almacenes",
             "LOCATOR": "Buscador Visual",
@@ -1876,6 +1998,7 @@
             "VIEW_DETAILS": "Ver Detalles",
             "IN_STOCK": "En Stock",
             "OUT_OF_STOCK": "Agotado",
+            "ADD_TO_CART": "Agregar al Carrito",
             "NEW": "Nuevo",
             "BESTSELLER": "Más Vendido",
             "SORT": {
@@ -2361,6 +2484,10 @@
         "EMPTY": "No hay registros"
     },
     "COMMON": {
+        "CURRENCY": "MXN",
+        "IVA_INCLUDED": "IVA incluido",
+        "FREE_SHIPPING": "Envío Gratis",
+        "MSI": "Meses sin Intereses",
         "LOADING": "Cargando...",
         "ERROR": "Error",
         "NO_DATA": "Sin datos",
@@ -2529,13 +2656,13 @@
         }
     },
     "BRANDS": {
-        "TITLE": "OUR BRANDS",
-        "PRAXIS_DESC": "Ingeniería india con casi 10 años de experiencia. Calidad internacional a precios accesibles, perfecta para el mercado mexicano.",
+        "TITLE": "NUESTRAS MARCAS",
+        "PRAXIS_DESC": "Tecnología global con experiencia probada. Calidad internacional a precios accesibles, perfecta para el mercado mexicano.",
         "PRAXIS_FEAT_1": "Garantía superior",
         "PRAXIS_FEAT_2": "Diseñada para caminos exigentes",
         "PRAXIS_HERO": {
             "TAGLINE": "RENDIMIENTO SUPERIOR",
-            "SUBTITLE": "Llantas diseñadas con tecnología alemana para ofrecer el máximo agarre y durabilidad en cada kilómetro.",
+            "SUBTITLE": "Llantas diseñadas con Tecnología Global para ofrecer el máximo agarre y durabilidad en cada kilómetro.",
             "STAT_1_VAL": "+10 Años",
             "STAT_1_LABEL": "De Excelencia",
             "STAT_2_VAL": "+15 Países",
@@ -2546,60 +2673,20 @@
             "CTA_CONTACT": "Se Distribuidor"
         }
     },
-    "PRODUCT_DETAIL": {
-        "BREADCRUMB_HOME": "Home",
-        "BREADCRUMB_CATALOG": "Catalog",
-        "IN_STOCK": "In Stock",
-        "OUT_OF_STOCK": "Out of Stock",
-        "SKU": "SKU",
-        "QUANTITY": "Quantity",
-        "UNITS_AVAILABLE": "units available",
-        "ADD_TO_CART": "Add to Cart",
-        "ADD_TO_WISHLIST": "Add to Wishlist",
-        "SHARE": "Share",
-        "SPECIFICATIONS": "Specifications",
-        "DESCRIPTION": "Description",
-        "KEY_FEATURES": "Key Features",
-        "TIRE_SIZE": "Tire Size",
-        "LOAD_INDEX": "Load Index",
-        "SPEED_RATING": "Speed Rating",
-        "SPEC_WIDTH": "Width",
-        "SPEC_ASPECT_RATIO": "Aspect Ratio",
-        "SPEC_DIAMETER": "Diameter",
-        "SPEC_LOAD_INDEX": "Load Index",
-        "SPEC_SPEED_RATING": "Speed Rating",
-        "SPEC_CONSTRUCTION": "Construction",
-        "SPEC_TUBELESS": "Tubeless",
-        "SPEC_TUBELESS_YES": "Sí",
-        "SPEC_TUBELESS_NO": "No",
-        "BADGES": {
-            "NEW": "Nuevo",
-            "BESTSELLER": "Más Vendido",
-            "FEATURED": "Destacado"
-        },
-        "TABS": {
-            "OVERVIEW": "Overview",
-            "FEATURES": "Features",
-            "APPLICATIONS": "Applications",
-            "TECHNICAL": "Technical Specs"
-        },
-        "RELATED_PRODUCTS": "You Might Also Like",
-        "LOADING": "Loading product..."
-    },
     "VALIDATION": {
-        "SUMMARY_TITLE": "Please fix the following errors:",
-        "FIELD_REQUIRED": "{{field}} is required",
-        "FIELD_MIN": "{{field}} must be at least {{min}}",
-        "FIELD_MAX": "{{field}} must be at most {{max}}",
-        "FIELD_EMAIL": "{{field}} must be a valid email address",
-        "FIELD_PATTERN": "{{field}} has an invalid format"
+        "SUMMARY_TITLE": "Por favor corrige los siguientes errores:",
+        "FIELD_REQUIRED": "{{field}} es requerido",
+        "FIELD_MIN": "{{field}} debe ser al menos {{min}}",
+        "FIELD_MAX": "{{field}} debe ser como máximo {{max}}",
+        "FIELD_EMAIL": "{{field}} debe ser un correo válido",
+        "FIELD_PATTERN": "{{field}} tiene un formato inválido"
     },
     "PAGINATION": {
-        "PREVIOUS": "Previous",
-        "NEXT": "Next",
-        "FIRST": "First",
-        "LAST": "Last",
-        "OF": "of"
+        "PREVIOUS": "Anterior",
+        "NEXT": "Siguiente",
+        "FIRST": "Primero",
+        "LAST": "Último",
+        "OF": "de"
     },
     "GLOSSARY": {
         "TERMS": {

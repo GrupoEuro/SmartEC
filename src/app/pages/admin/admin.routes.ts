@@ -204,6 +204,21 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
+            {
+                path: 'marketing/campaigns',
+                loadComponent: () => import('./marketing/campaigns/campaign-list/campaign-list.component').then(m => m.CampaignListComponent),
+                title: 'Marketing Calendar'
+            },
+            {
+                path: 'marketing/campaigns/new',
+                loadComponent: () => import('./marketing/campaigns/campaign-form/campaign-form.component').then(m => m.CampaignFormComponent),
+                title: 'New Campaign'
+            },
+            {
+                path: 'marketing/campaigns/edit/:id',
+                loadComponent: () => import('./marketing/campaigns/campaign-form/campaign-form.component').then(m => m.CampaignFormComponent),
+                title: 'Edit Campaign'
+            },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
         ]
     },

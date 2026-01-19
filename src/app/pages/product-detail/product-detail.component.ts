@@ -5,11 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
+import { Action } from 'rxjs/internal/scheduler/Action';
 import { ProductService } from '../../core/services/product.service';
 import { MetaService } from '../../core/services/meta.service';
+import { CartService } from '../../core/services/cart.service';
 import { Product } from '../../core/models/product.model';
 import { ImageGalleryComponent } from './components/image-gallery/image-gallery.component';
 import { RelatedProductsComponent } from './components/related-products/related-products.component';
+import { ProductBundlesComponent } from './components/product-bundles/product-bundles.component';
 
 @Component({
     selector: 'app-product-detail',
@@ -20,7 +23,8 @@ import { RelatedProductsComponent } from './components/related-products/related-
         FormsModule,
         TranslateModule,
         ImageGalleryComponent,
-        RelatedProductsComponent
+        RelatedProductsComponent,
+        ProductBundlesComponent
     ],
     templateUrl: './product-detail.component.html',
     styleUrl: './product-detail.component.css'
@@ -30,6 +34,7 @@ export class ProductDetailComponent implements OnInit {
     private router = inject(Router);
     private productService = inject(ProductService);
     private metaService = inject(MetaService);
+    private cartService = inject(CartService); // Inject CartService
 
     product$!: Observable<Product | null>;
     relatedProducts$!: Observable<Product[]>;
@@ -99,15 +104,14 @@ export class ProductDetailComponent implements OnInit {
     }
 
     addToCart(product: Product) {
-        // TODO: Implement cart functionality
-        console.log('Add to cart:', product, 'Quantity:', this.quantity);
-        alert(`Added ${this.quantity} ${product.name.en} to cart!`);
+        // Add to cart with specific quantity and open drawer
+        this.cartService.addToCart(product, this.quantity);
+        this.cartService.openCart();
     }
 
     addToWishlist(product: Product) {
         // TODO: Implement wishlist functionality
         console.log('Add to wishlist:', product);
-        alert(`Added ${product.name.en} to wishlist!`);
     }
 
     shareProduct() {
@@ -119,7 +123,7 @@ export class ProductDetailComponent implements OnInit {
         } else {
             // Fallback: copy to clipboard
             navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
+            // Replace alert with toast if available, or just keeping silence as it's a minor act
         }
     }
 

@@ -40,9 +40,19 @@ export class ProductService {
             console.log('ProductService: Fetching products from Firestore...');
             getDocs(this.productsCollection as any).then(snapshot => {
                 console.log('ProductService: Snapshot received:', snapshot.size, 'documents');
+                if (snapshot.size > 0) {
+                    console.log('ProductService: Sample Doc ID:', snapshot.docs[0].id);
+                    console.log('ProductService: Sample Doc Data:', snapshot.docs[0].data());
+                } else {
+                    console.warn('ProductService: No documents found in products collection!');
+                }
+
                 const products: Product[] = [];
                 snapshot.forEach(doc => {
                     const data = doc.data() as any;
+                    // Log potential parsing issues
+                    if (!data.name) console.warn('Product missing name:', doc.id);
+
                     products.push({
                         ...data,
                         id: doc.id,
@@ -50,6 +60,7 @@ export class ProductService {
                         updatedAt: data.updatedAt?.toDate() || new Date()
                     } as Product);
                 });
+                console.log('ProductService: Parsed products count:', products.length);
 
                 // Client-side filters - ALL filtering happens here
                 let filtered = products;
@@ -162,6 +173,9 @@ export class ProductService {
                 }
 
                 console.log('ProductService: Returning', filtered.length, 'products after filtering/sorting');
+                if (filtered.length === 0 && products.length > 0) {
+                    console.warn('ProductService: All products were filtered out! Check active filters:', filters);
+                }
                 observer.next(filtered);
                 observer.complete();
             }).catch(error => {

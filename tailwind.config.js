@@ -6,6 +6,12 @@ module.exports = {
     theme: {
         extend: {
             colors: {
+                theme: {
+                    primary: 'var(--theme-primary)',
+                    secondary: 'var(--theme-secondary)',
+                    accent: 'var(--theme-accent)',
+                    bg: 'var(--theme-bg)',
+                },
                 slate: {
                     50: '#f8fafc',
                     100: '#f1f5f9',
@@ -19,6 +25,9 @@ module.exports = {
                     900: '#0f172a',
                     950: '#020617',
                 }
+            },
+            backgroundImage: {
+                'theme-pattern': 'var(--theme-pattern)',
             }
         },
     },

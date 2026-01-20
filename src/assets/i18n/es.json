@@ -2914,6 +2914,37 @@
             }
         }
     },
+    "ADDRESS_BOOK": {
+        "TITLE": "Mis Direcciones",
+        "ADD_NEW": "Nueva Dirección",
+        "ADD_FIRST": "Agregar Dirección",
+        "DEFAULT_BADGE": "Predeterminada",
+        "EDIT": "Editar",
+        "DELETE": "Eliminar",
+        "EMPTY_TITLE": "Sin direcciones",
+        "EMPTY_DESC": "Agrega direcciones para agilizar tus compras.",
+        "OFFICE": "Oficina",
+        "HOME": "Casa",
+        "ADDRESS": "Dirección",
+        "MODAL": {
+            "ADD_TITLE": "Agregar Dirección",
+            "EDIT_TITLE": "Editar Dirección",
+            "LABEL": "Etiqueta (ej. Casa, Oficina)",
+            "STREET": "Calle",
+            "EXT_NUM": "Num Ext",
+            "INT_NUM": "Num Int",
+            "COLONIA": "Colonia",
+            "ZIP": "Código Postal",
+            "CITY": "Ciudad",
+            "STATE": "Estado",
+            "PHONE": "Teléfono",
+            "REFERENCE": "Referencia",
+            "REFERENCE_PLACEHOLDER": "Fachada blanca, portón negro...",
+            "SET_DEFAULT": "Establecer como predeterminada",
+            "CANCEL": "Cancelar",
+            "SAVE": "Guardar"
+        }
+    },
     "DEV_TOOLS": {
         "THEME": {
             "TITLE": "Gestor de Temas",

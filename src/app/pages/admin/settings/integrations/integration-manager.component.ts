@@ -72,6 +72,13 @@ import { MeliOrderService } from '../../../../core/services/meli-order.service';
                         <span>{{ isOrderImporting ? 'Importing...' : 'Get Orders' }}</span>
                      </button>
 
+                     <!-- Sync 2025 History -->
+                     <button *ngIf="config()?.meli?.connected" (click)="importHistory2025()" [disabled]="isOrderImporting"
+                        class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm font-bold shadow-lg shadow-purple-500/20 transition flex items-center gap-2">
+                        <i class="fas fa-history" [class.fa-spin]="isOrderImporting"></i>
+                        <span>{{ isOrderImporting ? 'Mining 2025...' : 'Sync 2025' }}</span>
+                     </button>
+
                      <!-- Link Products -->
                      <button *ngIf="config()?.meli?.connected" (click)="goToLinking()"
                         class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-bold shadow-lg shadow-slate-900/20 transition flex items-center gap-2">
@@ -213,6 +220,25 @@ export class IntegrationManagerComponent implements OnInit {
         } catch (e) {
             console.error(e);
             this.syncResult = 'Order Import Failed. See console.';
+        } finally {
+            this.isOrderImporting = false;
+        }
+    }
+
+    async importHistory2025() {
+        const conf = this.config();
+        if (!conf?.meli?.connected) return;
+
+        this.isOrderImporting = true;
+        this.syncResult = 'Mining 2025 data... this may take a while.';
+
+        try {
+            const userId = conf.meli.userId || 0;
+            const result = await this.orderService.syncHistoricOrders(2025, userId);
+            this.syncResult = `2025 Historic Data: ${result.imported} orders archived.`;
+        } catch (e) {
+            console.error(e);
+            this.syncResult = 'Historic Sync Failed.';
         } finally {
             this.isOrderImporting = false;
         }

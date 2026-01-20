@@ -37,7 +37,9 @@ The following modules are considered **Stable** and require only maintenance:
 ## 🚧 Active Development (In-Flight)
 Work currently in progress that prevents a "frozen" state:
 1.  **Pricing Strategy Engine**: Refactoring logic for complex pricing matrices (Base Cost + Commission + Taxes).
-2.  **Marketplace Integrations**: Initial groundwork for MercadoLibre synchronization.
+2.  **Marketplace Integrations**: 
+    - [x] **MercadoLibre Historic Data**: 2025 Sales extraction implemented (Month-by-month chunking).
+    - [ ] Real-time two-way sync (Stock/Price).
 3.  **Product Locator v2.0**: Transitioning warehouse visualization to a Grid/3D hybrid for better accuracy.
 
 ---

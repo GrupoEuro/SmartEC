@@ -2905,6 +2905,9 @@
             "DELETE": "Delete",
             "EMPTY_TITLE": "No addresses found",
             "EMPTY_DESC": "Add a shipping address to speed up checkout.",
+            "OFFICE": "Office",
+            "HOME": "Home",
+            "ADDRESS": "Address",
             "ADD_FIRST": "Add New Address",
             "MODAL": {
                 "ADD_TITLE": "Add Address",

@@ -15,8 +15,9 @@
         <div *ngFor="let address of addresses" class="address-card">
             <div class="address-header">
                 <div class="address-label">
-                    <mat-icon>{{ address.label === 'Office' ? 'business' : 'home' }}</mat-icon>
-                    <span>{{ address.label || 'Address' }}</span>
+                    <mat-icon>{{ (address.label | uppercase) === 'OFFICE' ? 'business' : 'home' }}</mat-icon>
+                    <span>{{ ('ACCOUNT.ADDRESS_BOOK.' + ((address.label | uppercase) === 'OFFICE' ? 'OFFICE' :
+                        ((address.label | uppercase) === 'HOME' ? 'HOME' : 'ADDRESS'))) | translate }}</span>
                 </div>
                 <span *ngIf="address.isDefault" class="default-badge">{{ 'ACCOUNT.ADDRESS_BOOK.DEFAULT_BADGE' |
                     translate }}</span>

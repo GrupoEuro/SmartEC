@@ -28,7 +28,9 @@
     - [ ] Ensure `DataSeeder` correctly populates `warehouse_locations` with new coordinate format.
 
 ## 🔮 3. Preparation for v1.2 (Integrations)
-- [ ] **MercadoLibre Research**
+- [x] **MercadoLibre Research**
+- [x] **Historic Data Sync (2025)** <!-- implemented -->
+- [ ] **Predictive Reports Dashboard**
     - [ ] Locate API Keys/Tokens in `environment.ts` or secure storage.
     - [ ] Create `MeliService` skeleton.
     - [ ] Test simple "Get User" or "List Items" call via Proxy/Direct.

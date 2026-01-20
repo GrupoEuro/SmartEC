@@ -11,6 +11,38 @@
         "NO_RESULTS": "No encontramos resultados para",
         "TRY_SEARCH": "Intenta con \"Michelin\", \"205/55\" o \"Deportiva\""
     },
+    "AUTH": {
+        "WELCOME_BACK": "Bienvenido de nuevo",
+        "CREATE_ACCOUNT": "Crear Cuenta",
+        "SUBTITLE_LOGIN": "Inicia sesión para acceder a tus pedidos y perfil",
+        "SUBTITLE_REGISTER": "Únete a nuestra comunidad para ofertas exclusivas",
+        "GOOGLE_SIGN_IN": "Iniciar con Google",
+        "GOOGLE_SIGN_UP": "Regístrate con Google",
+        "OR_EMAIL": "o continúa con email",
+        "EMAIL": "Correo Electrónico",
+        "EMAIL_PLACEHOLDER": "nombre@ejemplo.com",
+        "PASSWORD": "Contraseña",
+        "PASSWORD_PLACEHOLDER": "••••••••",
+        "PASSWORD_MIN_PLACEHOLDER": "Mín. 6 caracteres",
+        "FULL_NAME": "Nombre Completo",
+        "FULL_NAME_PLACEHOLDER": "Juan Pérez",
+        "CONFIRM_PASSWORD": "Confirmar Contraseña",
+        "FORGOT_PASSWORD": "¿Olvidaste tu contraseña?",
+        "SIGN_IN": "Iniciar Sesión",
+        "SIGNING_IN": "Iniciando...",
+        "CREATE_BTN": "Crear Cuenta",
+        "CREATING_BTN": "Creando Cuenta...",
+        "NO_ACCOUNT": "¿No tienes cuenta?",
+        "HAVE_ACCOUNT": "¿Ya tienes cuenta?",
+        "SIGN_UP_LINK": "Regístrate",
+        "SIGN_IN_LINK": "Inicia sesión",
+        "VALIDATION": {
+            "EMAIL_REQUIRED": "Se requiere un correo válido",
+            "PASSWORD_REQUIRED": "Contraseña requerida",
+            "NAME_REQUIRED": "Nombre requerido",
+            "PASSWORD_MATCH": "Las contraseñas no coinciden"
+        }
+    },
     "CART": {
         "TITLE": "Tu Carrito",
         "ADD_MORE_SHIPPING": "¡Agrega {{amount}} más para Envío Gratis! 🚚",
@@ -76,7 +108,37 @@
         "PHONE": "Teléfono",
         "CONTINUE_SHIPPING": "Continuar a Envíos",
         "CONTINUE_PAYMENT": "Continuar a Pago",
-        "PAY_NOW": "Pagar Ahora"
+        "PAY_NOW": "Pagar Ahora",
+        "GUEST_LOGIN_HINT": "Continúa como invitado o inicia sesión para agilizar tu compra.",
+        "EMAIL": "Correo Electrónico",
+        "VALID_EMAIL_REQUIRED": "Se requiere un correo válido.",
+        "CONTINUE_SHIPPING": "Continuar a Envíos",
+        "OR": "o",
+        "SIGN_IN_GOOGLE": "Iniciar sesión con Google",
+        "STREET_PLACEHOLDER": "Av. Reforma",
+        "INT_NUM_PLACEHOLDER": "Int. 4B",
+        "CARD_NUMBER": "Número de Tarjeta",
+        "EXPIRATION": "Vencimiento",
+        "CVV": "Código de Seguridad (CVV)",
+        "CARD_HOLDER": "Titular de la Tarjeta",
+        "CARD_HOLDER_PLACEHOLDER": "Como aparece en la tarjeta",
+        "DNI_INE": "DNI / INE / RFC",
+        "DNI_INE_PLACEHOLDER": "Número de Identificación",
+        "SECURE_PAYMENT_NOTE": "Las transacciones son procesadas de forma segura por MercadoPago.",
+        "TERMS_AGREEMENT": "Al hacer clic en Pagar, aceptas nuestros Términos y Condiciones.",
+        "PAY_BUTTON": "Pagar {{amount}}",
+        "ORDER_SUMMARY": "Resumen del Pedido",
+        "SUBTOTAL": "Subtotal",
+        "SHIPPING_COST": "Envío",
+        "FREE": "Gratis",
+        "CALCULATED_NEXT": "Calculado en el siguiente paso",
+        "TOTAL": "Total",
+        "TRACK": "Rastrear",
+        "RETURN": "Devolver",
+        "BUY_AGAIN": "Comprar de nuevo",
+        "MANAGE_LOCATIONS": "Administrar direcciones",
+        "EDIT_PROFILE": "Editar perfil",
+        "SECURE_SSL": "Pago Seguro SSL"
     },
     "PORTAL": {
         "WELCOME": "Bienvenido de nuevo,",
@@ -294,6 +356,26 @@
         "STAT_3_LABEL": "Praxis en México",
         "STAT_4_NUMBER": "100%",
         "STAT_4_LABEL": "Calidad Garantizada"
+    },
+    "ACCOUNT": {
+        "OVERVIEW": {
+            "WELCOME": "Bienvenido, {{name}}",
+            "SUBTITLE": "Administra tu cuenta, pedidos y direcciones.",
+            "QUICK_LINKS": {
+                "ORDERS_TITLE": "Pedidos",
+                "ORDERS_DESC": "Rastrear, devolver o comprar de nuevo",
+                "ADDRESSES_TITLE": "Direcciones",
+                "ADDRESSES_DESC": "Administrar direcciones de envío",
+                "PROFILE_TITLE": "Perfil",
+                "PROFILE_DESC": "Editar inicio de sesión y nombre"
+            },
+            "RECENT_ORDERS": {
+                "TITLE": "Pedidos Recientes",
+                "VIEW_ALL": "Ver Todos",
+                "NO_ORDERS": "No se encontraron pedidos recientes.",
+                "START_SHOPPING": "Empezar a Comprar"
+            }
+        }
     },
     "ABOUT": {
         "OVERLINE": "Quiénes Somos",
@@ -2824,6 +2906,11 @@
                 "TERM": "Canibalización",
                 "DEF": "Cuando un producto nuevo roba ventas de tu producto existente.",
                 "FORMULA": "\\Delta \\text{Ventas}_{A} \\propto -\\text{Ventas}_{B}"
+            },
+            "ROI": {
+                "TERM": "ROI",
+                "DEF": "Retorno de Inversión",
+                "FORMULA": "\\text{ROI} = \\frac{\\text{Ingreso} - \\text{Costo}}{\\text{Costo}}"
             }
         }
     },

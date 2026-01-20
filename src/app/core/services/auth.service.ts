@@ -1,6 +1,7 @@
-import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID, signal, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
-import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User } from '@angular/fire/auth';
+import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { Observable, of, switchMap, firstValueFrom } from 'rxjs';
@@ -22,6 +23,7 @@ export class AuthService {
   private toast: ToastService = inject(ToastService);
   private devConfig = inject(DevConfigService);
   private stateRegistry = inject(StateRegistryService);
+  private destroyRef = inject(DestroyRef);
 
   // Raw Firebase User
   user$: Observable<User | null>;
@@ -86,6 +88,11 @@ export class AuthService {
         role: this.currentProfile()?.role || 'guest'
       })
     });
+
+    // START SUBSCRIPTION to keep signals updated!
+    if (isPlatformBrowser(this.platformId)) {
+      this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    }
   }
 
   async loginWithGoogle() {
@@ -94,42 +101,131 @@ export class AuthService {
     try {
       const provider = new GoogleAuthProvider();
       const credential = await signInWithPopup(this.auth, provider);
-      const firebaseUser = credential.user;
+      await this.handleLoginSuccess(credential.user);
+    } catch (error: any) {
+      this.handleAuthError(error, 'Google Login');
+    }
+  }
 
-      // Sync/Check Profile
-      const profile = await this.syncUserProfile(firebaseUser);
+  async loginWithEmail(email: string, pass: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const credential = await signInWithEmailAndPassword(this.auth, email, pass);
+      const user = credential.user;
 
-      if (!profile) {
-        // No profile found => Not authorized
-        this.toast.error('Access Denied. You are not authorized to access this panel.');
+      // STRICT CHECK: Email login only for CUSTOMER role
+      const profile = await this.syncUserProfile(user);
+      if (profile && profile.role !== 'CUSTOMER') {
+        this.toast.error('Admin/Staff must use Google Login.');
         await signOut(this.auth);
         return;
       }
 
-      if (!profile.isActive) {
-        this.toast.error('Your account has been deactivated.');
-        await signOut(this.auth);
-        return;
-      }
+      await this.handleLoginSuccess(user);
+    } catch (error: any) {
+      this.handleAuthError(error, 'Login');
+    }
+  }
 
-      console.log('Logging login action...');
-      await this.logService.log('LOGIN', 'AUTH', `User logged in: ${profile.email} (${profile.role})`);
-      console.log('Login logged successfully');
+  async registerWithEmail(email: string, pass: string, displayName: string) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const credential = await createUserWithEmailAndPassword(this.auth, email, pass);
+      const user = credential.user;
 
-      const displayName = profile.displayName || profile.email.split('@')[0];
-      this.toast.success(`Welcome back, ${displayName}!`);
-      this.router.navigate(['/portal']);
+      // Update Auth Profile
+      await updateProfile(user, { displayName });
+
+      // Create Firestore Profile (Customer by default)
+      const newProfile: UserProfile = {
+        uid: user.uid,
+        email: user.email || email,
+        displayName: displayName,
+        photoURL: '',
+        role: 'CUSTOMER',
+        isActive: true,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 }
+      };
+
+      const userRef = doc(this.firestore, 'users', user.uid);
+      await setDoc(userRef, newProfile);
+
+      // Also create in 'customers' collection if we are separating them
+      const custRef = doc(this.firestore, 'customers', user.uid);
+      await setDoc(custRef, newProfile);
+
+      this.toast.success(`Welcome, ${displayName}! Account created.`);
+      await this.logService.log('REGISTER', 'AUTH', `New user registered: ${email}`);
+      this.router.navigate(['/account']);
 
     } catch (error: any) {
-      console.error('Login error:', error);
-      if (error.code === 'auth/operation-not-allowed') {
-        this.toast.error('Google Login is not enabled. Please contact support.');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        this.toast.info('Login canceled.');
-      } else {
-        this.toast.error('Login failed: ' + error.message);
+      this.handleAuthError(error, 'Registration');
+    }
+  }
+
+  private async handleLoginSuccess(firebaseUser: User) {
+    let profile = await this.syncUserProfile(firebaseUser);
+
+    // ORPHAN RECOVERY: If Auth exists but Firestore profile is missing, create it.
+    if (!profile) {
+      console.warn('AuthService: Orphaned account detected. Creating fallback profile.', firebaseUser.email);
+      const newProfile: UserProfile = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        photoURL: firebaseUser.photoURL || '',
+        role: 'CUSTOMER', // Default to Customer for safety
+        isActive: true,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 }
+      };
+
+      try {
+        await setDoc(doc(this.firestore, 'users', firebaseUser.uid), newProfile);
+        // Also ensure it's in customers if we are mirroring
+        await setDoc(doc(this.firestore, 'customers', firebaseUser.uid), newProfile);
+
+        profile = newProfile;
+        this.logService.log('REGISTER', 'AUTH', `Recovered orphan account: ${newProfile.email}`);
+      } catch (err) {
+        console.error('AuthService: Failed to recover orphan account', err);
+        this.toast.error('Account error. Please contact support.');
+        await signOut(this.auth);
+        return;
       }
     }
+
+    if (!profile.isActive) {
+      this.toast.error('Your account has been deactivated.');
+      await signOut(this.auth);
+      return;
+    }
+
+    await this.logService.log('LOGIN', 'AUTH', `User logged in: ${profile.email} (${profile.role})`);
+
+    const name = profile.displayName || profile.email.split('@')[0];
+    this.toast.success(`Welcome back, ${name}!`);
+
+    // Redirect based on role
+    if (profile.role === 'CUSTOMER') {
+      this.router.navigate(['/account']);
+    } else {
+      this.router.navigate(['/portal']);
+    }
+  }
+
+  private handleAuthError(error: any, context: string) {
+    console.error(`${context} error:`, error);
+    let msg = error.message;
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      msg = 'Invalid email or password.';
+    } else if (error.code === 'auth/email-already-in-use') {
+      msg = 'Email is already in use.';
+    }
+    this.toast.error(`${context} failed: ${msg}`);
   }
 
   // Links an invited email to this UID or updates existing user
@@ -209,6 +305,11 @@ export class AuthService {
         error: () => resolve(null)
       });
     });
+  }
+
+  // Helper method to check login status
+  isLoggedIn(): boolean {
+    return !!this.currentUser();
   }
 
   isAdmin(user: User): boolean {

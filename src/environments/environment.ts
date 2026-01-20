@@ -8,5 +8,8 @@ export const environment = {
         messagingSenderId: "320158502362",
         appId: "1:320158502362:web:e485f992f130d318bb04e3",
         measurementId: "G-LTEXCRY0J5"
+    },
+    mercadopago: {
+        publicKey: "TEST-00000000-0000-0000-0000-000000000000" // Placeholder
     }
 };

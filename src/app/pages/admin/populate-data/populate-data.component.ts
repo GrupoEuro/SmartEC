@@ -63,7 +63,7 @@ import { Firestore, collection, addDoc, Timestamp, doc, setDoc, writeBatch, getD
           <div class="card-body">
             <p><strong>Collection 'customers':</strong> Mock customer profiles with realistic addresses.</p>
             <div class="stats">
-              <span>Profiles: 10</span>
+              <span>Profiles: 5 (Detailed)</span>
             </div>
             <div class="actions">
               <button class="btn btn-secondary" (click)="populateCustomers()" [disabled]="isLoading">
@@ -748,34 +748,167 @@ export class PopulateDataComponent implements OnInit {
   async populateCustomers() {
     await this.runTask('Customer Seeding', async () => {
       const batch = writeBatch(this.firestore);
-      const names = ['Juan Pérez', 'María González', 'Carlos López', 'Ana Martínez', 'Pedro Sánchez', 'Laura Flores', 'Miguel Torres', 'Sofia Ramírez', 'Jorge Hernandez', 'Claudia Diaz'];
 
-      names.forEach((name, i) => {
-        const id = `cust_user_${i + 1}`;
-        const ref = doc(this.firestore, `customers/${id}`);
-        batch.set(ref, {
-          uid: id,
-          displayName: name,
-          email: `user${i + 1}@example.com`,
+      const realisticUsers = [
+        {
+          uid: 'cust_mariagarcia',
+          displayName: 'Maria Garcia',
+          email: 'maria.garcia.design@gmail.com',
+          phone: '+52 55 5555 1234',
+          role: 'CUSTOMER',
+          photoURL: 'https://i.pravatar.cc/150?u=maria',
+          isActive: true,
+          createdAt: Timestamp.fromDate(new Date('2025-01-10T09:00:00')),
+          lastLogin: Timestamp.fromDate(new Date('2025-01-18T14:30:00')),
+          shippingAddress: {
+            street: 'Av. Paseo de la Reforma',
+            extNum: '222',
+            intNum: 'Apt 402',
+            colonia: 'Juárez',
+            city: 'Ciudad de México',
+            state: 'CDMX',
+            zip: '06600',
+            country: 'Mexico',
+            label: 'Home',
+            reference: 'Near the Angel of Independence',
+            isDefault: true
+          },
+          stats: {
+            totalOrders: 12,
+            totalSpend: 24500,
+            averageOrderValue: 2041.66,
+            lastOrderDate: Timestamp.fromDate(new Date('2025-01-15T10:00:00'))
+          }
+        },
+        {
+          uid: 'cust_josehernandez',
+          displayName: 'Jose Hernandez',
+          email: 'jose.hdz.mech@hotmail.com',
+          phone: '+52 33 3612 9876',
+          role: 'CUSTOMER',
+          photoURL: 'https://i.pravatar.cc/150?u=jose',
+          isActive: true,
+          createdAt: Timestamp.fromDate(new Date('2025-01-05T11:20:00')),
+          lastLogin: Timestamp.fromDate(new Date('2025-01-17T09:15:00')),
+          shippingAddress: {
+            street: 'Calle Vallarta',
+            extNum: '1500',
+            colonia: 'Americana',
+            city: 'Guadalajara',
+            state: 'Jalisco',
+            zip: '44160',
+            country: 'Mexico',
+            label: 'Workshop',
+            isDefault: true
+          },
+          stats: {
+            totalOrders: 5,
+            totalSpend: 8200,
+            averageOrderValue: 1640,
+            lastOrderDate: Timestamp.fromDate(new Date('2025-01-12T16:45:00'))
+          }
+        },
+        {
+          uid: 'cust_antoniomartinez',
+          displayName: 'Antonio Martinez',
+          email: 'tony.martinez99@yahoo.com',
+          phone: '+52 81 8345 6789',
           role: 'CUSTOMER',
           photoURL: null,
           isActive: true,
-          createdAt: Timestamp.now(),
-          lastLogin: Timestamp.now(),
-          phone: '+52 55 1234 5678',
+          createdAt: Timestamp.fromDate(new Date('2025-01-12T15:00:00')),
+          lastLogin: Timestamp.fromDate(new Date('2025-01-12T15:05:00')), // Just created
           shippingAddress: {
-            street: 'Av. Reforma', exteriorNumber: `${100 + i}`, city: 'Mexico City', state: 'CDMX', zipCode: '06600', country: 'Mexico'
+            street: 'Av. Constitución',
+            extNum: '405',
+            intNum: 'PB',
+            colonia: 'Centro',
+            city: 'Monterrey',
+            state: 'Nuevo León',
+            zip: '64000',
+            country: 'Mexico',
+            label: 'Office',
+            isDefault: true
           },
           stats: {
-            totalOrders: 0,
-            totalSpend: 0,
-            averageOrderValue: 0,
-            lastOrderDate: null
+            totalOrders: 1,
+            totalSpend: 1200,
+            averageOrderValue: 1200,
+            lastOrderDate: Timestamp.fromDate(new Date('2025-01-12T15:30:00'))
           }
-        });
+        },
+        {
+          uid: 'cust_luciarodriguez',
+          displayName: 'Lucia Rodriguez',
+          email: 'lucia.rodriguez.arch@gmail.com',
+          phone: '+52 22 2233 4455',
+          role: 'CUSTOMER',
+          photoURL: 'https://i.pravatar.cc/150?u=lucia',
+          isActive: true,
+          createdAt: Timestamp.fromDate(new Date('2024-12-20T08:00:00')),
+          lastLogin: Timestamp.fromDate(new Date('2025-01-19T10:00:00')),
+          shippingAddress: {
+            street: 'Calle 5 de Mayo',
+            extNum: '201',
+            colonia: 'Centro Histórico',
+            city: 'Puebla',
+            state: 'Puebla',
+            zip: '72000',
+            country: 'Mexico',
+            label: 'Home',
+            isDefault: true
+          },
+          stats: {
+            totalOrders: 3,
+            totalSpend: 4500,
+            averageOrderValue: 1500,
+            lastOrderDate: Timestamp.fromDate(new Date('2025-01-08T11:00:00'))
+          }
+        },
+        {
+          uid: 'cust_migueltorres',
+          displayName: 'Miguel Angel Torres',
+          email: 'm.torres.logistics@empresa.mx',
+          phone: '+52 99 9922 3344',
+          role: 'CUSTOMER',
+          photoURL: null,
+          isActive: false, // Inactive user test case
+          createdAt: Timestamp.fromDate(new Date('2024-11-15T14:20:00')),
+          lastLogin: Timestamp.fromDate(new Date('2024-12-01T09:00:00')),
+          shippingAddress: {
+            street: 'Paseo de Montejo',
+            extNum: '498',
+            colonia: 'Centro',
+            city: 'Mérida',
+            state: 'Yucatán',
+            zip: '97000',
+            country: 'Mexico',
+            label: 'Main Office',
+            isDefault: true
+          },
+          stats: {
+            totalOrders: 8,
+            totalSpend: 32000,
+            averageOrderValue: 4000,
+            lastOrderDate: Timestamp.fromDate(new Date('2024-11-30T16:20:00'))
+          }
+        }
+      ];
+
+      console.log('Creating detailed customers:', realisticUsers.length);
+
+      realisticUsers.forEach(u => {
+        const ref = doc(this.firestore, `customers/${u.uid}`);
+        batch.set(ref, u);
+
+        // OPTIONAL: If we want these to appear in 'users' collection too (mimicking Auth sync)
+        // const userRef = doc(this.firestore, `users/${u.uid}`);
+        // batch.set(userRef, u); 
+        // Note: I'm sticking to 'customers' only as per current pattern for Admin CRM.
       });
 
       await batch.commit();
+      this.log(`  Seeded ${realisticUsers.length} realistic customers.`);
       this.customersSeeded = true;
     });
   }
@@ -790,19 +923,35 @@ export class PopulateDataComponent implements OnInit {
   // --- 3. ORDERS ---
   async populateOrders() {
     await this.runTask('Order Seeding', async () => {
-      // Get actual products for realistic orders
+      // 1. Get actual products
       const productsSnapshot = await getDocs(collection(this.firestore, 'products'));
       if (productsSnapshot.empty) {
-        this.log('  No products found. Seed catalog first.', 'error');
+        this.log('  ❌ No products found. Seed catalog first.', 'error');
         return;
       }
-
       const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // 2. Get actual customers
+      const customersSnapshot = await getDocs(collection(this.firestore, 'customers'));
+      if (customersSnapshot.empty) {
+        this.log('  ❌ No customers found. Seed customers first.', 'error');
+        return;
+      }
+      const customers = customersSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data['displayName'] || 'Unknown',
+          email: data['email'] || 'unknown@example.com',
+          phone: data['phone'] || '',
+          shippingAddress: data['shippingAddress']
+        };
+      });
+
       const batch = writeBatch(this.firestore);
 
       const statuses = ['delivered', 'shipped', 'processing', 'pending', 'cancelled'];
       const statusWeights = [0.7, 0.15, 0.10, 0.03, 0.02]; // 70% delivered, etc.
-      const names = ['Juan Pérez', 'María González', 'Carlos López', 'Ana Martínez', 'Pedro Sánchez', 'Laura Flores', 'Miguel Torres', 'Sofia Ramírez', 'Jorge Hernandez', 'Claudia Diaz'];
 
       // Track stats to update customers later
       const customerStats: { [key: string]: { count: number, spend: number, lastDate: any } } = {};
@@ -812,20 +961,20 @@ export class PopulateDataComponent implements OnInit {
         const orderId = `ord_${String(i).padStart(3, '0')}`;
         const ref = doc(this.firestore, `orders/${orderId}`);
 
-        // Determine order date: 90 in December, 10 in November
+        // Determine order date
         let orderDate: Date;
         if (i <= 90) {
-          // December 2025 orders - spread throughout the month
-          const day = Math.floor((i / 90) * 30) + 1; // Distribute across 30 days
-          const hour = 9 + Math.floor(Math.random() * 10); // 9 AM to 7 PM
+          // December 2025
+          const day = Math.floor((i / 90) * 30) + 1;
+          const hour = 9 + Math.floor(Math.random() * 10);
           orderDate = new Date(2025, 11, day, hour, Math.floor(Math.random() * 60));
         } else {
-          // November 2025 orders
+          // November 2025
           const day = Math.floor(Math.random() * 30) + 1;
           orderDate = new Date(2025, 10, day, 10, 0);
         }
 
-        // Select status based on weights
+        // Select status
         let status = 'delivered';
         const rand = Math.random();
         let cumulative = 0;
@@ -837,7 +986,10 @@ export class PopulateDataComponent implements OnInit {
           }
         }
 
-        // Generate 1-3 items per order
+        // Pick random customer
+        const customer = customers[Math.floor(Math.random() * customers.length)];
+
+        // Generate items
         const itemsCount = Math.floor(Math.random() * 3) + 1;
         const items = [];
         let subtotal = 0;
@@ -845,7 +997,7 @@ export class PopulateDataComponent implements OnInit {
 
         for (let j = 0; j < itemsCount; j++) {
           const product: any = products[Math.floor(Math.random() * products.length)];
-          const quantity = Math.random() < 0.7 ? 1 : 2; // 70% buy 1, 30% buy 2
+          const quantity = Math.random() < 0.7 ? 1 : 2;
           const price = product.price || 1500;
           const itemSubtotal = price * quantity;
 
@@ -860,37 +1012,31 @@ export class PopulateDataComponent implements OnInit {
           });
 
           subtotal += itemSubtotal;
-          // Calculate COGS if available
           if (product.costPrice) {
             costOfGoods += product.costPrice * quantity;
           } else {
-            // Estimate 60% of price as cost if not set
             costOfGoods += price * 0.6 * quantity;
           }
         }
 
         const tax = subtotal * 0.16;
-        const shippingCost = subtotal > 3000 ? 0 : 200; // Free shipping over $3000
+        const shippingCost = subtotal > 3000 ? 0 : 200;
         const total = subtotal + tax + shippingCost;
 
-        // Pick random customer
-        const userIdx = Math.floor(Math.random() * names.length);
-        const userName = names[userIdx];
-        const userEmail = `user${userIdx + 1}@example.com`;
-        const userId = `cust_user_${userIdx + 1}`;
-
-        // Update stats tracker
-        if (!customerStats[userId]) {
-          customerStats[userId] = { count: 0, spend: 0, lastDate: null };
+        // Update stats
+        if (!customerStats[customer.id]) {
+          customerStats[customer.id] = { count: 0, spend: 0, lastDate: null };
         }
-        customerStats[userId].count++;
-        customerStats[userId].spend += total;
+        customerStats[customer.id].count++;
+        customerStats[customer.id].spend += total;
+
         const orderTimestamp = Timestamp.fromDate(orderDate);
-        if (!customerStats[userId].lastDate || orderDate > customerStats[userId].lastDate.toDate()) {
-          customerStats[userId].lastDate = orderTimestamp;
+        const lastDate = customerStats[customer.id].lastDate;
+        if (!lastDate || orderDate > lastDate.toDate()) {
+          customerStats[customer.id].lastDate = orderTimestamp;
         }
 
-        // Create order history based on status
+        // Create order history
         const history = [
           { status: 'pending', timestamp: orderTimestamp, updatedBy: 'system' }
         ];
@@ -900,19 +1046,16 @@ export class PopulateDataComponent implements OnInit {
           processingDate.setHours(processingDate.getHours() + 2);
           history.push({ status: 'processing', timestamp: Timestamp.fromDate(processingDate), updatedBy: 'ops_user_1' });
         }
-
         if (status === 'shipped' || status === 'delivered') {
           const shippedDate = new Date(orderDate);
           shippedDate.setDate(shippedDate.getDate() + 1);
           history.push({ status: 'shipped', timestamp: Timestamp.fromDate(shippedDate), updatedBy: 'ops_user_2' });
         }
-
         if (status === 'delivered') {
           const deliveredDate = new Date(orderDate);
           deliveredDate.setDate(deliveredDate.getDate() + 3);
           history.push({ status: 'delivered', timestamp: Timestamp.fromDate(deliveredDate), updatedBy: 'system' });
         }
-
         if (status === 'cancelled') {
           const cancelledDate = new Date(orderDate);
           cancelledDate.setHours(cancelledDate.getHours() + 4);
@@ -923,10 +1066,10 @@ export class PopulateDataComponent implements OnInit {
           id: orderId,
           orderNumber: `ORD-${2024000 + i}`,
           customer: {
-            id: userId,
-            name: userName,
-            email: userEmail,
-            phone: '+52 55 1234 5678'
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone || '+52 55 1234 5678'
           },
           items: items,
           subtotal,
@@ -934,12 +1077,13 @@ export class PopulateDataComponent implements OnInit {
           shippingCost,
           discount: 0,
           total,
-          costOfGoods, // For COGS calculation
+          costOfGoods,
           status: status,
           paymentStatus: status === 'cancelled' ? 'failed' : 'paid',
-          shippingAddress: {
+          // Use the customer's realistic address if available, else fallback
+          shippingAddress: customer.shippingAddress || {
             street: 'Av. Insurgentes Sur',
-            exteriorNumber: `${1000 + (i * 10)}`,
+            exteriorNumber: '1000',
             city: 'Ciudad de México',
             state: 'CDMX',
             zipCode: '03100',
@@ -971,10 +1115,9 @@ export class PopulateDataComponent implements OnInit {
 
       if (updatesCount > 0) {
         await statsBatch.commit();
-        this.log(`  Updated stats for ${updatesCount} customers.`);
+        this.log(`  Updated stats for ${updatesCount} customers via linking.`);
       }
 
-      // Calculate and log December revenue
       this.log('  📊 December 2025 estimated revenue: ~$315,000 MXN', 'success');
       this.log('  💰 Expected gross profit: ~$126,000 MXN', 'success');
       this.ordersSeeded = true;

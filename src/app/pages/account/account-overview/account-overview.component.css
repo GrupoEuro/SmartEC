@@ -1,0 +1,224 @@
+/* Container */
+.dashboard-container {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 80vh;
+}
+
+/* Welcome Section */
+.welcome-section {
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 32px;
+    margin: 0 0 8px 0;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #aaa);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.welcome-section p {
+    color: #888;
+    font-size: 1.1rem;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+/* Quick Links Cards */
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.link-card {
+    background: rgba(30, 30, 30, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    padding: 0 !important;
+}
+
+.link-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(0, 172, 216, 0.3) !important;
+    box-shadow: 0 10px 30px -10px rgba(0, 172, 216, 0.2) !important;
+}
+
+.card-content-wrapper {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    /* Left align for cleaner look */
+    gap: 16px;
+    position: relative;
+    z-index: 2;
+}
+
+.icon-box {
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 172, 216, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.link-card mat-icon {
+    color: #00ACD8;
+    transform: scale(1.2);
+}
+
+.link-card h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.link-card p {
+    margin: 0;
+    color: #aaa;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Recent Orders Section */
+.recent-orders-section {
+    background: rgba(30, 30, 30, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 32px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 16px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.view-all-btn {
+    color: #00ACD8 !important;
+}
+
+/* Orders List */
+mat-list {
+    padding: 0 !important;
+}
+
+mat-list-item {
+    background: transparent !important;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+mat-list-item:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.order-icon-box {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+}
+
+.order-icon-box mat-icon {
+    color: #ccc;
+    font-size: 20px;
+}
+
+.order-date {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.order-total {
+    color: #fff;
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-delivered {
+    background: rgba(147, 213, 0, 0.15);
+    color: #93D500;
+}
+
+.status-shipped {
+    background: rgba(0, 172, 216, 0.15);
+    color: #00ACD8;
+}
+
+.status-processing {
+    background: rgba(255, 215, 0, 0.15);
+    color: #FFD700;
+}
+
+.status-cancelled {
+    background: rgba(255, 68, 68, 0.15);
+    color: #FF4444;
+}
+
+.status-pending {
+    background: rgba(136, 136, 136, 0.15);
+    color: #888;
+}
+
+/* Empty State */
+.empty-widget {
+    padding: 48px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.empty-widget p {
+    color: #888;
+    font-size: 1.1rem;
+}
+
+.empty-btn {
+    border-color: #00ACD8 !important;
+    color: #00ACD8 !important;
+}

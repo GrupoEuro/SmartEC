@@ -7,6 +7,11 @@ import { roleGuard } from './core/guards/role.guard';
 export const routes: Routes = [
     { path: '', component: HomeComponent },
     {
+        path: 'login',
+        loadComponent: () => import('./pages/auth/login/login.component').then(m => m.LoginComponent),
+        title: 'Sign In | Eurollantas'
+    },
+    {
         path: 'checkout',
         loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent),
         title: 'NAVBAR.CHECKOUT'
@@ -75,6 +80,7 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/portal-launcher/portal-launcher.component').then(m => m.PortalLauncherComponent),
         canActivate: [roleGuard] // Ensure at least logged in
     },
+    { path: 'account', loadChildren: () => import('./pages/account/account.routes').then(m => m.accountRoutes) },
     {
         path: 'view/:slug',
         loadComponent: () => import('./pages/public/document-viewer/document-viewer.component').then(m => m.DocumentViewerComponent)

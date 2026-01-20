@@ -45,6 +45,15 @@ export interface OrderHistory {
     carrier?: string;
 }
 
+export interface OrderSummary {
+    id: string;
+    date: Timestamp | Date;
+    total: number;
+    status: OrderStatus;
+    items: OrderItem[];
+    orderNumber: string; // e.g. ORD-001
+}
+
 export interface Order {
     id?: string;
     orderNumber: string; // Human readable ID (e.g. ORD-001)

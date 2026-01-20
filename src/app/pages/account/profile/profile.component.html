@@ -1,0 +1,111 @@
+<div class="profile-container">
+    <div class="header">
+        <h1>{{ 'ACCOUNT.PROFILE.TITLE' | translate }}</h1>
+        <p>{{ 'ACCOUNT.PROFILE.SUBTITLE' | translate }}</p>
+    </div>
+
+    <div *ngIf="loading" class="text-center py-5">
+        <mat-spinner diameter="40" class="mx-auto"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading" class="glass-form-card">
+        <form [formGroup]="form" (ngSubmit)="save()">
+
+            <!-- SECTION 1: Personal Information -->
+            <div class="section-title">
+                <mat-icon>person</mat-icon>
+                <span>{{ 'ACCOUNT.PROFILE.SECTION_PERSONAL' | translate }}</span>
+            </div>
+
+            <div class="form-grid">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.EMAIL' | translate }}</mat-label>
+                    <input matInput formControlName="email">
+                    <mat-icon matSuffix class="read-only-icon">lock</mat-icon>
+                    <mat-hint>{{ 'ACCOUNT.PROFILE.EMAIL_HINT' | translate }}</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.DISPLAY_NAME' | translate }}</mat-label>
+                    <input matInput formControlName="displayName">
+                    <mat-error *ngIf="form.get('displayName')?.hasError('required')">{{ 'COMMON.REQUIRED' | translate
+                        }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.PHONE' | translate }}</mat-label>
+                    <input matInput formControlName="phone"
+                        [placeholder]="'ACCOUNT.PROFILE.PHONE_PLACEHOLDER' | translate">
+                </mat-form-field>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <!-- SECTION 2: Fiscal Data (SAT) -->
+            <div class="section-title">
+                <mat-icon>receipt_long</mat-icon>
+                <span>{{ 'ACCOUNT.PROFILE.SECTION_FISCAL' | translate }}</span>
+            </div>
+
+            <p style="color: #aaa; margin-bottom: 24px; font-size: 0.9rem;">
+                {{ 'ACCOUNT.PROFILE.FISCAL_HELP' | translate }}
+            </p>
+
+            <div class="form-grid">
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.RFC' | translate }}</mat-label>
+                    <input matInput formControlName="rfc" [placeholder]="'ACCOUNT.PROFILE.RFC_PLACEHOLDER' | translate"
+                        style="text-transform: uppercase;">
+                    <mat-hint>{{ 'ACCOUNT.PROFILE.RFC_HINT' | translate }}</mat-hint>
+                    <mat-error *ngIf="form.get('rfc')?.hasError('pattern')">{{ 'VALIDATION.FIELD_PATTERN' | translate :
+                        { field: 'RFC' } }}</mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.LEGAL_NAME' | translate }}</mat-label>
+                    <input matInput formControlName="legalName"
+                        [placeholder]="'ACCOUNT.PROFILE.LEGAL_NAME_PLACEHOLDER' | translate">
+                    <mat-hint>{{ 'ACCOUNT.PROFILE.LEGAL_NAME_HINT' | translate }}</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.FISCAL_REGIME' | translate }}</mat-label>
+                    <mat-select formControlName="fiscalRegime">
+                        <mat-option *ngFor="let regime of fiscalRegimes" [value]="regime.code">
+                            {{ regime.code }} - {{ regime.description }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.CFDI_USE' | translate }}</mat-label>
+                    <mat-select formControlName="cfdiUse">
+                        <mat-option *ngFor="let use of cfdiUses" [value]="use.code">
+                            {{ use.code }} - {{ use.description }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.FISCAL_ZIP' | translate }}</mat-label>
+                    <input matInput formControlName="fiscalZip" placeholder="06600">
+                </mat-form-field>
+            </div>
+
+            <div class="actions">
+                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving"
+                    style="padding: 24px 32px; font-size: 1.1rem;">
+                    <mat-spinner *ngIf="saving" diameter="20" class="mr-2 inline"></mat-spinner>
+                    {{ (saving ? 'ACCOUNT.PROFILE.SAVING' : 'ACCOUNT.PROFILE.SAVE') | translate }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Security Section -->
+    <div class="security-section">
+        <h3>{{ 'ACCOUNT.PROFILE.SECURITY_TITLE' | translate }}</h3>
+        <p>{{ 'ACCOUNT.PROFILE.SECURITY_DESC' | translate }}</p>
+        <button mat-stroked-button color="warn">{{ 'ACCOUNT.PROFILE.RESET_PASSWORD' | translate }}</button>
+    </div>
+</div>

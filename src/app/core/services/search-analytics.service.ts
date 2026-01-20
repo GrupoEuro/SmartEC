@@ -23,6 +23,7 @@ export class SearchAnalyticsService {
         if (!term || term.trim().length < 2) return; // Ignore single chars
 
         const user = this.authService.currentUser();
+        console.log('SearchAnalytics: Attempting to log search:', { term, resultCount, userId: user?.uid });
 
         const log: SearchLog = {
             term: term.trim(),
@@ -34,9 +35,10 @@ export class SearchAnalyticsService {
         };
 
         try {
-            await addDoc(collection(this.firestore, this.LOGS_COLLECTION), log);
+            const ref = await addDoc(collection(this.firestore, this.LOGS_COLLECTION), log);
+            console.log('SearchAnalytics: Logged search successfully. ID:', ref.id);
         } catch (error) {
-            console.error('Error logging search analytics:', error);
+            console.error('SearchAnalytics: Error logging search analytics:', error);
             // Non-blocking error, don't alert user
         }
     }

@@ -1,0 +1,67 @@
+<div class="glass-modal-card">
+    <div class="modal-header">
+        <h2>{{ (isEdit ? 'ACCOUNT.ADDRESS_BOOK.MODAL.EDIT_TITLE' : 'ACCOUNT.ADDRESS_BOOK.MODAL.ADD_TITLE') | translate
+            }}</h2>
+    </div>
+
+    <div class="modal-content">
+        <form [formGroup]="form">
+            <mat-form-field appearance="outline">
+                <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.LABEL' | translate }}</mat-label>
+                <input matInput formControlName="label">
+            </mat-form-field>
+
+            <div class="field-row">
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STREET' | translate }}</mat-label>
+                    <input matInput formControlName="street">
+                </mat-form-field>
+                <mat-form-field appearance="outline" style="flex: 0 0 100px;">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.EXT_NUM' | translate }}</mat-label>
+                    <input matInput formControlName="extNum">
+                </mat-form-field>
+                <mat-form-field appearance="outline" style="flex: 0 0 100px;">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.INT_NUM' | translate }}</mat-label>
+                    <input matInput formControlName="intNum">
+                </mat-form-field>
+            </div>
+
+            <div class="field-row">
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.COLONIA' | translate }}</mat-label>
+                    <input matInput formControlName="colonia">
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.ZIP' | translate }}</mat-label>
+                    <input matInput formControlName="zip">
+                </mat-form-field>
+            </div>
+
+            <div class="field-row">
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CITY' | translate }}</mat-label>
+                    <input matInput formControlName="city">
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STATE' | translate }}</mat-label>
+                    <input matInput formControlName="state">
+                </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline">
+                <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.REF' | translate }}</mat-label>
+                <textarea matInput formControlName="reference" rows="3"></textarea>
+            </mat-form-field>
+
+            <mat-checkbox formControlName="isDefault">{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.SET_DEFAULT' | translate
+                }}</mat-checkbox>
+        </form>
+    </div>
+
+    <div class="modal-actions">
+        <button mat-button (click)="cancel()" style="color: #ccc;">{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CANCEL' | translate
+            }}</button>
+        <button mat-flat-button color="primary" (click)="save()" [disabled]="form.invalid">{{
+            'ACCOUNT.ADDRESS_BOOK.MODAL.SAVE' | translate }}</button>
+    </div>
+</div>

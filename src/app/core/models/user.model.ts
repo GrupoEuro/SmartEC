@@ -13,6 +13,15 @@ export interface CustomerStats {
     averageOrderValue: number;
 }
 
+export interface TaxInfo {
+    rfc: string;           // Registro Federal de Contribuyentes
+    legalName: string;     // Razón Social
+    fiscalRegime: string;  // Régimen Fiscal (e.g., 601)
+    fiscalZip: string;     // Código Postal Fiscal 
+    cfdiUse: string;       // Uso de CFDI (e.g., G03)
+    constanciaFiscalUrl?: string; // Optional: URL to uploaded PDF
+}
+
 export interface UserProfile {
     uid: string;
     email: string;
@@ -26,5 +35,6 @@ export interface UserProfile {
     // CRM
     stats?: CustomerStats;
     phone?: string;
+    taxInfo?: TaxInfo; // SAT / Invoicing Data
     shippingAddress?: any; // To be typed rigidly later if needed
 }

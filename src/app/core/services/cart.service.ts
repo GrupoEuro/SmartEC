@@ -1,12 +1,16 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { CartItem, CartState } from '../models/cart.model';
 import { Product } from '../models/product.model';
+import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firestore';
+import { AuthService } from './auth.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
+    private firestore = inject(Firestore);
+    private authService = inject(AuthService);
 
     // State Signals
     private cartState = signal<CartState>(this.loadFromStorage());
@@ -37,10 +41,73 @@ export class CartService {
     });
 
     constructor() {
-        // Effect to persist changes to LocalStorage automatically
+        // Effect to persist to LocalStorage AND Firestore
         effect(() => {
-            this.saveToStorage(this.cartState());
+            const state = this.cartState();
+            this.saveToStorage(state);
+            this.saveToFirestore(state);
         });
+
+        // Listen for Auth Changes to switch carts
+        this.authService.user$.subscribe(user => {
+            if (user) {
+                // User logged in: Load their cloud cart
+                this.loadFromFirestore(user.uid);
+            }
+        });
+    }
+
+    // ==========================================
+    // Cloud Persistence
+    // ==========================================
+    private saveTimeout: any;
+
+    private async saveToFirestore(state: CartState) {
+        const user = this.authService.currentUser();
+        if (!user) return; // Don't save for guests yet (or implement guest session logic later)
+
+        // Debounce: Wait 1s before writing to save writes
+        if (this.saveTimeout) clearTimeout(this.saveTimeout);
+
+        this.saveTimeout = setTimeout(async () => {
+            try {
+                const cartRef = doc(this.firestore, `carts/${user.uid}`);
+                await setDoc(cartRef, {
+                    ...state,
+                    userId: user.uid,
+                    email: user.email,
+                    lastUpdated: Timestamp.now()
+                }, { merge: true });
+                console.log('Cart synced to Firestore');
+            } catch (e) {
+                console.error('Error syncing cart to Firestore', e);
+            }
+        }, 1000);
+    }
+
+    private async loadFromFirestore(userId: string) {
+        try {
+            const cartRef = doc(this.firestore, `carts/${userId}`);
+            const snapshot = await getDoc(cartRef);
+
+            if (snapshot.exists()) {
+                const cloudCart = snapshot.data() as CartState;
+
+                // Strategy: Cloud wins on login, OR merge (for now simpler: Cloud wins if exists)
+                // Better UX: If local cart has items and cloud is empty -> Push local
+                // If cloud has items -> Pull cloud
+
+                if (cloudCart.items && cloudCart.items.length > 0) {
+                    this.updateState(cloudCart.items);
+                    console.log('Loaded cart from Firestore');
+                } else {
+                    // Cloud empty, push local
+                    this.saveToFirestore(this.cartState());
+                }
+            }
+        } catch (e) {
+            console.error('Error loading cart from Firestore', e);
+        }
     }
 
     // ==========================================

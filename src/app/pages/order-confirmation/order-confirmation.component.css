@@ -1,0 +1,271 @@
+/* ========================================
+   ORDER CONFIRMATION - PREMIUM DARK THEME
+   ======================================== */
+:host {
+    display: block;
+    width: 100%;
+    /* Dark Theme Variables */
+    --primary-cyan: #00ACD8;
+    --primary-blue: #2563eb;
+    --success-green: #10b981;
+    --bg-surface: rgba(255, 255, 255, 0.03);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+}
+
+.confirmation-container {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 20px 60px;
+    /* Top padding for navbar */
+    background: radial-gradient(circle at center, rgba(0, 172, 216, 0.05) 0%, transparent 70%);
+}
+
+.glass-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    padding: 48px;
+    max-width: 580px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Radiant glow at top */
+.glass-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 172, 216, 0.5), transparent);
+}
+
+/* ========================================
+   ICON & ANIMATION
+   ======================================== */
+.icon-wrapper {
+    margin-bottom: 24px;
+    position: relative;
+    display: inline-block;
+}
+
+.check-circle {
+    width: 90px;
+    height: 90px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+    position: relative;
+    z-index: 2;
+}
+
+.pulse-animation {
+    animation: successPulse 2s infinite;
+}
+
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+        transform: scale(1);
+    }
+
+    70% {
+        box-shadow: 0 0 0 20px rgba(16, 185, 129, 0);
+        transform: scale(1.05);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+h1 {
+    margin: 0 0 8px;
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.order-id {
+    font-weight: 600;
+    color: var(--primary-cyan);
+    font-size: 1.1rem;
+    margin-bottom: 24px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.message {
+    margin-bottom: 40px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 1.05rem;
+}
+
+.highlight {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+.actions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.btn-primary,
+.btn-secondary {
+    flex: 1;
+    padding: 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #00ACD8 0%, #0080a0 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 172, 216, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 172, 216, 0.4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   ACCOUNT PROMPT
+   ======================================== */
+.glass-panel-inner {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    padding: 24px;
+    text-align: left;
+}
+
+.prompt-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.prompt-icon {
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.prompt-text h3 {
+    margin: 0 0 4px;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.prompt-text p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.password-group {
+    display: flex;
+    gap: 12px;
+}
+
+.form-input {
+    flex: 1;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-cyan);
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.btn-create {
+    background: white;
+    color: #111;
+    border: none;
+    padding: 0 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-create:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+    .glass-panel {
+        padding: 32px 20px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .password-group {
+        flex-direction: column;
+    }
+
+    .btn-create {
+        width: 100%;
+        padding: 14px;
+    }
+}

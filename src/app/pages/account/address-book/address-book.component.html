@@ -1,0 +1,55 @@
+<div class="address-container">
+    <div class="header-actions">
+        <h1>{{ 'ACCOUNT.ADDRESS_BOOK.TITLE' | translate }}</h1>
+        <button mat-flat-button class="add-btn" (click)="addAddress()">
+            <mat-icon>add</mat-icon>
+            {{ 'ACCOUNT.ADDRESS_BOOK.ADD_NEW' | translate }}
+        </button>
+    </div>
+
+    <div *ngIf="loading" class="text-center py-5">
+        <mat-spinner diameter="40" class="mx-auto"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && addresses.length > 0" class="address-grid">
+        <div *ngFor="let address of addresses" class="address-card">
+            <div class="address-header">
+                <div class="address-label">
+                    <mat-icon>{{ address.label === 'Office' ? 'business' : 'home' }}</mat-icon>
+                    <span>{{ address.label || 'Address' }}</span>
+                </div>
+                <span *ngIf="address.isDefault" class="default-badge">{{ 'ACCOUNT.ADDRESS_BOOK.DEFAULT_BADGE' |
+                    translate }}</span>
+            </div>
+
+            <div class="address-details">
+                <p><strong>{{ address.street }} {{ address.extNum }} {{ address.intNum ? 'Int ' + address.intNum : ''
+                        }}</strong></p>
+                <p>{{ address.colonia }}</p>
+                <p>{{ address.city }}, {{ address.state }} {{ address.zip }}</p>
+                <p>{{ address.country }}</p>
+                <p *ngIf="address.reference" style="margin-top: 8px; font-style: italic; color: #888;">
+                    "{{ address.reference }}"
+                </p>
+            </div>
+
+            <div class="address-actions">
+                <button mat-stroked-button class="edit-btn" (click)="editAddress(address)">
+                    {{ 'ACCOUNT.ADDRESS_BOOK.EDIT' | translate }}
+                </button>
+                <button mat-stroked-button class="delete-btn" (click)="deleteAddress(address)">
+                    {{ 'ACCOUNT.ADDRESS_BOOK.DELETE' | translate }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="!loading && addresses.length === 0" class="empty-state">
+        <mat-icon>location_off</mat-icon>
+        <h3>{{ 'ACCOUNT.ADDRESS_BOOK.EMPTY_TITLE' | translate }}</h3>
+        <p>{{ 'ACCOUNT.ADDRESS_BOOK.EMPTY_DESC' | translate }}</p>
+        <button mat-flat-button class="add-btn" (click)="addAddress()">
+            {{ 'ACCOUNT.ADDRESS_BOOK.ADD_FIRST' | translate }}
+        </button>
+    </div>
+</div>

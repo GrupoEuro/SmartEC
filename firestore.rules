@@ -307,5 +307,31 @@ service cloud.firestore {
     match /meli_items/{document} {
       allow read, write: if request.auth != null;
     }
+
+    // --- ANALYTICS ---
+
+    // Search Logs: Public create, Admin read
+    match /search_logs/{document} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Search Clicks: Public create, Admin read
+    match /search_clicks/{document} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // --- COMMERCE ---
+
+    // Shopping Carts: 
+    // - Authenticated: Read/Write own cart
+    // - Guest: Read/Write (We will rely on obscure IDs for now, or auth check in app)
+    match /carts/{document} {
+      allow read, write: if true; 
+      // TODO: Tighten this for production to request.auth.uid == document OR resource.data.sessionId == request.resource.data.sessionId
+    }
   }
 }

@@ -1,3 +1,4 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
 @import 'driver.js/dist/driver.css';
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -583,4 +584,18 @@ body {
   display: block;
   margin-bottom: 1rem;
   opacity: 0.5;
+}
+
+/* Glass Dialog Global Override */
+.glass-dialog .mat-mdc-dialog-container {
+  /* Make the container transparent so the component controls the glass effect */
+  --mdc-dialog-container-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.glass-dialog .mat-mdc-dialog-surface {
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  /* Allow custom shadows */
 }

@@ -1,6 +1,7 @@
-import { Component, HostListener, Inject, OnInit, PLATFORM_ID, signal, inject } from '@angular/core';
+import { Component, HostListener, Inject, OnInit, PLATFORM_ID, signal, inject, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
+import { CartService } from '../../core/services/cart.service';
 
 @Component({
   selector: 'app-chat-widget',
@@ -13,14 +14,27 @@ export class ChatWidgetComponent implements OnInit {
   isVisible = signal(false);
   private hasScrolled = false;
   private router = inject(Router);
+  private cartService = inject(CartService); // Inject Cart Service
 
-  constructor(@Inject(PLATFORM_ID) private platformId: Object) { }
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
+    // Effect to auto-hide chat when Cart Drawer is open
+    effect(() => {
+      if (this.cartService.isDrawerOpen()) {
+        this.isVisible.set(false);
+      } else {
+        // Re-evaluate visibility based on scroll/route when drawer closes
+        this.onWindowScroll();
+      }
+    }, { allowSignalWrites: true });
+  }
 
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       this.checkRouteAndInit();
     }
   }
+
+  // ... (rest of methods)
 
   private checkRouteAndInit() {
     // If we are NOT on a strict footer route (catalog/product), behave normally
@@ -33,7 +47,11 @@ export class ChatWidgetComponent implements OnInit {
 
   private isStrictFooterRoute(): boolean {
     const url = this.router.url;
-    return url.includes('/catalog') || url.includes('/product/');
+    // Purchase process routes where whatsapp should not obscure content
+    return url.includes('/catalog') ||
+      url.includes('/product/') ||
+      url.includes('/checkout') ||
+      url.includes('/order-confirmation');
   }
 
   @HostListener('window:scroll', [])

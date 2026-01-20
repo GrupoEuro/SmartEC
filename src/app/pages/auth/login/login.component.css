@@ -65,9 +65,10 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.btn-google img {
-    width: 20px;
-    height: 20px;
+.btn-google img,
+.btn-google svg {
+    width: 24px;
+    height: 24px;
 }
 
 /* Divider */

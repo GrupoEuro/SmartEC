@@ -12,7 +12,7 @@ import { ICONS } from './icons';
             <svg 
                 [attr.width]="size" 
                 [attr.height]="size" 
-                viewBox="0 0 24 24" 
+                [attr.viewBox]="viewBox" 
                 fill="none" 
                 stroke="currentColor" 
                 [attr.class]="class"
@@ -35,6 +35,7 @@ export class AppIconComponent {
     @Input() name: string = '';
     @Input() size: number = 24;
     @Input() class: string = '';
+    @Input() viewBox: string = '0 0 24 24';
 
     isBrowser = signal(false);
 

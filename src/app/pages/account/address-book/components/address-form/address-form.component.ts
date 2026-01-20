@@ -1,4 +1,5 @@
 import { Component, Inject, OnInit } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -18,7 +19,8 @@ import { Address } from '../../../../../core/services/account.service';
         MatFormFieldModule,
         MatInputModule,
         MatButtonModule,
-        MatCheckboxModule
+        MatCheckboxModule,
+        TranslateModule
     ],
     templateUrl: './address-form.component.html',
     styleUrls: ['./address-form.component.css']

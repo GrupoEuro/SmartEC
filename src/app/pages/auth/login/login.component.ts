@@ -6,11 +6,13 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { trigger, state, style, transition, animate } from '@angular/animations';
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AppIconComponent],
     animations: [
         trigger('fadeSlide', [
             transition(':enter', [
@@ -26,6 +28,8 @@ export class LoginComponent {
     private auth = inject(AuthService);
     private fb = inject(FormBuilder);
     private router = inject(Router);
+
+    private toast = inject(ToastService);
 
     isRegister = signal(false);
     isLoading = signal(false);
@@ -57,7 +61,10 @@ export class LoginComponent {
     }
 
     async onLogin() {
-        if (this.loginForm.invalid) return;
+        if (this.loginForm.invalid) {
+            this.loginForm.markAllAsTouched();
+            return;
+        }
 
         this.isLoading.set(true);
         const { email, password } = this.loginForm.value;
@@ -67,13 +74,15 @@ export class LoginComponent {
     }
 
     async onRegister() {
-        if (this.registerForm.invalid) return;
+        if (this.registerForm.invalid) {
+            this.registerForm.markAllAsTouched();
+            return;
+        }
 
         const { displayName, email, password, confirmPassword } = this.registerForm.value;
 
         if (password !== confirmPassword) {
-            // Manual error setting could be done here, or cleaner Validator
-            alert('Passwords do not match'); // Simple fallback, ideally Toast
+            this.toast.error('Las contraseñas no coinciden');
             return;
         }
 

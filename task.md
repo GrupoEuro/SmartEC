@@ -11,14 +11,14 @@
     - [x] Integrate `NgOptimizedImage` in Home.
     - [x] Verify Production Build.
 
-## 🚧 1. Pricing Strategy Engine (Immediate Focus)
-- [ ] **Matrix Implementation**
-    - [ ] Finalize `PricingRulesManagerComponent`.
-    - [ ] Implement "Cost + Commission + Tax" calculation logic.
-    - [ ] Test dynamic updates in UI.
-- [ ] **Policy Seeding**
-    - [ ] Verify `PricingService` saves/loads rules correctly to Firestore.
-    - [ ] Create default policies for B2B vs B2C.
+## 🚧 1. Customer Login Optimization (Immediate Focus)
+- [x] **UI Polish**
+    - [x] Remove "(TEST)" from header.
+    - [x] Replace SVG with `AppIconComponent`.
+    - [x] Verify Mobile Responsiveness.
+- [x] **Code Cleanup**
+    - [x] Implement `ToastService` for errors.
+    - [x] Review `AuthService.syncUserProfile`.
 
 ## 🚧 2. Product Locator v2.0 (Polish)
 - [ ] **Grid Layout**

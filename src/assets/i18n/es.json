@@ -66,6 +66,7 @@
         "SPEED_RATING": "Rango de Velocidad",
         "QUANTITY": "Cantidad",
         "ADD_TO_CART": "Agregar al Carrito",
+        "VIEW_DETAILS": "Ver Detalles",
         "BADGES": {
             "NEW": "Nuevo",
             "BESTSELLER": "Más Vendido",
@@ -1670,31 +1671,6 @@
         }
     },
     "ADMIN": {
-        "CATALOG": {
-            "QUICK_VIEW": "Vista Rápida",
-            "ADD_TO_CART": "Agregar al Carrito",
-            "VIEW_DETAILS": "Ver Detalles",
-            "NO_PRODUCTS": "No encontramos lo que buscas",
-            "TRY_ADJUSTING_FILTERS": "Intenta ajustar los filtros de búsqueda",
-            "CLEAR_FILTERS": "Limpiar Filtros",
-            "FILTERS": "Filtros",
-            "SEARCH_PLACEHOLDER": "Buscar productos...",
-            "CATEGORIES": "Categorías",
-            "ALL_CATEGORIES": "Todas las Categorías",
-            "PRICE_RANGE": "Rango de Precio",
-            "BRANDS": "Marcas",
-            "TIRE_SIZE": "Medida",
-            "WIDTH": "Ancho",
-            "ASPECT_RATIO": "Perfil",
-            "DIAMETER": "Rin",
-            "PRODUCTS_FOUND": "Productos Encontrados",
-            "SORT": {
-                "FEATURED": "Destacados",
-                "PRICE_LOW": "Precio: Menor a Mayor",
-                "PRICE_HIGH": "Precio: Mayor a Menor",
-                "NEWEST": "Más Nuevos"
-            }
-        },
         "WAREHOUSES": {
             "TITLE": "Almacenes",
             "LOCATOR": "Buscador Visual",
@@ -2055,6 +2031,8 @@
         },
         "CATALOG": {
             "TITLE": "Catálogo de Productos",
+            "QUICK_VIEW": "Vista Rápida",
+            "TRY_ADJUSTING_FILTERS": "Intenta ajustar tus filtros de búsqueda",
             "FILTERS": "Filtros",
             "SEARCH": "Buscar",
             "SEARCH_PLACEHOLDER": "Buscar productos...",

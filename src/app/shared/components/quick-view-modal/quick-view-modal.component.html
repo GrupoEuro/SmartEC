@@ -5,8 +5,8 @@
         <div class="modal-body">
             <!-- Image Side -->
             <div class="product-image-container">
-                <img [ngSrc]="product.images?.main || 'assets/images/euro-logo-new.png'" [alt]="product.name.en"
-                    width="500" height="500" priority class="product-image">
+                <img [ngSrc]="getProductImage(product)" [alt]="product.name.en" width="500" height="500" priority
+                    class="product-image">
             </div>
 
             <!-- Details Side -->

@@ -29,4 +29,8 @@ export class QuickViewModalComponent {
             this.close.emit();
         }
     }
+
+    getProductImage(product: Product): string {
+        return product.images?.main || 'assets/images/euro-logo-new.png';
+    }
 }

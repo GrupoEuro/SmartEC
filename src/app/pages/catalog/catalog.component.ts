@@ -27,7 +27,7 @@ import { QuickViewModalComponent } from '../../shared/components/quick-view-moda
 })
 export class CatalogComponent implements OnInit {
     trackByProduct(index: number, product: Product): string {
-        return product.id;
+        return product.id || '';
     }
 
     // Quick View State

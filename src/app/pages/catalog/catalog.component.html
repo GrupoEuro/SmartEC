@@ -1,6 +1,6 @@
 <div class="catalog-wrapper">
 
-    <!-- Mobile Header -->
+    <!-- Mobile Header (Hidden on Desktop via CSS) -->
     <div class="mobile-header">
         <button class="filter-toggle-btn" (click)="toggleSidebar()">
             <span class="icon">⚡</span> {{ 'ADMIN.CATALOG.FILTERS' | translate }}
@@ -41,22 +41,29 @@
                 <!-- Price Range -->
                 <div class="filter-section">
                     <label class="filter-label">{{ 'ADMIN.CATALOG.PRICE_RANGE' | translate }}</label>
-                    <div class="price-inputs">
-                        <input type="number" class="price-input" [(ngModel)]="selectedPriceRange.min"
-                            (change)="onPriceRangeChange()" placeholder="Min">
-                        <span>-</span>
-                        <input type="number" class="price-input" [(ngModel)]="selectedPriceRange.max"
-                            (change)="onPriceRangeChange()" placeholder="Max">
+                    <div class="price-inputs-wrapper">
+                        <div class="price-field">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" class="price-input" [(ngModel)]="selectedPriceRange.min"
+                                (change)="onPriceRangeChange()" placeholder="0">
+                        </div>
+                        <span class="range-separator">-</span>
+                        <div class="price-field">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" class="price-input" [(ngModel)]="selectedPriceRange.max"
+                                (change)="onPriceRangeChange()" placeholder="Any">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Brands -->
-                <div class="filter-section">
+                <!-- Brands (Only show if more than 1 brand) -->
+                <div class="filter-section" *ngIf="brands.length > 1">
                     <label class="filter-label">{{ 'ADMIN.CATALOG.BRANDS' | translate }}</label>
                     <div class="checkbox-list">
                         <label *ngFor="let brand of brands" class="checkbox-label">
                             <input type="checkbox" [checked]="isBrandSelected(brand)" (change)="toggleBrand(brand)">
-                            {{ brand }}
+                            <span class="checkbox-custom"></span>
+                            <span class="label-text">{{ brand }}</span>
                         </label>
                     </div>
                 </div>
@@ -103,10 +110,28 @@
                         <option value="newest">{{ 'ADMIN.CATALOG.SORT.NEWEST' | translate }}</option>
                     </select>
                     <div class="view-toggle">
-                        <button class="view-btn" [class.active]="viewMode === 'grid'"
-                            (click)="viewMode = 'grid'">⊞</button>
-                        <button class="view-btn" [class.active]="viewMode === 'list'"
-                            (click)="viewMode = 'list'">☰</button>
+                        <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'"
+                            title="Grid View">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'"
+                            title="List View">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -148,7 +173,7 @@
                             </div>
                         </div>
 
-                        <div class="product-info">
+                        <div class="product-info" [routerLink]="['/product', product.slug]" style="cursor: pointer;">
                             <div class="product-brand">{{ product.brand }}</div>
                             <h3 class="product-name">{{ product.name[languageService.currentLang() === 'en' ? 'en' :
                                 'es'] }}</h3>
@@ -165,17 +190,20 @@
                             </div>
 
                             <div class="product-stock">
-                                <span *ngIf="product.inStock" class="in-stock">✓ Disponible</span>
-                                <span *ngIf="!product.inStock" class="out-of-stock">✕ Agotado</span>
+                                <span *ngIf="product.inStock" class="in-stock">✓ {{ 'PRODUCT_DETAIL.IN_STOCK' |
+                                    translate }}</span>
+                                <span *ngIf="!product.inStock" class="out-of-stock">✕ {{ 'PRODUCT_DETAIL.OUT_OF_STOCK'
+                                    | translate }}</span>
                             </div>
 
-                            <a [routerLink]="['/product', product.slug]" class="btn-view-details">
-                                {{ 'ADMIN.CATALOG.VIEW_DETAILS' | translate }}
-                            </a>
-                            <button class="btn-primary" style="margin-top: 10px; width: 100%;"
-                                (click)="addToCart(product, $event)">
+                            <button class="btn-add-cart-card" (click)="addToCart(product, $event)">
                                 {{ 'ADMIN.CATALOG.ADD_TO_CART' | translate }}
                             </button>
+
+                            <a [routerLink]="['/product', product.slug]" class="btn-view-details-card"
+                                (click)="$event.stopPropagation()">
+                                {{ 'ADMIN.CATALOG.VIEW_DETAILS' | translate }}
+                            </a>
                         </div>
                     </div>
                 </ng-container>

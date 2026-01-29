@@ -6,7 +6,9 @@
 </app-admin-page-header>
 
 <div class="form-container">
-    <form [formGroup]="brandForm" (ngSubmit)="onSubmit()" class="admin-form">
+    <app-validation-summary [form]="brandForm" [fieldLabels]="fieldLabels"></app-validation-summary>
+
+    <form *ngIf="brandForm" [formGroup]="brandForm" (ngSubmit)="onSubmit()" class="admin-form">
 
         <!-- Brand Name -->
         <div class="form-group">

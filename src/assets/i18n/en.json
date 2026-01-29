@@ -1562,6 +1562,7 @@
     },
     "ADMIN": {
         "CATALOG": {
+            "QUICK_VIEW": "Quick View",
             "ADD_TO_CART": "Add to Cart",
             "VIEW_DETAILS": "View Details",
             "NO_PRODUCTS": "No products found",
@@ -1610,6 +1611,7 @@
             "DISTRIBUTORS": "Distributors",
             "CUSTOMERS": "Customers",
             "SECTION_ECOMMERCE": "E-Commerce",
+            "PRODUCT_TYPES": "Product Types",
             "PRODUCTS": "Products",
             "CATEGORIES": "Categories",
             "BRANDS": "Brands",
@@ -2966,6 +2968,108 @@
             "ERROR": "An error occurred",
             "SUCCESS": "Saved successfully",
             "REQUIRED": "Required"
+        }
+    },
+    "PRODUCT_TYPES": {
+        "TITLE": "Product Types",
+        "SUBTITLE": "Manage product type templates and their specifications",
+        "NEW_TYPE": "New Product Type",
+        "SEARCH_PLACEHOLDER": "Search product types...",
+        "SYSTEM_TYPES": "System Types",
+        "CUSTOM_TYPES": "Custom Types",
+        "PROTECTED_BADGE": "Protected",
+        "SYSTEM_DESCRIPTION": "Built-in product types that cannot be deleted. You can only toggle their active status.",
+        "CUSTOM_DESCRIPTION": "User-created product types. These can be fully edited and deleted.",
+        "ACTIONS": {
+            "VIEW": "View",
+            "DUPLICATE": "Duplicate",
+            "EDIT": "Edit",
+            "DELETE": "Delete",
+            "SHOW": "Show",
+            "HIDE": "Hide"
+        },
+        "NO_SYSTEM_FOUND": "No system types found matching \"{{query}}\"",
+        "NO_CUSTOM_FOUND": "No custom types found matching \"{{query}}\"",
+        "NO_CUSTOM_YET": "No Custom Types Yet",
+        "CREATE_FIRST": "Create your first custom product type to get started.",
+        "FORM": {
+            "EDIT_TITLE": "Edit Product Type",
+            "NEW_TITLE": "New Product Type",
+            "EDIT_SUBTITLE": "Modify the template and specification schema",
+            "NEW_SUBTITLE": "Create a custom product type with specifications",
+            "BACK": "Back to List",
+            "LOADING": "Loading product type...",
+            "BASIC_INFO": "Basic Information",
+            "TEMPLATE_ID": "Template ID",
+            "TEMPLATE_ID_HINT": "Lowercase, alphanumeric, and underscores only. Cannot be changed after creation.",
+            "NAME_EN": "Name (English)",
+            "NAME_ES": "Name (Spanish)",
+            "ICON": "Icon (Emoji)",
+            "ICON_HINT": "Single emoji character",
+            "ACTIVE_STATUS": "Active Status",
+            "ACTIVE": "Active",
+            "HIDDEN": "Hidden",
+            "SPEC_FIELDS": "Specification Fields",
+            "SPEC_DESCRIPTION": "Define the fields that will appear in the product form for this type",
+            "SHOW_TEMPLATES": "Show Templates",
+            "HIDE_TEMPLATES": "Hide Templates",
+            "ADD_CUSTOM": "Add Custom Field",
+            "QUICK_TEMPLATES": "Quick Field Templates",
+            "TEMPLATE_DESCRIPTION": "Click a template to quickly add a common field type",
+            "STATS": {
+                "TOTAL": "Total Fields",
+                "REQUIRED": "Required",
+                "SEARCHABLE": "Searchable",
+                "FILTERABLE": "Filterable"
+            },
+            "FIELD": {
+                "LABEL_EN": "Label (English)",
+                "LABEL_ES": "Label (Spanish)",
+                "KEY": "Field Key",
+                "KEY_HINT": "Auto-generated from English label",
+                "TYPE": "Field Type",
+                "UNIT": "Unit",
+                "UNIT_HINT": "Optional: mm, cm, kg, etc.",
+                "DISPLAY_ORDER": "Display Order",
+                "DISPLAY_ORDER_HINT": "Auto-calculated (drag to reorder)",
+                "OPTIONS": "Options (comma-separated)",
+                "OPTIONS_HINT": "Enter options separated by commas",
+                "MIN_VALUE": "Min Value",
+                "MAX_VALUE": "Max Value",
+                "REQUIRED": "Required Field",
+                "SEARCHABLE": "Searchable",
+                "FILTERABLE": "Filterable in Catalog"
+            },
+            "EMPTY_STATE": {
+                "TITLE": "Let's build your product schema",
+                "DESCRIPTION": "Add specification fields to define what information products of this type will have.",
+                "ADD_FIRST": "Add Your First Field",
+                "EXAMPLES": "Examples of fields you might add:",
+                "EXAMPLE_1": "Battery Capacity",
+                "EXAMPLE_2": "Material Type",
+                "EXAMPLE_3": "Dimensions",
+                "EXAMPLE_4": "Weight",
+                "EXAMPLE_5": "Color Options",
+                "EXAMPLE_6": "Size"
+            },
+            "ACTIONS": {
+                "CANCEL": "Cancel",
+                "SAVE": "Save Changes",
+                "CREATE": "Create Product Type",
+                "SAVING": "Saving...",
+                "SAVED": "Saved!"
+            },
+            "DUPLICATE_WARNING": "This key is already used in Field {{numbers}}",
+            "HELP": {
+                "FIELD_KEY": "Unique identifier for this field. Auto-generated but you can customize it.",
+                "TYPE": "The type of input shown in the product form.",
+                "UNIT": "Optional measurement unit shown next to value (e.g., mm, kg, L)",
+                "OPTIONS": "For select fields, enter available options separated by commas",
+                "MIN_MAX": "Minimum and maximum allowed values for number fields",
+                "REQUIRED": "If checked, this field must be filled when creating a product",
+                "SEARCHABLE": "If checked, this field is included in product search",
+                "FILTERABLE": "If checked, this field appears as a filter option in the catalog"
+            }
         }
     }
 }

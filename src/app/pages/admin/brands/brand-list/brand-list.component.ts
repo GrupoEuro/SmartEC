@@ -32,6 +32,7 @@ export class BrandListComponent implements OnInit {
     // Data observables
     brands$!: Observable<Brand[]>;
     displayedBrands$!: Observable<Brand[]>;
+    paginatedBrands$!: Observable<Brand[]>;
 
     // Search and filters
     searchTerm = '';
@@ -72,7 +73,7 @@ export class BrandListComponent implements OnInit {
     }
 
     setupFiltering() {
-        this.displayedBrands$ = combineLatest([
+        this.paginatedBrands$ = combineLatest([
             this.brands$,
             this.filterSubject
         ]).pipe(
@@ -221,5 +222,9 @@ export class BrandListComponent implements OnInit {
             );
             this.toast.success('Brands exported successfully');
         });
+    }
+
+    get paginatedBrands() {
+        return this.paginatedBrands$;
     }
 }

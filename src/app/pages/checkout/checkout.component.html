@@ -5,8 +5,7 @@
         <div class="steps-column">
 
             <!-- STEP 1: IDENTITY -->
-            <div class="step-card glass-panel" [class.active]="currentStep() === 1"
-                [class.completed]="currentStep() > 1">
+            <div class="step-card" [class.active]="currentStep() === 1" [class.completed]="currentStep() > 1">
                 <div class="step-header" (click)="setStep(1)">
                     <div class="step-indicator">
                         <span *ngIf="currentStep() === 1">1</span>
@@ -20,44 +19,45 @@
                 </div>
 
                 <div class="step-content" [@expandCollapse]="currentStep() === 1 ? 'expanded' : 'collapsed'">
-                    <p class="step-intro text-muted">{{ 'CHECKOUT.GUEST_LOGIN_HINT' | translate }}</p>
+                    <p class="step-intro text-muted" style="margin-bottom: 24px">{{ 'CHECKOUT.GUEST_LOGIN_HINT' |
+                        translate }}</p>
 
                     <div class="form-group">
-                        <label>{{ 'CHECKOUT.EMAIL' | translate }}</label>
-                        <input type="email" [formControl]="emailControl" placeholder="name@example.com"
-                            class="form-input">
+                        <input type="email" [formControl]="emailControl" placeholder=" " class="form-input">
+                        <label class="floating-label">{{ 'CHECKOUT.EMAIL' | translate }}</label>
                         <span *ngIf="emailControl.touched && emailControl.invalid" class="error-msg">
                             {{ 'CHECKOUT.VALID_EMAIL_REQUIRED' | translate }}
                         </span>
+                    </div>
 
-                        <div class="auth-options">
-                            <button class="btn-primary" [disabled]="emailControl.invalid" (click)="nextStep()">
-                                {{ 'CHECKOUT.CONTINUE_SHIPPING' | translate }}
-                            </button>
+                    <div class="auth-options">
+                        <button class="btn-primary" [disabled]="emailControl.invalid" (click)="nextStep()">
+                            {{ 'CHECKOUT.CONTINUE_SHIPPING' | translate }}
+                        </button>
 
-                            <div class="divider-text"><span>{{ 'CHECKOUT.OR' | translate }}</span></div>
-
-                            <button class="btn-google" (click)="loginWithGoogle()">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
-                                    <path fill="#FFC107"
-                                        d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
-                                    <path fill="#FF3D00"
-                                        d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
-                                    <path fill="#4CAF50"
-                                        d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
-                                    <path fill="#1976D2"
-                                        d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
-                                </svg>
-                                {{ 'CHECKOUT.SIGN_IN_GOOGLE' | translate }}
-                            </button>
+                        <div class="divider-text">
+                            <span>{{ 'CHECKOUT.OR' | translate }}</span>
                         </div>
+
+                        <button class="btn-google" (click)="loginWithGoogle()">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
+                                <path fill="#FFC107"
+                                    d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+                                <path fill="#FF3D00"
+                                    d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+                                <path fill="#4CAF50"
+                                    d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+                                <path fill="#1976D2"
+                                    d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+                            </svg>
+                            {{ 'CHECKOUT.SIGN_IN_GOOGLE' | translate }}
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- STEP 2: SHIPPING -->
-            <div class="step-card glass-panel" [class.active]="currentStep() === 2"
-                [class.completed]="currentStep() > 2">
+            <div class="step-card" [class.active]="currentStep() === 2" [class.completed]="currentStep() > 2">
                 <div class="step-header" (click)="currentStep() > 2 ? setStep(2) : null">
                     <div class="step-indicator">
                         <span *ngIf="currentStep() <= 2">2</span>
@@ -71,60 +71,60 @@
                 <div class="step-content" [@expandCollapse]="currentStep() === 2 ? 'expanded' : 'collapsed'">
                     <form [formGroup]="shippingForm">
                         <div class="form-row">
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.FIRST_NAME' | translate }}</label>
-                                <input formControlName="firstName" class="form-input">
+                            <div class="form-group">
+                                <input formControlName="firstName" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.FIRST_NAME' | translate }}</label>
                             </div>
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.LAST_NAME' | translate }}</label>
-                                <input formControlName="lastName" class="form-input">
-                            </div>
-                        </div>
-
-                        <!-- Street & Numbers -->
-                        <div class="form-row">
-                            <div class="form-group" style="flex: 2;">
-                                <label>{{ 'CHECKOUT.STREET' | translate }}</label>
-                                <input formControlName="street" class="form-input"
-                                    [placeholder]="'CHECKOUT.STREET_PLACEHOLDER' | translate">
-                            </div>
-                            <div class="form-group" style="flex: 0.5;">
-                                <label>{{ 'CHECKOUT.EXT_NUM' | translate }}</label>
-                                <input formControlName="extNum" class="form-input">
-                            </div>
-                            <div class="form-group" style="flex: 0.5;">
-                                <label>{{ 'CHECKOUT.INT_NUM' | translate }}</label>
-                                <input formControlName="intNum" class="form-input"
-                                    [placeholder]="'CHECKOUT.INT_NUM_PLACEHOLDER' | translate">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.COLONIA' | translate }}</label>
-                                <input formControlName="colonia" class="form-input">
-                            </div>
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.ZIP' | translate }}</label>
-                                <input formControlName="zip" class="form-input">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.CITY' | translate }}</label>
-                                <input formControlName="city" class="form-input">
-                            </div>
-                            <div class="form-group half">
-                                <label>{{ 'CHECKOUT.STATE' | translate }}</label>
-                                <input formControlName="state" class="form-input">
+                            <div class="form-group">
+                                <input formControlName="lastName" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.LAST_NAME' | translate }}</label>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group full-width">
-                                <label>{{ 'CHECKOUT.PHONE' | translate }}</label>
-                                <input formControlName="phone" class="form-input" type="tel">
+                                <input formControlName="street" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.STREET' | translate }}</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input formControlName="extNum" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.EXT_NUM' | translate }}</label>
+                            </div>
+                            <div class="form-group">
+                                <input formControlName="intNum" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.INT_NUM' | translate }}</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input formControlName="colonia" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.COLONIA' | translate }}</label>
+                            </div>
+                            <div class="form-group">
+                                <input formControlName="zip" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.ZIP' | translate }}</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <input formControlName="city" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.CITY' | translate }}</label>
+                            </div>
+                            <div class="form-group">
+                                <input formControlName="state" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.STATE' | translate }}</label>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <input formControlName="phone" class="form-input" type="tel" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.PHONE' | translate }}</label>
                             </div>
                         </div>
                     </form>
@@ -136,7 +136,7 @@
             </div>
 
             <!-- STEP 3: PAYMENT -->
-            <div class="step-card glass-panel" [class.active]="currentStep() === 3">
+            <div class="step-card" [class.active]="currentStep() === 3">
                 <div class="step-header">
                     <div class="step-indicator">3</div>
                     <h3>{{ 'CHECKOUT.PAYMENT' | translate }}</h3>
@@ -153,21 +153,19 @@
                             </div>
                         </div>
 
-                        <!-- Secure Fields for MercadoPago MOVED HERE -->
                         <div class="form-row">
-                            <div class="form-group full-width">
+                            <div class="form-group full-width secure-field-group">
                                 <label>{{ 'CHECKOUT.CARD_NUMBER' | translate }}</label>
                                 <div id="form-checkout__cardNumber" class="secure-input-container"></div>
-                                <!-- Provide a height so it doesn't collapse before loading -->
                             </div>
                         </div>
 
-                        <div class="form-row three-col">
-                            <div class="form-group">
+                        <div class="form-row">
+                            <div class="form-group secure-field-group">
                                 <label>{{ 'CHECKOUT.EXPIRATION' | translate }}</label>
                                 <div id="form-checkout__expirationDate" class="secure-input-container"></div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group secure-field-group">
                                 <label>{{ 'CHECKOUT.CVV' | translate }}</label>
                                 <div id="form-checkout__securityCode" class="secure-input-container"></div>
                             </div>
@@ -175,31 +173,28 @@
 
                         <div class="form-row">
                             <div class="form-group full-width">
-                                <label>{{ 'CHECKOUT.CARD_HOLDER' | translate }}</label>
-                                <input type="text" formControlName="cardHolder" class="form-input"
-                                    [placeholder]="'CHECKOUT.CARD_HOLDER_PLACEHOLDER' | translate">
+                                <input type="text" formControlName="cardHolder" class="form-input" placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.CARD_HOLDER' | translate }}</label>
                             </div>
                         </div>
 
-                        <!-- Identification (Req by MP) -->
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>{{ 'CHECKOUT.DNI_INE' | translate }}</label>
+                            <div class="form-group full-width">
                                 <input type="text" formControlName="identificationNumber" class="form-input"
-                                    [placeholder]="'CHECKOUT.DNI_INE_PLACEHOLDER' | translate">
+                                    placeholder=" ">
+                                <label class="floating-label">{{ 'CHECKOUT.DNI_INE' | translate }}</label>
                             </div>
                         </div>
 
-                        <div id="wallet_container"></div> <!-- MERCADOPAGO MOUNT POINT -->
+                        <div id="wallet_container"></div>
 
-                        <!-- Fallback / Simulation Button -->
-                        <button class="btn-pay glow-effect" (click)="processPayment()">
+                        <button class="btn-pay" (click)="processPayment()">
                             {{ 'CHECKOUT.PAY_BUTTON' | translate: { amount: (cartService.cartSubtotal() | currency) } }}
                         </button>
 
                         <p class="terms-text text-muted">
-                            {{ 'CHECKOUT.TERMS_AGREEMENT' | translate }}
-                            {{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate }}
+                            {{ 'CHECKOUT.TERMS_AGREEMENT' | translate }} {{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate
+                            }}
                         </p>
                     </div>
                 </div>
@@ -209,7 +204,7 @@
 
         <!-- Right Column: Order Summary -->
         <div class="summary-column">
-            <div class="summary-card glass-panel sticky-summary">
+            <div class="summary-card sticky-summary">
                 <h3>{{ 'CHECKOUT.ORDER_SUMMARY' | translate }}</h3>
                 <div class="summary-items-scroll">
                     @for (item of cartService.cartItems(); track item.product.id) {

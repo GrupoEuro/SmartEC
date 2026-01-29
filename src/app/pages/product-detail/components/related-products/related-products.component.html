@@ -14,8 +14,8 @@
                 <span class="product-brand">{{ product.brand }}</span>
                 <h3 class="product-name">{{ product.name.es }}</h3>
                 <p class="product-size">
-                    {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
-                    product.specifications.diameter }}
+                    {{ product.specifications['width'] }}/{{ product.specifications['aspectRatio'] }}R{{
+                    product.specifications['diameter'] }}
                 </p>
                 <div class="product-price">
                     <span class="current-price">${{ product.price }}</span>

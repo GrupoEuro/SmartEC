@@ -1,0 +1,44 @@
+/* === MARKETING SECTION IMPROVEMENTS === */
+
+/* Marketing Toggles Grid - Better Organization */
+.marketing-toggles {
+    display: grid;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+/* Override Toggle Switch for Marketing Section */
+.marketing-toggles app-toggle-switch {
+    display: block;
+}
+
+/* Ensure toggle text is highly visible */
+.marketing-toggles .toggle-text {
+    color: #f1f5f9 !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+}
+
+.marketing-toggles .toggle-switch {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    padding: 16px 20px !important;
+}
+
+.marketing-toggles .toggle-switch:hover {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Better Icon Visibility */
+.marketing-toggles .toggle-icon {
+    font-size: 1.25rem !important;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Section Headers */
+.card-title.mt-4 {
+    margin-top: 3rem !important;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(59, 130, 246, 0.15);
+}

@@ -1,0 +1,568 @@
+<app-admin-page-header icon="🛒"
+    [title]="isEditing ? ('ADMIN.PRODUCTS.EDIT_TITLE' | translate) : ('ADMIN.PRODUCTS.NEW_TITLE' | translate)"
+    [subtitle]="isEditing ? ('ADMIN.PRODUCTS.EDIT_SUBTITLE' | translate) : ('ADMIN.PRODUCTS.NEW_SUBTITLE' | translate)">
+    <button type="button" class="btn-secondary" (click)="onCancel()">
+        {{ 'ADMIN.COMMON.CANCEL' | translate }}
+    </button>
+</app-admin-page-header>
+
+<div class="form-container">
+    <!-- Validation Summary -->
+    <app-validation-summary [form]="productForm" [fieldLabels]="fieldLabels"></app-validation-summary>
+
+    <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.PRODUCTS.SECTION_BASIC' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nameEn">
+                        {{ 'ADMIN.PRODUCTS.FORM.NAME_EN' | translate }} *
+                        <span class="help-icon" title="Product name in English for international customers">ℹ️</span>
+                    </label>
+                    <input type="text" id="nameEn" formControlName="nameEn" class="form-control"
+                        [placeholder]="'ADMIN.PRODUCTS.FORM.NAME_EN_PLACEHOLDER' | translate">
+                    <div class="error" *ngIf="productForm.get('nameEn')?.invalid && productForm.get('nameEn')?.touched">
+                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="nameEs">
+                        {{ 'ADMIN.PRODUCTS.FORM.NAME_ES' | translate }} *
+                        <span class="help-icon"
+                            title="Nombre del producto en Español para clientes hispanohablantes">ℹ️</span>
+                    </label>
+                    <input type="text" id="nameEs" formControlName="nameEs" class="form-control"
+                        [placeholder]="'ADMIN.PRODUCTS.FORM.NAME_ES_PLACEHOLDER' | translate">
+                    <div class="error" *ngIf="productForm.get('nameEs')?.invalid && productForm.get('nameEs')?.touched">
+                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="brand">{{ 'ADMIN.PRODUCTS.FORM.BRAND' | translate }} *</label>
+                    <select id="brand" formControlName="brand" class="form-control">
+                        <option value="">{{ 'ADMIN.PRODUCTS.FORM.SELECT_BRAND' | translate }}</option>
+                        <option *ngFor="let brand of brands" [value]="brand">{{ brand }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="categoryId">{{ 'ADMIN.PRODUCTS.FORM.CATEGORY' | translate }} *</label>
+                    <select id="categoryId" formControlName="categoryId" class="form-control">
+                        <option value="">{{ 'ADMIN.PRODUCTS.FORM.SELECT_CATEGORY' | translate }}</option>
+                        <option *ngFor="let category of categories" [value]="category.id">
+                            {{ category.name.es }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="sku">
+                        {{ 'ADMIN.PRODUCTS.FORM.SKU' | translate }} *
+                        <span class="help-icon"
+                            title="Unique product identifier - auto-generated from specifications">ℹ️</span>
+                    </label>
+                    <input type="text" id="sku" formControlName="sku" class="form-control">
+                    <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.SKU_HINT' | translate }}</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="slug">
+                        {{ 'ADMIN.PRODUCTS.FORM.SLUG' | translate }} *
+                        <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.SLUG_HELP' | translate">ℹ️</span>
+                    </label>
+                    <input type="text" id="slug" formControlName="slug" class="form-control">
+                    <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.SLUG_HINT' | translate }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tire Specifications -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.PRODUCTS.SECTION_SPECS' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="width">{{ 'ADMIN.PRODUCTS.FORM.WIDTH' | translate }} *</label>
+                    <select id="width" formControlName="width" class="form-control">
+                        <option [value]="null">{{ 'ADMIN.PRODUCTS.FORM.SELECT_WIDTH' | translate }}</option>
+                        <option *ngFor="let w of widths" [value]="w">{{ w }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="aspectRatio">{{ 'ADMIN.PRODUCTS.FORM.ASPECT_RATIO' | translate }} *</label>
+                    <select id="aspectRatio" formControlName="aspectRatio" class="form-control">
+                        <option [value]="null">{{ 'ADMIN.PRODUCTS.FORM.SELECT_ASPECT_RATIO' | translate }}</option>
+                        <option *ngFor="let ar of aspectRatios" [value]="ar">{{ ar }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="diameter">{{ 'ADMIN.PRODUCTS.FORM.DIAMETER' | translate }} *</label>
+                    <select id="diameter" formControlName="diameter" class="form-control">
+                        <option [value]="null">{{ 'ADMIN.PRODUCTS.FORM.SELECT_DIAMETER' | translate }}</option>
+                        <option *ngFor="let d of diameters" [value]="d">{{ d }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="loadIndex">{{ 'ADMIN.PRODUCTS.FORM.LOAD_INDEX' | translate }} *</label>
+                    <select id="loadIndex" formControlName="loadIndex" class="form-control">
+                        <option value="">{{ 'ADMIN.PRODUCTS.FORM.SELECT_LOAD_INDEX' | translate }}</option>
+                        <option *ngFor="let li of loadIndexes" [value]="li">{{ li }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="speedRating">{{ 'ADMIN.PRODUCTS.FORM.SPEED_RATING' | translate }} *</label>
+                    <select id="speedRating" formControlName="speedRating" class="form-control">
+                        <option value="">{{ 'ADMIN.PRODUCTS.FORM.SELECT_SPEED_RATING' | translate }}</option>
+                        <option *ngFor="let sr of speedRatings" [value]="sr">{{ sr }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="construction">{{ 'ADMIN.PRODUCTS.FORM.CONSTRUCTION' | translate }} *</label>
+                    <select id="construction" formControlName="construction" class="form-control">
+                        <option value="radial">{{ 'ADMIN.PRODUCTS.FORM.CONSTRUCTION_RADIAL' | translate }}</option>
+                        <option value="bias">{{ 'ADMIN.PRODUCTS.FORM.CONSTRUCTION_BIAS' | translate }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <app-toggle-switch [control]="$any(productForm.get('tubeless'))"
+                    [label]="'ADMIN.PRODUCTS.FORM.TUBELESS' | translate">
+                </app-toggle-switch>
+            </div>
+        </div>
+
+        <!-- Description & Features -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.PRODUCTS.SECTION_DESCRIPTION' | translate }}</h3>
+
+            <div class="form-group">
+                <label for="descriptionEn">
+                    {{ 'ADMIN.PRODUCTS.FORM.DESCRIPTION_EN' | translate }} *
+                    <span class="help-icon"
+                        title="Detailed product description for English-speaking customers (recommended: 150-300 characters)">ℹ️</span>
+                </label>
+                <textarea id="descriptionEn" formControlName="descriptionEn" rows="4" class="form-control"
+                    maxlength="500"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.DESCRIPTION_EN_PLACEHOLDER' | translate"></textarea>
+                <app-character-counter [current]="descriptionEnLength" [limit]="300" [softLimit]="150">
+                </app-character-counter>
+            </div>
+
+            <div class="form-group">
+                <label for="descriptionEs">
+                    {{ 'ADMIN.PRODUCTS.FORM.DESCRIPTION_ES' | translate }} *
+                    <span class="help-icon"
+                        title="Descripción detallada del producto para clientes hispanohablantes (recomendado: 150-300 caracteres)">ℹ️</span>
+                </label>
+                <textarea id="descriptionEs" formControlName="descriptionEs" rows="4" class="form-control"
+                    maxlength="500"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.DESCRIPTION_ES_PLACEHOLDER' | translate"></textarea>
+                <app-character-counter [current]="descriptionEsLength" [limit]="300" [softLimit]="150">
+                </app-character-counter>
+            </div>
+
+            <!-- Features EN -->
+            <div class="form-group">
+                <label>
+                    {{ 'ADMIN.PRODUCTS.FORM.FEATURES_EN' | translate }}
+                    <span class="help-icon"
+                        title="Key product features and selling points in English (bullet points)">ℹ️</span>
+                </label>
+                <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.FEATURES_HINT' | translate }}</small>
+                <div formArrayName="featuresEn">
+                    <div *ngFor="let feature of featuresEn.controls; let i = index" class="feature-item">
+                        <input type="text" [formControlName]="i" class="form-control"
+                            [placeholder]="'ADMIN.PRODUCTS.FORM.FEATURE_PLACEHOLDER_EN' | translate">
+                        <button type="button" class="btn-remove" (click)="removeFeature('en', i)">✕</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-add-feature" (click)="addFeature('en')">
+                    {{ 'ADMIN.PRODUCTS.FORM.ADD_FEATURE_EN' | translate }}
+                </button>
+            </div>
+
+            <!-- Features ES -->
+            <div class="form-group">
+                <label>
+                    {{ 'ADMIN.PRODUCTS.FORM.FEATURES_ES' | translate }}
+                    <span class="help-icon"
+                        title="Características clave del producto y puntos de venta en Español (viñetas)">ℹ️</span>
+                </label>
+                <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.FEATURES_HINT' | translate }}</small>
+                <div formArrayName="featuresEs">
+                    <div *ngFor="let feature of featuresEs.controls; let i = index" class="feature-item">
+                        <input type="text" [formControlName]="i" class="form-control"
+                            [placeholder]="'ADMIN.PRODUCTS.FORM.FEATURE_PLACEHOLDER_ES' | translate">
+                        <button type="button" class="btn-remove" (click)="removeFeature('es', i)">✕</button>
+                    </div>
+                </div>
+                <button type="button" class="btn-add-feature" (click)="addFeature('es')">
+                    {{ 'ADMIN.PRODUCTS.FORM.ADD_FEATURE_ES' | translate }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Images -->
+        <div class="form-section">
+            <h3 class="section-title">Product Images</h3>
+
+            <!-- Action Buttons -->
+            <div class="image-actions">
+                <button type="button" class="btn-upload" (click)="imageInput.click()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span>Upload Images</span>
+                </button>
+
+                <button type="button" class="btn-library" (click)="openMediaLibrary()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                        <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <span>Choose from Library</span>
+                </button>
+            </div>
+
+            <!-- Unified Draggable Image Grid -->
+            <div class="images-grid" cdkDropList (cdkDropListDropped)="onImageReorder($event)">
+                <div *ngFor="let img of productImages; let i = index" class="image-card" cdkDrag>
+
+                    <!-- Main Badge (only on first) -->
+                    <span class="main-badge" *ngIf="i === 0">MAIN</span>
+
+                    <!-- 16:9 Container -->
+                    <div class="image-container-16x9">
+                        <img [src]="img.url" [alt]="'Product image ' + (i+1)">
+                    </div>
+
+                    <!-- Remove Button -->
+                    <button type="button" class="btn-remove-card" (click)="removeImage(i)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+
+                    <!-- Drag indicator -->
+                    <div class="drag-indicator">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="9" cy="5" r="1" fill="currentColor" />
+                            <circle cx="9" cy="12" r="1" fill="currentColor" />
+                            <circle cx="9" cy="19" r="1" fill="currentColor" />
+                            <circle cx="15" cy="5" r="1" fill="currentColor" />
+                            <circle cx="15" cy="12" r="1" fill="currentColor" />
+                            <circle cx="15" cy="19" r="1" fill="currentColor" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <p class="helper-text" *ngIf="productImages.length > 0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                </svg>
+                Drag to reorder • First image is the main
+            </p>
+
+            <!-- Hidden file input -->
+            <input #imageInput type="file" multiple accept="image/*" (change)="onImagesSelected($event)"
+                style="display: none;">
+        </div>
+
+        <!-- Pricing & Stock -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.PRODUCTS.SECTION_PRICING' | translate }}</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="price">
+                        {{ 'ADMIN.PRODUCTS.FORM.PRICE' | translate }} ({{ 'ADMIN.PRODUCTS.FORM.PRICE_CURRENCY' |
+                        translate }}) *
+                        <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.PRICE_HELP' | translate">ℹ️</span>
+                    </label>
+                    <div class="input-with-prefix">
+                        <span class="currency-prefix">$</span>
+                        <input type="number" id="price" formControlName="price" min="0" step="0.01"
+                            class="form-control with-prefix" placeholder="0.00">
+                        <span class="currency-suffix">MXN</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="compareAtPrice">
+                        {{ 'ADMIN.PRODUCTS.FORM.COMPARE_PRICE' | translate }} ({{ 'ADMIN.PRODUCTS.FORM.PRICE_CURRENCY' |
+                        translate }})
+                        <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.COMPARE_PRICE_HELP' | translate">ℹ️</span>
+                    </label>
+                    <div class="input-with-prefix">
+                        <span class="currency-prefix">$</span>
+                        <input type="number" id="compareAtPrice" formControlName="compareAtPrice" min="0" step="0.01"
+                            class="form-control with-prefix" placeholder="0.00">
+                        <span class="currency-suffix">MXN</span>
+                    </div>
+                    <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.COMPARE_PRICE_HINT' | translate }}</small>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="stockQuantity">
+                        {{ 'ADMIN.PRODUCTS.FORM.STOCK_QUANTITY' | translate }} *
+                        <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.STOCK_HELP' | translate">ℹ️</span>
+                    </label>
+                    <input type="number" id="stockQuantity" formControlName="stockQuantity" min="0"
+                        class="form-control">
+
+                    <!-- Stock Warnings -->
+                    <div class="stock-warning"
+                        *ngIf="productForm.get('stockQuantity')?.value > 0 && productForm.get('stockQuantity')?.value < 5">
+                        <div class="warning-header">
+                            <span class="warning-icon">⚠️</span>
+                            <strong>{{ 'ADMIN.PRODUCTS.FORM.STOCK_LOW_ALERT' | translate }}</strong>
+                        </div>
+                        <p class="warning-text">
+                            Solo quedan <strong>{{ productForm.get('stockQuantity')?.value }}</strong> unidad(es).
+                            Considera reabastecer para evitar quedarte sin stock.
+                        </p>
+                    </div>
+
+                    <div class="stock-alert" *ngIf="productForm.get('stockQuantity')?.value === 0">
+                        <div class="alert-header">
+                            <span class="alert-icon">🚫</span>
+                            <strong>{{ 'ADMIN.PRODUCTS.FORM.STOCK_OUT_ALERT' | translate }}</strong>
+                        </div>
+                        <p class="alert-text">
+                            {{ 'ADMIN.PRODUCTS.FORM.STOCK_OUT_TEXT' | translate }}
+                        </p>
+                    </div>
+
+                    <div class="stock-success" *ngIf="productForm.get('stockQuantity')?.value >= 10">
+                        <div class="success-header">
+                            <span class="success-icon">✅</span>
+                            <strong>{{ 'ADMIN.PRODUCTS.FORM.STOCK_GOOD_ALERT' | translate }}</strong>
+                        </div>
+                        <p class="success-text">
+                            <strong>{{ productForm.get('stockQuantity')?.value }}</strong> unidades en stock. ¡Estás
+                            bien abastecido!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <app-toggle-switch [control]="$any(productForm.get('inStock'))"
+                        [label]="'ADMIN.PRODUCTS.FORM.IN_STOCK' | translate" icon="📦">
+                    </app-toggle-switch>
+                </div>
+            </div>
+        </div>
+
+        <!-- Marketing -->
+        <div class="form-section marketing-section">
+            <h3 class="section-title">
+                <span class="section-icon">📢</span>
+                {{ 'ADMIN.PRODUCTS.SECTION_MARKETING' | translate }}
+            </h3>
+
+            <div class="form-group">
+                <label for="tags">
+                    {{ 'ADMIN.PRODUCTS.FORM.TAGS' | translate }}
+                    <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.TAGS_HINT' | translate">ℹ️</span>
+                </label>
+                <input type="text" id="tags" formControlName="tags" class="form-control"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.TAGS_PLACEHOLDER' | translate">
+                <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.TAGS_HINT' | translate }}</small>
+            </div>
+
+            <div class="marketing-flags">
+                <div class="marketing-flag-item">
+                    <app-toggle-switch [control]="$any(productForm.get('featured'))"
+                        [label]="'ADMIN.PRODUCTS.FORM.FEATURED' | translate" icon="⭐"
+                        [hint]="'ADMIN.PRODUCTS.FORM.FEATURED_HELP' | translate">
+                    </app-toggle-switch>
+                </div>
+                <div class="marketing-flag-item">
+                    <app-toggle-switch [control]="$any(productForm.get('newArrival'))"
+                        [label]="'ADMIN.PRODUCTS.FORM.NEW_ARRIVAL' | translate" icon="🆕"
+                        [hint]="'ADMIN.PRODUCTS.FORM.NEW_ARRIVAL_HELP' | translate">
+                    </app-toggle-switch>
+                </div>
+                <div class="marketing-flag-item">
+                    <app-toggle-switch [control]="$any(productForm.get('bestSeller'))"
+                        [label]="'ADMIN.PRODUCTS.FORM.BEST_SELLER' | translate" icon="🔥"
+                        [hint]="'ADMIN.PRODUCTS.FORM.BEST_SELLER_HELP' | translate">
+                    </app-toggle-switch>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEO Optimization -->
+        <div class="form-section seo-section">
+            <h3 class="section-title">
+                <span class="section-icon">🔍</span>
+                {{ 'ADMIN.PRODUCTS.SECTION_SEO' | translate }}
+            </h3>
+
+            <!-- Meta Title -->
+            <div class="form-group">
+                <label for="metaTitle">
+                    {{ 'ADMIN.PRODUCTS.FORM.META_TITLE' | translate }}
+                    <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.META_TITLE_HELP' | translate">ℹ️</span>
+                </label>
+                <input type="text" id="metaTitle" formControlName="metaTitle" class="form-control" maxlength="70"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.META_TITLE_PLACEHOLDER' | translate">
+                <app-character-counter [current]="metaTitleLength" [limit]="60" [softLimit]="55">
+                </app-character-counter>
+            </div>
+
+            <!-- Meta Description -->
+            <div class="form-group">
+                <label for="metaDescription">
+                    {{ 'ADMIN.PRODUCTS.FORM.META_DESCRIPTION' | translate }}
+                    <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.META_DESCRIPTION_HELP' | translate">ℹ️</span>
+                </label>
+                <textarea id="metaDescription" formControlName="metaDescription" rows="3" class="form-control"
+                    maxlength="170"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.META_DESCRIPTION_PLACEHOLDER' | translate"></textarea>
+                <app-character-counter [current]="metaDescriptionLength" [limit]="160" [softLimit]="150">
+                </app-character-counter>
+            </div>
+
+            <!-- Focus Keywords -->
+            <div class="form-group">
+                <label for="focusKeywords">
+                    {{ 'ADMIN.PRODUCTS.FORM.FOCUS_KEYWORDS' | translate }}
+                    <span class="help-icon" [title]="'ADMIN.PRODUCTS.FORM.FOCUS_KEYWORDS_HELP' | translate">ℹ️</span>
+                </label>
+                <input type="text" id="focusKeywords" formControlName="focusKeywords" class="form-control"
+                    [placeholder]="'ADMIN.PRODUCTS.FORM.FOCUS_KEYWORDS_PLACEHOLDER' | translate">
+                <small class="form-hint">{{ 'ADMIN.PRODUCTS.FORM.FOCUS_KEYWORDS_HINT' | translate }}</small>
+            </div>
+
+            <!-- SEO Preview -->
+            <app-seo-preview [title]="productForm.get('metaTitle')?.value || productForm.get('nameEn')?.value"
+                [url]="'importadora-euro.com/products/' + productForm.get('slug')?.value"
+                [description]="productForm.get('metaDescription')?.value || productForm.get('descriptionEn')?.value">
+            </app-seo-preview>
+        </div>
+
+        <!-- Product Status & Publishing -->
+        <div class="form-section status-section">
+            <h3 class="section-title">
+                <span class="section-icon">📊</span>
+                {{ 'ADMIN.PRODUCTS.SECTION_STATUS' | translate }}
+            </h3>
+
+            <div class="status-overview">
+                <div class="status-card">
+                    <label class="status-label">{{ 'ADMIN.PRODUCTS.FORM.CURRENT_STATUS' | translate }}</label>
+                    <app-status-badge [status]="productForm.get('publishStatus')?.value">
+                    </app-status-badge>
+                </div>
+
+                <div class="status-card" *ngIf="isEditing">
+                    <label class="status-label">{{ 'ADMIN.PRODUCTS.FORM.LAST_MODIFIED' | translate }}</label>
+                    <div class="status-value">
+                        <span class="status-icon">🕒</span>
+                        {{ lastModified | date:'medium' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Publication Status -->
+            <div class="form-group">
+                <label for="publishStatus">{{ 'ADMIN.PRODUCTS.FORM.PUBLISH_STATUS' | translate }} *</label>
+                <select id="publishStatus" formControlName="publishStatus" class="form-control">
+                    <option value="draft">{{ 'ADMIN.PRODUCTS.FORM.PUBLISH_STATUS_DRAFT' | translate }}</option>
+                    <option value="published">{{ 'ADMIN.PRODUCTS.FORM.PUBLISH_STATUS_PUBLISHED' | translate }}</option>
+                    <option value="archived">{{ 'ADMIN.PRODUCTS.FORM.PUBLISH_STATUS_ARCHIVED' | translate }}</option>
+                </select>
+                <small class="form-hint status-hint">
+                    <span *ngIf="productForm.get('publishStatus')?.value === 'draft'">
+                        {{ 'ADMIN.PRODUCTS.FORM.STATUS_HINT_DRAFT' | translate }}
+                    </span>
+                    <span *ngIf="productForm.get('publishStatus')?.value === 'published'">
+                        {{ 'ADMIN.PRODUCTS.FORM.STATUS_HINT_PUBLISHED' | translate }}
+                    </span>
+                    <span *ngIf="productForm.get('publishStatus')?.value === 'archived'">
+                        {{ 'ADMIN.PRODUCTS.FORM.STATUS_HINT_ARCHIVED' | translate }}
+                    </span>
+                </small>
+            </div>
+
+            <!-- Visibility Settings -->
+            <div class="form-group">
+                <label for="visibility">{{ 'ADMIN.PRODUCTS.FORM.VISIBILITY' | translate }}</label>
+                <select id="visibility" formControlName="visibility" class="form-control">
+                    <option value="public">{{ 'ADMIN.PRODUCTS.FORM.VISIBILITY_PUBLIC' | translate }}</option>
+                    <option value="private">{{ 'ADMIN.PRODUCTS.FORM.VISIBILITY_PRIVATE' | translate }}</option>
+                </select>
+            </div>
+
+            <!-- Active Toggle -->
+            <div class="form-group">
+                <app-toggle-switch [control]="$any(productForm.get('active'))"
+                    [label]="'ADMIN.PRODUCTS.FORM.ACTIVE_PRODUCT' | translate" icon="✅"
+                    [hint]="'ADMIN.PRODUCTS.FORM.ACTIVE_PRODUCT_HINT' | translate">
+                </app-toggle-switch>
+            </div>
+
+            <!-- Scheduled Publishing -->
+            <div class="form-group scheduled-publishing">
+                <app-toggle-switch [control]="$any(productForm.get('enableScheduledPublish'))"
+                    [label]="'ADMIN.PRODUCTS.FORM.SCHEDULE_PUBLICATION' | translate" icon="📅">
+                </app-toggle-switch>
+
+                <div *ngIf="productForm.get('enableScheduledPublish')?.value" class="scheduled-date-picker">
+                    <label for="publishDate">{{ 'ADMIN.PRODUCTS.FORM.PUBLISH_DATE_TIME' | translate }}</label>
+                    <input type="datetime-local" id="publishDate" formControlName="publishDate" class="form-control">
+                    <small class="form-hint">
+                        {{ 'ADMIN.PRODUCTS.FORM.PUBLISH_DATE_HINT' | translate }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" (click)="onCancel()" [disabled]="isSubmitting">
+                {{ 'ADMIN.COMMON.CANCEL' | translate }}
+            </button>
+            <button type="submit" class="btn-primary" [disabled]="productForm.invalid || isSubmitting">
+                <span *ngIf="!isSubmitting">
+                    {{ isEditing ? ('ADMIN.COMMON.UPDATE' | translate) : ('ADMIN.COMMON.CREATE' | translate) }}
+                </span>
+                <span *ngIf="isSubmitting">
+                    {{ 'ADMIN.COMMON.SAVING' | translate }}
+                </span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<app-loading-spinner [show]="isSubmitting"
+    [message]="isEditing ? 'Updating product...' : 'Creating product...'"></app-loading-spinner>

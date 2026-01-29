@@ -18,8 +18,9 @@
     align-items: center;
     position: relative;
     overflow: hidden;
-    background: radial-gradient(circle at top right, var(--theme-accent), transparent 40%),
-        radial-gradient(circle at bottom left, var(--theme-primary), transparent 40%);
+    background: url('https://firebasestorage.googleapis.com/v0/b/tiendapraxis.firebasestorage.app/o/media%2Fsite-assets%2F1769103239373_yixzje.png?alt=media');
+    background-size: cover;
+    background-position: center;
     content-visibility: auto;
     contain: layout paint;
 }

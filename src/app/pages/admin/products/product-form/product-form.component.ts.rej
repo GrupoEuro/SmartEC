@@ -1,0 +1,24 @@
+***************
+*** 556,565 ****
+                      );
+                  } else {
+                      // No file to upload, use existing image URL
+-                     this.toast.success('Product created successfully!');
+                  }
+  
+-                 // Show success state
+                  this.submitState = 'success';
+                  this.submitSuccess = true;
+                  this.submitError = false;
+--- 556,566 ----
+                      );
+                  } else {
+                      // No file to upload, use existing image URL
+                  }
++                 this.toast.success('Product created successfully!');
++             }
+  
++             // Show success state
+                  this.submitState = 'success';
+                  this.submitSuccess = true;
+                  this.submitError = false;

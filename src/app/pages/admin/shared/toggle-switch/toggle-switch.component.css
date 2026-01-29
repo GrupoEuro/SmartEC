@@ -1,16 +1,19 @@
-/* Toggle Switch Container */
+/* Toggle Switch Container - Navy Theme */
 .toggle-switch {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem;
-    background: white;
-    border-radius: 8px;
-    transition: background 0.2s;
+    padding: 14px 18px;
+    background: rgba(30, 41, 59, 0.4);
+    /* Match navy theme */
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 10px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-switch:hover {
-    background: #f8f9fa;
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(59, 130, 246, 0.25);
 }
 
 .toggle-input {
@@ -26,20 +29,20 @@
     flex-shrink: 0;
 }
 
-/* Toggle Slider Background */
+/* Toggle Slider Background - Dark Theme */
 .toggle-slider {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #e0e0e0;
+    background-color: rgba(100, 116, 139, 0.3);
+    /* Dark off state */
     border-radius: 30px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
     overflow: hidden;
     pointer-events: none;
-    /* Allow clicks to pass through to label */
 }
 
 /* OFF Label inside switch */
@@ -51,7 +54,7 @@
     transform: translateY(-50%);
     font-size: 0.6rem;
     font-weight: 700;
-    color: #999;
+    color: rgba(148, 163, 184, 0.6);
     letter-spacing: 0.5px;
     transition: opacity 0.2s;
 }
@@ -64,15 +67,15 @@
     width: 24px;
     left: 3px;
     bottom: 3px;
-    background-color: white;
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
     border-radius: 50%;
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.7rem;
-    color: #999;
+    color: #94a3b8;
     font-weight: bold;
 }
 
@@ -96,7 +99,7 @@
     left: 50%;
     width: 100%;
     height: 100%;
-    background: rgba(40, 167, 69, 0.3);
+    background: rgba(59, 130, 246, 0.3);
     border-radius: 50%;
     transform: translate(-50%, -50%) scale(0);
     pointer-events: none;
@@ -106,11 +109,11 @@
     animation: ripple 0.6s ease-out;
 }
 
-/* CHECKED State */
+/* CHECKED State - Blue Theme */
 .toggle-input:checked+.toggle-label .toggle-slider {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    box-shadow: 0 0 20px rgba(40, 167, 69, 0.4),
-        0 2px 8px rgba(40, 167, 69, 0.3);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4),
+        inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* ON Label inside switch */
@@ -125,39 +128,40 @@
 .toggle-input:checked+.toggle-label .toggle-slider::before {
     content: '✓';
     transform: translateX(26px);
-    color: #28a745;
+    background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+    color: #3b82f6;
     font-weight: bold;
 }
 
 /* Disabled State */
 .toggle-input:disabled+.toggle-label {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
 .toggle-input:disabled+.toggle-label .toggle-slider {
-    background-color: #f5f5f5;
+    background-color: rgba(100, 116, 139, 0.2);
 }
 
 /* Disabled State - Text Label */
 .toggle-input:disabled~.toggle-text {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
-    color: #999;
+    color: #64748b;
 }
 
 .toggle-input:disabled~.toggle-text .toggle-icon {
-    opacity: 0.6;
+    opacity: 0.4;
 }
 
-
-/* Toggle Text Label */
+/* Toggle Text Label - BRIGHT for Readability */
 .toggle-text {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-weight: 500;
-    color: #333;
+    font-weight: 700;
+    font-size: 15px;
+    color: #ffffff !important;
     cursor: pointer;
     user-select: none;
     transition: color 0.2s;
@@ -169,21 +173,21 @@
 }
 
 .toggle-text:hover {
-    color: #1e293b;
+    color: #f1f5f9;
 }
 
 .toggle-text:hover .toggle-icon {
     transform: scale(1.1);
 }
 
-/* Focus States with Glow */
+/* Focus States with Glow - Blue Theme */
 .toggle-input:focus+.toggle-label .toggle-slider {
-    box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.15);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
 .toggle-input:checked:focus+.toggle-label .toggle-slider {
-    box-shadow: 0 0 20px rgba(40, 167, 69, 0.5),
-        0 0 0 4px rgba(40, 167, 69, 0.2);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5),
+        0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 /* Active/Pressed State */
@@ -193,10 +197,14 @@
 
 /* Form Hint */
 .form-hint.checkbox-hint {
-    color: #6b7280;
+    color: #94a3b8;
     font-size: 0.8125rem;
     margin-left: 2rem;
     line-height: 1.4;
     display: block;
     margin-top: 0.25rem;
+}
+
+.toggle-input {
+    display: none;
 }

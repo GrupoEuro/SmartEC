@@ -7,6 +7,7 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { Category } from '../../../../core/models/catalog.model';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
+import { ValidationSummaryComponent } from '../../shared/validation-summary/validation-summary.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { CanComponentDeactivate } from '../../../../core/guards/unsaved-changes.guard';
@@ -15,7 +16,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
     selector: 'app-category-form',
     standalone: true,
-    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
+    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent],
     templateUrl: './category-form.component.html',
     styleUrl: './category-form.component.css'
 })
@@ -31,9 +32,23 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
     isEditing = false;
     categoryId: string | null = null;
     isSubmitting = false;
+    submitState: 'idle' | 'validating' | 'saving' | 'success' | 'error' = 'idle';
     imageFile: File | null = null;
     imagePreview: string | null = null;
     parentCategories: Category[] = [];
+
+    // Field labels for validation summary
+    fieldLabels: { [key: string]: string } = {
+        nameEn: 'Category Name (English)',
+        nameEs: 'Category Name (Spanish)',
+        slug: 'URL Slug',
+        descriptionEn: 'Description (English)',
+        descriptionEs: 'Description (Spanish)',
+        icon: 'Icon',
+        parentId: 'Parent Category',
+        order: 'Display Order',
+        active: 'Active Status'
+    };
 
     ngOnInit() {
         this.initForm();
@@ -144,23 +159,19 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
             return;
         }
 
+        // Start submit process
         this.isSubmitting = true;
+        this.submitState = 'saving';
 
         try {
             const formValue = this.categoryForm.value;
 
-            const categoryData: Omit<Category, 'id'> = {
+            const categoryData: any = {
                 name: {
                     en: formValue.nameEn,
                     es: formValue.nameEs
                 },
                 slug: formValue.slug,
-                description: formValue.descriptionEn || formValue.descriptionEs ? {
-                    en: formValue.descriptionEn || '',
-                    es: formValue.descriptionEs || ''
-                } : undefined,
-                icon: formValue.icon || undefined,
-                parentId: formValue.parentId || undefined,
                 order: formValue.order,
                 active: formValue.active,
                 imageUrl: '',
@@ -168,28 +179,56 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
                 updatedAt: new Date()
             };
 
+            // Only add optional fields if they have values
+            if (formValue.descriptionEn || formValue.descriptionEs) {
+                categoryData.description = {
+                    en: formValue.descriptionEn || '',
+                    es: formValue.descriptionEs || ''
+                };
+            }
+
+            if (formValue.icon) {
+                categoryData.icon = formValue.icon;
+            }
+
+            if (formValue.parentId) {
+                categoryData.parentId = formValue.parentId;
+            }
+
             if (this.isEditing && this.categoryId) {
                 await this.categoryService.updateCategory(
                     this.categoryId,
                     categoryData,
                     this.imageFile || undefined
                 );
+                this.submitState = 'success';
                 this.toast.success('Category updated successfully');
             } else {
                 await this.categoryService.createCategory(
                     categoryData,
                     this.imageFile || undefined
                 );
+                this.submitState = 'success';
                 this.toast.success('Category created successfully');
             }
 
             this.categoryForm.markAsPristine();
-            this.router.navigate(['/admin/categories']);
+
+            // Navigate after short delay to show success state
+            setTimeout(() => {
+                this.router.navigate(['/admin/categories']);
+            }, 500);
         } catch (error) {
             console.error('Error saving category:', error);
+            this.submitState = 'error';
             this.toast.error('Error saving category. Please try again.');
         } finally {
-            this.isSubmitting = false;
+            setTimeout(() => {
+                this.isSubmitting = false;
+                if (this.submitState !== 'success') {
+                    this.submitState = 'idle';
+                }
+            }, 1000);
         }
     }
 

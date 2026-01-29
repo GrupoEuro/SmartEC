@@ -151,6 +151,6 @@ export class FolderTreeComponent implements OnInit {
     onContextMenu(event: MouseEvent, folder: MediaFolder) {
         event.preventDefault();
         // TODO: Implement Context Menu (Rename, Delete)
-        console.log('Right clicked', folder);
+
     }
 }

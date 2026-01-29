@@ -1,0 +1,154 @@
+<div class="product-types-container">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">🎯 {{ 'PRODUCT_TYPES.TITLE' | translate }}</h1>
+            <p class="page-subtitle">
+                {{ 'PRODUCT_TYPES.SUBTITLE' | translate }}
+            </p>
+        </div>
+        <button class="btn-primary" (click)="createNewType()">
+            <app-icon name="plus" [size]="18"></app-icon>
+            {{ 'PRODUCT_TYPES.NEW_TYPE' | translate }}
+        </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <app-icon name="search" [size]="20" class="search-icon"></app-icon>
+        <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="searchQuery.set($event)"
+            [placeholder]="'PRODUCT_TYPES.SEARCH_PLACEHOLDER' | translate" class="search-input" />
+    </div>
+
+    <div *ngIf="loading()" class="loading-state">
+        <div class="spinner"></div>
+        {{ 'PRODUCT_TYPES.FORM.LOADING' | translate }}
+    </div>
+
+    <div *ngIf="!loading()">
+        <!-- System Types -->
+        <div class="type-section">
+            <h2 class="section-title">
+                <app-icon name="shield" [size]="20"></app-icon>
+                {{ 'PRODUCT_TYPES.SYSTEM_TYPES' | translate }}
+                <span class="section-badge">{{ 'PRODUCT_TYPES.PROTECTED_BADGE' | translate }}</span>
+            </h2>
+            <p class="section-description">
+                {{ 'PRODUCT_TYPES.SYSTEM_DESCRIPTION' | translate }}
+            </p>
+
+            <div class="types-grid">
+                <div *ngFor="let template of filteredSystemTemplates()" class="type-card system-type"
+                    [class.inactive]="!template.active">
+                    <div class="type-header">
+                        <div class="type-icon-wrapper">
+                            <app-icon [name]="getIconName(template)" [size]="32"></app-icon>
+                        </div>
+                        <div class="type-info">
+                            <h3 class="type-name">{{ template.name.en }}</h3>
+                            <p class="type-id">ID: {{ template.id }}</p>
+                            <p class="type-specs">{{ getSpecCount(template) }} specifications</p>
+                        </div>
+                        <div class="status-badge" [class.active]="template.active">
+                            {{ template.active ? ('PRODUCT_TYPES.FORM.ACTIVE' | translate) :
+                            ('PRODUCT_TYPES.FORM.HIDDEN' | translate) }}
+                        </div>
+                    </div>
+
+                    <div class="type-actions">
+                        <button class="action-btn edit" (click)="editType(template.id)"
+                            [title]="'PRODUCT_TYPES.ACTIONS.VIEW' | translate">
+                            <app-icon name="eye" [size]="16"></app-icon>
+                            {{ 'PRODUCT_TYPES.ACTIONS.VIEW' | translate }}
+                        </button>
+                        <button class="action-btn" (click)="duplicateType(template)"
+                            [title]="'PRODUCT_TYPES.ACTIONS.DUPLICATE' | translate">
+                            <app-icon name="copy" [size]="16"></app-icon>
+                            {{ 'PRODUCT_TYPES.ACTIONS.DUPLICATE' | translate }}
+                        </button>
+                        <button class="action-btn toggle" (click)="toggleActive(template)"
+                            [title]="template.active ? ('PRODUCT_TYPES.FORM.HIDDEN' | translate) : ('PRODUCT_TYPES.FORM.ACTIVE' | translate)">
+                            <app-icon [name]="template.active ? 'eye-off' : 'eye'" [size]="16"></app-icon>
+                            {{ template.active ? ('PRODUCT_TYPES.ACTIONS.HIDE' | translate) :
+                            ('PRODUCT_TYPES.ACTIONS.SHOW' | translate) }}
+                        </button>
+                    </div>
+                </div>
+
+                <div *ngIf="filteredSystemTemplates().length === 0" class="empty-state">
+                    {{ 'PRODUCT_TYPES.NO_SYSTEM_FOUND' | translate: { query: searchQuery() } }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Types -->
+        <div class="type-section">
+            <h2 class="section-title">
+                <app-icon name="layers" [size]="20"></app-icon>
+                {{ 'PRODUCT_TYPES.CUSTOM_TYPES' | translate }}
+                <span class="section-badge custom">{{ customTemplates().length }}</span>
+            </h2>
+            <p class="section-description">
+                {{ 'PRODUCT_TYPES.CUSTOM_DESCRIPTION' | translate }}
+            </p>
+
+            <div class="types-grid">
+                <div *ngFor="let template of filteredCustomTemplates()" class="type-card custom-type"
+                    [class.inactive]="!template.active">
+                    <div class="type-header">
+                        <div class="type-icon-wrapper">
+                            <app-icon [name]="getIconName(template)" [size]="32"></app-icon>
+                        </div>
+                        <div class="type-info">
+                            <h3 class="type-name">{{ template.name.en }}</h3>
+                            <p class="type-id">ID: {{ template.id }}</p>
+                            <p class="type-specs">{{ getSpecCount(template) }} specifications</p>
+                        </div>
+                        <div class="status-badge" [class.active]="template.active">
+                            {{ template.active ? ('PRODUCT_TYPES.FORM.ACTIVE' | translate) :
+                            ('PRODUCT_TYPES.FORM.HIDDEN' | translate) }}
+                        </div>
+                    </div>
+
+                    <div class="type-actions">
+                        <button class="action-btn edit" (click)="editType(template.id)"
+                            [title]="'PRODUCT_TYPES.ACTIONS.EDIT' | translate">
+                            <app-icon name="edit-2" [size]="16"></app-icon>
+                            {{ 'PRODUCT_TYPES.ACTIONS.EDIT' | translate }}
+                        </button>
+                        <button class="action-btn" (click)="duplicateType(template)"
+                            [title]="'PRODUCT_TYPES.ACTIONS.DUPLICATE' | translate">
+                            <app-icon name="copy" [size]="16"></app-icon>
+                            {{ 'PRODUCT_TYPES.ACTIONS.DUPLICATE' | translate }}
+                        </button>
+                        <button class="action-btn toggle" (click)="toggleActive(template)"
+                            [title]="template.active ? ('PRODUCT_TYPES.FORM.HIDDEN' | translate) : ('PRODUCT_TYPES.FORM.ACTIVE' | translate)">
+                            <app-icon [name]="template.active ? 'eye-off' : 'eye'" [size]="16"></app-icon>
+                            {{ template.active ? ('PRODUCT_TYPES.ACTIONS.HIDE' | translate) :
+                            ('PRODUCT_TYPES.ACTIONS.SHOW' | translate) }}
+                        </button>
+                        <button class="action-btn delete" (click)="deleteType(template)"
+                            [title]="'PRODUCT_TYPES.ACTIONS.DELETE' | translate">
+                            <app-icon name="trash-2" [size]="16"></app-icon>
+                            {{ 'PRODUCT_TYPES.ACTIONS.DELETE' | translate }}
+                        </button>
+                    </div>
+                </div>
+
+                <div *ngIf="filteredCustomTemplates().length === 0 && customTemplates().length > 0" class="empty-state">
+                    {{ 'PRODUCT_TYPES.NO_CUSTOM_FOUND' | translate: { query: searchQuery() } }}
+                </div>
+
+                <div *ngIf="customTemplates().length === 0" class="empty-state-create">
+                    <app-icon name="plus-circle" [size]="48" class="empty-icon"></app-icon>
+                    <h3>{{ 'PRODUCT_TYPES.NO_CUSTOM_YET' | translate }}</h3>
+                    <p>{{ 'PRODUCT_TYPES.CREATE_FIRST' | translate }}</p>
+                    <button class="btn-primary" (click)="createNewType()">
+                        <app-icon name="plus" [size]="18"></app-icon>
+                        {{ 'PRODUCT_TYPES.NEW_TYPE' | translate }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

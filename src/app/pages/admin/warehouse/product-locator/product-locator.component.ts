@@ -122,7 +122,7 @@ export class ProductLocatorComponent {
         this.warehouseService.getZones(id).subscribe(z => this.zones.set(z));
         this.warehouseService.getStructures(id).subscribe(s => {
             this.structures.set(s);
-            console.log(`[Locator] Loaded ${s.length} storage structures`);
+
 
             // Validate after structures are loaded
             setTimeout(() => {
@@ -134,7 +134,7 @@ export class ProductLocatorComponent {
                         'error'
                     );
                 } else {
-                    console.log('[Locator] ✅ All coordinates validated successfully');
+
                 }
             }, 500); // Wait for bins to load
         });
@@ -144,14 +144,14 @@ export class ProductLocatorComponent {
         // BROWSE MODE: Load all occupied bins to show "hotspots"
         this.warehouseService.getOccupiedLocations(id).subscribe(bins => {
             this.occupiedBins.set(bins);
-            console.log(`[Locator] Loaded ${bins.length} occupied bins`);
+
 
             // Group bins by structure to see distribution
             const binsByStructure: { [key: string]: number } = {};
             bins.forEach(bin => {
                 binsByStructure[bin.structureId] = (binsByStructure[bin.structureId] || 0) + 1;
             });
-            console.log('[Locator] Bins per structure:', binsByStructure);
+
         });
     }
 
@@ -400,9 +400,9 @@ export class ProductLocatorComponent {
 
     // Rack Click for Sidebar
     onRackClick(rack: StorageStructure) {
-        console.log('[Locator] Rack clicked:', rack.code, rack.name);
+
         this.selectedRack.set(rack);
-        console.log('[Locator] Selected rack set:', this.selectedRack());
+
     }
 
     closeSidebar() {

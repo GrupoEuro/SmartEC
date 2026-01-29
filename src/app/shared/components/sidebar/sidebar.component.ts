@@ -25,7 +25,7 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- 1. Header & Logo -->
       <div class="sidebar-header">
         <div class="logo-area" *ngIf="!isCollapsed()">
-            <h1 class="logo-text">EURO<span class="logo-accent">LLANTAS</span></h1>
+            <h1 class="logo-text">ADMIN <span class="logo-accent">CENTER</span></h1>
         </div>
         <div class="logo-icon" *ngIf="isCollapsed()">
             <h1 class="logo-icon-text">E</h1>
@@ -87,8 +87,8 @@ import { AuthService } from '../../../core/services/auth.service';
     :host {
         display: block;
         height: 100vh;
-        background: #111827; /* gray-900 */
-        border-right: 1px solid #1f2937; /* gray-800 */
+        background: var(--surface-1);
+        border-right: var(--border-medium);
         transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 50;
     }
@@ -111,9 +111,9 @@ import { AuthService } from '../../../core/services/auth.service';
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 16px;
-        border-bottom: 1px solid #1f2937;
-        background: rgba(17, 24, 39, 0.95); /* matching bg */
+        padding: 0 var(--space-4);
+        border-bottom: var(--border-medium);
+        background: transparent;
     }
 
     .logo-area {
@@ -122,9 +122,26 @@ import { AuthService } from '../../../core/services/auth.service';
         gap: 12px;
     }
 
-    .logo-text { color: white; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px; margin: 0; }
-    .logo-accent { color: #facc15; }
-    .logo-icon-text { color: #facc15; font-weight: 800; font-size: 1.5rem; margin: 0; }
+    .logo-text { 
+        color: white; 
+        font-weight: 800; 
+        font-size: 1.25rem; 
+        letter-spacing: -0.5px; 
+        margin: 0; 
+    }
+    .logo-accent { 
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .logo-icon-text { 
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800; 
+        font-size: 1.5rem; 
+        margin: 0; 
+    }
 
     .collapse-btn {
         background: transparent;
@@ -148,22 +165,23 @@ import { AuthService } from '../../../core/services/auth.service';
         transform: rotate(-90deg); /* Adjust based on icon choice */
     }
 
-    /* Search */
     .search-box {
         margin: 16px;
         position: relative;
-        background: #1f2937;
-        border-radius: 8px;
+        /* background: #1f2937; Removed for flat look */
         padding: 8px 12px;
         display: flex;
         align-items: center;
         gap: 8px;
-        border: 1px solid transparent;
-        transition: border-color 0.2s;
+        border: 1px solid var(--border-structural);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.03);
+        transition: all 0.2s;
     }
 
     .search-box:focus-within {
-        border-color: #ffd700;
+        border-color: var(--accent, #38bdf8);
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .search-icon { color: #6b7280; display: flex; }
@@ -200,8 +218,8 @@ import { AuthService } from '../../../core/services/auth.service';
     /* Footer */
     .sidebar-footer {
         padding: 16px;
-        border-top: 1px solid #1f2937;
-        background: #0f1523;
+        border-top: var(--border-structural);
+        background: transparent;
     }
 
     .user-profile {

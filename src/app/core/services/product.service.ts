@@ -53,9 +53,23 @@ export class ProductService {
                     // Log potential parsing issues
                     if (!data.name) console.warn('Product missing name:', doc.id);
 
+                    // Robust mapping with defaults
                     products.push({
                         ...data,
                         id: doc.id,
+                        name: data.name || { en: 'Unknown Product', es: 'Producto Desconocido' },
+                        description: data.description || { en: '', es: '' },
+                        specifications: data.specifications || {
+                            width: 0, aspectRatio: 0, diameter: 0,
+                            loadIndex: '', speedRating: '',
+                            construction: 'radial', tubeless: true
+                        },
+                        price: data.price || 0,
+                        stockQuantity: data.stockQuantity || 0,
+                        features: data.features || { en: [], es: [] },
+                        images: data.images || { main: '', gallery: [] },
+                        tags: data.tags || [],
+                        seo: data.seo || {},
                         createdAt: data.createdAt?.toDate() || new Date(),
                         updatedAt: data.updatedAt?.toDate() || new Date()
                     } as Product);
@@ -95,10 +109,10 @@ export class ProductService {
 
                     // Specification filters
                     if (filters.tubeless !== undefined) {
-                        filtered = filtered.filter(p => p.specifications.tubeless === filters.tubeless);
+                        filtered = filtered.filter(p => p.specifications['tubeless'] === filters.tubeless);
                     }
                     if (filters.construction) {
-                        filtered = filtered.filter(p => p.specifications.construction === filters.construction);
+                        filtered = filtered.filter(p => p.specifications['construction'] === filters.construction);
                     }
 
                     // Price range
@@ -111,13 +125,13 @@ export class ProductService {
 
                     // Tire size filters
                     if (filters.width) {
-                        filtered = filtered.filter(p => p.specifications.width === filters.width);
+                        filtered = filtered.filter(p => p.specifications['width'] === filters.width);
                     }
                     if (filters.aspectRatio) {
-                        filtered = filtered.filter(p => p.specifications.aspectRatio === filters.aspectRatio);
+                        filtered = filtered.filter(p => p.specifications['aspectRatio'] === filters.aspectRatio);
                     }
                     if (filters.diameter) {
-                        filtered = filtered.filter(p => p.specifications.diameter === filters.diameter);
+                        filtered = filtered.filter(p => p.specifications['diameter'] === filters.diameter);
                     }
 
                     // Tags filter
@@ -316,6 +330,7 @@ export class ProductService {
 
         // 2. Create Stub
         const stub: Product = {
+            productType: 'tire', // Default to tire for legacy compatibility
             type: 'simple',
             active: true,
             name: { es: description, en: description },
@@ -370,6 +385,25 @@ export class ProductService {
                 ...product,
                 updatedAt: Timestamp.now()
             };
+
+            // Deep cleanup: Remove undefined and null values recursively
+            const cleanData = (obj: any): any => {
+                if (obj === null || obj === undefined) return undefined;
+                if (Array.isArray(obj)) return obj.map(item => cleanData(item)).filter(item => item !== undefined);
+                if (typeof obj === 'object' && obj.constructor === Object) {
+                    const cleaned: any = {};
+                    Object.keys(obj).forEach(key => {
+                        const cleanedValue = cleanData(obj[key]);
+                        if (cleanedValue !== undefined && cleanedValue !== null) {
+                            cleaned[key] = cleanedValue;
+                        }
+                    });
+                    return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+                }
+                return obj;
+            };
+
+            updateData = cleanData(updateData) || {};
 
             // Get current product for image cleanup
             const currentProduct = await this.getProductById(id).pipe(map(p => p)).toPromise();

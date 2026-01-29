@@ -141,7 +141,7 @@ export class PdfFormComponent implements OnInit {
                     this.selectedThumbnailFile || undefined
                 ).subscribe({
                     next: () => {
-                        console.log('PDF updated successfully');
+
                         this.router.navigate(['/admin/pdfs']);
                     },
                     error: (error) => {
@@ -164,7 +164,7 @@ export class PdfFormComponent implements OnInit {
                     this.selectedThumbnailFile || undefined
                 ).subscribe({
                     next: () => {
-                        console.log('PDF created successfully');
+
                         this.router.navigate(['/admin/pdfs']);
                     },
                     error: (error) => {

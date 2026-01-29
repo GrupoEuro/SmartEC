@@ -85,18 +85,16 @@ export class DistributorListComponent implements OnInit {
     }
 
     ngOnInit() {
-        console.log('🔵 DistributorList: ngOnInit called');
+
         this.loadDistributors();
     }
 
     loadDistributors() {
-        console.log('🔵 DistributorList: loadDistributors called');
+
         this.isLoading = true;
         this.distributorService.getDistributors().subscribe({
             next: (distributors) => {
-                console.log('🔵 DistributorList: Received distributors:', distributors);
-                console.log('🔵 First distributor state:', distributors[0]?.state);
-                console.log('🔵 First distributor volume:', distributors[0]?.volume);
+
                 this.distributors = distributors;
                 this.applyFilters();
                 this.isLoading = false;
@@ -110,7 +108,7 @@ export class DistributorListComponent implements OnInit {
     }
 
     applyFilters() {
-        console.log('🔵 DistributorList: applyFilters called');
+
         this.filteredDistributors = this.distributors.filter(d => {
             const matchesStatus = this.statusFilter === 'all' || d.status === this.statusFilter;
             const matchesSearch = !this.searchTerm ||

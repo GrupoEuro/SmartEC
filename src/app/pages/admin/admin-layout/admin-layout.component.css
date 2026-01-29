@@ -1,22 +1,78 @@
-/* Clean Admin Layout */
+/* Enterprise Design System - Professional Admin */
 .admin-layout {
+    /* --- SURFACE ELEVATION (Layered Hierarchy) --- */
+    --surface-base: #0f172a;
+    /* Rich navy - Slate 900 (App background - deepest) */
+    --surface-1: #1e293b;
+    /* Navy blue - Slate 800 (Sidebar, cards, low elevation) */
+    --surface-2: #1e3a5f;
+    /* Deep blue - Custom navy (Header, elevated cards) */
+    --surface-3: #2d4a6e;
+    /* Medium navy for hover states, active items */
+
+    /* Text - WCAG AA Compliant (4.5:1 minimum) */
+    --text-primary: #e4e4e7;
+    /* 15.8:1 contrast - primary content */
+    --text-secondary: #a1a1aa;
+    /* 7:1 contrast - labels, metadata */
+    --text-tertiary: #71717a;
+    /* 4.5:1 contrast - hints, placeholders */
+
+    /* Accents - Desaturated for Readability */
+    --accent-violet: #8b7fc8;
+    /* Primary actions */
+    --accent-blue: #6ca5e0;
+    /* Info, links */
+    --accent-green: #6eca98;
+    /* Success states */
+    --accent-red: #e06c75;
+    /* Danger, errors */
+    --accent-yellow: #e5c07b;
+    /* Warnings */
+
+    /* Borders - Subtle to Strong */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-medium: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.14);
+
+    /* Spacing System - 8px Grid */
+    --space-1: 4px;
+    /* Micro adjustments */
+    --space-2: 8px;
+    /* Base unit */
+    --space-3: 12px;
+    /* Compact padding */
+    --space-4: 16px;
+    /* Standard padding */
+    --space-6: 24px;
+    /* Section gaps */
+    --space-8: 32px;
+    /* Page margins */
+    --space-12: 48px;
+    /* Major separations */
+
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Layout Properties */
     display: flex;
     height: 100vh;
-    /* Fixed height! */
-    overflow: hidden;
-    /* Prevent body scroll */
-    background-color: #f4f4f4;
+    /* REMOVED overflow: hidden - allows scrolling to work regardless of mouse position */
+    background: var(--surface-base);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 /* New Sidebar is a flex item, no styles needed here for it */
 
 .admin-content {
     flex: 1;
-    background-color: #f4f4f4;
+    background: transparent;
+    /* Changed from light grey */
     height: 100%;
-    /* Fill layout */
-    overflow: hidden;
-    /* Prevent this container from scrolling, let wrapper scroll */
+    /* REMOVED overflow: hidden to allow child content-wrapper to scroll */
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -24,11 +80,11 @@
 
 .admin-header {
     height: 64px;
-    background: white;
-    border-bottom: 1px solid #e0e0e0;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-medium);
     display: flex;
     align-items: center;
-    padding: 0 2rem;
+    padding: 0 var(--space-8);
     flex-shrink: 0;
 }
 
@@ -37,9 +93,11 @@
 }
 
 .content-wrapper {
-    padding: 2rem;
+    padding: 0;
     flex: 1;
-    overflow-y: auto;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    /* SCROLLING FIX: Changed from overflow: hidden to enable vertical scrolling */
 }
 
 /* Header Avatar & Actions */
@@ -50,21 +108,22 @@
 }
 
 .lang-btn-header {
-    background: transparent;
-    border: 1px solid #1a1a2e;
-    color: #1a1a2e;
-    padding: 6px 12px;
-    border-radius: 20px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 12px;
     transition: all 0.2s;
     min-width: 40px;
 }
 
 .lang-btn-header:hover {
-    background: #1a1a2e;
-    color: white;
+    background: var(--surface-3);
+    color: var(--text-primary);
+    border-color: var(--border-medium);
 }
 
 .user-menu-container {
@@ -75,21 +134,21 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border-subtle);
     padding: 0;
     cursor: pointer;
     overflow: hidden;
     transition: all 0.2s;
-    background: white;
+    background: var(--surface-3);
     display: flex;
-    /* Ensure centering */
     align-items: center;
     justify-content: center;
 }
 
 .header-avatar:hover {
     transform: scale(1.05);
-    border-color: #ffd700;
+    border-color: var(--accent-violet);
+    box-shadow: 0 0 0 2px rgba(139, 127, 200, 0.2);
 }
 
 .header-avatar img {
@@ -101,8 +160,8 @@
 .avatar-placeholder-sm {
     width: 100%;
     height: 100%;
-    background: #1a1a2e;
-    color: white;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -110,31 +169,29 @@
     font-size: 0.9rem;
 }
 
-/* Dropdown */
+/* Dropdown - Glass Effect */
 .user-dropdown {
     position: absolute;
     top: 50px;
     right: 0;
-    background: white;
-    min-width: 220px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: var(--surface-2);
+    width: 240px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-medium);
     z-index: 1001;
-    /* Higher than sidebar potentially */
-    padding: 0.5rem 0;
+    padding: var(--space-2);
     animation: slideDown 0.2s ease-out;
-    border: 1px solid #eee;
 }
 
 @keyframes slideDown {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-8px) scale(0.98);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -146,33 +203,36 @@
 
 .d-name {
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--text-primary);
 }
 
 .d-role-badge {
     display: inline-block;
     font-size: 0.7rem;
-    background: #e0f2f1;
-    color: #00695c;
+    background: rgba(56, 189, 248, 0.1);
+    color: var(--accent);
     padding: 2px 6px;
     border-radius: 4px;
     margin: 2px 0;
     font-weight: 600;
+    border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .d-role-badge.inactive {
-    background: #eee;
-    color: #666;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border-color: transparent;
 }
 
 .d-email {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--text-secondary);
+    opacity: 0.8;
 }
 
 .dropdown-divider {
     height: 1px;
-    background: #eee;
+    background: var(--glass-border);
     margin: 0.5rem 0;
 }
 
@@ -183,16 +243,25 @@
     background: none;
     text-align: left;
     cursor: pointer;
-    color: #333;
+    color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    transition: background 0.2s;
+    gap: 0.75rem;
+    transition: all 0.2s;
+}
+
+.dropdown-item .icon {
+    font-size: 1.1rem;
+    opacity: 0.7;
 }
 
 .dropdown-item:hover {
-    background: #f8f9fa;
-    color: #d32f2f;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.dropdown-item:hover .icon {
+    opacity: 1;
 }
 
 /* Responsive */

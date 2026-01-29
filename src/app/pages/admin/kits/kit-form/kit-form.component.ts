@@ -247,13 +247,11 @@ export class KitFormComponent implements OnInit {
         const sku = this.kitForm.get('sku')?.value;
         const price = this.kitForm.get('price')?.value;
 
-        console.log('canSave check:', { nameEs, sku, price });
-        console.log('Form valid?', this.kitForm.valid);
-        console.log('Name group value:', nameGroup?.value);
+
 
         // Check if required fields have values
         const result = !!(nameEs && sku && (price !== null && price !== undefined && price >= 0));
-        console.log('canSave result:', result);
+
         return result;
     }
 

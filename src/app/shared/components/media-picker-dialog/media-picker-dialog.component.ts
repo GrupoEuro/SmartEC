@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Output, inject, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MediaService } from '../../../core/services/media.service';
@@ -18,6 +18,12 @@ export class MediaPickerDialogComponent {
 
   @Output() assetSelected = new EventEmitter<MediaAsset>();
   @Output() close = new EventEmitter<void>();
+
+  // Close modal on ESC key
+  @HostListener('document:keydown.escape', ['$event'])
+  handleEscapeKey(event: KeyboardEvent): void {
+    this.close.emit();
+  }
 
   readonly CATEGORIES = ['products', 'banners', 'site-assets', 'documents', 'blog'];
 
@@ -46,10 +52,11 @@ export class MediaPickerDialogComponent {
     this.assetSelected.emit(asset);
   }
 
-  onUploadSuccess(asset: MediaAsset) {
+  onUploadSuccess(assets: MediaAsset[]) {
     this.showUpload.set(false);
+    if (assets && assets.length > 0) {
+      this.assetSelected.emit(assets[0]);
+    }
     this.filter$.next(this.filter$.value); // Refresh
-    // Optional: Auto-select uploaded asset?
-    // this.selectAsset(asset);
   }
 }

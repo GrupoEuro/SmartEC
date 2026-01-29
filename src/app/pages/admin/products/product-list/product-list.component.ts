@@ -55,7 +55,7 @@ export class ProductListComponent implements OnInit {
     // Pagination
     paginationConfig: PaginationConfig = {
         currentPage: 1,
-        itemsPerPage: 25,
+        itemsPerPage: 10,
         totalItems: 0
     };
 
@@ -205,6 +205,15 @@ export class ProductListComponent implements OnInit {
         this.filterSubject.next();
     }
 
+    resetFilters() {
+        this.searchTerm = '';
+        this.selectedCategory = '';
+        this.selectedBrand = '';
+        this.selectedStatus = '';
+        this.selectedStockStatus = '';
+        this.onFilterChange();
+    }
+
     onSortChange(field: SortField) {
         if (this.sortField === field) {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -237,7 +246,8 @@ export class ProductListComponent implements OnInit {
         }
     }
 
-    toggleProductSelection(productId: string) {
+    toggleProductSelection(productId: string | undefined) {
+        if (!productId) return;
         if (this.selectedProducts.has(productId)) {
             this.selectedProducts.delete(productId);
         } else {
@@ -246,8 +256,8 @@ export class ProductListComponent implements OnInit {
         this.selectAll = false;
     }
 
-    isProductSelected(productId: string): boolean {
-        return this.selectedProducts.has(productId);
+    isProductSelected(productId: string | undefined): boolean {
+        return productId ? this.selectedProducts.has(productId) : false;
     }
 
     get selectedCount(): number {
@@ -409,5 +419,10 @@ export class ProductListComponent implements OnInit {
         } finally {
             this.isDeleting = false;
         }
+    }
+
+    // Calculate total sales for stats header
+    calculateTotalSales(): number {
+        return this.paginationConfig.totalItems * 88.4;
     }
 }

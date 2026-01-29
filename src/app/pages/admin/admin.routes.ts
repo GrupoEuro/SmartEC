@@ -96,6 +96,18 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./products/product-form/product-form.component').then(m => m.ProductFormComponent)
             },
             {
+                path: 'product-types',
+                loadComponent: () => import('./product-types/product-type-list/product-type-list.component').then(m => m.ProductTypeListComponent)
+            },
+            {
+                path: 'product-types/new',
+                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent)
+            },
+            {
+                path: 'product-types/edit/:id',
+                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent)
+            },
+            {
                 path: 'blog',
                 loadComponent: () => import('./blog/blog-list/blog-list.component').then(m => m.BlogListComponent)
             },

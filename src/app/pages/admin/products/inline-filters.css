@@ -1,0 +1,54 @@
+/* Inline Filter Styles - Enterprise Design System */
+.filter-row {
+    background: var(--surface-1);
+    border-bottom: var(--border-medium);
+}
+
+.filter-row th {
+    padding: var(--space-3) var(--space-4);
+    vertical-align: middle;
+}
+
+.inline-filter {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.inline-filter:hover {
+    border-color: var(--border-medium);
+    background: var(--surface-3);
+}
+
+.inline-filter:focus {
+    outline: none;
+    border-color: var(--accent-violet);
+    box-shadow: 0 0 0 2px rgba(139, 127, 200, 0.1);
+}
+
+.btn-filter-reset {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-tertiary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-filter-reset:hover {
+    background: var(--surface-3);
+    color: var(--accent-red);
+    border-color: var(--accent-red);
+}

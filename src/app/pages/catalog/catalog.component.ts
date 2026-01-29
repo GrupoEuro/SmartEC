@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, NgOptimizedImage } from '@angular/common'; // Import NgOptimizedImage
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -15,15 +15,32 @@ import { Product, ProductFilters } from '../../core/models/product.model';
 import { Category, ProductSortBy } from '../../core/models/catalog.model';
 
 import { SkeletonProductCardComponent } from '../../shared/components/skeleton-product-card/skeleton-product-card.component';
+import { QuickViewModalComponent } from '../../shared/components/quick-view-modal/quick-view-modal.component';
 
 @Component({
     selector: 'app-catalog',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, NgOptimizedImage, SkeletonProductCardComponent],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, NgOptimizedImage, SkeletonProductCardComponent, QuickViewModalComponent],
     templateUrl: './catalog.component.html',
-    styleUrl: './catalog.component.css'
+    styleUrl: './catalog.component.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CatalogComponent implements OnInit {
+    trackByProduct(index: number, product: Product): string {
+        return product.id;
+    }
+
+    // Quick View State
+    selectedProduct: Product | null = null;
+
+    openQuickView(product: Product) {
+        this.selectedProduct = product;
+    }
+
+    closeQuickView() {
+        this.selectedProduct = null;
+    }
+
     private productService = inject(ProductService);
     private categoryService = inject(CategoryService);
     private metaService = inject(MetaService);
@@ -51,6 +68,7 @@ export class CatalogComponent implements OnInit {
     sortBy: ProductSortBy = 'featured';
     searchQuery = '';
     private searchSubject = new BehaviorSubject<string>('');
+    private pageSubject = new BehaviorSubject<number>(1);
 
     // Available filter options
     brands: string[] = [];
@@ -78,9 +96,10 @@ export class CatalogComponent implements OnInit {
 
         this.filteredProducts$ = combineLatest([
             this.products$,
-            this.searchSubject.pipe(debounceTime(300), distinctUntilChanged())
+            this.searchSubject.pipe(debounceTime(300), distinctUntilChanged()),
+            this.pageSubject
         ]).pipe(
-            map(([products, search]) => {
+            map(([products, search, page]) => {
                 let filtered = search
                     ? products.filter(p =>
                         p.name.en.toLowerCase().includes(search.toLowerCase()) ||
@@ -90,24 +109,10 @@ export class CatalogComponent implements OnInit {
                     )
                     : products;
 
-                console.log('Catalog Debug: Raw Products:', products.length);
-                console.log('Catalog: Filtered count matches', filtered.length);
-
                 this.totalProducts = filtered.length;
 
-                // AUTO-SEEDER CHECK (Dev Convenience)
-                if (products.length === 0 && !this.seederTriggered) {
-                    console.warn('Catalog: No products found in DB. Triggering Auto-Seed...');
-                    this.seederTriggered = true;
-                    this.seedCatalog();
-                }
-
-                // EXTRACT BRANDS SAFELY
-                const brandSet = new Set(products.map(p => p.brand).filter(b => !!b));
-                this.brands = [...brandSet].sort();
-
                 // Pagination
-                const start = (this.currentPage - 1) * this.itemsPerPage;
+                const start = (page - 1) * this.itemsPerPage;
                 const end = start + this.itemsPerPage;
 
                 this.isLoading = false;
@@ -136,7 +141,7 @@ export class CatalogComponent implements OnInit {
     setupSearch() {
         this.searchSubject.subscribe(query => {
             this.searchQuery = query;
-            this.currentPage = 1;
+            this.pageSubject.next(1); // Reset to page 1 on search
         });
     }
 
@@ -178,6 +183,7 @@ export class CatalogComponent implements OnInit {
 
     onPageChange(page: number) {
         this.currentPage = page;
+        this.pageSubject.next(page);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -192,13 +198,16 @@ export class CatalogComponent implements OnInit {
     private loadFiltersFromURL() {
         this.route.queryParams.subscribe(params => {
             if (params['category']) this.filters.categoryId = params['category'];
-            if (params['brand']) this.filters.brand = [params['brand']];
+            if (params['brand']) this.filters.brands = [params['brand']];
             if (params['search']) {
                 this.searchQuery = params['search'];
                 this.searchSubject.next(params['search']);
             }
             if (params['sort']) this.sortBy = params['sort'] as ProductSortBy;
-            if (params['page']) this.currentPage = +params['page'];
+            if (params['page']) {
+                this.currentPage = +params['page'];
+                this.pageSubject.next(this.currentPage);
+            }
         });
     }
 
@@ -206,7 +215,7 @@ export class CatalogComponent implements OnInit {
         const queryParams: any = {};
 
         if (this.filters.categoryId) queryParams.category = this.filters.categoryId;
-        if (this.filters.brand?.length) queryParams.brand = this.filters.brand[0];
+        if (this.filters.brands?.length) queryParams.brand = this.filters.brands[0];
         if (this.searchQuery) queryParams.search = this.searchQuery;
         if (this.sortBy !== 'featured') queryParams.sort = this.sortBy;
         if (this.currentPage > 1) queryParams.page = this.currentPage;
@@ -221,24 +230,24 @@ export class CatalogComponent implements OnInit {
 
     // Filter methods
     toggleBrand(brand: string) {
-        if (!this.filters.brand) this.filters.brand = [];
+        if (!this.filters.brands) this.filters.brands = [];
 
-        const index = this.filters.brand.indexOf(brand);
+        const index = this.filters.brands.indexOf(brand);
         if (index > -1) {
-            this.filters.brand.splice(index, 1);
+            this.filters.brands.splice(index, 1);
         } else {
-            this.filters.brand.push(brand);
+            this.filters.brands.push(brand);
         }
 
-        if (this.filters.brand.length === 0) {
-            delete this.filters.brand;
+        if (this.filters.brands.length === 0) {
+            delete this.filters.brands;
         }
 
         this.onFilterChange();
     }
 
     isBrandSelected(brand: string): boolean {
-        return this.filters.brand?.includes(brand) || false;
+        return this.filters.brands?.includes(brand) || false;
     }
 
     onPriceRangeChange() {

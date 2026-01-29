@@ -25,7 +25,7 @@ export class AdminLogListComponent implements OnInit {
   totalPages = 0;
 
   async ngOnInit() {
-    console.log('📋 AdminLogListComponent ngOnInit called');
+
 
     try {
       const colRef = collection(this.firestore, 'admin_logs');
@@ -46,7 +46,7 @@ export class AdminLogListComponent implements OnInit {
       this.totalPages = Math.ceil(this.allLogs.length / this.pageSize);
       this.updateDisplayedLogs();
 
-      console.log('📋 Logs loaded successfully:', this.allLogs.length);
+
       this.loading = false;
     } catch (err) {
       console.error('❌ Error loading logs:', err);

@@ -27,7 +27,6 @@ export class OrderListComponent implements OnInit {
     dataSource = new TableDataSource<Order>([], 10);
     isLoading = true;
 
-    // Pagination (Managed by dataSource)
     // Filter state
     currentStatus: OrderStatus | 'all' = 'all';
     searchControl = this.fb.control('');
@@ -41,6 +40,10 @@ export class OrderListComponent implements OnInit {
         { id: 'cancelled', label: 'Cancelled', count: 0 }
     ];
 
+    // Sorting
+    sortField = 'createdAt';
+    sortDirection: 'asc' | 'desc' = 'desc';
+
     ngOnInit() {
         this.loadOrders();
         this.setupSearch();
@@ -51,8 +54,8 @@ export class OrderListComponent implements OnInit {
         this.orderService.getOrders().subscribe({
             next: (orders) => {
                 this.dataSource.setData(orders);
-                this.calculateCounts(orders); // Pass orders explicitly or use dataSource.data
-                this.filterOrders();
+                this.calculateCounts(orders);
+                this.applySorting(); // Sort initially
                 this.isLoading = false;
             },
             error: (error) => {
@@ -74,6 +77,40 @@ export class OrderListComponent implements OnInit {
     setFilter(status: OrderStatus | 'all') {
         this.currentStatus = status;
         this.filterOrders();
+    }
+
+    onSort(field: string) {
+        if (this.sortField === field) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortField = field;
+            this.sortDirection = 'asc';
+        }
+        this.applySorting();
+    }
+
+    applySorting() {
+        const data = [...this.dataSource.data];
+        data.sort((a, b) => {
+            let comparison = 0;
+            switch (this.sortField) {
+                case 'date':
+                case 'createdAt':
+                    const dateA = (a.createdAt as any).toDate ? (a.createdAt as any).toDate() : new Date(a.createdAt as any);
+                    const dateB = (b.createdAt as any).toDate ? (b.createdAt as any).toDate() : new Date(b.createdAt as any);
+                    comparison = dateA.getTime() - dateB.getTime();
+                    break;
+                case 'total':
+                    comparison = a.total - b.total;
+                    break;
+                case 'orderNumber':
+                    comparison = a.orderNumber.localeCompare(b.orderNumber);
+                    break;
+            }
+            return this.sortDirection === 'asc' ? comparison : -comparison;
+        });
+        this.dataSource.setData(data); // Re-set sorted data
+        this.filterOrders(); // Re-apply filters
     }
 
     filterOrders() {

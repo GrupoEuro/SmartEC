@@ -1,107 +1,211 @@
-<app-admin-page-header icon="👥" [title]="'ADMIN.USERS.TITLE' | translate"
-    [subtitle]="'ADMIN.USERS.SUBTITLE' | translate">
-    <button class="btn-primary" (click)="toggleInviteForm()">
-        <span class="icon">{{ showInviteForm ? '✕' : '+' }}</span>
-        {{ showInviteForm ? ('ADMIN.COMMON.CANCEL' | translate) : ('ADMIN.USERS.INVITE' | translate) }}
-    </button>
-</app-admin-page-header>
+<div class="product-dashboard-layout">
+    <!-- Sticky Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <h1 class="page-title">{{ 'ADMIN.USERS.TITLE' | translate }}</h1>
+            <span class="product-count" *ngIf="(paginatedUsers$ | async)?.length as count">
+                {{ paginationConfig.totalItems }} Users
+            </span>
+        </div>
 
-<div class="user-list-container">
-
-    <!-- Invite Form -->
-    @if (showInviteForm) {
-    <div class="invite-panel">
-        <h3>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h3>
-        <form [formGroup]="inviteForm" (ngSubmit)="onInvite()">
-            <div class="form-group">
-                <label>{{ 'ADMIN.USERS.EMAIL' | translate }}</label>
-                <input type="email" formControlName="email" placeholder="colleague@example.com">
+        <div class="header-center">
+            <div class="search-command-bar">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                    [placeholder]="'ADMIN.USERS.SEARCH_PLACEHOLDER' | translate">
             </div>
+        </div>
 
-            <div class="form-group">
-                <label>{{ 'ADMIN.USERS.ROLE' | translate }}</label>
-                <select formControlName="role">
-                    <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn-submit" [disabled]="inviteForm.invalid || isSubmitting">
-                {{ isSubmitting ? ('ADMIN.COMMON.SAVING' | translate) : ('ADMIN.USERS.SEND_INVITE' | translate) }}
+        <div class="header-right">
+            <button class="btn-primary-action" (click)="toggleInviteForm()">
+                <span class="icon">{{ showInviteForm ? '✕' : '+' }}</span>
+                <span class="text">{{ showInviteForm ? ('ADMIN.COMMON.CLOSE' | translate) : ('ADMIN.USERS.INVITE' |
+                    translate) }}</span>
             </button>
-        </form>
-    </div>
-    }
+        </div>
+    </header>
 
-    <!-- Users Table -->
-    <div class="table-container table-responsive">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>{{ 'ADMIN.USERS.TABLE.USER' | translate }}</th>
-                    <th>{{ 'ADMIN.USERS.TABLE.ROLE' | translate }}</th>
-                    <th>{{ 'ADMIN.USERS.TABLE.STATUS' | translate }}</th>
-                    <th>{{ 'ADMIN.USERS.TABLE.LAST_LOGIN' | translate }}</th>
-                    <th>{{ 'ADMIN.USERS.TABLE.ACTIONS' | translate }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (user of users$ | async; track user.uid) {
-                <tr [class.inactive]="!user.isActive">
-                    <td>
-                        <div class="user-cell">
-                            <div class="avatar-sm">
-                                @if (user.photoURL) {
-                                <img [src]="user.photoURL" alt="avatar">
-                                } @else {
-                                <span>{{ user.email.substring(0,2) | uppercase }}</span>
-                                }
-                            </div>
-                            <div class="user-text">
-                                @if (editingUserId === user.uid) {
-                                <input type="text" class="name-edit" [(ngModel)]="editingName"
-                                    (blur)="saveDisplayName(user)" (keyup.enter)="saveDisplayName(user)"
-                                    (keyup.escape)="cancelEdit()" autofocus>
-                                } @else {
-                                <span class="name editable" (click)="startEdit(user)"
-                                    [title]="'ADMIN.common.EDIT' | translate">
-                                    {{ user.displayName || 'Set Name' }}
-                                    <span class="edit-icon">✏️</span>
-                                </span>
-                                }
-                                <span class="email">{{ user.email }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <select class="role-select" [(ngModel)]="user.role"
-                            (ngModelChange)="updateRoleFromModel(user, $event)" [disabled]="!(isSuperAdmin$ | async)">
+    <div class="dashboard-content">
+        <!-- Smart Filter Sidebar -->
+        <aside class="filter-sidebar">
+            <div class="sidebar-header">
+                <h3>Filters</h3>
+                <button class="btn-text-tiny"
+                    (click)="searchTerm = ''; selectedRole = ''; selectedStatus = ''; onFilterChange()">
+                    Reset
+                </button>
+            </div>
+
+            <!-- Role Filter -->
+            <details class="filter-group" open>
+                <summary>
+                    <span>Role</span>
+                    <span class="chevron">▼</span>
+                </summary>
+                <div class="filter-options">
+                    <label class="radio-option">
+                        <input type="radio" name="role" value="" [checked]="selectedRole === ''"
+                            (change)="selectedRole = ''; onFilterChange()">
+                        <span>All Roles</span>
+                    </label>
+                    <label class="radio-option" *ngFor="let r of roles">
+                        <input type="radio" name="role" [value]="r" [checked]="selectedRole === r"
+                            (change)="selectedRole = r; onFilterChange()">
+                        <span>{{ r }}</span>
+                    </label>
+                </div>
+            </details>
+
+            <!-- Status Filter -->
+            <details class="filter-group" open>
+                <summary>
+                    <span>Status</span>
+                    <span class="chevron">▼</span>
+                </summary>
+                <div class="filter-options">
+                    <label class="radio-option">
+                        <input type="radio" name="status" value="" [checked]="selectedStatus === ''"
+                            (change)="selectedStatus = ''; onFilterChange()">
+                        <span>All</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="status" value="active" [checked]="selectedStatus === 'active'"
+                            (change)="selectedStatus = 'active'; onFilterChange()">
+                        <span>Active</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="status" value="inactive" [checked]="selectedStatus === 'inactive'"
+                            (change)="selectedStatus = 'inactive'; onFilterChange()">
+                        <span>Inactive</span>
+                    </label>
+                </div>
+            </details>
+        </aside>
+
+        <!-- Main Grid Area -->
+        <main class="product-grid-view">
+
+            <!-- Invite Form Panel -->
+            <div class="invite-panel glass-panel" *ngIf="showInviteForm">
+                <div class="panel-header">
+                    <h3>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h3>
+                    <p class="text-muted">Send an invitation to a new team member.</p>
+                </div>
+                <form [formGroup]="inviteForm" (ngSubmit)="onInvite()" class="invite-form-grid">
+                    <div class="form-group">
+                        <label>{{ 'ADMIN.USERS.EMAIL' | translate }}</label>
+                        <input type="email" formControlName="email" placeholder="colleague@example.com"
+                            class="glass-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ 'ADMIN.USERS.ROLE' | translate }}</label>
+                        <select formControlName="role" class="glass-select">
                             <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
                         </select>
-                    </td>
-                    <td>
-                        <span class="status-badge" [class.active]="user.isActive" [class.inactive]="!user.isActive">
-                            {{ user.isActive ? ('ADMIN.USERS.STATUS.ACTIVE' | translate) :
-                            ('ADMIN.USERS.STATUS.INACTIVE' |
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary-action small"
+                            [disabled]="inviteForm.invalid || isSubmitting">
+                            {{ isSubmitting ? ('ADMIN.COMMON.SAVING' | translate) : ('ADMIN.USERS.SEND_INVITE' |
                             translate) }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="date">{{ user.lastLogin ? (user.lastLogin.toDate() | date:'medium') : 'Never'
-                            }}</span>
-                    </td>
-                    <td>
-                        <button class="btn-icon" (click)="toggleStatus(user)"
-                            [title]="user.isActive ? ('ADMIN.USERS.ACTIONS.DEACTIVATE' | translate) : ('ADMIN.USERS.ACTIONS.ACTIVATE' | translate)">
-                            {{ user.isActive ? 'Ban 🚫' : 'Unban ✅' }}
                         </button>
-                    </td>
-                </tr>
-                } @empty {
-                <tr>
-                    <td colspan="5" class="empty-state">{{ 'ADMIN.USERS.NO_USERS' | translate }}</td>
-                </tr>
-                }
-            </tbody>
-        </table>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-glass-container">
+                <table class="rich-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" (click)="onSortChange('name')">
+                                {{ 'ADMIN.USERS.TABLE.USER' | translate }}
+                            </th>
+                            <th>{{ 'ADMIN.USERS.TABLE.ROLE' | translate }}</th>
+                            <th>{{ 'ADMIN.USERS.TABLE.STATUS' | translate }}</th>
+                            <th class="sortable" (click)="onSortChange('lastLogin')">
+                                {{ 'ADMIN.USERS.TABLE.LAST_LOGIN' | translate }}
+                            </th>
+                            <th>{{ 'ADMIN.USERS.TABLE.ACTIONS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let user of paginatedUsers$ | async" [class.inactive-row]="!user.isActive">
+                            <td>
+                                <div class="user-profile-cell">
+                                    <div class="avatar-circle">
+                                        <img *ngIf="user.photoURL" [src]="user.photoURL" alt="avatar">
+                                        <span *ngIf="!user.photoURL">{{ (user.displayName || user.email).charAt(0) |
+                                            uppercase }}</span>
+                                    </div>
+                                    <div class="user-info">
+                                        <!-- Inline Edit Name -->
+                                        <div *ngIf="editingUserId === user.uid" class="inline-edit-wrapper">
+                                            <input type="text" class="glass-input tiny" [(ngModel)]="editingName"
+                                                (blur)="saveDisplayName(user)" (keyup.enter)="saveDisplayName(user)"
+                                                (keyup.escape)="cancelEdit()" autofocus>
+                                        </div>
+                                        <div *ngIf="editingUserId !== user.uid" class="name-display"
+                                            (click)="startEdit(user)" title="Click to edit">
+                                            <span class="user-name">{{ user.displayName || 'Set Name' }}</span>
+                                            <span class="edit-hint">✎</span>
+                                        </div>
+                                        <span class="user-email">{{ user.email }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <select class="role-badge-select" [ngModel]="user.role"
+                                    (ngModelChange)="updateRoleFromModel(user, $event)"
+                                    [disabled]="!(isSuperAdmin$ | async)"
+                                    [class.admin]="user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'"
+                                    [class.editor]="user.role === 'EDITOR'">
+                                    <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="stock-pill" [class.success]="user.isActive" [class.danger]="!user.isActive">
+                                    <span class="dot"></span>
+                                    <span class="status-text">
+                                        {{ user.isActive ? ('ADMIN.USERS.STATUS.ACTIVE' | translate) :
+                                        ('ADMIN.USERS.STATUS.INACTIVE' | translate) }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-muted text-sm">
+                                    {{ user.lastLogin ? (user.lastLogin.toDate() | date:'short') : 'Never' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn-icon-ghost" (click)="toggleStatus(user)"
+                                        [title]="user.isActive ? ('ADMIN.USERS.ACTIONS.DEACTIVATE' | translate) : ('ADMIN.USERS.ACTIONS.ACTIVATE' | translate)"
+                                        [class.danger]="user.isActive" [class.success]="!user.isActive">
+                                        {{ user.isActive ? '🚫' : '✅' }}
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr *ngIf="(paginatedUsers$ | async)?.length === 0">
+                            <td colspan="5" class="no-data">
+                                <div class="empty-state-content">
+                                    <span class="empty-icon">👥</span>
+                                    <p>{{ 'ADMIN.USERS.NO_USERS' | translate }}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+                <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+                    (itemsPerPageChange)="onItemsPerPageChange($event)">
+                </app-pagination>
+            </div>
+        </main>
     </div>
 </div>

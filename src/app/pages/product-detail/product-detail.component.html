@@ -63,8 +63,8 @@
                 <div class="size-content">
                     <label>{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</label>
                     <div class="size-value">
-                        {{ product.specifications.width }}/{{ product.specifications.aspectRatio }}R{{
-                        product.specifications.diameter }}
+                        {{ product.specifications['width'] }}/{{ product.specifications['aspectRatio'] }}R{{
+                        product.specifications['diameter'] }}
                     </div>
                 </div>
             </div>
@@ -73,11 +73,11 @@
             <div class="key-specs">
                 <div class="spec-item">
                     <span class="spec-label">{{ 'PRODUCT_DETAIL.LOAD_INDEX' | translate }}</span>
-                    <span class="spec-value">{{ product.specifications.loadIndex }}</span>
+                    <span class="spec-value">{{ product.specifications['loadIndex'] }}</span>
                 </div>
                 <div class="spec-item">
                     <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEED_RATING' | translate }}</span>
-                    <span class="spec-value">{{ product.specifications.speedRating }}</span>
+                    <span class="spec-value">{{ product.specifications['speedRating'] }}</span>
                 </div>
             </div>
 
@@ -152,31 +152,31 @@
         <div class="specs-grid">
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_WIDTH' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.width }} mm</span>
+                <span class="spec-value">{{ product.specifications['width'] }} mm</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_ASPECT_RATIO' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.aspectRatio }}%</span>
+                <span class="spec-value">{{ product.specifications['aspectRatio'] }}%</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_DIAMETER' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.diameter }}"</span>
+                <span class="spec-value">{{ product.specifications['diameter'] }}"</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_LOAD_INDEX' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.loadIndex }}</span>
+                <span class="spec-value">{{ product.specifications['loadIndex'] }}</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_SPEED_RATING' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.speedRating }}</span>
+                <span class="spec-value">{{ product.specifications['speedRating'] }}</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_CONSTRUCTION' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.construction }}</span>
+                <span class="spec-value">{{ product.specifications['construction'] }}</span>
             </div>
             <div class="spec-row">
                 <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_TUBELESS' | translate }}</span>
-                <span class="spec-value">{{ product.specifications.tubeless ? ('PRODUCT_DETAIL.SPEC_TUBELESS_YES' |
+                <span class="spec-value">{{ product.specifications['tubeless'] ? ('PRODUCT_DETAIL.SPEC_TUBELESS_YES' |
                     translate) : ('PRODUCT_DETAIL.SPEC_TUBELESS_NO' | translate) }}</span>
             </div>
         </div>

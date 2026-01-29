@@ -7,6 +7,7 @@ import { BrandService } from '../../../../core/services/brand.service';
 import { Brand } from '../../../../core/models/catalog.model';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
+import { ValidationSummaryComponent } from '../../shared/validation-summary/validation-summary.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { CanComponentDeactivate } from '../../../../core/guards/unsaved-changes.guard';
@@ -16,7 +17,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
     selector: 'app-brand-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent],
     templateUrl: './brand-form.component.html',
     styleUrl: './brand-form.component.css'
 })
@@ -31,10 +32,24 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
     brandForm: FormGroup;
     isEditing = false;
     isSubmitting = false;
+    submitState: 'idle' | 'validating' | 'saving' | 'success' | 'error' = 'idle';
     previewUrl: string | null = null;
     selectedFile: File | null = null;
     currentBrandId: string | null = null;
     currentBrand: Brand | null = null;
+
+    // Field labels for validation summary
+    fieldLabels: { [key: string]: string } = {
+        name: 'Brand Name',
+        slug: 'URL Slug',
+        description_es: 'Description (Spanish)',
+        description_en: 'Description (English)',
+        website: 'Website URL',
+        countryOfOrigin: 'Country of Origin',
+        order: 'Display Order',
+        featured: 'Featured Status',
+        active: 'Active Status'
+    };
 
     constructor() {
         this.brandForm = this.fb.group({
@@ -129,17 +144,16 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
         }
 
         this.isSubmitting = true;
+        this.submitState = 'saving';
         const formValue = this.brandForm.value;
 
-        const brandData: Omit<Brand, 'id'> = {
+        const brandData: any = {
             name: formValue.name,
             slug: formValue.slug,
             description: {
                 es: formValue.description_es || '',
                 en: formValue.description_en || ''
             },
-            website: formValue.website || undefined,
-            countryOfOrigin: formValue.countryOfOrigin || undefined,
             order: formValue.order,
             featured: formValue.featured,
             active: formValue.active,
@@ -147,21 +161,43 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
             updatedAt: new Date()
         };
 
+        // Only add optional fields if they have values
+        if (formValue.website) {
+            brandData.website = formValue.website;
+        }
+
+        if (formValue.countryOfOrigin) {
+            brandData.countryOfOrigin = formValue.countryOfOrigin;
+        }
+
         try {
             if (this.isEditing && this.currentBrandId) {
                 await this.brandService.updateBrand(this.currentBrandId, brandData, this.selectedFile || undefined);
+                this.submitState = 'success';
                 this.toast.success('Brand updated successfully');
             } else {
                 await this.brandService.createBrand(brandData, this.selectedFile || undefined);
+                this.submitState = 'success';
                 this.toast.success('Brand created successfully');
             }
+
             this.brandForm.markAsPristine();
-            this.router.navigate(['/admin/brands']);
+
+            // Navigate after short delay to show success state
+            setTimeout(() => {
+                this.router.navigate(['/admin/brands']);
+            }, 500);
         } catch (error) {
             console.error('Error saving brand:', error);
+            this.submitState = 'error';
             this.toast.error('Error saving brand');
         } finally {
-            this.isSubmitting = false;
+            setTimeout(() => {
+                this.isSubmitting = false;
+                if (this.submitState !== 'success') {
+                    this.submitState = 'idle';
+                }
+            }, 1000);
         }
     }
 

@@ -85,33 +85,34 @@ import { TranslateModule } from '@ngx-translate/core';
         align-items: center;
         width: 100%;
         padding: 10px 12px;
-        color: #9ca3af; /* text-gray-400 */
+        color: var(--text-secondary);
         text-decoration: none;
-        border-radius: 8px;
-        border: none;
+        border-radius: 12px; /* Popped pill shape */
+        border: 1px solid transparent;
         background: transparent;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         font-family: inherit;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
     }
 
     .nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-        color: #f3f4f6; /* text-gray-100 */
+        background-color: rgba(255, 255, 255, 0.03);
+        color: var(--text-primary);
+        border-color: rgba(255, 255, 255, 0.05);
         transform: translateX(4px);
     }
 
-    /* Active State (RouterLinkActive) */
-    /* Active State (Standardized) */
+    /* Active State (Crypto Pill) */
     .nav-link.active {
-        background-color: rgba(255, 255, 255, 0.05);
-        color: #ffd700; /* Gold */
+        background: var(--accent-gradient);
+        color: #ffffff;
         font-weight: 600;
-        /* Adjusted to match standard style without heavy borders/gradients */
+        box-shadow: var(--glow-primary);
+        border: none;
     }
 
     .icon-wrapper {
@@ -123,10 +124,12 @@ import { TranslateModule } from '@ngx-translate/core';
         min-width: 24px;
         margin-right: 12px;
         transition: color 0.2s;
+        opacity: 0.8;
     }
 
     .nav-link.active .icon-wrapper {
-        color: #ffd700;
+        color: #ffffff;
+        opacity: 1;
     }
 
     .label {

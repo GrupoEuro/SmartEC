@@ -30,6 +30,15 @@ export class CustomerListComponent implements OnInit {
     pageSize = 10;
     sortColumn: 'displayName' | 'email' | 'createdAt' | 'orders' | 'spend' = 'createdAt';
     sortDirection: 'asc' | 'desc' = 'desc';
+    filterType: 'all' | 'active' | 'new' = 'all';
+
+    get paginationConfig() {
+        return {
+            currentPage: this.currentPage,
+            itemsPerPage: this.pageSize,
+            totalItems: this.filteredCustomers.length
+        };
+    }
 
     ngOnInit() {
         this.loadCustomers();
@@ -61,16 +70,31 @@ export class CustomerListComponent implements OnInit {
         });
     }
 
+    setFilterType(type: 'all' | 'active' | 'new') {
+        this.filterType = type;
+        this.currentPage = 1;
+        this.applyFilters();
+    }
+
     applyFilters() {
         let result = [...this.customers];
         const term = this.searchControl.value?.toLowerCase() || '';
 
-        // 1. Filter
+        // 1. Search Filter
         if (term) {
             result = result.filter(c =>
                 c.displayName?.toLowerCase().includes(term) ||
                 c.email.toLowerCase().includes(term)
             );
+        }
+
+        // 2. Type Filter
+        if (this.filterType === 'active') {
+            result = result.filter(c => c.stats?.totalOrders && c.stats.totalOrders > 0);
+        } else if (this.filterType === 'new') {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            result = result.filter(c => c.createdAt && new Date(c.createdAt) > thirtyDaysAgo);
         }
 
         // 2. Sort

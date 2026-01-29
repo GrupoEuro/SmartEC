@@ -1,0 +1,238 @@
+/* === PROFESSIONAL VISUAL ENHANCEMENTS === */
+
+/* Colored Category Badges */
+.category-badge {
+    display: inline-block;
+    background: #3b82f6;
+    /* Default blue */
+    color: white;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+}
+
+/* Category-specific colors */
+.category-badge[data-category="Tires"],
+.category-badge[data-category="tires"] {
+    background: #3b82f6;
+    /*Blue*/
+}
+
+.category-badge[data-category="Wheels"],
+.category-badge[data-category="wheels"] {
+    background: #8b5cf6;
+    /* Purple */
+}
+
+.category-badge[data-category="Batteries"],
+.category-badge[data-category="batteries"] {
+    background: #f59e0b;
+    /* Amber */
+}
+
+.category-badge[data-category="Oils"],
+.category-badge[data-category="oils"] {
+    background: #10b981;
+    /* Green */
+}
+
+.category-badge[data-category="Parts"],
+.category-badge[data-category="parts"] {
+    background: #ec4899;
+    /* Pink */
+}
+
+/* Stock Status with Colored Dots */
+.stock-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.stock-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.stock-status.status-low .status-dot {
+    background: #ef4444;
+    /* Red */
+}
+
+.stock-status.status-low .status-text {
+    color: #ef4444;
+}
+
+.stock-status.status-medium .status-dot {
+    background: #f59e0b;
+    /* Yellow */
+}
+
+.stock-status.status-medium .status-text {
+    color: #f59e0b;
+}
+
+.stock-status.status-high .status-dot {
+    background: #10b981;
+    /* Green */
+}
+
+.stock-status.status-high .status-text {
+    color: #10b981;
+}
+
+/* Enhanced Table Styling */
+.rich-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.rich-table thead {
+    background: var(--surface-2);
+    border-bottom: 2px solid var(--border-medium);
+}
+
+.rich-table th {
+    text-align: left;
+    padding: 16px;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rich-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+
+.rich-table tbody tr:hover {
+    background: var(--surface-3);
+    transition: background 0.15s ease;
+}
+
+/* Price Display */
+.price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.current-price {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.compare-price {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+}
+
+/* Product Identity */
+.product-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.product-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.product-name:hover {
+    color: var(--accent-violet);
+}
+
+.product-sku {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Mini Badges */
+.badges-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.mini-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mini-badge.featured {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+
+.mini-badge.new {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+/* Action Icons */
+.row-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-icon-ghost {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 16px;
+}
+
+.btn-icon-ghost:hover {
+    background: var(--surface-3);
+    border-color: var(--border-medium);
+}
+
+.btn-icon-ghost.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Image Thumbnail */
+.img-thumbnail {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+}
+
+.img-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

@@ -56,6 +56,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 route: '/admin/products'
             },
             {
+                id: 'product_types',
+                title: 'ADMIN.SIDEBAR.PRODUCT_TYPES',
+                icon: 'layers',
+                route: '/admin/product-types'
+            },
+            {
                 id: 'categories',
                 title: 'ADMIN.SIDEBAR.CATEGORIES',
                 icon: 'grid',

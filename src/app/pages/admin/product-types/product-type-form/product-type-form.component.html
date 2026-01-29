@@ -1,0 +1,374 @@
+<div class="form-container">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ (isEditing ? 'PRODUCT_TYPES.FORM.EDIT_TITLE' : 'PRODUCT_TYPES.FORM.NEW_TITLE') |
+                translate }}</h1>
+            <p class="page-subtitle">{{ (isEditing ? 'PRODUCT_TYPES.FORM.EDIT_SUBTITLE' :
+                'PRODUCT_TYPES.FORM.NEW_SUBTITLE') | translate }}</p>
+
+        </div>
+        <button class="btn-secondary" routerLink="/admin/product-types">
+            <app-icon name="arrow-left" [size]="18"></app-icon>
+            {{ 'PRODUCT_TYPES.FORM.BACK' | translate }}
+        </button>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+        <div class="spinner"></div>
+        {{ 'PRODUCT_TYPES.FORM.LOADING' | translate }}
+    </div>
+
+    <form *ngIf="!loading && productTypeForm" [formGroup]="productTypeForm" (ngSubmit)="onSubmit()"
+        class="product-type-form">
+        <!-- Basic Information -->
+        <section class="form-section">
+            <h2 class="section-title">
+                <app-icon name="info" [size]="20"></app-icon>
+                {{ 'PRODUCT_TYPES.FORM.BASIC_INFO' | translate }}
+            </h2>
+
+            <div class="form-grid">
+                <div class="form-group span-2">
+                    <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.TEMPLATE_ID' | translate }}</label>
+                    <input type="text" formControlName="id" class="form-input" placeholder="custom_helmet"
+                        [readonly]="isEditing">
+                    <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.TEMPLATE_ID_HINT' | translate }}</p>
+                    <div *ngIf="productTypeForm.get('id')?.invalid && productTypeForm.get('id')?.touched"
+                        class="form-error">
+                        <app-icon name="alert-circle" [size]="14"></app-icon>
+                        Invalid ID format
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.NAME_EN' | translate }}</label>
+                    <input type="text" formControlName="nameEn" class="form-input" placeholder="Custom Helmet">
+                    <div *ngIf="productTypeForm.get('nameEn')?.invalid && productTypeForm.get('nameEn')?.touched"
+                        class="form-error">
+                        <app-icon name="alert-circle" [size]="14"></app-icon>
+                        Name is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.NAME_ES' | translate }}</label>
+                    <input type="text" formControlName="nameEs" class="form-input" placeholder="Casco Personalizado">
+                    <div *ngIf="productTypeForm.get('nameEs')?.invalid && productTypeForm.get('nameEs')?.touched"
+                        class="form-error">
+                        <app-icon name="alert-circle" [size]="14"></app-icon>
+                        Name is required
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.ICON' | translate }}</label>
+                    <input type="text" formControlName="icon" class="form-input" placeholder="🪖">
+                    <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.ICON_HINT' | translate }}</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">{{ 'PRODUCT_TYPES.FORM.ACTIVE_STATUS' | translate }}</label>
+                    <div class="toggle-wrapper">
+                        <label class="toggle-switch">
+                            <input type="checkbox" formControlName="active">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label">{{ (productTypeForm.get('active')?.value ?
+                            'PRODUCT_TYPES.FORM.ACTIVE' : 'PRODUCT_TYPES.FORM.HIDDEN') | translate }}</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Specification Schema Builder -->
+        <section class="form-section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">
+                        <app-icon name="layers" [size]="20"></app-icon>
+                        {{ 'PRODUCT_TYPES.FORM.SPEC_FIELDS' | translate }}
+                    </h2>
+                    <p class="section-description">{{ 'PRODUCT_TYPES.FORM.SPEC_DESCRIPTION' | translate }}
+                    </p>
+                </div>
+                <div class="section-actions">
+                    <button type="button" class="btn-secondary" (click)="showTemplates = !showTemplates">
+                        <app-icon name="zap" [size]="18"></app-icon>
+                        {{ (showTemplates ? 'PRODUCT_TYPES.FORM.HIDE_TEMPLATES' : 'PRODUCT_TYPES.FORM.SHOW_TEMPLATES') |
+                        translate }}
+                    </button>
+                    <button type="button" class="btn-primary" (click)="addSpecificationField()">
+                        <app-icon name="plus" [size]="18"></app-icon>
+                        {{ 'PRODUCT_TYPES.FORM.ADD_CUSTOM' | translate }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Field Templates (Quick Presets) -->
+            <div class="template-selector" *ngIf="showTemplates" [@slideIn]>
+                <div class="template-header">
+                    <div>
+                        <h3 class="template-title">
+                            <app-icon name="zap" [size]="18"></app-icon>
+                            {{ 'PRODUCT_TYPES.FORM.QUICK_TEMPLATES' | translate }}
+                        </h3>
+                        <p class="template-description">{{ 'PRODUCT_TYPES.FORM.TEMPLATE_DESCRIPTION' | translate }}</p>
+                    </div>
+                    <button type="button" class="btn-close" (click)="showTemplates = false">
+                        <app-icon name="x" [size]="18"></app-icon>
+                    </button>
+                </div>
+                <div class="template-grid">
+                    <button type="button" class="template-card" *ngFor="let template of fieldTemplates"
+                        (click)="addFieldFromTemplate(template.id)">
+                        <div class="template-icon">{{ template.icon }}</div>
+                        <div class="template-name">{{ template.name }}</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schema Stats -->
+            <div class="schema-stats" *ngIf="schemaFields.length > 0">
+                <div class="stat">
+                    <span class="stat-value">{{ schemaFields.length }}</span>
+                    <span class="stat-label">{{ 'PRODUCT_TYPES.FORM.STATS.TOTAL' | translate }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ requiredFieldsCount }}</span>
+                    <span class="stat-label">{{ 'PRODUCT_TYPES.FORM.STATS.REQUIRED' | translate }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ searchableFieldsCount }}</span>
+                    <span class="stat-label">{{ 'PRODUCT_TYPES.FORM.STATS.SEARCHABLE' | translate }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ filterableFieldsCount }}</span>
+                    <span class="stat-label">{{ 'PRODUCT_TYPES.FORM.STATS.FILTERABLE' | translate }}</span>
+                </div>
+            </div>
+
+            <div formArrayName="schema" class="specs-list" cdkDropList (cdkDropListDropped)="onFieldDrop($event)">
+                <div *ngFor="let field of schemaFields.controls; let i = index" [formGroupName]="i" class="spec-card"
+                    [@slideIn] cdkDrag (click)="selectField(i)" [class.selected]="selectedFieldIndex === i"
+                    [class.has-duplicate-key]="isDuplicateKey(i)">
+
+                    <!-- Drag handle placeholder -->
+                    <div class="drag-placeholder" *cdkDragPlaceholder></div>
+
+                    <div class="spec-card-header">
+                        <div class="spec-badge-container">
+                            <!-- Drag handle -->
+                            <div class="drag-handle" cdkDragHandle title="Drag to reorder">
+                                <app-icon name="grip-vertical" [size]="16"></app-icon>
+                            </div>
+                            <div class="spec-badge">Field {{ i + 1 }}</div>
+                        </div>
+                        <div class="spec-actions">
+                            <button type="button" class="action-icon"
+                                (click)="duplicateField(i); $event.stopPropagation()" title="Duplicate (Cmd+D)">
+                                <app-icon name="copy" [size]="16"></app-icon>
+                            </button>
+                            <button type="button" class="action-icon delete"
+                                (click)="removeSpecificationField(i); $event.stopPropagation()" title="Delete (Del)">
+                                <app-icon name="trash-2" [size]="16"></app-icon>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="spec-content">
+                        <div class="form-grid">
+                            <!-- Label (English) - First for auto-focus -->
+                            <div class="form-group">
+                                <label class="form-label required">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.LABEL_EN' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.FIELD.LABEL_EN' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="text" formControlName="labelEn" class="form-input"
+                                    placeholder="Helmet Size" (input)="onLabelEnChange(i, $event)">
+                            </div>
+
+                            <!-- Label (Spanish) -->
+                            <div class="form-group">
+                                <label class="form-label required">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.LABEL_ES' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.FIELD.LABEL_ES' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="text" formControlName="labelEs" class="form-input"
+                                    placeholder="Tamaño del Casco">
+                            </div>
+
+                            <!-- Field Key -->
+                            <div class="form-group">
+                                <label class="form-label required">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.KEY' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.FIELD_KEY' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="text" formControlName="key" class="form-input" placeholder="helmet_size"
+                                    (input)="onKeyChange(i)" [class.duplicate-key-input]="isDuplicateKey(i)">
+                                <p class="form-hint" *ngIf="!isDuplicateKey(i)">{{ 'PRODUCT_TYPES.FORM.FIELD.KEY_HINT' |
+                                    translate }}</p>
+                                <!-- Duplicate key warning -->
+                                <div class="duplicate-key-warning" *ngIf="isDuplicateKey(i)">
+                                    <app-icon name="alert-triangle" [size]="14"></app-icon>
+                                    <span>{{ 'PRODUCT_TYPES.FORM.DUPLICATE_WARNING' | translate: { numbers:
+                                        getDuplicateFieldNumbers(i).join(', ') } }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Field Type -->
+                            <div class="form-group">
+                                <label class="form-label required">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.TYPE' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.TYPE' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <select formControlName="type" class="form-select">
+                                    <option value="text">Text</option>
+                                    <option value="number">Number</option>
+                                    <option value="select">Select (Dropdown)</option>
+                                    <option value="boolean">Boolean (Yes/No)</option>
+                                </select>
+                            </div>
+
+                            <!-- Unit -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.UNIT' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.UNIT' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="text" formControlName="unit" class="form-input" placeholder="cm, kg, L">
+                                <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.FIELD.UNIT_HINT' | translate }}</p>
+                            </div>
+
+                            <!-- Display Order -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.DISPLAY_ORDER' | translate }}
+                                    <span class="help-icon"
+                                        [title]="'PRODUCT_TYPES.FORM.FIELD.DISPLAY_ORDER_HINT' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="number" formControlName="displayOrder" class="form-input" placeholder="0"
+                                    readonly>
+                                <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.FIELD.DISPLAY_ORDER_HINT' | translate }}</p>
+                            </div>
+
+                            <!-- Options (for select type) -->
+                            <div class="form-group span-2" *ngIf="field.get('type')?.value === 'select'">
+                                <label class="form-label">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.OPTIONS' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.OPTIONS' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="text" formControlName="optionsString" class="form-input"
+                                    placeholder="XS, S, M, L, XL, XXL">
+                                <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.FIELD.OPTIONS_HINT' | translate }}</p>
+                            </div>
+
+                            <!-- Min Value (for number type) -->
+                            <div class="form-group" *ngIf="field.get('type')?.value === 'number'">
+                                <label class="form-label">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.MIN_VALUE' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.MIN_MAX' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="number" formControlName="min" class="form-input" placeholder="0">
+                            </div>
+
+                            <!-- Max Value (for number type) -->
+                            <div class="form-group" *ngIf="field.get('type')?.value === 'number'">
+                                <label class="form-label">
+                                    {{ 'PRODUCT_TYPES.FORM.FIELD.MAX_VALUE' | translate }}
+                                    <span class="help-icon" [title]="'PRODUCT_TYPES.FORM.HELP.MIN_MAX' | translate">
+                                        <app-icon name="help-circle" [size]="14"></app-icon>
+                                    </span>
+                                </label>
+                                <input type="number" formControlName="max" class="form-input" placeholder="1000">
+                            </div>
+
+                            <!-- Checkboxes -->
+                            <div class="form-group span-2">
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" formControlName="required">
+                                        <app-icon name="check" [size]="14" class="check-icon"></app-icon>
+                                        <span [title]="'PRODUCT_TYPES.FORM.HELP.REQUIRED' | translate">{{
+                                            'PRODUCT_TYPES.FORM.FIELD.REQUIRED' | translate }}</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" formControlName="searchable">
+                                        <app-icon name="check" [size]="14" class="check-icon"></app-icon>
+                                        <span [title]="'PRODUCT_TYPES.FORM.HELP.SEARCHABLE' | translate">{{
+                                            'PRODUCT_TYPES.FORM.FIELD.SEARCHABLE' | translate }}</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" formControlName="filterable">
+                                        <app-icon name="check" [size]="14" class="check-icon"></app-icon>
+                                        <span [title]="'PRODUCT_TYPES.FORM.HELP.FILTERABLE' | translate">{{
+                                            'PRODUCT_TYPES.FORM.FIELD.FILTERABLE' | translate }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="schemaFields.length === 0" class="empty-specs-state">
+                    <app-icon name="layers" [size]="64" class="empty-icon"></app-icon>
+                    <h3>{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.TITLE' | translate }}</h3>
+                    <p>{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.DESCRIPTION' | translate }}</p>
+
+                    <div class="empty-actions">
+                        <button type="button" class="btn-primary" (click)="addSpecificationField()">
+                            <app-icon name="plus" [size]="18"></app-icon>
+                            {{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.ADD_FIRST' | translate }}
+                        </button>
+                    </div>
+
+                    <div class="examples-section">
+                        <p class="examples-title">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLES' | translate }}</p>
+                        <div class="example-chips">
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_1' | translate }}</span>
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_2' | translate }}</span>
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_3' | translate }}</span>
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_4' | translate }}</span>
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_5' | translate }}</span>
+                            <span class="chip">{{ 'PRODUCT_TYPES.FORM.EMPTY_STATE.EXAMPLE_6' | translate }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" routerLink="/admin/product-types">
+                <app-icon name="x" [size]="18"></app-icon>
+                {{ 'PRODUCT_TYPES.FORM.ACTIONS.CANCEL' | translate }}
+            </button>
+            <button type="submit" class="btn-primary save-btn" [class.saving]="saving" [class.saved]="saved"
+                [disabled]="productTypeForm.invalid" [@buttonState]="buttonState">
+                <app-icon *ngIf="!saving && !saved" [name]="isEditing ? 'save' : 'plus'" [size]="18"></app-icon>
+                <div *ngIf="saving" class="spinner-small"></div>
+                <app-icon *ngIf="saved" name="check-circle" [size]="18" class="success-icon"></app-icon>
+                <span>{{ saving ? ('PRODUCT_TYPES.FORM.ACTIONS.SAVING' | translate) : (saved ?
+                    ('PRODUCT_TYPES.FORM.ACTIONS.SAVED' | translate) : (isEditing ? ('PRODUCT_TYPES.FORM.ACTIONS.SAVE' |
+                    translate) : ('PRODUCT_TYPES.FORM.ACTIONS.CREATE' | translate))) }}</span>
+            </button>
+        </div>
+    </form>
+</div>

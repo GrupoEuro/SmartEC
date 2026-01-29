@@ -8,7 +8,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
   standalone: true,
   imports: [CommonModule, TranslateModule],
   template: `
-    <div class="validation-summary" *ngIf="hasErrors && (form.touched || showAlways)">
+    <div class="validation-summary" *ngIf="hasErrors && (hasAnyTouchedControl || showAlways)">
       <div class="summary-header">
         <span class="icon">⚠️</span>
         <h4>{{ 'VALIDATION.SUMMARY_TITLE' | translate }}</h4>
@@ -85,12 +85,20 @@ export class ValidationSummaryComponent {
     return this.form.invalid;
   }
 
+  get hasAnyTouchedControl(): boolean {
+    return Object.keys(this.form.controls).some(key => {
+      const control = this.form.get(key);
+      return control?.touched || false;
+    });
+  }
+
   getErrors(): string[] {
     const errors: string[] = [];
 
     Object.keys(this.form.controls).forEach(key => {
       const control = this.form.get(key);
-      if (control?.invalid && (control.touched || this.showAlways)) {
+
+      if (control?.invalid) {
         const label = this.fieldLabels[key] || this.formatFieldName(key);
 
         if (control.errors?.['required']) {

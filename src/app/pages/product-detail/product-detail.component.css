@@ -59,30 +59,38 @@
 /* ========================================
    HERO SECTION
    ======================================== */
+/* ========================================
+   HERO SECTION
+   ======================================== */
 .product-hero {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    margin-bottom: 4rem;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 6rem;
+    margin-bottom: 6rem;
+    align-items: start;
+    /* Critical for sticky */
 }
 
 .hero-left {
     position: sticky;
-    top: 2rem;
+    top: 100px;
+    /* Offset for navbar */
     height: fit-content;
+    z-index: 10;
 }
 
 .hero-right {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 2rem;
+    padding-top: 1rem;
 }
 
 /* Product Header */
 .product-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .product-brand-badge {
@@ -91,54 +99,61 @@
     font-size: 0.9rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    margin-bottom: 0.5rem;
 }
 
 .product-sku {
     font-size: 0.85rem;
     color: var(--text-dim);
     margin: 0;
+    font-family: monospace;
 }
 
 .product-title {
-    font-size: 2.75rem;
+    font-size: 3.5rem;
     font-weight: 800;
     color: var(--text-primary);
-    line-height: 1.1;
+    line-height: 1.05;
     margin: 0;
+    letter-spacing: -0.03em;
     /* text-wrap: balance; */
 }
 
 /* Price Section */
 .price-stock-group {
-    background: var(--product-card-bg);
-    border: var(--product-card-border);
-    border-radius: 16px;
-    padding: 1.5rem;
+    background: transparent;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0;
+    padding: 0 0 0 2rem;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 1rem 0;
 }
 
 .price-main {
     display: flex;
-    align-items: baseline;
+    align-items: flex-end;
     gap: 0.5rem;
 }
 
 .current-price {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 900;
     color: var(--text-primary);
     letter-spacing: -1px;
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(0, 172, 216, 0.2);
 }
 
 .currency-label {
-    font-size: 1rem;
+    font-size: 1.25rem;
     color: var(--text-dim);
     font-weight: 600;
+    margin-bottom: 6px;
 }
 
 .price-secondary {
@@ -321,7 +336,7 @@
 .action-buttons {
     display: flex;
     gap: 1rem;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
 }
 
 .btn-add-cart {
@@ -342,6 +357,32 @@
     justify-content: center;
     gap: 0.75rem;
     box-shadow: 0 4px 15px rgba(0, 172, 216, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Shine Animation */
+.btn-add-cart::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(to bottom right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0) 40%,
+            rgba(255, 255, 255, 0.2) 50%,
+            rgba(255, 255, 255, 0) 60%,
+            rgba(255, 255, 255, 0) 100%);
+    transform: rotate(45deg);
+    transition: transform 0.6s;
+    opacity: 0;
+}
+
+.btn-add-cart:hover::after {
+    opacity: 1;
+    transform: rotate(45deg) translate(50%, 50%);
 }
 
 .btn-add-cart:hover:not(:disabled) {
@@ -362,9 +403,9 @@
 
 .btn-wishlist,
 .btn-share {
-    width: 56px;
-    height: 56px;
-    /* Match add to cart height roughly */
+    width: 60px;
+    height: 60px;
+    /* Match add to cart approx height */
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
@@ -391,6 +432,7 @@
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     overflow: hidden;
+    backdrop-filter: blur(5px);
 }
 
 .trust-item {
@@ -398,6 +440,11 @@
     display: flex;
     gap: 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.2s;
+}
+
+.trust-item:hover {
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .trust-item:last-child {
@@ -406,19 +453,21 @@
 
 .trust-icon {
     font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.05);
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .trust-text strong {
     display: block;
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     margin-bottom: 0.5rem;
 }
 
@@ -429,13 +478,14 @@
 }
 
 .pay-icon {
-    font-size: 0.7rem;
-    background: white;
-    color: #333;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-weight: 700;
+    font-size: 0.65rem;
+    background: #fff;
+    color: #111;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Badges */

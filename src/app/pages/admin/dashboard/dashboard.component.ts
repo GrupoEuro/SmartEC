@@ -49,19 +49,19 @@ export class DashboardComponent implements OnInit {
   error = '';
 
   async ngOnInit() {
-    console.log('✅ Dashboard ngOnInit - SIMPLE VERSION');
+
     await this.loadStats();
   }
 
   async loadStats() {
     try {
-      console.log('✅ Loading stats...');
+
 
       // Get users count
       try {
         const usersSnap = await getDocs(collection(this.firestore, 'users'));
         this.stats.users = usersSnap.size;
-        console.log('✅ Users:', this.stats.users);
+
       } catch (err: any) {
         console.error('❌ Error loading users:', err.message);
       }
@@ -70,7 +70,7 @@ export class DashboardComponent implements OnInit {
       try {
         const postsSnap = await getDocs(collection(this.firestore, 'blog_posts'));
         this.stats.posts = postsSnap.size;
-        console.log('✅ Blog Posts:', this.stats.posts);
+
       } catch (err: any) {
         console.error('❌ Error loading blog posts:', err.message);
       }
@@ -79,7 +79,7 @@ export class DashboardComponent implements OnInit {
       try {
         const pdfsSnap = await getDocs(collection(this.firestore, 'pdfs'));
         this.stats.pdfs = pdfsSnap.size;
-        console.log('✅ PDFs:', this.stats.pdfs);
+
       } catch (err: any) {
         console.error('❌ Error loading PDFs:', err.message);
       }
@@ -88,7 +88,7 @@ export class DashboardComponent implements OnInit {
       try {
         const bannersSnap = await getDocs(collection(this.firestore, 'banners'));
         this.stats.banners = bannersSnap.size;
-        console.log('✅ Banners:', this.stats.banners);
+
       } catch (err: any) {
         console.error('❌ Error loading banners:', err.message);
       }
@@ -97,7 +97,7 @@ export class DashboardComponent implements OnInit {
       try {
         const distributorsSnap = await getDocs(collection(this.firestore, 'distributors'));
         this.stats.distributors = distributorsSnap.size;
-        console.log('✅ Distributors:', this.stats.distributors);
+
       } catch (err: any) {
         console.error('❌ Error loading distributors:', err.message);
       }
@@ -106,7 +106,7 @@ export class DashboardComponent implements OnInit {
       try {
         const newsletterSnap = await getDocs(collection(this.firestore, 'newsletter'));
         this.stats.newsletter = newsletterSnap.size;
-        console.log('✅ Newsletter:', this.stats.newsletter);
+
       } catch (err: any) {
         console.error('❌ Error loading newsletter:', err.message);
       }
@@ -131,7 +131,7 @@ export class DashboardComponent implements OnInit {
         this.stats.productsLowStock = lowStockCount;
         this.stats.productsOutStock = outStockCount;
 
-        console.log('✅ Products:', this.stats.products, 'Active:', activeCount, 'Low Stock:', lowStockCount, 'Out of Stock:', outStockCount);
+
       } catch (err: any) {
         console.error('❌ Error loading products:', err.message);
       }
@@ -140,7 +140,7 @@ export class DashboardComponent implements OnInit {
       try {
         const brandsSnap = await getDocs(collection(this.firestore, 'brands'));
         this.stats.brands = brandsSnap.size;
-        console.log('✅ Brands:', this.stats.brands);
+
       } catch (err: any) {
         console.error('❌ Error loading brands:', err.message);
       }
@@ -149,13 +149,13 @@ export class DashboardComponent implements OnInit {
       try {
         const categoriesSnap = await getDocs(collection(this.firestore, 'categories'));
         this.stats.categories = categoriesSnap.size;
-        console.log('✅ Categories:', this.stats.categories);
+
       } catch (err: any) {
         console.error('❌ Error loading categories:', err.message);
       }
 
       this.isLoading = false;
-      console.log('✅ Stats loaded successfully!');
+      // Stats loaded
     } catch (err: any) {
       console.error('❌ Error loading stats:', err);
       this.error = err.message;

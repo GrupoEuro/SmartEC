@@ -1,15 +1,25 @@
 <div class="gallery-container">
-    <!-- Main Image -->
-    <div class="main-image" (click)="openLightbox(selectedImageIndex)">
-        <img [src]="images[selectedImageIndex]" [alt]="productName" />
-        <div class="zoom-hint">🔍 Click to zoom</div>
+    <!-- Main Image Area -->
+    <div class="main-image-wrapper">
+        <div class="main-image" #mainImgContainer (mousemove)="onMouseMove($event)" (mouseleave)="onMouseLeave()"
+            (click)="openLightbox(selectedImageIndex)">
+            <img [ngSrc]="images[selectedImageIndex] || 'assets/images/euro-logo-new.png'" [alt]="productName"
+                width="600" height="600" priority class="hero-img">
+
+            <div class="zoom-hint" *ngIf="!showZoom">🔍 Click to expand</div>
+        </div>
+
+        <!-- Flyout Zoom Window -->
+        <div class="zoom-flyout" *ngIf="showZoom" [style.background-image]="'url(' + images[selectedImageIndex] + ')'"
+            [style.background-position]="zoomPosition.x + '% ' + zoomPosition.y + '%'">
+        </div>
     </div>
 
     <!-- Thumbnails -->
     <div class="thumbnails" *ngIf="images.length > 1">
         <button *ngFor="let image of images; let i = index" class="thumbnail" [class.active]="i === selectedImageIndex"
             (click)="selectImage(i)">
-            <img [src]="image" [alt]="productName + ' - Image ' + (i + 1)" />
+            <img [ngSrc]="image" [alt]="productName + ' - View ' + (i + 1)" width="80" height="80" class="thumb-img">
         </button>
     </div>
 </div>

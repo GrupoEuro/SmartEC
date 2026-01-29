@@ -434,6 +434,7 @@ export class PurchaseOrderDetailComponent {
             // Create local object for immediate UI feedback
             const stub: Product = {
                 id: newId,
+                productType: 'part', // Default to 'part' for generic items
                 type: 'simple',
                 name: { es: item.originalDescription || 'New Product', en: '' },
                 sku: item.sku || 'NEW',

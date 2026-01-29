@@ -1,0 +1,56 @@
+<div class="modal-overlay" (click)="onBackdropClick($event)">
+    <div class="modal-content">
+        <button class="close-btn" (click)="close.emit()">✕</button>
+
+        <div class="modal-body">
+            <!-- Image Side -->
+            <div class="product-image-container">
+                <img [ngSrc]="product.images?.main || 'assets/images/euro-logo-new.png'" [alt]="product.name.en"
+                    width="500" height="500" priority class="product-image">
+            </div>
+
+            <!-- Details Side -->
+            <div class="product-details">
+                <div class="brand-badge">{{ product.brand }}</div>
+                <h2 class="product-title">{{ product.name.en }}</h2>
+
+                <div class="price-section">
+                    <span class="price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                    <span class="currency">MXN</span>
+                    <span class="tax-note">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</label>
+                        <span>{{ product.specifications['width'] }}/{{ product.specifications['aspectRatio'] }}R{{
+                            product.specifications['diameter'] }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>{{ 'PRODUCT_DETAIL.LOAD_INDEX' | translate }}</label>
+                        <span>{{ product.specifications['loadIndex'] }}</span>
+                    </div>
+                    <div class="info-item">
+                        <label>{{ 'PRODUCT_DETAIL.SPEED_RATING' | translate }}</label>
+                        <span>{{ product.specifications['speedRating'] }}</span>
+                    </div>
+                </div>
+
+                <div class="stock-status" [class.in-stock]="product.inStock" [class.out-of-stock]="!product.inStock">
+                    <span class="status-dot"></span>
+                    {{ product.inStock ? ('PRODUCT_DETAIL.IN_STOCK' | translate) : ('PRODUCT_DETAIL.OUT_OF_STOCK' |
+                    translate) }}
+                </div>
+
+                <div class="actions">
+                    <button class="btn-primary" (click)="addToCart()" [disabled]="!product.inStock">
+                        {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
+                    </button>
+                    <a [routerLink]="['/product', product.slug]" (click)="close.emit()" class="btn-secondary">
+                        {{ 'PRODUCT_DETAIL.VIEW_DETAILS' | translate }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

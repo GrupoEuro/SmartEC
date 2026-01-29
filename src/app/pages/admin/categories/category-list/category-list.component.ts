@@ -32,6 +32,7 @@ export class CategoryListComponent implements OnInit {
     // Data observables
     categories$!: Observable<Category[]>;
     displayedCategories$!: Observable<Category[]>;
+    paginatedCategories$!: Observable<Category[]>;
 
     // Search and filters
     searchTerm = '';
@@ -66,7 +67,7 @@ export class CategoryListComponent implements OnInit {
     }
 
     setupFiltering() {
-        this.displayedCategories$ = combineLatest([
+        this.paginatedCategories$ = combineLatest([
             this.categories$,
             this.filterSubject
         ]).pipe(
@@ -210,5 +211,9 @@ export class CategoryListComponent implements OnInit {
             );
             this.toast.success('Categories exported successfully');
         });
+    }
+
+    get paginatedCategories() {
+        return this.paginatedCategories$;
     }
 }

@@ -1,43 +1,90 @@
-<app-admin-page-header icon="🖼️" [title]="'ADMIN.BANNERS.TITLE' | translate" subtitle="Manage homepage banners">
-    <a routerLink="/admin/banners/new" class="btn-primary">{{ 'ADMIN.BANNERS.BTN_ADD' | translate }}</a>
-</app-admin-page-header>
+<div class="product-dashboard-layout">
+    <!-- Sticky Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <h1 class="page-title">{{ 'ADMIN.BANNERS.TITLE' | translate }}</h1>
+            <span class="product-count" *ngIf="(banners$ | async)?.length as count">
+                {{ count }} Active Banners
+            </span>
+        </div>
 
-<div class="banner-list-container">
+        <div class="header-right">
+            <button class="btn-primary-action" routerLink="/admin/banners/new">
+                <span class="icon">➕</span>
+                <span class="text">{{ 'ADMIN.BANNERS.BTN_ADD' | translate }}</span>
+            </button>
+        </div>
+    </header>
 
-    <div class="table-responsive">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>{{ 'ADMIN.BANNERS.TH_IMAGE' | translate }}</th>
-                    <th>{{ 'ADMIN.BANNERS.TH_TITLE' | translate }}</th>
-                    <th>{{ 'ADMIN.BANNERS.TH_SUBTITLE' | translate }}</th>
-                    <th>{{ 'ADMIN.BANNERS.TH_ORDER' | translate }}</th>
-                    <th>{{ 'ADMIN.BANNERS.TH_STATUS' | translate }}</th>
-                    <th>{{ 'ADMIN.BANNERS.TH_ACTIONS' | translate }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let banner of banners$ | async">
-                    <td>
-                        <img [src]="banner.imageUrl" alt="Banner" class="banner-thumb">
-                    </td>
-                    <td>{{ banner.title }}</td>
-                    <td>{{ banner.subtitle }}</td>
-                    <td>{{ banner.order }}</td>
-                    <td>
-                        <span class="badge" [class.active]="banner.active">
-                            {{ banner.active ? ('ADMIN.BANNERS.STATUS_ACTIVE' | translate) :
-                            ('ADMIN.BANNERS.STATUS_INACTIVE' | translate) }}
-                        </span>
-                    </td>
-                    <td class="actions">
-                        <a [routerLink]="['/admin/banners/edit', banner.id]" class="btn-icon"
-                            [title]="'ADMIN.COMMON.EDIT' | translate">✏️</a>
-                        <button (click)="deleteBanner(banner)" class="btn-icon delete"
-                            [title]="'ADMIN.COMMON.DELETE' | translate">🗑️</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="dashboard-content">
+        <!-- Main Grid Area (No sidebar needed for banners typically, full width) -->
+        <main class="product-grid-view full-width">
+            <div class="table-glass-container">
+                <table class="rich-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 180px;">{{ 'ADMIN.BANNERS.TH_IMAGE' | translate }}</th>
+                            <th>{{ 'ADMIN.BANNERS.TH_TITLE' | translate }}</th>
+                            <th>{{ 'ADMIN.BANNERS.TH_ORDER' | translate }}</th>
+                            <th>{{ 'ADMIN.BANNERS.TH_STATUS' | translate }}</th>
+                            <th>{{ 'ADMIN.BANNERS.TH_ACTIONS' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let banner of banners$ | async">
+                            <td>
+                                <div class="banner-preview-wrapper">
+                                    <img [src]="banner.imageUrl" [alt]="banner.title" class="banner-img">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="product-identity">
+                                    <span class="product-name strong" [routerLink]="['/admin/banners/edit', banner.id]">
+                                        {{ banner.title }}
+                                    </span>
+                                    <span class="product-sku">{{ banner.subtitle }}</span>
+                                    <div class="badges-row" *ngIf="banner.link">
+                                        <span class="tiny-badge link-badge">🔗 {{ banner.link }}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="order-badge">{{ banner.order }}</span>
+                            </td>
+                            <td>
+                                <div class="stock-pill" [class.success]="banner.active" [class.danger]="!banner.active">
+                                    <span class="dot"></span>
+                                    <span class="status-text">
+                                        {{ banner.active ? ('ADMIN.BANNERS.STATUS_ACTIVE' | translate) :
+                                        ('ADMIN.BANNERS.STATUS_INACTIVE' | translate) }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn-icon-ghost" [routerLink]="['/admin/banners/edit', banner.id]"
+                                        [title]="'ADMIN.COMMON.EDIT' | translate">
+                                        ✏️
+                                    </button>
+                                    <button class="btn-icon-ghost danger" (click)="deleteBanner(banner)"
+                                        [title]="'ADMIN.COMMON.DELETE' | translate">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr *ngIf="(banners$ | async)?.length === 0">
+                            <td colspan="5" class="no-data">
+                                <div class="empty-state-content">
+                                    <span class="empty-icon">🖼️</span>
+                                    <p>{{ 'ADMIN.BANNERS.EMPTY' | translate }}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 </div>

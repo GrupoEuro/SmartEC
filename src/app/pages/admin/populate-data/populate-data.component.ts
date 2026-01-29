@@ -617,16 +617,16 @@ export class PopulateDataComponent implements OnInit {
         { id: 'brand_bridgestone', name: 'Bridgestone', slug: 'bridgestone', description: { en: 'Japanese tire technology leader', es: 'Líder japonés en tecnología de llantas' }, logoUrl: 'https://via.placeholder.com/200x80/000000/FFFFFF?text=BRIDGESTONE', countryOfOrigin: 'Japan', website: 'https://www.bridgestone.com', featured: false, active: true }
       ];
 
-      console.log('Creating brands:', brands.length);
+
       brands.forEach(b => {
         const ref = doc(this.firestore, `brands/${b.id}`);
-        console.log('Adding brand to batch:', b.id);
+
         batch1.set(ref, { ...b, createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
       });
 
-      console.log('Committing brands batch...');
+
       await batch1.commit();
-      console.log('Brands batch committed successfully');
+
       this.log('  Brands created.');
 
       // Categories
@@ -895,7 +895,7 @@ export class PopulateDataComponent implements OnInit {
         }
       ];
 
-      console.log('Creating detailed customers:', realisticUsers.length);
+
 
       realisticUsers.forEach(u => {
         const ref = doc(this.firestore, `customers/${u.uid}`);

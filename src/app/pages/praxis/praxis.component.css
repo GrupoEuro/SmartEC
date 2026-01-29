@@ -34,8 +34,9 @@
             justify-content: center;
             overflow: hidden;
             padding-top: 140px;
-            background: url('/assets/images/praxis-hero-new.png') no-repeat center 140px;
-            background-size: 80% auto;
+            background: url('https://firebasestorage.googleapis.com/v0/b/tiendapraxis.firebasestorage.app/o/media%2Fbanners%2F1769104926543_0eint.png?alt=media');
+            background-size: cover;
+            background-position: center;
         }
 
         .hero::before {

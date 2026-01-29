@@ -1,48 +1,52 @@
-/* Global Admin Table Styles - Phase 1 Enhancement */
+/* Global Admin Table Styles - Enterprise Design System */
 
-/* Zebra Striping for all admin tables */
+/* Zebra Striping */
 .distributors-table tbody tr:nth-child(even),
 .data-table tbody tr:nth-child(even),
 .admin-table tbody tr:nth-child(even) {
-    background-color: #F8F9FA;
+    background-color: var(--surface-1);
 }
 
-/* Standardized text colors */
+/* Standardized text colors using variables */
 .distributors-table td,
 .data-table td,
 .admin-table td {
-    color: #333333 !important;
+    color: var(--text-primary) !important;
 }
 
 /* Secondary text */
 .distributors-table .secondary-text,
 .data-table .secondary-text,
 .admin-table .secondary-text {
-    color: #666666;
+    color: var(--text-secondary);
 }
 
 /* Enhanced hover states */
 .distributors-table tbody tr:hover,
 .data-table tbody tr:hover,
 .admin-table tbody tr:hover {
-    background-color: #F0F4F8 !important;
-    transition: background-color 0.15s ease;
+    background: var(--surface-3) !important;
+    transition: background 0.15s ease;
 }
 
 /* Table headers */
 .distributors-table th,
 .data-table th,
 .admin-table th {
-    color: #1a1a2e;
+    color: var(--text-tertiary);
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.9rem;
-    border-bottom: 2px solid #DEE2E6;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    border-bottom: var(--border-medium);
+    padding: var(--space-4);
+    background: transparent;
 }
 
 /* Row borders */
 .distributors-table td,
 .data-table td,
 .admin-table td {
-    border-bottom: 1px solid #E9ECEF;
+    border-bottom: var(--border-subtle);
+    padding: var(--space-4);
 }

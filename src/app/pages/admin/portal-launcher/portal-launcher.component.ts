@@ -107,7 +107,7 @@ export class PortalLauncherComponent implements OnInit {
         // EXCEPTION: Super Admins or multi-role users might want the choice.
         // But if length is 1, they have no choice.
         if (allowedPortals.length === 1) {
-            console.log(`Portal Launcher: Auto-redirecting to ${allowedPortals[0].title}`);
+            // Auto-redirecting to portal
             this.router.navigate([allowedPortals[0].route]);
         }
 

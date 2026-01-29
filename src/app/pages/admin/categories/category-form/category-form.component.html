@@ -6,7 +6,9 @@
 </app-admin-page-header>
 
 <div class="form-container">
-    <form [formGroup]="categoryForm" (ngSubmit)="onSubmit()">
+    <app-validation-summary [form]="categoryForm" [fieldLabels]="fieldLabels"></app-validation-summary>
+
+    <form *ngIf="categoryForm" [formGroup]="categoryForm" (ngSubmit)="onSubmit()">
 
         <!-- Basic Information Section -->
         <div class="form-section">

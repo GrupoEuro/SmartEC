@@ -1,15 +1,16 @@
-<div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+<div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+    <div class="modal-dialog rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
 
         <!-- Header -->
-        <div class="flex justify-between items-center p-4 border-b bg-gray-50">
-            <h3 class="text-lg font-semibold text-gray-800">Select Media</h3>
+        <div class="modal-header flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-semibold text-white">Select Media</h3>
             <div class="flex gap-2">
                 <button (click)="showUpload.set(true)" *ngIf="!showUpload()"
-                    class="text-indigo-600 hover:text-indigo-700 text-sm font-bold">Upload New</button>
+                    class="text-blue-400 hover:text-blue-300 text-sm font-bold transition-colors">Upload New</button>
                 <button (click)="showUpload.set(false)" *ngIf="showUpload()"
-                    class="text-gray-600 hover:text-gray-800 text-sm">Cancel Upload</button>
-                <button (click)="close.emit()" class="text-gray-500 hover:text-gray-700 ml-4">✕</button>
+                    class="text-slate-400 hover:text-slate-300 text-sm transition-colors">Cancel Upload</button>
+                <button (click)="close.emit()"
+                    class="text-slate-400 hover:text-white ml-4 text-xl transition-colors">✕</button>
             </div>
         </div>
 
@@ -24,33 +25,32 @@
             <!-- Picker Mode -->
             <div *ngIf="!showUpload()" class="flex flex-1 overflow-hidden">
                 <!-- Sidebar -->
-                <aside class="w-48 border-r border-gray-200 bg-gray-50 overflow-y-auto p-2">
-                    <button (click)="onCategoryChange('')" [class.bg-white]="selectedCategory() === ''"
-                        [class.shadow-sm]="selectedCategory() === ''"
-                        class="w-full text-left px-3 py-2 rounded text-sm mb-1 hover:bg-white transition-colors">
+                <aside class="sidebar w-48 border-r overflow-y-auto p-2">
+                    <button (click)="onCategoryChange('')" [class.active]="selectedCategory() === ''"
+                        class="category-btn w-full text-left px-3 py-2 rounded text-sm mb-1">
                         All Files
                     </button>
                     <button *ngFor="let cat of CATEGORIES" (click)="onCategoryChange(cat)"
-                        [class.bg-white]="selectedCategory() === cat" [class.shadow-sm]="selectedCategory() === cat"
-                        class="w-full text-left px-3 py-2 rounded text-sm mb-1 hover:bg-white transition-colors capitalize">
+                        [class.active]="selectedCategory() === cat"
+                        class="category-btn w-full text-left px-3 py-2 rounded text-sm mb-1 capitalize">
                         {{ cat }}
                     </button>
                 </aside>
 
                 <!-- Grid -->
-                <main class="flex-1 p-4 overflow-y-auto bg-white">
+                <main class="flex-1 p-4 overflow-y-auto modal-content">
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         <div *ngFor="let asset of assets$ | async" (click)="selectAsset(asset)"
-                            class="group cursor-pointer relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 hover:border-indigo-500 hover:ring-2 hover:ring-indigo-500 transition-all">
+                            class="asset-card group cursor-pointer relative aspect-square rounded-lg overflow-hidden border transition-all">
                             <img [src]="asset.publicUrl" [alt]="asset.metadata.altText"
                                 class="w-full h-full object-cover">
                             <div
-                                class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                                class="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
                                 {{ asset.filename }}
                             </div>
                         </div>
                     </div>
-                    <div *ngIf="(assets$ | async)?.length === 0" class="text-center py-10 text-gray-500 text-sm">
+                    <div *ngIf="(assets$ | async)?.length === 0" class="text-center py-10 text-slate-400 text-sm">
                         No assets found.
                     </div>
                 </main>

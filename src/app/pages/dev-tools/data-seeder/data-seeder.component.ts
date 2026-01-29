@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { DataSeederService } from '../../../core/services/data-seeder.service';
+import { ProductTypeSeederService } from '../../../core/services/product-type-seeder.service';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { ConfirmDialogComponent } from '../../../components/shared/confirm-dialog/confirm-dialog.component';
 import * as FileSaver from 'file-saver';
@@ -66,6 +67,10 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
                       <button class="btn btn-secondary justify-between group" (click)="seedExpenses()" [disabled]="isSeeding()">
                           <span class="flex items-center gap-2"><app-icon name="credit-card" [size]="16"></app-icon> Operational Expenses</span>
                           <span class="text-xs text-slate-500 group-hover:text-white transition">Rent, Payroll</span>
+                      </button>
+                      <button class="btn btn-primary justify-between group" (click)="seedProductTypeTemplates()" [disabled]="isSeeding()">
+                          <span class="flex items-center gap-2"><app-icon name="settings" [size]="16"></app-icon> Product Type Templates</span>
+                          <span class="text-xs text-white/70 group-hover:text-white transition">5 System Types</span>
                       </button>
                   </div>
               </div>
@@ -269,7 +274,9 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
   `]
 })
 export class DataSeederComponent {
+    // Force reload - Product Type Templates button added
     seeder = inject(DataSeederService);
+    productTypeSeeder = inject(ProductTypeSeederService);
     confirmService = inject(ConfirmDialogService);
 
     // UI State
@@ -335,6 +342,18 @@ export class DataSeederComponent {
     seedPricingRules() { this.runAction('Seed Pricing Rules', () => this.seeder.populatePricingRules((l: string) => this.addLog(l))); }
     seedCoupons() { this.runAction('Seed Coupons', () => this.seeder.populateCoupons((l: string) => this.addLog(l))); }
     seedPraxisHistory() { this.runAction('Backfill History', () => this.seeder.seedPraxisHistory((l: string) => this.addLog(l))); }
+
+    seedProductTypeTemplates() {
+        this.runAction(
+            'Seed Product Type Templates',
+            async () => {
+                this.addLog('Creating system product type templates...');
+                await this.productTypeSeeder.seedSystemTemplates();
+                this.addLog('✅ 5 system templates created (tire, helmet, battery, part, accessory)', 'success');
+            },
+            'Seed 5 system product type templates to Firestore?'
+        );
+    }
 
     async runScenario(type: 'GOLDEN_PATH') {
         this.runAction('Scenario: Golden Path', () => this.seeder.runScenario(type, l => this.addLog(l)), 'Reset database to Golden Path state?');

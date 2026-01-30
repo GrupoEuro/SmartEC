@@ -4,7 +4,9 @@
     <div class="products-grid">
         <a *ngFor="let product of products" [routerLink]="['/product', product.id]" class="product-card">
             <div class="product-image">
-                <img [src]="product.images.main" [alt]="product.name.es" />
+                <img [src]="product.images.main || 'assets/images/euro-logo-new.png'"
+                    (error)="product.images.main = 'assets/images/euro-logo-new.png'" [alt]="product.name.es" />
+
                 <div class="product-badges">
                     <span *ngIf="product.newArrival" class="badge badge-new">New</span>
                     <span *ngIf="product.featured" class="badge badge-featured">Featured</span>

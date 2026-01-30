@@ -218,6 +218,34 @@ export class ProductService {
     }
 
     /**
+     * Get product by SKU (Direct Firestore Query)
+     * Used for Import validations to check existence
+     */
+    async getProductBySku(sku: string): Promise<Product | null> {
+        try {
+            const q = query(this.productsCollection, where('sku', '==', sku), limit(1));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                return null;
+            }
+
+            const doc = snapshot.docs[0];
+            const data = doc.data() as any;
+
+            return {
+                ...data,
+                id: doc.id,
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate() || new Date()
+            } as Product;
+        } catch (error) {
+            console.error('Error fetching product by SKU:', error);
+            return null;
+        }
+    }
+
+    /**
      * Get product by slug
      */
     getProductBySlug(slug: string): Observable<Product | undefined> {

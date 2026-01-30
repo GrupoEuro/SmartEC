@@ -91,11 +91,22 @@
 /* Close button only for mobile sidebar state */
 .close-btn {
     display: none;
-    background: none;
-    border: none;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
-    font-size: 1.5rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
 }
 
 .sidebar-content {
@@ -124,9 +135,11 @@
 /* ==========================================================================
    INPUTS & CONTROLS (High Contrast)
    ========================================================================== */
+/* Base Input Styles (Restored & Refined) */
 .search-input,
 .size-select,
-.sort-select {
+.sort-select,
+.price-input {
     width: 100%;
     /* Zinc-800 for better visibility against Zinc-950 bg */
     background: #27272a;
@@ -135,10 +148,13 @@
     border-radius: 8px;
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    appearance: none;
+    -webkit-appearance: none;
 }
 
-.search-input::placeholder {
+.search-input::placeholder,
+.price-input::placeholder {
     color: #71717a;
     /* Zinc-500 */
 }
@@ -149,10 +165,23 @@
 .price-input:focus {
     outline: none;
     border-color: #00ACD8;
-    /* Primary Cyan */
     background: #3f3f46;
-    /* Zinc-700 */
     box-shadow: 0 0 0 2px rgba(0, 172, 216, 0.2);
+}
+
+/* Custom Select Arrow */
+.size-select,
+.sort-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+}
+
+.size-selectors {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 /* Price Inputs Wrapper */
@@ -330,6 +359,19 @@
     .catalog-main {
         padding: 1rem;
     }
+
+    /* Fixed Sidebar Overlay */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 95;
+        /* Behind sidebar (100) but above everything else */
+    }
 }
 
 /* ==========================================================================
@@ -352,22 +394,26 @@
    PRODUCT CARD
    ========================================================================== */
 .product-card {
-    background: #18181b;
-    /* Zinc-900 */
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* Zinc-800 */
-    border-radius: 12px;
+    /* Zinc Prism Theme - High Contrast */
+    background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
+    /* Zinc-800 to Zinc-900 */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    /* Stronger border */
+    border-radius: 16px;
+    /* Slightly softer corners */
     overflow: hidden;
     position: relative;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
 }
 
 .product-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(0, 172, 216, 0.4);
-    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+    transform: translateY(-6px);
+    border-color: rgba(0, 172, 216, 0.5);
+    /* Primary Cyan Glow */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
 }
 
 /* List View Card Layout */
@@ -384,7 +430,9 @@
     width: 100%;
     aspect-ratio: 1;
     background: #09090b;
-    /* Darker inner bg */
+    /* Keep dark to frame product */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    /* Subtle seperation */
     padding: 1.5rem;
     display: flex;
     align-items: center;
@@ -518,29 +566,47 @@
 }
 
 /* Price */
+/* Price */
 .product-price {
     margin-top: auto;
-    /* Push to bottom */
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.25rem;
+    flex-direction: column;
+    align-items: flex-end;
+    /* Right align */
+    gap: 0.1rem;
     margin-bottom: 0.75rem;
 }
 
+.original-price {
+    font-size: 0.9rem;
+    color: #71717a;
+    /* Zinc-500 */
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
+.price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
 .current-price {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    /* More notable */
+    font-weight: 800;
     color: white;
+    line-height: 1;
+    letter-spacing: -0.5px;
 }
 
 .price-suffix {
     font-size: 0.75rem;
-    color: #71717a;
+    color: #a1a1aa;
+    font-weight: 600;
 }
 
 .tax-info {
-    width: 100%;
     font-size: 0.7rem;
     color: #52525b;
 }
@@ -570,6 +636,7 @@
     display: none;
     /* Hidden visually, quick view is primary */
 }
+
 /* ==========================================================================
    TOOLBAR & TOP ACTIONS
    ========================================================================== */
@@ -578,15 +645,18 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
-    background: #18181b; /* Zinc-900 */
+    background: #18181b;
+    /* Zinc-900 */
     padding: 1rem 1.5rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08); /* Zinc-800 */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Zinc-800 */
 }
 
 .results-count {
     font-size: 0.95rem;
-    color: #a1a1aa; /* Zinc-400 */
+    color: #a1a1aa;
+    /* Zinc-400 */
     font-weight: 500;
 }
 
@@ -600,9 +670,12 @@
 .sort-select {
     width: auto;
     min-width: 180px;
-    height: 40px; /* Fixed height for alignment */
-    padding: 0 2.5rem 0 1rem; /* Right padding for arrow */
-    background-color: #27272a; /* Zinc-800 */
+    height: 40px;
+    /* Fixed height for alignment */
+    padding: 0 2.5rem 0 1rem;
+    /* Right padding for arrow */
+    background-color: #27272a;
+    /* Zinc-800 */
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     color: #f4f4f5;
@@ -617,8 +690,10 @@
 }
 
 .sort-select:hover {
-    border-color: #71717a; /* Zinc-500 */
-    background-color: #3f3f46; /* Zinc-700 */
+    border-color: #71717a;
+    /* Zinc-500 */
+    background-color: #3f3f46;
+    /* Zinc-700 */
 }
 
 .sort-select:focus {
@@ -630,12 +705,15 @@
 /* View Toggles (Container) */
 .view-toggle {
     display: flex;
-    background: #27272a; /* Zinc-800 backdrop */
-    border: 1px solid rgba(255, 255, 255, 0.15); /* Match border */
+    background: #27272a;
+    /* Zinc-800 backdrop */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    /* Match border */
     border-radius: 8px;
     padding: 3px;
     gap: 2px;
-    height: 40px; /* Match sort select height */
+    height: 40px;
+    /* Match sort select height */
     align-items: center;
 }
 
@@ -648,7 +726,8 @@
     height: 32px;
     border: none;
     background: transparent;
-    color: #a1a1aa; /* Zinc-400 */
+    color: #a1a1aa;
+    /* Zinc-400 */
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -666,7 +745,8 @@
 }
 
 .view-btn.active {
-    background: #00ACD8; /* Primary Cyan */
+    background: #00ACD8;
+    /* Primary Cyan */
     color: white;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
@@ -674,63 +754,10 @@
 /* ==========================================================================
    ADD TO CART BUTTON (Hero Blue Style)
    ========================================================================== */
-.btn-add-cart-card {
-    width: 100%;
-    margin-top: 1rem;
-    padding: 0.75rem 1rem;
-    border-radius: 50px;
-    /* Hero Gradient */
-    background: linear-gradient(135deg, #2563eb, #1e3a8a); /* Blue-600 to Blue-900 */
-    color: white;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.8rem;
-    letter-spacing: 0.05em;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    z-index: 5; /* Ensure clickable above card link */
-}
-
-.btn-add-cart-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.btn-add-cart-card:active {
-    transform: translateY(0);
-}
-
-/* Shine Effect on Hover */
-.btn-add-cart-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.btn-add-cart-card:hover::after {
-    left: 100%;
-}
+/* Removed duplicate .btn-add-cart-card block - kept the one at line 740 */
 
 /* Card Visual Enhancement */
-.product-card {
-    /* Existing border override for premium feel */
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
-}
-
-.product-card:hover {
-    border-color: #2563eb; /* Blue border on hover */
-}
+/* Merged into main .product-card definition above */
 
 /* ==========================================================================
    BUTTONS (Strong CTAs)
@@ -742,14 +769,18 @@
     margin-top: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 50px;
-    background: linear-gradient(135deg, #2563eb, #1e3a8a); /* Deep Blue Gradient */
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+    /* Deep Blue Gradient */
     color: white;
-    font-weight: 800; /* Extra Bold */
+    font-weight: 800;
+    /* Extra Bold */
     text-transform: uppercase;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* High contrast border */
-    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); /* Blue Glow */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    /* High contrast border */
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    /* Blue Glow */
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -762,9 +793,11 @@
 
 .btn-add-cart-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6); /* Stronger Glow */
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+    /* Stronger Glow */
     border-color: rgba(255, 255, 255, 0.5);
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8); /* Lighter on hover */
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    /* Lighter on hover */
 }
 
 .btn-add-cart-card:active {
@@ -800,14 +833,54 @@
 }
 
 /* Card Visual Enhancement */
-.product-card {
-    /* Ensure border and bg are set */
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, #18181b 0%, #09090b 100%);
-    transition: border-color 0.3s, transform 0.3s;
+/* Merged into main .product-card definition above */
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.product-card:hover {
-    border-color: #2563eb; /* Blue border on hover */
-    transform: translateY(-4px);
+.page-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #27272a;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #00ACD8;
+    border-color: #00ACD8;
+    transform: translateY(-2px);
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #18181b;
+}
+
+.page-btn.active {
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    color: #a1a1aa;
+    width: auto;
+    padding: 0 1rem;
+    pointer-events: none;
 }

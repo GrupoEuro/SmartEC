@@ -15,6 +15,9 @@ import { Brand } from '../../../../core/models/catalog.model';
 import { Category } from '../../../../core/models/catalog.model';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { ProductImportService } from '../../../../core/services/product-import.service';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { ImportResultDialogComponent } from '../import-result-dialog/import-result-dialog.component';
 
 type SortField = 'name' | 'price' | 'stock' | 'date';
 type SortDirection = 'asc' | 'desc';
@@ -343,58 +346,21 @@ export class ProductListComponent implements OnInit {
         }
     }
 
-    // Export handler
+    // Export handler (Excel)
     handleExport() {
         this.products$.pipe(take(1)).subscribe(products => {
+            // Apply current filters to export only what's viewed/filtered
             const filtered = this.applyFilters(products);
             const sorted = this.applySorting(filtered);
-            this.exportToCSV(sorted);
+
+            // Allow exporting only selected if any are checked
+            const toExport = this.selectedProducts.size > 0
+                ? sorted.filter(p => p.id && this.selectedProducts.has(p.id))
+                : sorted;
+
+            this.productImportService.exportProducts(toExport);
+            this.toast.success(`Exporting ${toExport.length} products to Excel...`);
         });
-    }
-
-    // Export to CSV
-    exportToCSV(products: Product[]) {
-        // Helper function to properly escape CSV fields
-        const escapeCSVField = (field: string): string => {
-            // Convert to string and handle null/undefined
-            const str = field?.toString() || '';
-            // If field contains comma, quote, or newline, wrap in quotes and escape existing quotes
-            if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-                return `"${str.replace(/"/g, '""')}"`;
-            }
-            return str;
-        };
-
-        const headers = ['SKU', 'Name (EN)', 'Name (ES)', 'Brand', 'Category', 'Price', 'Stock', 'Status'];
-        const rows = products.map(p => [
-            escapeCSVField(p.sku),
-            escapeCSVField(p.name.en),
-            escapeCSVField(p.name.es),
-            escapeCSVField(p.brand),
-            escapeCSVField(p.categoryId),
-            escapeCSVField(p.price.toString()),
-            escapeCSVField(p.stockQuantity.toString()),
-            escapeCSVField(p.active ? 'Active' : 'Inactive')
-        ]);
-
-        // Add UTF-8 BOM for Excel compatibility
-        const BOM = '\uFEFF';
-        const csvContent = BOM + [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `products_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        this.toast.success('Products exported successfully');
     }
 
     // Delete single product
@@ -421,8 +387,76 @@ export class ProductListComponent implements OnInit {
         }
     }
 
-    // Calculate total sales for stats header
-    calculateTotalSales(): number {
-        return this.paginationConfig.totalItems * 88.4;
+    // Services
+    private productImportService = inject(ProductImportService);
+    private dialog = inject(MatDialog);
+
+    // Import State
+    isImporting = false;
+    importProgress = 0;
+
+    // ... existing code ...
+
+    /**
+     * Trigger Template Download
+     */
+    downloadTemplate() {
+        this.productImportService.downloadTemplate();
+    }
+
+    /**
+     * Handle File Input Change
+     */
+    async onFileSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) return;
+
+        const file = input.files[0];
+        input.value = ''; // Reset input
+
+        // 1. Validate File
+        this.toast.info('Validating file...');
+        try {
+            const validationRules = await this.productImportService.validateImportFile(file);
+
+            // 2. Show Result Dialog
+            const dialogRef = this.dialog.open(ImportResultDialogComponent, {
+                width: '600px',
+                data: validationRules,
+                disableClose: true,
+                panelClass: 'custom-dialog-container'
+            });
+
+            dialogRef.afterClosed().subscribe(async (confirmed) => {
+                if (confirmed) {
+                    await this.runImport(validationRules.validRows);
+                }
+            });
+
+        } catch (error) {
+            console.error('Validation error:', error);
+            this.toast.error('Failed to validate file. Please check the format.');
+        }
+    }
+
+    /**
+     * Run the actual import process
+     */
+    async runImport(rows: any[]) {
+        this.isImporting = true;
+        this.importProgress = 0;
+        this.toast.info(`Starting import of ${rows.length} products...`);
+
+        // Use a simple progress tracking for now
+        // In a real scenario we might stream this, but here we await completion
+        // or subscribe to an observable
+
+        await this.productImportService.processImport(rows, (progress) => {
+            this.importProgress = Math.round((progress.processed / progress.total) * 100);
+        });
+
+        this.isImporting = false;
+        this.toast.success('Import completed successfully!');
+        this.loadData();
     }
 }

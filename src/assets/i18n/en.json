@@ -101,6 +101,7 @@
         "EDIT_PROFILE": "Edit login & name",
         "SECURE_SSL": "Secure SSL Payment"
     },
+    "CATALOG_QUICK_VIEW_BTN": "Quick View",
     "PORTAL": {
         "WELCOME": "Welcome back,",
         "SELECT_WORKSPACE": "Select a workspace to begin your session",
@@ -1562,7 +1563,7 @@
     },
     "ADMIN": {
         "CATALOG": {
-            "QUICK_VIEW": "Quick View",
+            "ACTION_QUICK_VIEW_NOW": "Quick View",
             "ADD_TO_CART": "Add to Cart",
             "VIEW_DETAILS": "View Details",
             "NO_PRODUCTS": "No products found",

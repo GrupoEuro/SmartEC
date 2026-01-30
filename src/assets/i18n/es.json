@@ -139,6 +139,7 @@
         "EDIT_PROFILE": "Editar perfil",
         "SECURE_SSL": "Pago Seguro SSL"
     },
+    "CATALOG_QUICK_VIEW_BTN": "Vista Rápida",
     "PORTAL": {
         "WELCOME": "Bienvenido de nuevo,",
         "SELECT_WORKSPACE": "Selecciona un espacio de trabajo para comenzar",
@@ -2031,7 +2032,7 @@
         },
         "CATALOG": {
             "TITLE": "Catálogo de Productos",
-            "QUICK_VIEW": "Vista Rápida",
+            "ACTION_QUICK_VIEW_NOW": "Vista Rápida",
             "TRY_ADJUSTING_FILTERS": "Intenta ajustar tus filtros de búsqueda",
             "FILTERS": "Filtros",
             "SEARCH": "Buscar",

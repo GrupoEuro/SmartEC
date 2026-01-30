@@ -57,7 +57,7 @@ export class CatalogComponent implements OnInit {
     // State
     viewMode: 'grid' | 'list' = 'grid';
     currentPage = 1;
-    itemsPerPage = 12;
+    itemsPerPage = 15;
     totalProducts = 0;
 
     public isLoading = true; // Public for template access

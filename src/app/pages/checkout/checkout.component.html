@@ -146,10 +146,17 @@
                     <div class="payment-section" [formGroup]="paymentForm">
                         <div class="trust-banner">
                             <div class="secure-badge">
-                                🔒 {{ 'CHECKOUT.SECURE_SSL' | translate }}
+                                🛡️ {{ 'CHECKOUT.SECURE_SSL' | translate }}
                             </div>
-                            <div class="payment-logos">
-                                <span>Visa</span> • <span>MC</span> • <span>Amex</span> • <span>OXXO</span>
+                            <div class="payment-logos-row">
+                                <div class="mp-logo-group">
+                                    <span class="mp-text">Mercado Pago</span>
+                                    <span class="mp-subtext">Official Partner</span>
+                                </div>
+                                <div class="mp-features">
+                                    <span class="feature-tag">💳 MSI</span>
+                                    <span class="feature-tag">🔒 Protegida</span>
+                                </div>
                             </div>
                         </div>
 

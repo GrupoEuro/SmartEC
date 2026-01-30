@@ -3,7 +3,12 @@
     <!-- Mobile Header (Hidden on Desktop via CSS) -->
     <div class="mobile-header">
         <button class="filter-toggle-btn" (click)="toggleSidebar()">
-            <span class="icon">⚡</span> {{ 'ADMIN.CATALOG.FILTERS' | translate }}
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg> {{ 'ADMIN.CATALOG.FILTERS' | translate }}
         </button>
     </div>
 
@@ -160,7 +165,7 @@
                         </div>
 
                         <div class="product-image">
-                            <img [ngSrc]="product.images?.main || 'assets/images/euro-logo-new.png'"
+                            <img [ngSrc]="product.images.main || 'assets/images/euro-logo-new.png'"
                                 [alt]="product.name.en || 'Product Image'" fill [priority]="i < 4"
                                 (error)="product.images.main = 'assets/images/euro-logo-new.png'">
 
@@ -168,7 +173,7 @@
                             <div class="quick-view-overlay">
                                 <button class="btn-quick-view"
                                     (click)="openQuickView(product); $event.stopPropagation()">
-                                    {{ 'ADMIN.CATALOG.QUICK_VIEW' | translate }}
+                                    {{ 'CATALOG_QUICK_VIEW_BTN' | translate }}
                                 </button>
                             </div>
                         </div>
@@ -183,9 +188,15 @@
                             </p>
 
                             <div class="product-price">
-                                <span class="current-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2'
-                                    }}</span>
-                                <span class="price-suffix">MXN</span>
+                                <span *ngIf="product.compareAtPrice && product.compareAtPrice > product.price"
+                                    class="original-price">
+                                    {{ product.compareAtPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                                </span>
+                                <div class="price-row">
+                                    <span class="current-price">{{ product.price |
+                                        currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                                    <span class="price-suffix">MXN</span>
+                                </div>
                                 <span class="tax-info">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
                             </div>
 

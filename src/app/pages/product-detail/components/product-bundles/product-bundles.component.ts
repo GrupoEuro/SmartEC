@@ -12,43 +12,43 @@ import { Observable, of } from 'rxjs';
     imports: [CommonModule, RouterModule],
     template: `
     @if (bundleItems().length > 0) {
-        <div class="mt-8 mb-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">Frequently Bought Together</h3>
+        <div class="mt-8 mb-8 p-6 bg-[#141414] rounded-xl border border-white/10">
+            <h3 class="text-lg font-bold text-white mb-4">Frequently Bought Together</h3>
             
             <div class="flex flex-col md:flex-row items-center gap-4">
                 <!-- Main Product -->
-                <div class="flex items-center gap-3">
-                    <img [src]="mainProduct.images.main" class="w-16 h-16 object-cover rounded-md border border-slate-200">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <img [src]="mainProduct.images.main || 'assets/images/euro-logo-new.png'" (error)="mainProduct.images.main = 'assets/images/euro-logo-new.png'" class="w-16 h-16 object-cover rounded-md border border-white/10">
                     <div class="text-sm">
-                        <span class="font-bold block">{{ mainProduct.name.es }}</span>
-                        <span class="text-slate-500">\${{ mainProduct.price }}</span>
+                        <span class="font-bold block text-white">{{ mainProduct.name.es }}</span>
+                        <span class="text-[#a0a0a0]">\${{ mainProduct.price }}</span>
                     </div>
                 </div>
 
                 <!-- Plus Icon -->
-                <div class="flex-shrink-0 text-slate-400 font-bold text-xl">+</div>
+                <div class="flex-shrink-0 text-[#00ACD8] font-bold text-xl">+</div>
 
                 <!-- Bundle Items -->
                 @for (item of bundleItems(); track item.id) {
-                    <div class="flex items-center gap-3">
-                        <img [src]="item.images.main" class="w-16 h-16 object-cover rounded-md border border-slate-200">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <img [src]="item.images.main || 'assets/images/euro-logo-new.png'" (error)="item.images.main = 'assets/images/euro-logo-new.png'" class="w-16 h-16 object-cover rounded-md border border-white/10">
                         <div class="text-sm">
-                            <a [routerLink]="['/product', item.slug]" class="font-bold block hover:text-blue-600 line-clamp-1">{{ item.name.es }}</a>
-                            <span class="text-slate-500">\${{ item.price }}</span>
+                            <a [routerLink]="['/product', item.slug]" class="font-bold block text-white hover:text-[#00ACD8] line-clamp-1 transition-colors">{{ item.name.es }}</a>
+                            <span class="text-[#a0a0a0]">\${{ item.price }}</span>
                         </div>
                     </div>
                     @if (!$last) {
-                        <div class="flex-shrink-0 text-slate-400 font-bold text-xl">+</div>
+                        <div class="flex-shrink-0 text-[#00ACD8] font-bold text-xl">+</div>
                     }
                 }
 
                 <!-- Total & Action -->
-                <div class="ml-auto flex flex-col items-end gap-2 pl-4 md:border-l border-slate-200">
-                    <div class="text-right">
-                        <span class="text-xs text-slate-500 uppercase tracking-wider font-bold">Total Price:</span>
-                        <div class="text-xl font-black text-slate-900 dark:text-white">\${{ getTotalPrice() }}</div>
+                <div class="ml-auto w-full md:w-auto flex flex-col md:items-end items-center gap-2 pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0">
+                    <div class="text-right w-full md:w-auto flex justify-between md:block">
+                        <span class="text-xs text-[#a0a0a0] uppercase tracking-wider font-bold">Total Price:</span>
+                        <div class="text-xl font-black text-white">\${{ getTotalPrice() }}</div>
                     </div>
-                    <button (click)="addAllToCart()" class="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-opacity whitespace-nowrap">
+                    <button (click)="addAllToCart()" class="w-full md:w-auto bg-gradient-to-r from-[#00ACD8] to-[#0088b3] text-white px-6 py-3 rounded-lg font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-cyan-500/20">
                         Add Bundle to Cart
                     </button>
                 </div>

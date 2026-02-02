@@ -13,6 +13,7 @@ import { ExitIntentComponent } from './shared/components/exit-intent/exit-intent
 import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer.component';
 import { AnalyticsService } from './core/services/analytics.service';
 import { CampaignService } from './core/services/campaign.service';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -29,7 +30,9 @@ export class AppComponent implements OnInit {
   private titleService = inject(Title);
   private document: Document = inject(DOCUMENT);
   private analytics = inject(AnalyticsService);
-  private campaignService = inject(CampaignService); // Initializes Campaign Engine
+
+  private campaignService = inject(CampaignService);
+  private themeService = inject(ThemeService); // Initializes Theme Engine
 
   constructor() {
     console.log('%c App Version V9.0.1 (Product Locator v2.1 Debugging) ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');

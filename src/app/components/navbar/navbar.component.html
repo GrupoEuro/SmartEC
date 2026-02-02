@@ -24,7 +24,7 @@
                 </button>
 
                 <!-- Cart -->
-                <button class="cart-btn" (click)="openCart()">
+                <button class="cart-btn" (click)="openCart()" id="cart-icon-target">
                     <span class="icon">🛍️</span>
                     @if (cartService.cartCount() > 0) {
                     <span class="cart-badge">{{ cartService.cartCount() }}</span>

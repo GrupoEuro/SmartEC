@@ -8,14 +8,6 @@
             </span>
         </div>
 
-        <div class="header-center">
-            <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-                    [placeholder]="'ADMIN.CATEGORIES.SEARCH_PLACEHOLDER' | translate">
-            </div>
-        </div>
-
         <div class="header-right">
             <button class="btn-primary-action" routerLink="/admin/categories/new">
                 <span class="icon">➕</span>
@@ -24,128 +16,112 @@
         </div>
     </header>
 
-    <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-                <button class="btn-text-tiny" (click)="searchTerm = ''; selectedStatus = ''; onFilterChange()">
-                    Reset
-                </button>
+    <!-- Main Content Area (Full Width) -->
+    <main class="product-grid-view">
+
+        <!-- Unified Search & Filter Toolbar -->
+        <div class="table-toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                    [placeholder]="'ADMIN.CATEGORIES.SEARCH_PLACEHOLDER' | translate">
             </div>
 
-            <!-- Status Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Status</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="" [checked]="selectedStatus === ''"
-                            (change)="selectedStatus = ''; onFilterChange()">
-                        <span>All</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="active" [checked]="selectedStatus === 'active'"
-                            (change)="selectedStatus = 'active'; onFilterChange()">
-                        <span>Active</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="inactive" [checked]="selectedStatus === 'inactive'"
-                            (change)="selectedStatus = 'inactive'; onFilterChange()">
-                        <span>Inactive</span>
-                    </label>
-                </div>
-            </details>
-        </aside>
+            <select class="filter-select" [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+                <option value="">{{ 'ADMIN.STATUS.ALL' | translate }}</option>
+                <option value="active">{{ 'ADMIN.STATUS.ACTIVE' | translate }}</option>
+                <option value="inactive">{{ 'ADMIN.STATUS.INACTIVE' | translate }}</option>
+            </select>
 
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
-            <div class="table-glass-container">
-                <table class="rich-table">
-                    <thead>
-                        <tr>
-                            <th>{{ 'ADMIN.CATEGORIES.TH_IMAGE' | translate }}</th>
-                            <th class="sortable" (click)="onSortChange('name')">
-                                {{ 'ADMIN.CATEGORIES.TH_NAME' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.CATEGORIES.TH_DESCRIPTION' | translate }}</th>
-                            <th class="sortable" (click)="onSortChange('order')">
-                                {{ 'ADMIN.CATEGORIES.TH_ORDER' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.CATEGORIES.TH_STATUS' | translate }}</th>
-                            <th>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let category of paginatedCategories | async">
-                            <td>
-                                <div class="img-thumbnail" style="width: 50px; height: 50px;">
-                                    <img *ngIf="category.imageUrl" [src]="category.imageUrl" [alt]="category.name.en">
-                                    <span *ngIf="!category.imageUrl && category.icon" class="category-icon">{{
-                                        category.icon }}</span>
-                                    <div *ngIf="!category.imageUrl && !category.icon" class="img-placeholder">
-                                        {{ category.name.en.charAt(0) }}
-                                    </div>
+            <button class="btn-clear-filters" *ngIf="selectedStatus || searchTerm"
+                (click)="searchTerm = ''; selectedStatus = ''; onFilterChange()">
+                Reset
+            </button>
+        </div>
+
+        <div class="table-glass-container">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="w-16">{{ 'ADMIN.CATEGORIES.TH_IMAGE' | translate }}</th>
+                        <th class="sortable" (click)="onSortChange('name')">
+                            {{ 'ADMIN.CATEGORIES.TH_NAME' | translate }}
+                            <span *ngIf="sortField === 'name'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th>{{ 'ADMIN.CATEGORIES.TH_DESCRIPTION' | translate }}</th>
+                        <th class="sortable w-24 text-center" (click)="onSortChange('order')">
+                            {{ 'ADMIN.CATEGORIES.TH_ORDER' | translate }}
+                            <span *ngIf="sortField === 'order'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th class="w-24 text-center">{{ 'ADMIN.CATEGORIES.TH_STATUS' | translate }}</th>
+                        <th class="w-24 text-right">{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let category of paginatedCategories | async">
+                        <td>
+                            <div class="img-thumbnail" style="width: 48px; height: 48px;">
+                                <img *ngIf="category.imageUrl" [src]="category.imageUrl" [alt]="category.name.en">
+                                <span *ngIf="!category.imageUrl && category.icon" class="category-icon">{{
+                                    category.icon }}</span>
+                                <div *ngIf="!category.imageUrl && !category.icon" class="img-placeholder">
+                                    {{ category.name.en.charAt(0) }}
                                 </div>
-                            </td>
-                            <td>
-                                <div class="product-identity">
-                                    <span class="product-name"
-                                        [routerLink]="['/admin/categories', category.id, 'edit']">
-                                        {{ category.name.en }}
-                                    </span>
-                                    <span class="product-sku">{{ category.name.es }}</span>
-                                    <div class="badges-row" *ngIf="category.parentId">
-                                        <span class="tiny-badge">Subcategory</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="description-cell">
-                                <span class="text-muted line-clamp-2">
-                                    {{ category.description?.en || '-' }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-identity">
+                                <span class="product-name" [routerLink]="['/admin/categories', category.id, 'edit']">
+                                    {{ category.name.en }}
                                 </span>
-                            </td>
-                            <td>
-                                <span class="order-badge">{{ category.order || 0 }}</span>
-                            </td>
-                            <td>
-                                <div class="stock-pill" [class.success]="category.active"
-                                    [class.danger]="!category.active">
-                                    <span class="dot"></span>
-                                    <span class="status-text">{{ category.active ? 'Active' : 'Inactive' }}</span>
+                                <span class="product-sku">{{ category.name.es }}</span>
+                                <div class="badges-row" *ngIf="category.parentId">
+                                    <span class="tiny-badge">Subcategory</span>
                                 </div>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <button class="btn-icon-ghost"
-                                        [routerLink]="['/admin/categories', category.id, 'edit']"
-                                        [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        ✏️
-                                    </button>
-                                    <button class="btn-icon-ghost danger" (click)="deleteCategory(category)"
-                                        [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                        <td class="description-cell">
+                            <span class="text-muted line-clamp-2">
+                                {{ category.description?.en || '-' }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="order-badge">{{ category.order || 0 }}</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="stock-pill" [class.success]="category.active" [class.danger]="!category.active">
+                                <span class="dot"></span>
+                                <span class="status-text">{{ category.active ? ('ADMIN.STATUS.ACTIVE' | translate) :
+                                    ('ADMIN.STATUS.INACTIVE' | translate) }}</span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <div class="row-actions justify-end">
+                                <button class="btn-icon-ghost" [routerLink]="['/admin/categories', category.id, 'edit']"
+                                    [title]="'ADMIN.COMMON.EDIT' | translate">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon-ghost danger" (click)="deleteCategory(category)"
+                                    [title]="'ADMIN.COMMON.DELETE' | translate">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
 
-                        <tr *ngIf="(paginatedCategories | async)?.length === 0">
-                            <td colspan="6" class="no-data">
-                                {{ 'ADMIN.CATEGORIES.EMPTY' | translate }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <tr *ngIf="(paginatedCategories | async)?.length === 0">
+                        <td colspan="6" class="no-data">
+                            {{ 'ADMIN.CATEGORIES.EMPTY' | translate }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-            <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
-                <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
-                    (itemsPerPageChange)="onItemsPerPageChange($event)">
-                </app-pagination>
-            </div>
-        </main>
-    </div>
+        <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+            <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+                (itemsPerPageChange)="onItemsPerPageChange($event)">
+            </app-pagination>
+        </div>
+    </main>
 </div>

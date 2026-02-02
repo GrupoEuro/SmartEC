@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed, inject } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NavItem } from '../../../core/config/admin-navigation.config';
 import { AppIconComponent } from '../app-icon/app-icon.component';
 import { SidebarItemComponent } from './sidebar-item/sidebar-item.component';
@@ -288,19 +288,23 @@ export class SidebarComponent {
     isCollapsed = signal(false);
     searchQuery = signal('');
 
-    authService = inject(AuthService);
+    translate = inject(TranslateService);
+    private authService = inject(AuthService);
+
     profile = this.authService.currentProfile;
 
     filteredItems = computed(() => {
         const query = this.searchQuery().toLowerCase();
         if (!query) return this.items;
 
-        // Simple filter: Show items that have title match
-        // Ideally we would do deep filtering but for now:
-        return this.items.filter(item =>
-            item.title.toLowerCase().includes(query) ||
-            (item.children && item.children.some(c => c.title.toLowerCase().includes(query)))
-        );
+        return this.items.filter(item => {
+            const translatedTitle = this.translate.instant(item.title).toLowerCase();
+            const childrenMatch = item.children?.some(c =>
+                this.translate.instant(c.title).toLowerCase().includes(query)
+            );
+
+            return translatedTitle.includes(query) || childrenMatch;
+        });
     });
 
     toggleCollapse() {

@@ -1,0 +1,265 @@
+<div class="theme-manager">
+    <div class="header">
+        <h1>Theme Manager</h1>
+        <p>Manage system themes and styles.</p>
+        <button class="btn-preview btn-primary" style="margin-top: 1rem;" (click)="toggleStudio()">
+            {{ showStudio() ? 'Close Studio' : '✨ Open Theme Studio' }}
+        </button>
+    </div>
+
+    <!-- LIST MODE -->
+    <div *ngIf="!showStudio()">
+        <!-- PRESETS -->
+        <section class="theme-section">
+            <h2>System Presets</h2>
+            <div class="theme-grid">
+                <div class="theme-card" *ngFor="let theme of presets" [class.active]="currentThemeId === theme.id"
+                    (click)="setTheme(theme.id)" [style.background]="theme.colors.bg"
+                    [style.color]="generator.getContrastColor(theme.colors.bg)"
+                    [style.borderColor]="currentThemeId === theme.id ? theme.colors.primary : 'transparent'">
+
+                    <div class="color-preview" [style.background]="theme.colors.bg"
+                        [style.borderColor]="theme.colors.surface">
+                        <div class="swatch" [style.background]="theme.colors.bg" title="Background"></div>
+                        <div class="swatch" [style.background]="theme.colors.surface" title="Surface"></div>
+                        <div class="swatch big" [style.background]="theme.colors.primary" title="Primary"></div>
+                    </div>
+                    <div class="theme-info">
+                        <h3 [style.color]="generator.getContrastColor(theme.colors.bg)">{{ theme.name }}</h3>
+                        <p [style.color]="generator.getContrastColor(theme.colors.bg)" style="opacity: 0.8">{{
+                            theme.description }}</p>
+                    </div>
+                    <div class="active-badge" *ngIf="currentThemeId === theme.id">Active</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CUSTOM THEMES -->
+        <section class="theme-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Custom Themes</h2>
+            </div>
+
+            <div class="theme-grid">
+                <!-- CREATE NEW CARD (CTA) -->
+                <div class="theme-card create-card" (click)="toggleStudio()">
+                    <div class="create-icon">
+                        <app-icon name="plus" [size]="32"></app-icon>
+                    </div>
+                    <h3>Create New Theme</h3>
+                    <p>Design a custom look using Theme Studio</p>
+                </div>
+
+                <div class="theme-card" *ngFor="let theme of customThemes" [class.active]="currentThemeId === theme.id"
+                    (click)="setTheme(theme.id)" [style.background]="theme.colors.bg"
+                    [style.color]="generator.getContrastColor(theme.colors.bg)"
+                    [style.borderColor]="currentThemeId === theme.id ? theme.colors.primary : 'transparent'">
+
+                    <div class="color-preview" [style.background]="theme.colors.bg"
+                        [style.borderColor]="theme.colors.surface">
+                        <!-- Use safe defaults or new structure -->
+                        <div class="swatch" [style.background]="theme.colors.bg" title="Background"></div>
+                        <div class="swatch" [style.background]="theme.colors.surface" title="Surface"></div>
+                        <div class="swatch big" [style.background]="theme.colors.primary" title="Primary"></div>
+                    </div>
+                    <div class="theme-info">
+                        <h3 [style.color]="generator.getContrastColor(theme.colors.bg)">{{ theme.name }}</h3>
+                        <p *ngIf="theme.isStudio" [style.color]="generator.getContrastColor(theme.colors.bg)"
+                            style="opacity: 0.8">✨ Studio Created</p>
+                        <p *ngIf="!theme.isStudio" [style.color]="generator.getContrastColor(theme.colors.bg)"
+                            style="opacity: 0.8">Custom Theme</p>
+                    </div>
+                    <button class="delete-btn" (click)="deleteTheme($event, theme.id)" title="Delete Theme">🗑️</button>
+                    <div class="active-badge" *ngIf="currentThemeId === theme.id">Active</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- STUDIO MODE -->
+    <div *ngIf="showStudio()" class="studio-wrapper">
+
+        <!-- SIDEBAR CONTROLS -->
+        <aside class="studio-sidebar">
+            <div class="sidebar-header">
+                <h2>Theme Studio</h2>
+                <button class="btn-icon" (click)="toggleStudio()" title="Close Studio">✕</button>
+            </div>
+
+            <div class="controls-content">
+                <!-- MAGIC -->
+                <button class="btn-magic" (click)="randomizeTheme()">
+                    ✨ Randomize Theme
+                </button>
+
+                <!-- IDENTITY -->
+                <div class="control-group">
+                    <h3>Identity</h3>
+                    <div class="form-group">
+                        <label>Theme Name</label>
+                        <input type="text" [ngModel]="studioName()" (ngModelChange)="studioName.set($event)"
+                            placeholder="My Awesome Theme">
+                    </div>
+                </div>
+
+                <!-- PALETTE -->
+                <div class="control-group">
+                    <h3>Colors</h3>
+                    <div class="color-row">
+                        <input type="color" [ngModel]="brandColor()" (ngModelChange)="brandColor.set($event)">
+                        <div class="color-label">
+                            <span class="label-title">Primary Seed</span>
+                            <span class="label-value">{{ brandColor() }}</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-preview-mini">
+                        <div *ngFor="let step of paletteKeys" [style.background]="previewPalette()[step]"
+                            class="palette-dot"></div>
+                    </div>
+
+                    <div class="color-row" style="margin-top: 1rem;">
+                        <input type="color" [ngModel]="baseColor()" (ngModelChange)="baseColor.set($event)">
+                        <div class="color-label">
+                            <span class="label-title">Base Background</span>
+                            <span class="label-value">{{ baseColor() }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TYPOGRAPHY -->
+                <div class="control-group">
+                    <h3>Typography</h3>
+                    <div class="form-group">
+                        <label>Font Family</label>
+                        <select [ngModel]="fontFamily()" (ngModelChange)="fontFamily.set($event)" class="studio-select">
+                            <option *ngFor="let font of fonts" [value]="font">{{ font }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SHAPE -->
+                <div class="control-group">
+                    <h3>Shape</h3>
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <label>Border Radius</label>
+                            <span class="value-badge">{{ radius() }}px</span>
+                        </div>
+                        <input type="range" min="0" max="24" [ngModel]="radius()" (ngModelChange)="radius.set($event)"
+                            class="range-slider">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="btn-save" (click)="saveStudioTheme()">
+                    Save Theme
+                </button>
+            </div>
+        </aside>
+
+        <!-- LIVE PREVIEW AREA -->
+        <main class="studio-stage" [style.--theme-primary]="previewPalette()[500]" [style.--theme-bg-app]="baseColor()"
+            [style.--theme-bg-surface]="lighten(baseColor(), 6)"
+            [style.--theme-text-primary]="generator.getContrastColor(baseColor()) === 'black' ? '#111827' : '#f8fafc'"
+            [style.--theme-text-secondary]="generator.getContrastColor(baseColor()) === 'black' ? '#4b5563' : '#94a3b8'"
+            [style.--theme-border]="generator.getContrastColor(baseColor()) === 'black' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'"
+            [style.--theme-radius]="radius() + 'px'" [style.--theme-font]="fontFamily()">
+
+            <!-- Inject Generated Palette Variables -->
+            <div class="css-injector" [style.display]="'none'">
+                <!-- This is handled by style binding on parent, but extending palette needs manual style binding or inline style block -->
+            </div>
+
+            <!-- Apply Palette Colors via Style Bindings (Simulating CSS Vars) -->
+            <div class="app-simulation" [style.--theme-primary-50]="previewPalette()[50]"
+                [style.--theme-primary-100]="previewPalette()[100]" [style.--theme-primary-200]="previewPalette()[200]"
+                [style.--theme-primary-300]="previewPalette()[300]" [style.--theme-primary-400]="previewPalette()[400]"
+                [style.--theme-primary-500]="previewPalette()[500]" [style.--theme-primary-600]="previewPalette()[600]"
+                [style.--theme-primary-700]="previewPalette()[700]" [style.--theme-primary-800]="previewPalette()[800]"
+                [style.--theme-primary-900]="previewPalette()[900]" [style.--theme-primary-950]="previewPalette()[950]">
+
+                <!-- MOCK HEADER -->
+                <header class="mock-header">
+                    <div class="mock-logo">
+                        <img src="assets/images/euro-logo-new.png" alt="Logo" height="32">
+                    </div>
+                    <nav class="mock-nav">
+                        <span>Products</span>
+                        <span>Offers</span>
+                        <span>Contact</span>
+                    </nav>
+                    <div class="mock-actions">
+                        <button class="mock-btn-icon">🔍</button>
+                        <button class="mock-btn-icon">🛒</button>
+                    </div>
+                </header>
+
+                <!-- MOCK HERO -->
+                <section class="mock-hero">
+                    <div class="hero-content">
+                        <h1>Premium Tires for Every Journey</h1>
+                        <p>Experience superior grip and durability with our new collection.</p>
+                        <button class="mock-btn-primary">Shop Now</button>
+                    </div>
+                </section>
+
+                <!-- MOCK PRODUCT GRID -->
+                <section class="mock-section">
+                    <div class="section-header">
+                        <h2>Featured Products</h2>
+                        <a href="#" class="link-primary">View All</a>
+                    </div>
+
+                    <div class="mock-grid">
+                        <!-- Card 1 -->
+                        <div class="mock-card">
+                            <div class="card-badges">
+                                <span class="mock-badge new">New</span>
+                            </div>
+                            <div class="card-image">
+                                <img [src]="mockProduct.images.main"
+                                    style="width: 100%; height: auto; object-fit: contain;">
+                            </div>
+                            <div class="card-details">
+                                <span class="brand">{{ mockProduct.brand }}</span>
+                                <h3>{{ mockProduct.name.en }}</h3>
+                                <div class="specs">
+                                    {{ mockProduct.specifications.width }}/
+                                    {{ mockProduct.specifications.aspectRatio }}R
+                                    {{ mockProduct.specifications.diameter }}
+                                </div>
+                                <div class="price">
+                                    <span class="original" *ngIf="mockProduct.compareAtPrice">{{
+                                        mockProduct.compareAtPrice | currency }}</span>
+                                    <span class="current">{{ mockProduct.price | currency }}</span>
+                                </div>
+                                <div class="stock-status in-stock">✓ In Stock</div>
+                                <button class="mock-btn-full">Add to Cart</button>
+                            </div>
+                        </div>
+
+                        <!-- Card 2 (Variant) -->
+                        <div class="mock-card">
+                            <div class="card-image">
+                                <img src="assets/images/euro-logo-new.png"
+                                    style="width: 100%; height: auto; object-fit: contain; opacity: 0.5;">
+                            </div>
+                            <div class="card-details">
+                                <span class="brand">Continental</span>
+                                <h3>Premium Contact 6</h3>
+                                <div class="specs">225/45R17</div>
+                                <div class="price">
+                                    <span class="current">{{ 3200 | currency }}</span>
+                                </div>
+                                <div class="stock-status out-stock">✕ Out of Stock</div>
+                                <button class="mock-btn-full" disabled>Out of Stock</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+</div>

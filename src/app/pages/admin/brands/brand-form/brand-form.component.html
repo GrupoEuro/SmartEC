@@ -10,70 +10,92 @@
 
     <form *ngIf="brandForm" [formGroup]="brandForm" (ngSubmit)="onSubmit()" class="admin-form">
 
-        <!-- Brand Name -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.NAME' | translate }} *</label>
-            <input type="text" formControlName="name" [placeholder]="'ADMIN.BRANDS.FORM.NAME_PLACEHOLDER' | translate">
-        </div>
-
-        <!-- Slug -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.SLUG' | translate }} *</label>
-            <input type="text" formControlName="slug" [placeholder]="'ADMIN.BRANDS.FORM.SLUG_PLACEHOLDER' | translate">
-            <small>{{ 'ADMIN.BRANDS.FORM.SLUG_HINT' | translate }}</small>
-        </div>
-
-        <!-- Description (Multilingual) -->
+        <!-- Basic Information Section -->
         <div class="form-section">
-            <h3>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_SECTION' | translate }}</h3>
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_BASIC' | translate }}</h3>
+
             <div class="form-row">
                 <div class="form-group">
-                    <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_ES' | translate }}</label>
-                    <textarea formControlName="description_es" rows="3"
-                        [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
+                    <label>{{ 'ADMIN.BRANDS.FORM.NAME' | translate }} *</label>
+                    <input type="text" formControlName="name"
+                        [placeholder]="'ADMIN.BRANDS.FORM.NAME_PLACEHOLDER' | translate" class="form-control">
+                    <div class="error" *ngIf="brandForm.get('name')?.invalid && brandForm.get('name')?.touched">
+                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_EN' | translate }}</label>
-                    <textarea formControlName="description_en" rows="3"
-                        [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
+                    <label>{{ 'ADMIN.BRANDS.FORM.COUNTRY' | translate }}</label>
+                    <input type="text" formControlName="countryOfOrigin"
+                        [placeholder]="'ADMIN.BRANDS.FORM.COUNTRY_PLACEHOLDER' | translate" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BRANDS.FORM.WEBSITE' | translate }}</label>
+                    <input type="url" formControlName="website" placeholder="https://www.example.com"
+                        class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BRANDS.FORM.SLUG' | translate }} *</label>
+                    <input type="text" formControlName="slug"
+                        [placeholder]="'ADMIN.BRANDS.FORM.SLUG_PLACEHOLDER' | translate" class="form-control">
+                    <small class="form-hint">{{ 'ADMIN.BRANDS.FORM.SLUG_HINT' | translate }}</small>
                 </div>
             </div>
         </div>
 
-        <!-- Logo Upload -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
-            <input type="file" (change)="onFileSelected($event)" accept="image/*">
-            <div *ngIf="previewUrl" class="logo-preview">
-                <img [src]="previewUrl" alt="Logo preview">
+        <!-- Description Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_DESCRIPTION' | translate }}</h3>
+            <div class="form-group">
+                <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_ES' | translate }}</label>
+                <textarea formControlName="description_es" rows="3"
+                    [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                    class="form-control"></textarea>
+            </div>
+            <div class="form-group">
+                <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_EN' | translate }}</label>
+                <textarea formControlName="description_en" rows="3"
+                    [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                    class="form-control"></textarea>
             </div>
         </div>
 
-        <!-- Website -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.WEBSITE' | translate }}</label>
-            <input type="url" formControlName="website" placeholder="https://www.example.com">
+        <!-- Visual Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_VISUAL' | translate }}</h3>
+
+            <div class="form-group">
+                <label>{{ 'ADMIN.BRANDS.FORM.ORDER' | translate }}</label>
+                <input type="number" formControlName="order" min="0" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
+                <div class="image-upload-section">
+                    <div *ngIf="previewUrl" class="image-preview">
+                        <img [src]="previewUrl" alt="Logo preview">
+                        <button type="button" class="btn-remove-image" (click)="removeImage()">✕</button>
+                    </div>
+                    <div class="upload-area" *ngIf="!previewUrl">
+                        <input type="file" id="logoInput" (change)="onFileSelected($event)" accept="image/*"
+                            class="file-input">
+                        <label for="logoInput" class="upload-label">
+                            <span class="upload-icon">📷</span>
+                            <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Country of Origin -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.COUNTRY' | translate }}</label>
-            <input type="text" formControlName="countryOfOrigin"
-                [placeholder]="'ADMIN.BRANDS.FORM.COUNTRY_PLACEHOLDER' | translate">
-        </div>
+        <!-- Status Section -->
+        <div class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_STATUS' | translate }}</h3>
 
-        <!-- Order -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BRANDS.FORM.ORDER' | translate }}</label>
-            <input type="number" formControlName="order" min="0">
-        </div>
-
-        <!-- Status & Visibility -->
-        <div class="toggle-group-card">
-            <h4 class="card-title">
-                <span class="card-icon">🎯</span>
-                {{ 'ADMIN.BRANDS.FORM.STATUS_SECTION' | translate }}
-            </h4>
             <div class="toggle-switches-group">
                 <div class="form-group">
                     <app-toggle-switch [control]="$any(brandForm.get('featured'))"
@@ -88,5 +110,6 @@
                 </div>
             </div>
         </div>
+
     </form>
 </div>

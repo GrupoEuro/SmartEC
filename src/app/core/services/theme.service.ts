@@ -1,107 +1,207 @@
 import { Injectable, signal, effect, inject } from '@angular/core';
-import { Campaign, ThemeConfig, WebsiteTheme } from '../models/campaign.model';
 import { DOCUMENT } from '@angular/common';
+import { ThemeGeneratorService, ColorPalette } from './theme-generator.service';
+
+export type ThemeType = 'default' | 'premium' | 'seasonal' | 'ops' | 'command' | string;
+
+export interface CustomTheme {
+    id: string;
+    name: string;
+    colors: {
+        primary: string;
+        bg: string;
+        surface: string;
+    };
+    // Studio Enhancements
+    isStudio?: boolean;
+    palettes?: {
+        primary: ColorPalette;
+        // extended palettes can go here
+    };
+    settings?: {
+        radius: number;
+        font: string;
+    };
+}
 
 @Injectable({
     providedIn: 'root'
 })
 export class ThemeService {
     private document = inject(DOCUMENT);
+    private generator = inject(ThemeGeneratorService);
 
-    // Current active theme signal
-    activeTheme = signal<WebsiteTheme>('default');
-
-    // Predefined Themes Registry
-    private readonly THEMES: Record<WebsiteTheme, ThemeConfig> = {
-        'default': {
-            id: 'default',
-            primaryColor: '#2563eb', // blue-600
-            secondaryColor: '#1e293b', // slate-800
-            accentColor: '#3b82f6',
-            backgroundColor: '#ffffff'
-        },
-        'halloween': {
-            id: 'halloween',
-            primaryColor: '#ea580c', // orange-600
-            secondaryColor: '#271033', // dark purple
-            accentColor: '#f97316',
-            backgroundColor: '#0f0a14', // very dark
-            patternOverlay: 'assets/patterns/spider-web.svg'
-        },
-        'christmas': {
-            id: 'christmas',
-            primaryColor: '#dc2626', // red-600
-            secondaryColor: '#14532d', // green-900
-            accentColor: '#166534',
-            backgroundColor: '#f8fafc' // snow white
-        },
-        'buen-fin': {
-            id: 'buen-fin',
-            primaryColor: '#be123c', // rose-700
-            secondaryColor: '#000000',
-            accentColor: '#e11d48',
-            backgroundColor: '#ffffff'
-        },
-        'black-friday': {
-            id: 'black-friday',
-            primaryColor: '#000000',
-            secondaryColor: '#171717', // neutral-900
-            accentColor: '#ef4444', // red-500
-            backgroundColor: '#000000'
-        },
-        'hot-sale': {
-            id: 'hot-sale',
-            primaryColor: '#ef4444', // red-500
-            secondaryColor: '#f97316', // orange-500
-            accentColor: '#facc15', // yellow-400
-            backgroundColor: '#ffffff'
-        }
-    };
+    // Core Signals
+    public currentTheme = signal<ThemeType>(this.loadTheme());
+    public customThemes = signal<CustomTheme[]>(this.loadCustomThemes());
 
     constructor() {
-        // Reactively apply theme when signal changes
         effect(() => {
-            this.applyTheme(this.activeTheme());
+            const themeId = this.currentTheme();
+            this.applyTheme(themeId);
+            this.saveTheme(themeId);
         });
     }
 
-    /**
-     * Sets the active theme
-     */
-    setTheme(themeId: WebsiteTheme) {
-        this.activeTheme.set(themeId);
+    setTheme(theme: ThemeType) {
+        this.currentTheme.set(theme);
     }
 
-    /**
-     * Applies CSS variables to the document root
-     */
-    private applyTheme(themeId: WebsiteTheme) {
-        const theme = this.THEMES[themeId] || this.THEMES['default'];
+    addCustomTheme(theme: CustomTheme) {
+        const current = this.customThemes();
+        // Remove if exists (update)
+        const filtered = current.filter(t => t.id !== theme.id);
+        const updated = [...filtered, theme];
+
+        this.customThemes.set(updated);
+        this.saveCustomThemes(updated);
+        this.setTheme(theme.id);
+    }
+
+    deleteCustomTheme(id: string) {
+        const updated = this.customThemes().filter(t => t.id !== id);
+        this.customThemes.set(updated);
+        this.saveCustomThemes(updated);
+
+        if (this.currentTheme() === id) {
+            this.setTheme('premium');
+        }
+    }
+
+    private applyTheme(themeId: ThemeType) {
+        const body = this.document.body;
         const root = this.document.documentElement;
 
-        root.style.setProperty('--theme-primary', theme.primaryColor);
-        root.style.setProperty('--theme-secondary', theme.secondaryColor);
-        root.style.setProperty('--theme-accent', theme.accentColor);
-        root.style.setProperty('--theme-bg', theme.backgroundColor);
+        // 1. Reset
+        const knownThemes = ['theme-premium', 'theme-seasonal', 'theme-default', 'theme-ops', 'theme-command'];
+        body.classList.remove(...knownThemes);
+        root.removeAttribute('style');
 
-        if (theme.patternOverlay) {
-            root.style.setProperty('--theme-pattern', `url('${theme.patternOverlay}')`);
-        } else {
-            root.style.removeProperty('--theme-pattern');
+        // 2. Presets
+        if (knownThemes.includes(`theme-${themeId}`)) {
+            if (themeId !== 'default') {
+                body.classList.add(`theme-${themeId}`);
+            }
+            return;
         }
 
-        // Toggle dark class for dark themes
-        if (['halloween', 'black-friday'].includes(themeId)) {
-            root.classList.add('dark');
+        // 3. Custom Themes
+        const theme = this.customThemes().find(t => t.id === themeId);
+        if (theme) {
+            this.applyCustomThemeStyles(root, theme);
         } else {
-            root.classList.remove('dark');
+            // Fallback: If custom theme ID is active but not found (e.g. deleted or storage error),
+            // revert to Premium (Dark) safely.
+            console.warn(`Theme ${themeId} not found. Reverting to Premium.`);
+            body.classList.add('theme-premium');
+            this.setTheme('premium');
         }
     }
 
-    /**
-     * Returns metadata for all available themes
-     */
-    getAvailableThemes(): ThemeConfig[] {
-        return Object.values(this.THEMES);
+    private applyCustomThemeStyles(root: HTMLElement, theme: CustomTheme) {
+        // Base Colors
+        root.style.setProperty('--theme-primary', theme.colors.primary);
+        root.style.setProperty('--theme-bg-app', theme.colors.bg);
+        root.style.setProperty('--theme-bg-surface', theme.colors.surface);
+
+        // Palettes (Tailwind-like scales)
+        if (theme.palettes?.primary) {
+            Object.entries(theme.palettes.primary).forEach(([shade, value]) => {
+                root.style.setProperty(`--theme-primary-${shade}`, value);
+            });
+
+            // Derived Primary States for Custom Themes
+            root.style.setProperty('--theme-primary-hover', theme.palettes.primary[600]);
+            root.style.setProperty('--theme-primary-light', theme.palettes.primary[400]);
+            root.style.setProperty('--theme-text-brand', theme.palettes.primary[400]); // Good for dark mode
+            root.style.setProperty('--theme-accent', theme.palettes.primary[500]); // Fallback accent
+        }
+
+        // Derived Backgrounds
+        // We assume 'bg' is the main app background (often dark)
+        // Surface Soft is slightly lighter than surface, or just more opaque
+        // Glass is based on BG color but transparent
+
+        // Convert to RGBA for glass effects
+        const bgRgba = this.generator.hexToRgba(theme.colors.bg, 0.7);
+        root.style.setProperty('--theme-bg-glass', bgRgba);
+
+        // Soft Surface: If surface is defined, use it. Or derive.
+        // Assuming surface is provided in hex.
+        root.style.setProperty('--theme-bg-surface-soft', this.generator.hexToRgba(theme.colors.surface, 0.8)); // More opacity?
+
+        // Derived Borders
+        const contrast = this.generator.getContrastColor(theme.colors.bg);
+        const border = contrast === 'white' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const borderSoft = contrast === 'white' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+        root.style.setProperty('--theme-border', border);
+        root.style.setProperty('--theme-border-soft', borderSoft);
+
+        // Settings (Radius, Font)
+        if (theme.settings) {
+            root.style.setProperty('--theme-radius', `${theme.settings.radius}px`);
+            // Map radius to sm/md/lg roughly
+            root.style.setProperty('--theme-radius-sm', `${Math.max(2, theme.settings.radius / 2)}px`);
+            root.style.setProperty('--theme-radius-md', `${theme.settings.radius}px`);
+            root.style.setProperty('--theme-radius-lg', `${theme.settings.radius * 2}px`);
+
+            root.style.setProperty('--theme-font', theme.settings.font);
+        }
+    }
+
+    // --- Persistance ---
+    private loadTheme(): ThemeType {
+        const stored = localStorage.getItem('app-theme');
+        return (stored as ThemeType) || 'premium';
+    }
+
+    private saveTheme(theme: ThemeType) {
+        localStorage.setItem('app-theme', theme);
+    }
+
+    private loadCustomThemes(): CustomTheme[] {
+        const stored = localStorage.getItem('app-custom-themes');
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    private saveCustomThemes(themes: CustomTheme[]) {
+        localStorage.setItem('app-custom-themes', JSON.stringify(themes));
+    }
+
+    // --- Compatibility ---
+    getAvailableThemes() {
+        return [
+            {
+                id: 'premium',
+                name: 'Premium Dark',
+                backgroundColor: '#020617',
+                primaryColor: '#2563eb'
+            },
+            {
+                id: 'default',
+                name: 'Legacy Admin',
+                backgroundColor: '#f3f4f6',
+                primaryColor: '#1C355E'
+            },
+            {
+                id: 'seasonal',
+                name: 'Summer Sale',
+                backgroundColor: '#fff7ed',
+                primaryColor: '#ea580c'
+            },
+            {
+                id: 'ops',
+                name: 'Operations',
+                backgroundColor: '#18181b',
+                primaryColor: '#3b82f6'
+            },
+            {
+                id: 'command',
+                name: 'Command Center',
+                backgroundColor: '#0f172a',
+                primaryColor: '#3b82f6'
+            }
+        ];
     }
 }

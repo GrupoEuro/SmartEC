@@ -50,6 +50,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
         icon: 'cart',
         children: [
             {
+                id: 'catalog_overview',
+                title: 'ADMIN.SIDEBAR.CATALOG_OVERVIEW',
+                icon: 'pie-chart',
+                route: '/admin/catalog-overview'
+            },
+            {
                 id: 'products',
                 title: 'ADMIN.SIDEBAR.PRODUCTS',
                 icon: 'package',
@@ -100,7 +106,7 @@ export const ADMIN_NAVIGATION: NavItem[] = [
             },
             {
                 id: 'media_library',
-                title: 'Media Library',
+                title: 'ADMIN.SIDEBAR.MEDIA_LIBRARY',
                 icon: 'image',
                 route: '/admin/media-library'
             },
@@ -138,6 +144,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 title: 'ADMIN.SIDEBAR.USERS',
                 icon: 'user', // or 'users'
                 route: '/admin/users'
+            },
+            {
+                id: 'themes',
+                title: 'ADMIN.SIDEBAR.THEMES',
+                icon: 'palette',
+                route: '/admin/themes'
             },
 
             {

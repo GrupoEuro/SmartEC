@@ -9,11 +9,12 @@ import { AdminDatePipe } from '../../../../core/pipes/admin-date.pipe';
 import { map } from 'rxjs/operators';
 import { TranslateModule } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
+import { PaginationComponent } from '../../shared/pagination/pagination.component';
 
 @Component({
     selector: 'app-distributor-list',
     standalone: true,
-    imports: [CommonModule, FormsModule, AdminDatePipe, TranslateModule, AdminPageHeaderComponent],
+    imports: [CommonModule, FormsModule, AdminDatePipe, TranslateModule, AdminPageHeaderComponent, PaginationComponent],
     templateUrl: './distributor-list.component.html',
     styleUrls: ['./distributor-list.component.css']
 })
@@ -29,6 +30,10 @@ export class DistributorListComponent implements OnInit {
     // Filters
     statusFilter = 'all';
     searchTerm = '';
+
+    // Pagination
+    currentPage = 1;
+    pageSize = 5;
 
     // Expandable rows
     expandedRowId: string | null = null;
@@ -77,6 +82,19 @@ export class DistributorListComponent implements OnInit {
         'CDMX': 'Ciudad de México'
     };
 
+    get paginationConfig() {
+        return {
+            currentPage: this.currentPage,
+            itemsPerPage: this.pageSize,
+            totalItems: this.filteredDistributors.length
+        };
+    }
+
+    get paginatedDistributors(): DistributorSubmission[] {
+        const start = (this.currentPage - 1) * this.pageSize;
+        return this.filteredDistributors.slice(start, start + this.pageSize);
+    }
+
     getStateName(code: string): string {
         if (!code) return 'N/A';
         const upperCode = code.toUpperCase().trim();
@@ -85,16 +103,13 @@ export class DistributorListComponent implements OnInit {
     }
 
     ngOnInit() {
-
         this.loadDistributors();
     }
 
     loadDistributors() {
-
         this.isLoading = true;
         this.distributorService.getDistributors().subscribe({
             next: (distributors) => {
-
                 this.distributors = distributors;
                 this.applyFilters();
                 this.isLoading = false;
@@ -108,7 +123,6 @@ export class DistributorListComponent implements OnInit {
     }
 
     applyFilters() {
-
         this.filteredDistributors = this.distributors.filter(d => {
             const matchesStatus = this.statusFilter === 'all' || d.status === this.statusFilter;
             const matchesSearch = !this.searchTerm ||
@@ -119,6 +133,14 @@ export class DistributorListComponent implements OnInit {
 
             return matchesStatus && matchesSearch;
         });
+
+        // Reset to first page when filtering
+        this.currentPage = 1;
+    }
+
+    onPageChange(page: number) {
+        this.currentPage = page;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     toggleRow(id: string) {
@@ -229,5 +251,9 @@ export class DistributorListComponent implements OnInit {
     getStatusCount(status: string): number {
         if (status === 'all') return this.distributors.length;
         return this.distributors.filter(d => d.status === status).length;
+    }
+
+    trackById(index: number, item: DistributorSubmission): string {
+        return item.id;
     }
 }

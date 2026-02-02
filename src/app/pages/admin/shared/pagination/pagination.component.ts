@@ -24,6 +24,7 @@ export interface PaginationConfig {
           [ngModel]="config.itemsPerPage" 
           (ngModelChange)="onItemsPerPageChange($event)"
           class="items-select">
+          <option [value]="5">5</option>
           <option [value]="10">10</option>
           <option [value]="25">25</option>
           <option [value]="50">50</option>
@@ -95,45 +96,46 @@ export interface PaginationConfig {
       align-items: center;
       justify-content: space-between;
       gap: 1.5rem;
-      padding: 1rem;
-      background: #18181b;
-      border-top: 1px solid #27272a;
+      padding: 1rem 0;
+      background: transparent;
+      border-top: none;
       flex-wrap: wrap;
     }
 
     .items-per-page {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
       font-size: 0.875rem;
-      color: #a1a1aa;
+      color: #94a3b8;
     }
 
     .items-select {
+      appearance: none;
       padding: 0.375rem 0.75rem;
-      border: 1px solid #3f3f46;
-      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
       font-size: 0.875rem;
-      background: #27272a;
-      color: #e4e4e7;
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .items-select:hover {
-      border-color: #3b82f6;
-      background: #3f3f46;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .items-select:focus {
       outline: none;
       border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
 
     .page-info {
       font-size: 0.875rem;
-      color: #a1a1aa;
+      color: #94a3b8;
       flex: 1;
       text-align: center;
     }
@@ -141,77 +143,74 @@ export interface PaginationConfig {
     .page-controls {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.5rem;
     }
 
     .page-numbers {
       display: flex;
-      gap: 0.25rem;
+      gap: 0.5rem;
       margin: 0 0.5rem;
     }
 
     .page-btn {
       min-width: 2.25rem;
       height: 2.25rem;
-      padding: 0.375rem 0.75rem;
-      border: 1px solid #3f3f46;
-      border-radius: 6px;
-      background: #27272a;
-      color: #e4e4e7;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
       font-size: 0.875rem;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .page-btn:hover:not(:disabled):not(.ellipsis) {
-      background: #3f3f46;
+      background: rgba(59, 130, 246, 0.1);
       border-color: #3b82f6;
       color: #3b82f6;
     }
 
     .page-btn:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
+      border-color: transparent;
     }
 
     .page-btn.active {
       background: #3b82f6;
       border-color: #3b82f6;
       color: #ffffff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
     .page-btn.ellipsis {
       border: none;
       background: transparent;
       cursor: default;
-      color: #71717a;
+      color: #64748b;
     }
 
     @media (max-width: 768px) {
       .pagination-container {
         flex-direction: column;
         gap: 1rem;
+        align-items: center;
       }
-
+      
       .page-info {
         order: -1;
         width: 100%;
       }
-
-      .items-per-page {
-        width: 100%;
+      
+      .items-per-page, .page-controls {
         justify-content: center;
       }
-
-      .page-controls {
-        width: 100%;
-        justify-content: center;
-      }
-
+      
       .page-numbers {
         display: none;
       }

@@ -4,154 +4,138 @@
         <div class="header-left">
             <h1 class="page-title">{{ 'ADMIN.CUSTOMERS.TITLE' | translate }}</h1>
             <span class="product-count" *ngIf="paginationConfig.totalItems > 0">
-                {{ paginationConfig.totalItems }} Customers
+                {{ paginationConfig.totalItems }}
             </span>
         </div>
 
-        <div class="header-center">
-            <div class="search-command-bar">
+        <div class="header-right">
+            <!-- Future Export Button -->
+        </div>
+    </header>
+
+    <div class="product-grid-view">
+        <!-- Unified Toolbar -->
+        <div class="table-toolbar">
+            <!-- Search -->
+            <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" [formControl]="searchControl"
                     [placeholder]="'ADMIN.CUSTOMERS.SEARCH_PLACEHOLDER' | translate">
             </div>
+
+            <!-- Customer Type Filter -->
+            <select class="filter-select" [value]="filterType" (change)="setFilterType($any($event.target).value)">
+                <option value="all">All Customers</option>
+                <option value="active">Active Buyers</option>
+                <option value="new">New Signups</option>
+            </select>
+
+            <!-- Clear Filters -->
+            <button *ngIf="filterType !== 'all' || searchControl.value" class="btn-clear-filters"
+                (click)="setFilterType('all'); searchControl.reset()">
+                {{ 'ADMIN.COMMON.CLEAR_FILTERS' | translate }}
+            </button>
         </div>
 
-        <div class="header-right">
-            <!-- No primary action for now, maybe Export later -->
-        </div>
-    </header>
-
-    <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-            </div>
-
-            <!-- Segment Filters (Mock for now, or based on existing logic if any) -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Customer Type</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="customerType" value="all" [checked]="filterType === 'all'"
-                            (change)="setFilterType('all')">
-                        <span>All Customers</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="customerType" value="active" [checked]="filterType === 'active'"
-                            (change)="setFilterType('active')">
-                        <span>Active Buyers</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="customerType" value="new" [checked]="filterType === 'new'"
-                            (change)="setFilterType('new')">
-                        <span>New Signups</span>
-                    </label>
-                </div>
-            </details>
-        </aside>
-
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
-            <div class="table-glass-container">
-                <table class="rich-table">
-                    <thead>
-                        <tr>
-                            <th class="sortable" (click)="sort('displayName')">
-                                {{ 'ADMIN.CUSTOMERS.TABLE.CUSTOMER' | translate }}
-                            </th>
-                            <th class="sortable" (click)="sort('email')">
-                                {{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}
-                            </th>
-                            <th class="sortable" (click)="sort('createdAt')">
-                                {{ 'ADMIN.CUSTOMERS.TABLE.JOINED' | translate }}
-                            </th>
-                            <th class="text-right sortable" (click)="sort('orders')">
-                                {{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}
-                            </th>
-                            <th class="text-right sortable" (click)="sort('spend')">
-                                {{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}
-                            </th>
-                            <th>Status</th>
-                            <th>{{ 'ADMIN.CUSTOMERS.TABLE.ACTIONS' | translate }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let customer of paginatedCustomers">
-                            <td>
-                                <div class="product-identity"
-                                    style="flex-direction: row; align-items: center; gap: 1rem;">
-                                    <div class="img-thumbnail" style="border-radius: 50%; width: 40px; height: 40px;">
-                                        <img *ngIf="customer.photoURL" [src]="customer.photoURL"
-                                            style="border-radius: 50%;">
-                                        <div *ngIf="!customer.photoURL" class="img-placeholder"
-                                            [style.background-color]="getItemsBgColor(customer.email)"
-                                            style="border-radius: 50%; color: white; font-size: 1rem;">
-                                            {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase
-                                            }}
-                                        </div>
+        <!-- Glass Table -->
+        <div class="table-glass-container">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" (click)="sort('displayName')">
+                            {{ 'ADMIN.CUSTOMERS.TABLE.CUSTOMER' | translate }}
+                        </th>
+                        <th class="sortable" (click)="sort('email')">
+                            {{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}
+                        </th>
+                        <th class="sortable" (click)="sort('createdAt')">
+                            {{ 'ADMIN.CUSTOMERS.TABLE.JOINED' | translate }}
+                        </th>
+                        <th class="text-right sortable" (click)="sort('orders')">
+                            {{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}
+                        </th>
+                        <th class="text-right sortable" (click)="sort('spend')">
+                            {{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}
+                        </th>
+                        <th>Status</th>
+                        <th>{{ 'ADMIN.CUSTOMERS.TABLE.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let customer of paginatedCustomers">
+                        <td>
+                            <div class="product-identity" style="flex-direction: row; align-items: center; gap: 1rem;">
+                                <div class="img-thumbnail" style="border-radius: 50%; width: 40px; height: 40px;">
+                                    <img *ngIf="customer.photoURL" [src]="customer.photoURL"
+                                        style="border-radius: 50%;">
+                                    <div *ngIf="!customer.photoURL" class="img-placeholder"
+                                        [style.background-color]="getItemsBgColor(customer.email)"
+                                        style="border-radius: 50%; color: white; font-size: 1rem;">
+                                        {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase
+                                        }}
                                     </div>
-                                    <span class="product-name" [routerLink]="['/admin/customers', customer.uid]">
-                                        {{ customer.displayName || 'Guest' }}
-                                    </span>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="product-sku">{{ customer.email }}</span>
-                            </td>
-                            <td>
-                                {{ customer.createdAt | date:'mediumDate' }}
-                            </td>
-                            <td class="text-right">
-                                <span class="badge"
-                                    style="background: rgba(255,255,255,0.1); color: var(--text-primary);">
-                                    {{ customer.stats?.totalOrders || 0 }}
+                                <span class="product-name" [routerLink]="['/admin/customers', customer.uid]">
+                                    {{ customer.displayName || 'Guest' }}
                                 </span>
-                            </td>
-                            <td class="text-right">
-                                <span class="current-price">{{ (customer.stats?.totalSpend || 0) | currency }}</span>
-                            </td>
-                            <td>
-                                <div class="stock-pill" [class.success]="customer.isActive"
-                                    [class.danger]="!customer.isActive">
-                                    <span class="dot"></span>
-                                    <span class="status-text">{{ customer.isActive ? 'Active' : 'Inactive' }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <a [routerLink]="['/admin/customers', customer.uid]" class="btn-icon-ghost"
-                                        [title]="'ADMIN.COMMON.VIEW' | translate">
-                                        👁️
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="product-sku">{{ customer.email }}</span>
+                        </td>
+                        <td>
+                            <div class="product-info">
+                                <strong>{{ customer.createdAt | date:'mediumDate' }}</strong>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <span class="badge-count">
+                                {{ customer.stats?.totalOrders || 0 }}
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <span class="price-text">{{ (customer.stats?.totalSpend || 0) | currency }}</span>
+                        </td>
+                        <td>
+                            <div class="stock-pill" [class.success]="customer.isActive"
+                                [class.danger]="!customer.isActive">
+                                <span class="dot"></span>
+                                <span class="status-text">{{ customer.isActive ? 'Active' : 'Inactive' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a [routerLink]="['/admin/customers', customer.uid]" class="btn-icon-ghost"
+                                    [title]="'ADMIN.COMMON.VIEW' | translate">
+                                    👁️
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
 
-                        <tr *ngIf="!isLoading && paginatedCustomers.length === 0">
-                            <td colspan="7" class="no-data">
-                                {{ 'ADMIN.CUSTOMERS.NO_RESULTS' | translate }}
-                            </td>
-                        </tr>
+                    <!-- Empty State -->
+                    <tr *ngIf="!isLoading && filteredCustomers.length === 0">
+                        <td colspan="7" class="no-data">
+                            {{ 'ADMIN.CUSTOMERS.NO_RESULTS' | translate }}
+                        </td>
+                    </tr>
 
-                        <tr *ngIf="isLoading">
-                            <td colspan="7" class="loading-state">
-                                {{ 'ADMIN.COMMON.LOADING' | translate }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <!-- Loading State -->
+                    <tr *ngIf="isLoading">
+                        <td colspan="7" class="no-data">
+                            {{ 'ADMIN.COMMON.LOADING' | translate }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-            <div class="pagination-wrapper" *ngIf="filteredCustomers.length > 0">
-                <app-pagination
-                    [config]="{ currentPage: currentPage, itemsPerPage: pageSize, totalItems: filteredCustomers.length }"
-                    (pageChange)="onPageChange($event)" (itemsPerPageChange)="pageSize = $event; currentPage = 1;">
-                </app-pagination>
-            </div>
-        </main>
+        <!-- Pagination -->
+        <div class="pagination-wrapper" *ngIf="filteredCustomers.length > 0">
+            <app-pagination
+                [config]="{ currentPage: currentPage, itemsPerPage: pageSize, totalItems: filteredCustomers.length }"
+                (pageChange)="onPageChange($event)" (itemsPerPageChange)="pageSize = $event; currentPage = 1;">
+            </app-pagination>
+        </div>
     </div>
 </div>

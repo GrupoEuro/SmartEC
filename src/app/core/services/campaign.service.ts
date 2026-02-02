@@ -57,9 +57,14 @@ export class CampaignService {
                     this.themeService.setTheme(winner.themeId);
                 }
             } else {
-                console.log('⚪ No active campaigns. Reverting to Default.');
+                console.log('⚪ No active campaigns. Keeping User Preference.');
                 this.activeCampaign.set(null);
-                this.themeService.setTheme('default');
+
+                // Do NOT force reset to 'default' here. 
+                // This overrides the user's manual selection (or Studio theme).
+                // Only reset if the current theme WAS a campaign theme that expired? 
+                // For now, let's just NOT touch it.
+                // this.themeService.setTheme('default'); 
             }
         });
     }

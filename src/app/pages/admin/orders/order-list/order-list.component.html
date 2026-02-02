@@ -4,16 +4,8 @@
         <div class="header-left">
             <h1 class="page-title">{{ 'ADMIN.ORDERS.TITLE' | translate }}</h1>
             <span class="product-count" *ngIf="paginationConfig.totalItems > 0">
-                {{ paginationConfig.totalItems }} Orders
+                {{ paginationConfig.totalItems }}
             </span>
-        </div>
-
-        <div class="header-center">
-            <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" [formControl]="searchControl"
-                    [placeholder]="'ADMIN.ORDERS.SEARCH_PLACEHOLDER' | translate">
-            </div>
         </div>
 
         <div class="header-right">
@@ -24,119 +16,111 @@
         </div>
     </header>
 
-    <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-                <!-- Optional Reset button if needed later -->
+    <div class="product-grid-view">
+        <!-- Unified Toolbar -->
+        <div class="table-toolbar">
+            <!-- Search -->
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [formControl]="searchControl"
+                    [placeholder]="'ADMIN.ORDERS.SEARCH_PLACEHOLDER' | translate">
             </div>
 
             <!-- Status Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Status</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="status" [value]="'all'" [checked]="currentStatus === 'all'"
-                            (change)="setFilter('all')">
-                        <span>All Orders</span>
-                    </label>
-                    <label class="radio-option" *ngFor="let tab of statusTabs">
-                        <input type="radio" name="status" [value]="tab.id" [checked]="currentStatus === tab.id"
-                            (change)="setFilter(tab.id)">
-                        <span>{{ 'ADMIN.ORDERS.STATUS.' + tab.id.toUpperCase() | translate }}</span>
-                        <!-- Optional: Add count badge here if desired in future -->
-                    </label>
-                </div>
-            </details>
-        </aside>
+            <select class="filter-select" (change)="setFilter($any($event.target).value)">
+                <option value="all">{{ 'ADMIN.ORDERS.STATUS.ALL' | translate }}</option>
+                <option *ngFor="let tab of statusTabs | slice:1" [value]="tab.id">
+                    {{ 'ADMIN.ORDERS.STATUS.' + tab.id.toUpperCase() | translate }}
+                </option>
+            </select>
 
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
-            <div class="table-glass-container">
-                <table class="rich-table">
-                    <thead>
-                        <tr>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}</th>
-                            <th class="sortable" (click)="onSort('date')">
-                                {{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.CUSTOMER' | translate }}</th>
-                            <th class="text-right">{{ 'ADMIN.ORDERS.TABLE.TOTAL' | translate }}</th>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.STATUS' | translate }}</th>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.ACTIONS' | translate }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let order of paginatedOrders">
-                            <td>
-                                <span class="sku-code">#{{ order.orderNumber }}</span>
-                            </td>
-                            <td>
-                                <div class="product-info">
-                                    <strong>{{ $any(order.createdAt) | date:'mediumDate' }}</strong>
-                                    <span class="product-sku">{{ $any(order.createdAt) | date:'shortTime' }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="product-identity">
-                                    <span class="product-name" [routerLink]="['/admin/orders', order.id]">
-                                        {{ order.customer.name }}
-                                    </span>
-                                    <span class="product-sku">{{ order.customer.email }}</span>
-                                </div>
-                            </td>
-                            <td class="text-right">
-                                <span class="current-price">{{ order.total | currency }}</span>
-                            </td>
-                            <td>
-                                <div class="stock-indicator">
-                                    <!-- Mapping status to pill styles -->
-                                    <div class="stock-pill" [class.success]="order.status === 'delivered'"
-                                        [class.warning]="order.status === 'pending' || order.status === 'processing'"
-                                        [class.danger]="order.status === 'cancelled'">
-                                        <span class="dot"></span>
-                                        <span class="status-text">
-                                            {{ 'ADMIN.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <a [routerLink]="['/admin/orders', order.id]" class="btn-icon-ghost"
-                                        [title]="'ADMIN.COMMON.VIEW' | translate">
-                                        👁️
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+            <!-- Clear Filters -->
+            <button *ngIf="currentStatus !== 'all' || searchControl.value" class="btn-clear-filters"
+                (click)="clearFilters()">
+                {{ 'ADMIN.COMMON.CLEAR_FILTERS' | translate }}
+            </button>
+        </div>
 
-                        <!-- Empty State -->
-                        <tr *ngIf="!isLoading && paginationConfig.totalItems === 0">
-                            <td colspan="6" class="no-data">
-                                {{ 'ADMIN.ORDERS.NO_RESULTS' | translate }}
-                            </td>
-                        </tr>
+        <!-- Glass Table -->
+        <div class="table-glass-container">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" (click)="onSort('orderNumber')">
+                            {{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}
+                        </th>
+                        <th class="sortable" (click)="onSort('date')">
+                            {{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}
+                        </th>
+                        <th>{{ 'ADMIN.ORDERS.TABLE.CUSTOMER' | translate }}</th>
+                        <th class="text-right sortable" (click)="onSort('total')">
+                            {{ 'ADMIN.ORDERS.TABLE.TOTAL' | translate }}
+                        </th>
+                        <th>{{ 'ADMIN.ORDERS.TABLE.STATUS' | translate }}</th>
+                        <th>{{ 'ADMIN.ORDERS.TABLE.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let order of paginatedOrders">
+                        <td>
+                            <span class="order-number">#{{ order.orderNumber }}</span>
+                        </td>
+                        <td>
+                            <div class="product-info">
+                                <strong>{{ $any(order.createdAt) | date:'mediumDate' }}</strong>
+                                <span class="text-muted">{{ $any(order.createdAt) | date:'shortTime' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-identity">
+                                <span class="product-name" [routerLink]="['/admin/orders', order.id]">
+                                    {{ order.customer.name }}
+                                </span>
+                                <span class="product-sku">{{ order.customer.email }}</span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <span class="price-text">{{ order.total | currency }}</span>
+                        </td>
+                        <td>
+                            <div class="stock-pill" [ngClass]="getStatusClass(order.status)">
+                                <span class="dot"></span>
+                                <span>
+                                    {{ 'ADMIN.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a [routerLink]="['/admin/orders', order.id]" class="btn-icon-ghost"
+                                    [title]="'ADMIN.COMMON.VIEW' | translate">
+                                    👁️
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
 
-                        <!-- Loading State -->
-                        <tr *ngIf="isLoading">
-                            <td colspan="6" class="loading-state">
-                                {{ 'ADMIN.COMMON.LOADING' | translate }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <!-- Empty State -->
+                    <tr *ngIf="!isLoading && paginationConfig.totalItems === 0">
+                        <td colspan="6" class="no-data">
+                            {{ 'ADMIN.ORDERS.NO_RESULTS' | translate }}
+                        </td>
+                    </tr>
 
-            <!-- Pagination -->
-            <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
-                <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)">
-                </app-pagination>
-            </div>
-        </main>
+                    <!-- Loading State -->
+                    <tr *ngIf="isLoading">
+                        <td colspan="6" class="no-data">
+                            {{ 'ADMIN.COMMON.LOADING' | translate }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+            <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)">
+            </app-pagination>
+        </div>
     </div>
 </div>

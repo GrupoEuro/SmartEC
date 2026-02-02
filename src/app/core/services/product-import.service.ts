@@ -156,40 +156,65 @@ export class ProductImportService {
     }
 
     /**
+     * Export Products to Excel (Round-trip compatible)
+     */
+    async exportProducts(products: Product[]) {
+        // Map products to template format
+        const rows = products.map(p => ({
+            SKU: p.sku,
+            'Name En': p.name?.en || '',
+            'Name Es': p.name?.es || '',
+            Brand: p.brand,
+            Category: p.categoryId,
+            Price: p.price,
+            Stock: p.stockQuantity,
+            'Description En': p.description?.en || '',
+            'Description Es': p.description?.es || '',
+            'Image URL': p.images?.main || ''
+        }));
+
+        const fileName = `products_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        await this.generateExcelFile(rows, fileName);
+    }
+
+    /**
      * Generate Smart Template with Dropdowns
      */
     async downloadTemplate() {
+        this.generateExcelFile([], 'product_import_template.xlsx');
+    }
+
+    private async generateExcelFile(data: any[], fileName: string) {
         const categories = await firstValueFrom(this.categoryService.getCategories());
         const brands = await firstValueFrom(this.brandService.getBrands());
 
-        // 1. Headers & Hints
-        const headers = [
-            'SKU', 'Name En', 'Name Es', 'Brand', 'Category',
-            'Price', 'Stock', 'Description En', 'Description Es', 'Image URL'
-        ];
+        // 1. Headers & Data
+        let ws: XLSX.WorkSheet;
 
-        const sampleData = [
-            {
+        if (data.length === 0) {
+            const headers = [
+                'SKU', 'Name En', 'Name Es', 'Brand', 'Category',
+                'Price', 'Stock', 'Description En', 'Description Es', 'Image URL'
+            ];
+            // Add one sample row for guidance
+            const sampleRow = {
                 SKU: 'SAMPLE-001',
-                'Name En': 'Sample Wireless Mouse',
-                'Name Es': 'Ratón Inalámbrico Ejemplo',
-                Brand: 'Logitech', // Example
-                Category: categories[0]?.name.en || 'Electronics',
-                Price: 29.99,
-                Stock: 100,
-                'Description En': 'Ergonomic mouse...',
-                'Description Es': 'Ratón ergonómico...',
+                'Name En': 'Sample Product',
+                'Name Es': 'Producto Ejemplo',
+                Brand: 'Praxis',
+                Category: 'Tires',
+                Price: 99.99,
+                Stock: 10,
+                'Description En': 'Description...',
+                'Description Es': 'Descripción...',
                 'Image URL': 'https://example.com/image.jpg'
-            }
-        ];
+            };
+            ws = XLSX.utils.json_to_sheet([sampleRow], { header: headers });
+        } else {
+            ws = XLSX.utils.json_to_sheet(data);
+        }
 
-        // 2. Create Workbook
-        const wb = XLSX.utils.book_new();
-
-        // 3. Main Sheet
-        const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
-
-        // Add comments/validation hints (XLSX basic support)
+        // 2. Formatting (Column Widths)
         if (!ws['!cols']) ws['!cols'] = [];
         ws['!cols'] = [
             { wch: 15 }, // SKU
@@ -204,13 +229,15 @@ export class ProductImportService {
             { wch: 50 }  // Image
         ];
 
-        // 4. Reference Sheet for Dropdowns
+        // 3. Create Workbook
+        const wb = XLSX.utils.book_new();
+
+        // 4. Reference Data (Hidden Sheet)
         const refSheetName = '_Ref_Data';
-        // Extract names
+
         const categoryNames = categories.map(c => c.name.en).sort();
         const brandNames = brands.map(b => b.name).sort();
 
-        // Find max length to set rows
         const maxLength = Math.max(categoryNames.length, brandNames.length);
         const refData = [];
 
@@ -224,20 +251,11 @@ export class ProductImportService {
         const wsRef = XLSX.utils.json_to_sheet(refData);
         XLSX.utils.book_append_sheet(wb, wsRef, refSheetName);
 
-        // Hide reference sheet
-        if (!wb.Workbook) wb.Workbook = {};
-        if (!wb.Workbook.Sheets) wb.Workbook.Sheets = [];
-        // Note: Sheet hiding in SheetJS Community is limited, 
-        // implies user shouldn't edit it.
-
-        // 5. Apply Data Validation
-        // Note: SheetJS Community Edition does not fully support writing Data Validation (dropdowns)
-        // We will do our best by formatting the template clearly and relying on the validation logic.
-        // *Advanced Data Validations are a Pro feature in SheetJS usually*
-        // However, we can guide the user.
-
+        // 5. Add Main Sheet
         XLSX.utils.book_append_sheet(wb, ws, 'Products');
-        XLSX.writeFile(wb, 'import_template.xlsx');
+
+        // 6. Save
+        XLSX.writeFile(wb, fileName);
     }
 
     private parseExcel(file: File): Promise<any[]> {

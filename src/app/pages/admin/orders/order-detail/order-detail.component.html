@@ -8,13 +8,13 @@
     <div class="print-header">
         <div class="print-brand">
             <h1>IMPORTADORA EURO</h1>
-            <p>Distrubución de Llantas y Accesorios</p>
+            <p>Distribución de Llantas y Accesorios</p>
         </div>
         <div class="print-meta">
             <h2>{{ 'ADMIN.ORDERS.DETAIL.INVOICE' | translate }}</h2>
             <div class="meta-row">
                 <span>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}:</span>
-                <strong>#{{ order.orderNumber }}</strong>
+                <strong>{{ order.orderNumber }}</strong>
             </div>
             <div class="meta-row">
                 <span>{{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}:</span>
@@ -23,8 +23,13 @@
         </div>
     </div>
 
-    <app-admin-page-header icon="📦"
-        [title]="('ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate) + ' #' + order.orderNumber"
+    <div class="mb-4">
+        <a routerLink="/admin/orders" class="back-link">
+            ← {{ 'ADMIN.ORDERS.DETAIL.BACK' | translate }}
+        </a>
+    </div>
+
+    <app-admin-page-header icon="📦" [title]="('ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate) + ' ' + order.orderNumber"
         [subtitle]="($any(order.createdAt) | date:'medium') || ''">
         <button class="btn-secondary" (click)="printOrder()">
             🖨️ {{ 'ADMIN.ORDERS.DETAIL.PRINT' | translate }}

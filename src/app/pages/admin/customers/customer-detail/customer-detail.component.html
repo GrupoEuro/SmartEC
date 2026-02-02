@@ -3,7 +3,15 @@
     <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
 </div>
 
-<div *ngIf="!isLoading && customer" class="detail-container">
+<div *ngIf="!isLoading && customer" class="customer-detail-container">
+    <!-- Back Link -->
+    <div class="mb-4">
+        <a routerLink="/admin/customers" class="back-link">
+            ← {{ 'ADMIN.CUSTOMERS.BACK_TO_LIST' | translate }}
+        </a>
+    </div>
+
+    <!-- Header -->
     <app-admin-page-header icon="👤" [title]="customer.displayName || customer.email"
         [subtitle]="'ADMIN.CUSTOMERS.DETAIL.SUBTITLE' | translate">
     </app-admin-page-header>
@@ -12,13 +20,13 @@
         <!-- Sidebar -->
         <div class="side-col">
             <!-- Profile Card -->
-            <div class="card profile-card">
+            <div class="card glass-panel profile-card">
                 <div class="profile-header">
                     <div class="avatar-lg" *ngIf="!customer.photoURL">
                         {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase }}
                     </div>
                     <img *ngIf="customer.photoURL" [src]="customer.photoURL" class="avatar-lg-img">
-                    <h3>{{ customer.displayName || 'Guest' }}</h3>
+                    <h3 class="profile-name">{{ customer.displayName || 'Guest' }}</h3>
                     <span class="role-badge">{{ customer.role }}</span>
                 </div>
 
@@ -39,23 +47,23 @@
             </div>
 
             <!-- Stats Card -->
-            <div class="card stats-card">
-                <h3>{{ 'ADMIN.CUSTOMERS.DETAIL.STATS' | translate }}</h3>
+            <div class="card glass-panel stats-card">
+                <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.DETAIL.STATS' | translate }}</h3>
                 <div class="stat-row">
                     <span class="stat-label">{{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}</span>
                     <span class="stat-value">{{ customerOrders.length }}</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">{{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}</span>
-                    <span class="stat-value text-success font-bold">
+                    <span class="stat-value text-accent font-bold">
                         {{ (customer.stats?.totalSpend || 0) | currency }}
                     </span>
                 </div>
             </div>
 
             <!-- Shipping Address Card -->
-            <div class="card address-card" *ngIf="customer.shippingAddress">
-                <h3>Shipping Address</h3>
+            <div class="card glass-panel address-card" *ngIf="customer.shippingAddress">
+                <h3 class="card-title">Shipping Address</h3>
                 <div class="address-content">
                     <p class="address-line">{{ customer.shippingAddress.street }} {{
                         customer.shippingAddress.exteriorNumber }}</p>
@@ -76,39 +84,42 @@
         <!-- Main Content -->
         <div class="main-col">
             <!-- Order History -->
-            <div class="card orders-card">
-                <h3>{{ 'ADMIN.CUSTOMERS.DETAIL.ORDER_HISTORY' | translate }}</h3>
+            <div class="card glass-panel orders-card">
+                <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.DETAIL.ORDER_HISTORY' | translate }}</h3>
 
-                <table class="admin-table" *ngIf="customerOrders.length > 0">
-                    <thead>
-                        <tr>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}</th>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}</th>
-                            <th>{{ 'ADMIN.ORDERS.TABLE.STATUS' | translate }}</th>
-                            <th class="text-right">{{ 'ADMIN.ORDERS.TABLE.TOTAL' | translate }}</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let order of customerOrders">
-                            <td class="font-mono">#{{ order.orderNumber }}</td>
-                            <td>{{ $any(order.createdAt) | date:'shortDate' }}</td>
-                            <td>
-                                <span class="status-badge" [ngClass]="getStatusClass(order.status)">
-                                    {{ 'ADMIN.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
-                                </span>
-                            </td>
-                            <td class="text-right font-bold">{{ order.total | currency }}</td>
-                            <td class="text-right">
-                                <a [routerLink]="['/admin/orders', order.id]" class="btn-sm">
-                                    View
-                                </a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive" *ngIf="customerOrders.length > 0">
+                    <table class="simple-table">
+                        <thead>
+                            <tr>
+                                <th>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}</th>
+                                <th>{{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}</th>
+                                <th>{{ 'ADMIN.ORDERS.TABLE.STATUS' | translate }}</th>
+                                <th class="text-right">{{ 'ADMIN.ORDERS.TABLE.TOTAL' | translate }}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let order of customerOrders">
+                                <td class="font-mono text-accent">#{{ order.orderNumber }}</td>
+                                <td>{{ $any(order.createdAt) | date:'shortDate' }}</td>
+                                <td>
+                                    <span class="status-pill" [ngClass]="getStatusClass(order.status)">
+                                        <span class="dot"></span>
+                                        {{ 'ADMIN.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                                    </span>
+                                </td>
+                                <td class="text-right font-bold">{{ order.total | currency }}</td>
+                                <td class="text-right">
+                                    <a [routerLink]="['/admin/orders', order.id]" class="btn-icon-sm">
+                                        👁️
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <div class="empty-orders" *ngIf="customerOrders.length === 0">
+                <div class="empty-state" *ngIf="customerOrders.length === 0">
                     <p>{{ 'ADMIN.CUSTOMERS.DETAIL.NO_ORDERS' | translate }}</p>
                 </div>
             </div>

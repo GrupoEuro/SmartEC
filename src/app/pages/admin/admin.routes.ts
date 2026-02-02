@@ -211,6 +211,12 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
+                path: 'themes',
+                loadComponent: () => import('./themes/theme-manager.component').then(m => m.ThemeManagerComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] }
+            },
+            {
                 path: 'settings',
                 loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent),
                 canActivate: [roleGuard],

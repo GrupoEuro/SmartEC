@@ -7,6 +7,10 @@
     <!-- Quick Stats Row -->
     <div class="stats-row">
         <div class="stat-card">
+            <div class="stat-value">{{ totalProducts }}</div>
+            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_PRODUCTS' | translate }}</div>
+        </div>
+        <div class="stat-card">
             <div class="stat-value">{{ totalBrands }}</div>
             <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_BRANDS' | translate }}</div>
         </div>
@@ -14,60 +18,31 @@
             <div class="stat-value">{{ totalCategories }}</div>
             <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_CATEGORIES' | translate }}</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ totalProducts }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_PRODUCTS' | translate }}</div>
-        </div>
-        <div class="stat-card warning" *ngIf="productsWithoutBrand > 0">
-            <div class="stat-value">{{ productsWithoutBrand }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.NO_BRAND' | translate }}</div>
-        </div>
-        <div class="stat-card warning" *ngIf="productsWithoutCategory > 0">
-            <div class="stat-value">{{ productsWithoutCategory }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.NO_CATEGORY' | translate }}</div>
+        <div class="stat-card warning" *ngIf="productsWithoutBrand > 0 || productsWithoutCategory > 0">
+            <div class="stat-value" style="color: #ef4444;">{{ productsWithoutBrand + productsWithoutCategory }}</div>
+            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.ISSUES_DETECTED' | translate }}</div>
         </div>
     </div>
 
-    <div class="content-grid">
-        <!-- Brands Section -->
-        <div class="section brands-section">
-            <div class="section-header">
-                <h2>{{ 'ADMIN.CATALOG_OVERVIEW.BRANDS_SECTION' | translate }}</h2>
-                <a routerLink="/admin/brands" class="view-all">{{ 'ADMIN.COMMON.VIEW_ALL' | translate }} →</a>
-            </div>
-
-            <div class="brands-grid">
-                <div class="brand-card" *ngFor="let item of brandStats"
-                    [routerLink]="['/admin/brands', item.brand.id, 'edit']">
-                    <div class="brand-header">
-                        <div class="brand-logo">
-                            <img *ngIf="item.brand.logoUrl" [src]="item.brand.logoUrl" [alt]="item.brand.name">
-                            <span *ngIf="!item.brand.logoUrl" class="no-logo">{{ item.brand.name.charAt(0) }}</span>
-                        </div>
-                        <div class="brand-status" [class.active]="item.brand.active"></div>
-                    </div>
-                    <div class="brand-info">
-                        <h3>
-                            {{ item.brand.name }}
-                            <span *ngIf="item.brand.featured" class="featured-star">⭐</span>
-                        </h3>
-                        <div class="product-badge" [class.has-products]="item.productCount > 0">
-                            {{ item.productCount }} {{ 'ADMIN.CATALOG_OVERVIEW.PRODUCT_UNIT' | translate }}
-                        </div>
-                    </div>
-                </div>
+    <!-- Master Visualizer Tree -->
+    <div class="section visualizer-section">
+        <div class="section-header">
+            <h2>{{ 'ADMIN.CATALOG_OVERVIEW.HIERARCHY' | translate }}</h2>
+            <div class="legend">
+                <span class="legend-item"><span class="dot type"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.TYPE' |
+                    translate }}</span>
+                <span class="legend-item"><span class="dot cat"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.CATEGORY' |
+                    translate }}</span>
+                <span class="legend-item"><span class="dot brand"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.BRAND' |
+                    translate }}</span>
             </div>
         </div>
 
-        <!-- Categories Section -->
-        <div class="section categories-section">
-            <div class="section-header">
-                <h2>{{ 'ADMIN.CATALOG_OVERVIEW.CATEGORIES_HIERARCHY' | translate }}</h2>
-                <a routerLink="/admin/categories" class="view-all">{{ 'ADMIN.COMMON.VIEW_ALL' | translate }} →</a>
-            </div>
+        <div class="category-tree">
+            <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: masterTree }"></ng-container>
 
-            <div class="category-tree">
-                <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: categoryTree }"></ng-container>
+            <div *ngIf="masterTree.length === 0" class="empty-state">
+                {{ 'ADMIN.CATALOG_OVERVIEW.NO_DATA' | translate }}
             </div>
         </div>
     </div>
@@ -76,25 +51,39 @@
 <ng-template #treeNode let-nodes>
     <div class="tree-level">
         <div class="tree-item" *ngFor="let node of nodes">
-            <div class="node-content" [class.expanded]="node.expanded">
+            <div class="node-content" [class.expanded]="node.expanded" [attr.data-type]="node.type">
                 <div class="node-main" (click)="toggleNode(node)">
+                    <!-- Expand Icon -->
                     <span class="expand-icon" [style.visibility]="node.children.length ? 'visible' : 'hidden'">
                         {{ node.expanded ? '▼' : '▶' }}
                     </span>
 
-                    <div class="node-icon" *ngIf="node.category.icon">{{ node.category.icon }}</div>
-
-                    <div class="node-details">
-                        <span class="node-name">{{ node.category.name.en }}</span>
-                        <span class="product-count">({{ node.productCount }})</span>
+                    <!-- Node Icon or Image -->
+                    <div class="node-icon-wrapper">
+                        <div *ngIf="node.type === 'brand' && node.image" class="node-brand-logo">
+                            <img [src]="node.image" alt="logo">
+                        </div>
+                        <div *ngIf="!node.image" class="node-icon">{{ node.icon || (node.type === 'brand' ? '🏷️' :
+                            '📁') }}</div>
                     </div>
 
-                    <div class="node-actions">
-                        <a [routerLink]="['/admin/categories', node.category.id, 'edit']" class="edit-btn">✏️</a>
+                    <!-- Details -->
+                    <div class="node-details">
+                        <span class="node-name">{{ node.name }}</span>
+                        <span class="product-count badge">{{ node.count }} products</span>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="node-actions" *ngIf="node.actions">
+                        <a *ngFor="let action of node.actions" [routerLink]="action.link" class="edit-btn"
+                            (click)="$event.stopPropagation()">
+                            {{ action.icon }}
+                        </a>
                     </div>
                 </div>
             </div>
 
+            <!-- Children Recursion -->
             <div class="node-children" *ngIf="node.expanded && node.children.length > 0">
                 <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node.children }"></ng-container>
             </div>

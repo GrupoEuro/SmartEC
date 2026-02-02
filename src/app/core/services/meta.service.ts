@@ -212,4 +212,36 @@ export class MetaService {
       } : undefined
     };
   }
+
+  /**
+   * Generate catalog structured data (ItemList)
+   */
+  generateCatalogStructuredData(products: any[], language: 'en' | 'es' = 'es'): any {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      itemListElement: products.map((product, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        item: {
+          '@type': 'Product',
+          name: product.name[language] || product.name['es'],
+          description: (product.description[language] || product.description['es'] || '').substring(0, 150),
+          image: product.images.main,
+          url: `${this.DOMAIN}/product/${product.slug}`,
+          sku: product.sku,
+          brand: {
+            '@type': 'Brand',
+            name: product.brand
+          },
+          offers: {
+            '@type': 'Offer',
+            price: product.price,
+            priceCurrency: 'MXN',
+            availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+          }
+        }
+      }))
+    };
+  }
 }

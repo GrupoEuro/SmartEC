@@ -8,14 +8,6 @@
             </span>
         </div>
 
-        <div class="header-center">
-            <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-                    [placeholder]="'ADMIN.BRANDS.SEARCH_PLACEHOLDER' | translate">
-            </div>
-        </div>
-
         <div class="header-right">
             <button class="btn-primary-action" routerLink="/admin/brands/new">
                 <span class="icon">➕</span>
@@ -24,153 +16,116 @@
         </div>
     </header>
 
-    <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-                <button class="btn-text-tiny"
-                    (click)="searchTerm = ''; selectedStatus = ''; selectedFeatured = ''; onFilterChange()">
-                    Reset
-                </button>
+    <!-- Main Content Area (Full Width) -->
+    <main class="product-grid-view">
+
+        <!-- Unified Search & Filter Toolbar -->
+        <div class="table-toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                    [placeholder]="'ADMIN.BRANDS.SEARCH_PLACEHOLDER' | translate">
             </div>
 
-            <!-- Status Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Status</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="" [checked]="selectedStatus === ''"
-                            (change)="selectedStatus = ''; onFilterChange()">
-                        <span>All</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="active" [checked]="selectedStatus === 'active'"
-                            (change)="selectedStatus = 'active'; onFilterChange()">
-                        <span>Active</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="inactive" [checked]="selectedStatus === 'inactive'"
-                            (change)="selectedStatus = 'inactive'; onFilterChange()">
-                        <span>Inactive</span>
-                    </label>
-                </div>
-            </details>
+            <select class="filter-select" [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+                <option value="">{{ 'ADMIN.STATUS.ALL' | translate }}</option>
+                <option value="active">{{ 'ADMIN.STATUS.ACTIVE' | translate }}</option>
+                <option value="inactive">{{ 'ADMIN.STATUS.INACTIVE' | translate }}</option>
+            </select>
 
-            <!-- Featured Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Featured</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="featured" value="" [checked]="selectedFeatured === ''"
-                            (change)="selectedFeatured = ''; onFilterChange()">
-                        <span>All</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="featured" value="featured" [checked]="selectedFeatured === 'featured'"
-                            (change)="selectedFeatured = 'featured'; onFilterChange()">
-                        <span>Featured Only</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="featured" value="not-featured"
-                            [checked]="selectedFeatured === 'not-featured'"
-                            (change)="selectedFeatured = 'not-featured'; onFilterChange()">
-                        <span>Standard</span>
-                    </label>
-                </div>
-            </details>
-        </aside>
+            <select class="filter-select" [(ngModel)]="selectedFeatured" (ngModelChange)="onFilterChange()">
+                <option value="">All Types</option>
+                <option value="featured">{{ 'ADMIN.BRANDS.TH_FEATURED' | translate }}</option>
+                <option value="not-featured">Standard</option>
+            </select>
 
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
-            <div class="table-glass-container">
-                <table class="rich-table">
-                    <thead>
-                        <tr>
-                            <th>{{ 'ADMIN.BRANDS.TH_LOGO' | translate }}</th>
-                            <th class="sortable" (click)="onSortChange('name')">
-                                {{ 'ADMIN.BRANDS.TH_NAME' | translate }}
-                            </th>
-                            <th class="sortable" (click)="onSortChange('country')">
-                                {{ 'ADMIN.BRANDS.TH_COUNTRY' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.BRANDS.TH_WEBSITE' | translate }}</th>
-                            <th>{{ 'ADMIN.BRANDS.TH_STATUS' | translate }}</th>
-                            <th>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let brand of paginatedBrands | async">
-                            <td>
-                                <div class="img-thumbnail" style="width: 60px; height: 60px; background: white;">
-                                    <img *ngIf="brand.logoUrl" [src]="brand.logoUrl" [alt]="brand.name"
-                                        style="object-fit: contain; padding: 4px;">
-                                    <div *ngIf="!brand.logoUrl" class="img-placeholder" style="color: #ccc;">
-                                        {{ brand.name.charAt(0) }}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="product-identity">
-                                    <span class="product-name" [routerLink]="['/admin/brands', brand.id, 'edit']">
-                                        {{ brand.name }}
-                                    </span>
-                                    <div class="badges-row" *ngIf="brand.featured">
-                                        <span class="mini-badge featured">Featured</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="category-tag" *ngIf="brand.countryOfOrigin">{{ brand.countryOfOrigin
-                                    }}</span>
-                                <span class="text-muted" *ngIf="!brand.countryOfOrigin">-</span>
-                            </td>
-                            <td>
-                                <a *ngIf="brand.website" [href]="brand.website" target="_blank" class="btn-text-tiny">
-                                    {{ brand.website }} ↗
-                                </a>
-                                <span class="text-muted" *ngIf="!brand.website">-</span>
-                            </td>
-                            <td>
-                                <div class="stock-pill" [class.success]="brand.active" [class.danger]="!brand.active">
-                                    <span class="dot"></span>
-                                    <span class="status-text">{{ brand.active ? 'Active' : 'Inactive' }}</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <button class="btn-icon-ghost" [routerLink]="['/admin/brands', brand.id, 'edit']"
-                                        [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        ✏️
-                                    </button>
-                                    <button class="btn-icon-ghost danger" (click)="deleteBrand(brand)"
-                                        [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        🗑️
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+            <button class="btn-clear-filters" *ngIf="selectedStatus || searchTerm || selectedFeatured"
+                (click)="searchTerm = ''; selectedStatus = ''; selectedFeatured = ''; onFilterChange()">
+                Reset
+            </button>
+        </div>
 
-                        <tr *ngIf="(paginatedBrands | async)?.length === 0">
-                            <td colspan="6" class="no-data">
-                                {{ 'ADMIN.BRANDS.EMPTY' | translate }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-glass-container">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="w-16">{{ 'ADMIN.BRANDS.TH_LOGO' | translate }}</th>
+                        <th class="sortable" (click)="onSortChange('name')">
+                            {{ 'ADMIN.BRANDS.TH_NAME' | translate }}
+                            <span *ngIf="sortField === 'name'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th class="sortable" (click)="onSortChange('country')">
+                            {{ 'ADMIN.BRANDS.TH_COUNTRY' | translate }}
+                            <span *ngIf="sortField === 'country'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th>{{ 'ADMIN.BRANDS.TH_WEBSITE' | translate }}</th>
+                        <th class="w-24 text-center">{{ 'ADMIN.BRANDS.TH_STATUS' | translate }}</th>
+                        <th class="w-24 text-right">{{ 'ADMIN.COMMON.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let brand of paginatedBrands | async">
+                        <td>
+                            <div class="img-thumbnail" style="width: 48px; height: 48px;">
+                                <img *ngIf="brand.logoUrl" [src]="brand.logoUrl" [alt]="brand.name">
+                                <span *ngIf="!brand.logoUrl" class="brand-initial">{{ brand.name.charAt(0) }}</span>
+                                <div *ngIf="!brand.logoUrl && !brand.name" class="img-placeholder">?</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-identity">
+                                <span class="product-name" [routerLink]="['/admin/brands', brand.id, 'edit']">
+                                    {{ brand.name }}
+                                </span>
+                                <div class="badges-row" *ngIf="brand.featured">
+                                    <span class="mini-badge featured">Featured</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-muted" *ngIf="brand.countryOfOrigin">{{ brand.countryOfOrigin }}</span>
+                            <span class="text-muted placeholder" *ngIf="!brand.countryOfOrigin">-</span>
+                        </td>
+                        <td>
+                            <a *ngIf="brand.website" [href]="brand.website" target="_blank" class="link-external">
+                                {{ brand.website }} ↗
+                            </a>
+                            <span class="text-muted placeholder" *ngIf="!brand.website">-</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="stock-pill" [class.success]="brand.active" [class.danger]="!brand.active">
+                                <span class="dot"></span>
+                                <span class="status-text">{{ brand.active ? ('ADMIN.STATUS.ACTIVE' | translate) :
+                                    ('ADMIN.STATUS.INACTIVE' | translate) }}</span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <div class="row-actions justify-end">
+                                <button class="btn-icon-ghost" [routerLink]="['/admin/brands', brand.id, 'edit']"
+                                    [title]="'ADMIN.COMMON.EDIT' | translate">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon-ghost danger" (click)="deleteBrand(brand)"
+                                    [title]="'ADMIN.COMMON.DELETE' | translate">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
 
-            <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
-                <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
-                    (itemsPerPageChange)="onItemsPerPageChange($event)">
-                </app-pagination>
-            </div>
-        </main>
-    </div>
+                    <tr *ngIf="(paginatedBrands | async)?.length === 0">
+                        <td colspan="6" class="no-data">
+                            {{ 'ADMIN.BRANDS.EMPTY' | translate }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+            <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+                (itemsPerPageChange)="onItemsPerPageChange($event)">
+            </app-pagination>
+        </div>
+    </main>
 </div>

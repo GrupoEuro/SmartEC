@@ -124,6 +124,17 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
         }
     }
 
+    removeImage() {
+        this.selectedFile = null;
+        this.previewUrl = null;
+        // Reset file input value if needed (though hidden input is usually just replaced)
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        this.brandForm.markAsDirty();
+    }
+
     generateSlug(name: string): string {
         return name.toLowerCase()
             .replace(/[^a-z0-9\s-]/g, '')

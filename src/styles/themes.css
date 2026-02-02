@@ -3,33 +3,32 @@
    ========================================= */
 
 :root {
-    /* --- BASE (Admin / Default) --- */
+    /* --- BASE (Default / Light / Admin) --- */
     /* Brand: Trustworthy Navy & Gold */
     --theme-primary: #1C355E;
     --theme-primary-hover: #122442;
     --theme-primary-light: #2c4d80;
 
     --theme-accent: #FFD700;
-    /* Gold */
     --theme-accent-hover: #e6c200;
 
     /* Backgrounds */
     --theme-bg-app: #f3f4f6;
-    /* Gray 100 */
+    /* Page Background */
     --theme-bg-surface: #ffffff;
+    /* Card/Panel Background */
     --theme-bg-surface-soft: #f9fafb;
+    /* Inputs/Secondary */
+    --theme-bg-glass: rgba(255, 255, 255, 0.9);
 
     /* Text */
     --theme-text-primary: #111827;
-    /* Gray 900 */
     --theme-text-secondary: #6b7280;
-    /* Gray 500 */
     --theme-text-muted: #9ca3af;
-    /* Gray 400 */
+    --theme-text-brand: #1C355E;
 
     /* Borders */
     --theme-border: #e5e7eb;
-    /* Gray 200 */
     --theme-border-soft: #f3f4f6;
 
     /* Shapes */
@@ -40,76 +39,97 @@
     /* Effects */
     --theme-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     --theme-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --theme-glow: none;
+}
+
+/* --- PREMIUM DARK THEME (The "Eurollantas" Look) --- */
+.theme-premium {
+    /* Brand: Deep Blue & Cyan/Sky */
+    --theme-primary: #2563eb;
+    /* Blue 600 */
+    --theme-primary-hover: #1d4ed8;
+    --theme-primary-light: #3b82f6;
+
+    --theme-accent: #00ACD8;
+    /* Euro Cyan */
+    --theme-accent-hover: #06b6d4;
+
+    /* Backgrounds: Slate Deep */
+    --theme-bg-app: #020617;
+    /* Slate 950 */
+    --theme-bg-surface: rgba(30, 41, 59, 0.4);
+    /* Glassy Slate */
+    --theme-bg-surface-soft: rgba(30, 41, 59, 0.6);
+    --theme-bg-glass: rgba(15, 23, 42, 0.6);
+    /* Sidebar Glass */
+
+    /* Text */
+    --theme-text-primary: #f8fafc;
+    /* Slate 50 */
+    --theme-text-secondary: #94a3b8;
+    /* Slate 400 */
+    --theme-text-muted: #64748b;
+    /* Slate 500 */
+    --theme-text-brand: #38bdf8;
+    /* Sky 400 */
+
+    /* Borders */
+    --theme-border: rgba(255, 255, 255, 0.1);
+    --theme-border-soft: rgba(255, 255, 255, 0.05);
+
+    /* Effects */
+    --theme-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    --theme-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.15);
+    --theme-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* --- SEASONAL THEME (Example: Summer Sale) --- */
+.theme-seasonal {
+    /* Brand: Hot Orange & Sunshine */
+    --theme-primary: #ea580c;
+    /* Orange 600 */
+    --theme-primary-hover: #c2410c;
+    --theme-primary-light: #f97316;
+
+    --theme-accent: #facc15;
+    /* Yellow 400 */
+    --theme-accent-hover: #eab308;
+
+    /* Backgrounds: Warm & Bright */
+    --theme-bg-app: #fff7ed;
+    /* Orange 50 */
+    --theme-bg-surface: #ffffff;
+    --theme-bg-surface-soft: #ffedd5;
+    --theme-bg-glass: rgba(255, 255, 255, 0.8);
+
+    /* Text */
+    --theme-text-primary: #431407;
+    /* Brown 900 */
+    --theme-text-secondary: #9a3412;
+    /* Orange 800 */
+    --theme-text-muted: #c2410c;
+    --theme-text-brand: #ea580c;
+
+    /* Borders */
+    --theme-border: #fed7aa;
+    /* Orange 200 */
+
+    /* Effects */
+    --theme-shadow-card: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+    --theme-shadow-hover: 0 10px 15px -3px rgba(234, 88, 12, 0.2);
 }
 
 /* --- OPERATIONS THEME --- */
-/* "Industrial Zinc" - Dark, Technical, Robust */
 .theme-ops {
-    /* Brand: Blue & Zinc */
     --theme-primary: #3b82f6;
-    /* Blue 500 */
     --theme-primary-hover: #2563eb;
-    /* Blue 600 */
     --theme-primary-light: #1e3a8a;
-    /* Blue 900 */
-
     --theme-accent: #f59e0b;
-    /* Amber 500 */
-
-    /* Backgrounds: Zinc Dark */
     --theme-bg-app: #18181b;
-    /* Zinc 950 */
     --theme-bg-surface: #27272a;
-    /* Zinc 800 */
     --theme-bg-surface-soft: #3f3f46;
-    /* Zinc 700 */
-
-    /* Text: Zinc Scale */
     --theme-text-primary: #f4f4f5;
-    /* Zinc 100 */
     --theme-text-secondary: #a1a1aa;
-    /* Zinc 400 */
-    --theme-text-muted: #52525b;
-    /* Zinc 600 */
-
-    /* Borders */
     --theme-border: #3f3f46;
-    /* Zinc 700 */
-    --theme-border-soft: #27272a;
-    /* Zinc 800 */
-
-    /* Shapes */
-    --theme-radius-sm: 4px;
-    --theme-radius-md: 8px;
-    --theme-radius-lg: 12px;
-}
-
-/* --- COMMAND CENTER THEME --- */
-/* "Cyberpunk Data" - Dark, Glowing, Immersive */
-.theme-command {
-    /* Brand: Neon Blue & Violet */
-    --theme-primary: #3b82f6;
-    /* Blue 500 */
-    --theme-primary-hover: #2563eb;
-    --theme-primary-light: #1e3a8a;
-
-    --theme-accent: #8b5cf6;
-    /* Violet 500 */
-
-    /* Backgrounds: Deep Space */
-    --theme-bg-app: #0f172a;
-    /* Slate 900 */
-    --theme-bg-surface: #1e293b;
-    /* Slate 800 */
-    --theme-bg-surface-soft: #334155;
-
-    /* Text: White & Silver */
-    --theme-text-primary: #f8fafc;
-    --theme-text-secondary: #94a3b8;
-
-    /* Borders */
-    --theme-border: #334155;
-
-    /* Shapes: Modern */
-    --theme-radius-lg: 24px;
+    --theme-shadow-card: none;
 }

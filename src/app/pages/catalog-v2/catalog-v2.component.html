@@ -1,0 +1,277 @@
+<div class="catalog-wrapper">
+
+    <!-- Mobile Header (Hidden on Desktop via CSS) -->
+    <div class="mobile-header">
+        <button class="filter-toggle-btn" (click)="toggleSidebar()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg> {{ 'ADMIN.CATALOG.FILTERS' | translate }}
+        </button>
+    </div>
+
+    <div class="catalog-layout">
+        <!-- Sidebar -->
+        <aside class="catalog-sidebar" [class.open]="isSidebarOpen">
+            <div class="sidebar-header">
+                <h3>{{ 'ADMIN.CATALOG.FILTERS' | translate }}</h3>
+                <button class="close-btn" (click)="toggleSidebar()">✕</button>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Search -->
+                <div class="filter-section search-section">
+                    <input type="text" class="search-input"
+                        [placeholder]="'ADMIN.CATALOG.SEARCH_PLACEHOLDER' | translate" [ngModel]="searchQuery"
+                        (ngModelChange)="onSearchChange($event)">
+                </div>
+
+                <!-- Categories -->
+                <div class="filter-section">
+                    <label class="filter-label">{{ 'ADMIN.CATALOG.CATEGORIES' | translate }}</label>
+                    <div class="category-list">
+                        <button class="category-item" [class.active]="!filters.categoryId"
+                            (click)="onCategorySelect('')">
+                            {{ 'ADMIN.CATALOG.ALL_CATEGORIES' | translate }}
+                        </button>
+                        <button *ngFor="let cat of categories$ | async" class="category-item"
+                            [class.active]="filters.categoryId === cat.id" (click)="onCategorySelect(cat.id!)">
+                            {{ cat.name[languageService.currentLang() === 'en' ? 'en' : 'es'] }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Price Range (Smart Slider) -->
+                <div class="filter-section">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <label class="filter-label">{{ 'ADMIN.CATALOG.PRICE_RANGE' | translate }}</label>
+                        <span style="font-size: 0.8rem; font-weight: 600; color: var(--theme-primary);">
+                            ${{selectedPriceRange.min}} - ${{selectedPriceRange.max}}
+                        </span>
+                    </div>
+
+                    <mat-slider min="0" max="5000" step="100" discrete [displayWith]="formatLabel">
+                        <input matSliderStartThumb [(ngModel)]="selectedPriceRange.min"
+                            (dragEnd)="onPriceRangeChange()">
+                        <input matSliderEndThumb [(ngModel)]="selectedPriceRange.max" (dragEnd)="onPriceRangeChange()">
+                    </mat-slider>
+
+                    <div class="price-inputs-wrapper" style="margin-top: 0.5rem; opacity: 0.7;">
+                        <!-- Optional: Quick manual inputs -->
+                    </div>
+                </div>
+
+                <!-- Brands (Only show if more than 1 brand) -->
+                <div class="filter-section" *ngIf="brands.length > 1">
+                    <label class="filter-label">{{ 'ADMIN.CATALOG.BRANDS' | translate }}</label>
+                    <div class="checkbox-list">
+                        <label *ngFor="let brand of brands" class="checkbox-label"
+                            [class.disabled]="getBrandCount(brand) === 0">
+                            <input type="checkbox" [checked]="isBrandSelected(brand)" (change)="toggleBrand(brand)"
+                                [disabled]="getBrandCount(brand) === 0">
+                            <span class="checkbox-custom"></span>
+                            <span class="label-text">{{ brand }} <span class="count-badge">({{ getBrandCount(brand)
+                                    }})</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Specs Chips -->
+                <div class="filter-section">
+                    <label class="filter-label">{{ 'ADMIN.CATALOG.TIRE_SIZE' | translate }}</label>
+
+                    <!-- Width -->
+                    <div style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--theme-text-muted);">{{
+                        'ADMIN.CATALOG.WIDTH' | translate }}</div>
+                    <div class="chip-grid">
+                        <button *ngFor="let w of widths" class="chip-btn" [class.active]="filters.width === w"
+                            (click)="selectFilter('width', w)">
+                            {{ w }}
+                        </button>
+                    </div>
+
+                    <!-- Ratio -->
+                    <div style="margin: 1rem 0 0.5rem; font-size: 0.8rem; color: var(--theme-text-muted);">{{
+                        'ADMIN.CATALOG.ASPECT_RATIO' | translate }}</div>
+                    <div class="chip-grid">
+                        <button *ngFor="let ar of aspectRatios" class="chip-btn"
+                            [class.active]="filters.aspectRatio === ar" (click)="selectFilter('aspectRatio', ar)">
+                            {{ ar }}
+                        </button>
+                    </div>
+
+                    <!-- Diameter -->
+                    <div style="margin: 1rem 0 0.5rem; font-size: 0.8rem; color: var(--theme-text-muted);">{{
+                        'ADMIN.CATALOG.DIAMETER' | translate }}</div>
+                    <div class="chip-grid">
+                        <button *ngFor="let d of diameters" class="chip-btn" [class.active]="filters.diameter === d"
+                            (click)="selectFilter('diameter', d)">
+                            R{{ d }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <button class="clear-filters-btn" (click)="clearFilters()">
+                        {{ 'ADMIN.CATALOG.CLEAR_FILTERS' | translate }}
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="catalog-main">
+            <!-- Toolbar -->
+            <div class="catalog-top-bar">
+                <div class="results-count">
+                    {{ totalProducts }} {{ 'ADMIN.CATALOG.PRODUCTS_FOUND' | translate }}
+                </div>
+                <div class="top-bar-actions">
+                    <select class="sort-select" [(ngModel)]="sortBy" (change)="onSortChange(sortBy)">
+                        <option value="featured">{{ 'ADMIN.CATALOG.SORT.FEATURED' | translate }}</option>
+                        <option value="price-asc">{{ 'ADMIN.CATALOG.SORT.PRICE_LOW' | translate }}</option>
+                        <option value="price-desc">{{ 'ADMIN.CATALOG.SORT.PRICE_HIGH' | translate }}</option>
+                        <option value="newest">{{ 'ADMIN.CATALOG.SORT.NEWEST' | translate }}</option>
+                    </select>
+                    <div class="view-toggle">
+                        <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'"
+                            title="Grid View">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'"
+                            title="List View">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Filters Chips -->
+            <div class="active-filters-bar" *ngIf="activeFiltersList.length > 0">
+                <div class="filter-chip" *ngFor="let item of activeFiltersList">
+                    <span class="chip-label">{{ item.label }}</span>
+                    <button class="chip-remove" (click)="removeFilter(item)">✕</button>
+                </div>
+                <button class="clear-all-link" (click)="clearFilters()">{{ 'ADMIN.CATALOG.CLEAR_FILTERS' | translate
+                    }}</button>
+            </div>
+
+            <!-- Products -->
+            <div class="products-container" [class.grid-view]="viewMode === 'grid'"
+                [class.list-view]="viewMode === 'list'">
+
+                <!-- Main Data Subscription -->
+                <ng-container *ngIf="filteredProducts$ | async as products; else loadingState">
+
+                    <!-- Empty State -->
+                    <div *ngIf="products.length === 0" class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3>{{ 'ADMIN.CATALOG.NO_PRODUCTS' | translate }}</h3>
+                        <p>{{ 'ADMIN.CATALOG.TRY_ADJUSTING_FILTERS' | translate }}</p>
+                        <button class="btn-primary" (click)="clearFilters()">{{ 'ADMIN.CATALOG.CLEAR_FILTERS' |
+                            translate }}</button>
+                    </div>
+
+                    <!-- Product Cards -->
+                    <div *ngFor="let product of products; trackBy: trackByProduct; let i = index" class="product-card">
+                        <div class="product-badges">
+                            <span *ngIf="product.newArrival" class="badge badge-new">New</span>
+                            <span *ngIf="product.bestSeller" class="badge badge-bestseller">Hot</span>
+                        </div>
+
+                        <div class="product-image">
+                            <img [ngSrc]="product.images.main || 'assets/images/euro-logo-new.png'"
+                                [alt]="product.name.en || 'Product Image'" fill [priority]="i < 4"
+                                (error)="product.images.main = 'assets/images/euro-logo-new.png'">
+
+                            <!-- Quick View Overlay Button -->
+                            <div class="quick-view-overlay">
+                                <button class="btn-quick-view"
+                                    (click)="openQuickView(product); $event.stopPropagation()">
+                                    {{ 'CATALOG_QUICK_VIEW_BTN' | translate }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="product-info" [routerLink]="['/product', product.slug]" style="cursor: pointer;">
+                            <div class="product-brand">{{ product.brand }}</div>
+                            <h3 class="product-name">{{ product.name[languageService.currentLang() === 'en' ? 'en' :
+                                'es'] }}</h3>
+                            <p class="product-size">
+                                {{ product.specifications['width'] }}/{{ product.specifications['aspectRatio'] }}-{{
+                                product.specifications['diameter'] }}
+                            </p>
+
+                            <div class="product-price">
+                                <span *ngIf="product.compareAtPrice && product.compareAtPrice > product.price"
+                                    class="original-price">
+                                    {{ product.compareAtPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                                </span>
+                                <div class="price-row">
+                                    <span class="current-price">{{ product.price |
+                                        currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                                    <span class="price-suffix">MXN</span>
+                                </div>
+                                <span class="tax-info">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
+                            </div>
+
+                            <div class="product-stock">
+                                <span *ngIf="product.inStock" class="in-stock">✓ {{ 'PRODUCT_DETAIL.IN_STOCK' |
+                                    translate }}</span>
+                                <span *ngIf="!product.inStock" class="out-of-stock">✕ {{ 'PRODUCT_DETAIL.OUT_OF_STOCK'
+                                    | translate }}</span>
+                            </div>
+
+                            <button class="btn-add-cart-card" (click)="addToCart(product, $event)">
+                                {{ 'ADMIN.CATALOG.ADD_TO_CART' | translate }}
+                            </button>
+
+                            <a [routerLink]="['/product', product.slug]" class="btn-view-details-card"
+                                (click)="$event.stopPropagation()">
+                                {{ 'ADMIN.CATALOG.VIEW_DETAILS' | translate }}
+                            </a>
+                        </div>
+                    </div>
+                </ng-container>
+
+                <!-- Loading State Template -->
+                <ng-template #loadingState>
+                    <app-skeleton-product-card *ngFor="let i of [1,2,3,4,5,6,7,8]"></app-skeleton-product-card>
+                </ng-template>
+
+            </div>
+
+            <!-- Pagination -->
+            <div *ngIf="totalPages > 1" class="pagination">
+                <button class="page-btn" [disabled]="currentPage === 1"
+                    (click)="onPageChange(currentPage - 1)">‹</button>
+                <span class="page-btn active">{{ currentPage }} / {{ totalPages }}</span>
+                <button class="page-btn" [disabled]="currentPage === totalPages"
+                    (click)="onPageChange(currentPage + 1)">›</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Overlay -->
+    <div class="sidebar-overlay" *ngIf="isSidebarOpen" (click)="toggleSidebar()"></div>
+
+    <!-- Quick View Modal -->
+    <app-quick-view-modal *ngIf="selectedProduct" [product]="selectedProduct" (close)="closeQuickView()">
+    </app-quick-view-modal>
+</div>

@@ -189,16 +189,22 @@ export class OrderListComponent implements OnInit {
         });
     }
 
+    clearFilters() {
+        this.currentStatus = 'all';
+        this.searchControl.setValue('');
+        this.filterOrders();
+    }
+
     getStatusClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
-            'pending': 'status-pending',
-            'processing': 'status-processing',
-            'shipped': 'status-shipped',
-            'delivered': 'status-delivered',
-            'cancelled': 'status-cancelled',
-            'refunded': 'status-refunded',
-            'returned': 'status-returned'
+            'pending': 'warning',
+            'processing': 'warning',
+            'shipped': 'info',
+            'delivered': 'success',
+            'cancelled': 'danger',
+            'refunded': 'default', // Or specific class
+            'returned': 'danger'
         };
-        return classes[status] || 'status-default';
+        return classes[status] || 'default';
     }
 }

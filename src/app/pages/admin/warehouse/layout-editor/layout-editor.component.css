@@ -1,10 +1,512 @@
-/* Cursor styles */
-.cursor-grab {
+/* === PROFESSIONAL LAYOUT EDITOR STYLES === */
+@import '../../products/visual-enhancements.css';
+
+/* Editor Container */
+:host {
+    display: block;
+    height: 100vh;
+    overflow: hidden;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+/* --- Canvas Area --- */
+.editor-canvas-container {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background-color: #0b1120;
+    /* Deep dark background */
     cursor: grab;
 }
 
-.cursor-grabbing {
+.editor-canvas-container:active {
     cursor: grabbing;
 }
 
-/* Grid background simulation in TS/HTML via inline styles */
+/* High-tech Grid Pattern */
+.grid-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Dot pattern */
+    background-image: radial-gradient(#334155 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.warehouse-boundary-label {
+    background: rgba(15, 23, 42, 0.8);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- Floating Header (Top Left) --- */
+.floating-header {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.back-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-button:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    transform: translateX(-2px);
+}
+
+.header-info {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header-info h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.header-info p {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* --- Floating Toolbar (Bottom Center) --- */
+.floating-toolbar {
+    position: absolute;
+    bottom: 48px;
+    /* Lifted up slightly */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    /* Smoother padding */
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    transition: transform 0.2s, bottom 0.2s;
+}
+
+/* Hover effect for toolbar to "peek" up */
+.floating-toolbar:hover {
+    transform: translateX(-50%) translateY(-2px);
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 4px;
+}
+
+.tool-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 4px;
+}
+
+.tool-btn span {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.tool-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.tool-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.tool-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --- View Controls (Bottom Left) --- */
+.view-controls {
+    position: absolute;
+    bottom: 32px;
+    /* Bottom left is usually cleaner than below header */
+    left: 24px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-group {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.control-label {
+    font-size: 10px;
+    text-align: center;
+    color: #64748b;
+    padding-bottom: 4px;
+}
+
+/* --- Property Panel (Right Side Floating) --- */
+.property-panel {
+    position: fixed;
+    /* Fixed to viewport */
+    top: 80px;
+    right: 20px;
+    /* Removed bottom anchor to allow auto-height */
+    width: 260px;
+    /* Compact width */
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    z-index: 60;
+    /* Higher than view controls */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.panel-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.panel-close:hover {
+    color: white;
+}
+
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.panel-footer {
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* --- Element Visuals --- */
+
+/* Base draggable */
+.draggable-element {
+    position: absolute;
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.draggable-element:active {
+    cursor: grabbing;
+}
+
+.draggable-element.selected {
+    z-index: 100 !important;
+    /* Strong highlight */
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.6);
+    animation: pulseSelection 1.5s infinite;
+}
+
+@keyframes pulseSelection {
+    0% {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.2), 0 0 30px rgba(59, 130, 246, 0.8);
+    }
+
+    100% {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+}
+
+.selection-ring {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid #3b82f6;
+    border-radius: 8px;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+}
+
+.draggable-element.selected .selection-ring {
+    opacity: 1;
+    border-color: #60a5fa;
+    border-width: 2px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4);
+    animation: selectionPulse 2s infinite;
+}
+
+@keyframes selectionPulse {
+    0% {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1), 0 0 25px rgba(59, 130, 246, 0.2);
+    }
+
+    100% {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+}
+
+/* Zone */
+.element-zone {
+
+    border: 2px dashed;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.zone-label {
+    position: absolute;
+    top: -24px;
+    left: 0;
+    background: inherit;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Rack */
+.element-rack {
+    background: #334155;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    overflow: hidden;
+    /* Schematic look */
+    background-image: linear-gradient(90deg, transparent 50%, rgba(0, 0, 0, 0.2) 50%);
+    background-size: 20px 100%;
+}
+
+.rack-levels {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rack-level {
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Obstacle */
+.element-obstacle {
+    background: repeating-linear-gradient(45deg,
+            #3f3f46,
+            #3f3f46 10px,
+            #27272a 10px,
+            #27272a 20px);
+    border: 1px solid #52525b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Door */
+.element-door {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.door-indicator {
+    width: 100%;
+    height: 8px;
+    background: #10b981;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.door-label {
+    margin-top: 4px;
+    font-size: 10px;
+    color: #94a3b8;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* Shared UI Components */
+.btn-primary-action {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    transition: all 0.2s;
+}
+
+.btn-primary-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
+}
+
+.glass-input {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.glass-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: rgba(15, 23, 42, 0.8);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Scrollbar for panel */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

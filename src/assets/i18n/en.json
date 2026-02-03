@@ -175,6 +175,7 @@
             "SUBTITLE": "Manage physical locations and virtual inventory pools",
             "CREATE_NEW": "Add Warehouse",
             "NO_DATA": "No warehouses found. Create your first one.",
+            "SEARCH_PLACEHOLDER": "Search by name, code or address...",
             "WIZARD": {
                 "TITLE": "Create Warehouse",
                 "SUBTITLE": "Configure storage location details"
@@ -237,7 +238,11 @@
             "YES": "Yes",
             "NO": "No",
             "SUCCESS": "Success",
-            "ERROR": "Error"
+            "ERROR": "Error",
+            "MANAGE": "Manage",
+            "ACTIVE": "Active",
+            "INACTIVE": "Inactive",
+            "ALL_STATUSES": "All Statuses"
         },
         "CATEGORIES": {
             "TITLE": "Categories",
@@ -357,9 +362,26 @@
                 "BUSINESS": "Business",
                 "CONTACT": "Contact",
                 "LOCATIONS": "Location",
-                "VOLUME": "Volume",
                 "STATUS": "Status",
                 "ACTIONS": "Actions"
+            },
+            "DETAIL": {
+                "LEAD_COMMENTS": "Lead Comments",
+                "NO_COMMENTS": "No comments provided.",
+                "INTERNAL_NOTES": "Internal Notes",
+                "NO_NOTES": "No internal notes.",
+                "CONTACT_HISTORY": "Contact History",
+                "UPDATED_BY": "updated status on",
+                "NOTE_PLACEHOLDER": "Add notes about this lead..."
+            },
+            "MODAL": {
+                "EDIT_TITLE": "Edit Lead Details",
+                "NAME": "Name",
+                "BUSINESS": "Business",
+                "EMAIL": "Email",
+                "PHONE": "Phone",
+                "STATE": "State",
+                "VOLUME": "Volume"
             }
         },
         "BLOG": {

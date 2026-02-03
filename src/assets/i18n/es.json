@@ -217,6 +217,7 @@
             "SUBTITLE": "Gestiona ubicaciones físicas y pools de inventario virtual",
             "CREATE_NEW": "Agregar Almacén",
             "NO_DATA": "No se encontraron almacenes. Crea el primero.",
+            "SEARCH_PLACEHOLDER": "Buscar por nombre, código o dirección...",
             "WIZARD": {
                 "TITLE": "Crear Almacén",
                 "SUBTITLE": "Configura los detalles de la ubicación de almacenamiento"
@@ -280,7 +281,11 @@
             "NO": "No",
             "SUCCESS": "Éxito",
             "ERROR": "Error",
-            "CLEAR_FILTERS": "Limpiar Filtros"
+            "CLEAR_FILTERS": "Limpiar Filtros",
+            "MANAGE": "Gestionar",
+            "ACTIVE": "Activo",
+            "INACTIVE": "Inactivo",
+            "ALL_STATUSES": "Todos los Estados"
         },
         "CATEGORIES": {
             "TITLE": "Categorías",
@@ -426,6 +431,24 @@
                 "VOLUME": "Volumen",
                 "STATUS": "Estado",
                 "ACTIONS": "Acciones"
+            },
+            "DETAIL": {
+                "LEAD_COMMENTS": "Comentarios",
+                "NO_COMMENTS": "Sin comentarios.",
+                "INTERNAL_NOTES": "Notas Internas",
+                "NO_NOTES": "Sin notas internas.",
+                "CONTACT_HISTORY": "Historial de Contacto",
+                "UPDATED_BY": "actualizó el estado el",
+                "NOTE_PLACEHOLDER": "Agregar notas sobre este prospecto..."
+            },
+            "MODAL": {
+                "EDIT_TITLE": "Editar Detalles del Prospecto",
+                "NAME": "Nombre",
+                "BUSINESS": "Negocio",
+                "EMAIL": "Email",
+                "PHONE": "Teléfono",
+                "STATE": "Estado",
+                "VOLUME": "Volumen"
             }
         },
         "BLOG": {

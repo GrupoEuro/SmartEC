@@ -1,259 +1,504 @@
-<div class="h-[calc(100vh-64px)] flex flex-col bg-zinc-950 overflow-hidden text-sm">
+<div class="editor-canvas-container">
+    <!-- Grid Background -->
+    <div class="grid-background" [style.background-size]="gridSize() + 'px ' + gridSize() + 'px'"></div>
 
-    <!-- Toolbar -->
-    <div class="h-16 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur flex items-center justify-between px-6 z-20">
-        <div class="flex items-center gap-4">
-            <button routerLink="/admin/warehouses" class="text-zinc-400 hover:text-white transition-colors">
-                <app-icon name="arrow-left" class="w-5 h-5"></app-icon>
-            </button>
-            <div>
-                <h1 class="text-lg font-bold text-white">{{ warehouse()?.name || 'Loading...' }}</h1>
-                <p class="text-xs text-zinc-500">Visual Layout Editor / {{ warehouse()?.code }}</p>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-
-            <!-- Grid Snap Toggle -->
-            <div class="flex items-center gap-2 mr-4 bg-zinc-800 rounded px-2 py-1.5" title="Snap to Grid">
-                <input type="checkbox" id="snap" [ngModel]="snapEnabled()" (ngModelChange)="snapEnabled.set($event)"
-                    class="rounded border-zinc-600 bg-zinc-700 text-purple-600 focus:ring-purple-500">
-                <label for="snap" class="text-xs text-zinc-300 cursor-pointer select-none">Grid Snap</label>
-            </div>
-
-            <!-- Zoom Controls -->
-            <div class="flex items-center bg-zinc-800 rounded-lg p-1 mr-4">
-                <button (click)="scale.set(scale() - 0.1)"
-                    class="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded">
-                    <app-icon name="minus" class="w-4 h-4"></app-icon>
-                </button>
-                <span class="text-xs text-zinc-300 w-10 text-center">{{ (scale() * 100).toFixed(0) }}%</span>
-                <button (click)="scale.set(scale() + 0.1)"
-                    class="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded">
-                    <app-icon name="plus" class="w-4 h-4"></app-icon>
-                </button>
-            </div>
-
-            <div class="h-8 w-px bg-zinc-700 mx-2"></div>
-
-            <button (click)="addZone()" class="btn-glass-secondary flex items-center gap-2 px-3 py-1.5 text-xs">
-                <app-icon name="plus-square" class="w-4 h-4"></app-icon>
-                Zone
-            </button>
-
-            <button (click)="addStructure()" [disabled]="!selectedZoneId()"
-                class="btn-glass-primary flex items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed">
-                <app-icon name="server" class="w-4 h-4"></app-icon>
-                Rack
-            </button>
-
-            <button (click)="addObstacle()" class="btn-glass-secondary flex items-center gap-2 px-3 py-1.5 text-xs">
-                <app-icon name="box" class="w-4 h-4"></app-icon>
-                Obstacle
-            </button>
-
-            <button (click)="addDoor()" class="btn-glass-secondary flex items-center gap-2 px-3 py-1.5 text-xs">
-                <app-icon name="log-out" class="w-4 h-4"></app-icon>
-                Door
-            </button>
+    <!-- Floating Header -->
+    <div class="floating-header">
+        <button routerLink="/admin/warehouses" class="back-button">
+            <app-icon name="arrow-left" class="w-5 h-5"></app-icon>
+        </button>
+        <div class="header-info">
+            <h1>{{ warehouse()?.name || 'Loading...' }}</h1>
+            <p>Visual Layout Editor / {{ warehouse()?.code }}</p>
         </div>
     </div>
 
-    <div class="flex-1 flex overflow-hidden relative">
-
-        <!-- Canvas Area -->
-        <div class="flex-1 bg-zinc-950 relative overflow-auto cursor-grab active:cursor-grabbing"
-            (click)="onBackgroundClick()"
-            [style.backgroundImage]="snapEnabled() ? 'radial-gradient(#27272a 1px, transparent 1px)' : 'none'"
-            [style.backgroundSize]="gridSize() + 'px ' + gridSize() + 'px'">
-
-            <!-- Infinite Grid Simulation or just a large container -->
-            <div class="relative min-w-[2500px] min-h-[2500px] transform-origin-top-left transition-transform duration-75 p-20"
-                [style.transform]="'scale(' + scale() + ')'">
-
-                <!-- Physical Warehouse Boundary (Approx) -->
-                <div
-                    class="border-4 border-zinc-800 absolute top-20 left-20 w-[1500px] h-[1000px] rounded pointer-events-none">
-                    <span class="absolute -top-8 left-0 text-zinc-500 font-mono text-xs">Warehouse Boundary: 150m x
-                        100m</span>
-                </div>
-
-                <!-- OBSTACLES -->
-                <div *ngFor="let obs of obstacles()"
-                    class="absolute border border-zinc-600 bg-zinc-800 flex items-center justify-center cursor-move shadow-lg"
-                    [style.left.px]="obs.x" [style.top.px]="obs.y" [style.width.px]="obs.width"
-                    [style.height.px]="obs.height" [style.backgroundColor]="obs.color || '#27272a'"
-                    [class.ring-2]="selectedElementId() === obs.id" [class.ring-white]="selectedElementId() === obs.id"
-                    (mousedown)="onMouseDown($event, obs.id, 'obstacle', obs.x, obs.y)">
-                    <app-icon name="slash" class="text-zinc-500 opacity-20 w-full h-full p-2"></app-icon>
-                </div>
-
-                <!-- DOORS -->
-                <div *ngFor="let door of doors()" class="absolute flex flex-col items-center justify-center cursor-move"
-                    [style.left.px]="door.x" [style.top.px]="door.y" [style.width.px]="door.width"
-                    [style.height.px]="door.height" [class.ring-2]="selectedElementId() === door.id"
-                    [class.ring-blue-500]="selectedElementId() === door.id"
-                    (mousedown)="onMouseDown($event, door.id, 'door', door.x, door.y)">
-
-                    <div class="w-full h-2 bg-emerald-500 rounded shadow-glow mb-1"></div>
-                    <span class="text-[10px] font-mono text-zinc-400 whitespace-nowrap">{{ door.name }}</span>
-                </div>
-
-                <!-- ZONES -->
-                <div *ngFor="let zone of zones()" class="absolute border-2 rounded-lg transition-shadow group"
-                    [style.left.px]="zone.x" [style.top.px]="zone.y" [style.width.px]="zone.width"
-                    [style.height.px]="zone.height" [style.borderColor]="zone.color"
-                    [style.backgroundColor]="zone.color + '15'" [class.ring-2]="selectedElementId() === zone.id"
-                    [class.ring-white]="selectedElementId() === zone.id"
-                    (mousedown)="onMouseDown($event, zone.id, 'zone', zone.x, zone.y)"
-                    (click)="selectElement(zone.id, 'zone', $event)">
-
-                    <!-- Zone Label -->
-                    <div class="absolute -top-7 left-0 px-2 py-0.5 rounded text-xs font-bold text-white whitespace-nowrap"
-                        [style.backgroundColor]="zone.color">
-                        {{ zone.name }}
-                    </div>
-
-                    <!-- Structures visual containment -->
-                    <!-- Note: In data model, structures have X/Y relative to zone or warehouse. 
-                         In previous code, it rendered structures INSIDE zones as DOM children. 
-                         We kept that logic. So struct.x is relative to zone. -->
-
-                    <div *ngFor="let struct of structures()" [hidden]="struct.zoneId !== zone.id"
-                        class="absolute bg-zinc-800 border border-zinc-600 hover:border-purple-500 transition-colors cursor-move"
-                        [style.left.px]="struct.x" [style.top.px]="struct.y" [style.width.px]="struct.width"
-                        [style.height.px]="struct.height" [class.ring-1]="selectedElementId() === struct.id"
-                        [class.ring-purple-400]="selectedElementId() === struct.id"
-                        [class.bg-zinc-700]="selectedElementId() === struct.id"
-                        (mousedown)="onMouseDown($event, struct.id, 'structure', struct.x, struct.y)"
-                        (click)="selectElement(struct.id, 'structure', $event)"
-                        (dblclick)="onElementDoubleClick(struct.id, 'structure', $event)">
-
-                        <!-- Grid for bays/levels visualization (mini) -->
-                        <div class="w-full h-full grid gap-px opacity-30 pointer-events-none"
-                            [style.gridTemplateColumns]="'repeat(' + struct.bays + ', 1fr)'"
-                            [style.gridTemplateRows]="'repeat(' + struct.levels + ', 1fr)'">
-                            <div *ngFor="let i of [].constructor(struct.bays * struct.levels)" class="bg-zinc-500">
-                            </div>
-                        </div>
-
-                        <!-- Direction Arrow (Simple) -->
-                        <div class="absolute -bottom-4 w-full flex justify-center opacity-0 group-hover:opacity-50">
-                            <app-icon name="arrow-down" [size]="12" class="text-zinc-500"></app-icon>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+    <!-- Top Right Controls -->
+    <div class="view-controls">
+        <div class="control-group">
+            <button class="control-btn" (click)="scale.set(scale() + 0.1)" title="Zoom In">
+                <app-icon name="plus" class="w-4 h-4"></app-icon>
+            </button>
+            <span class="control-label">{{ (scale() * 100).toFixed(0) }}%</span>
+            <button class="control-btn" (click)="scale.set(scale() - 0.1)" title="Zoom Out">
+                <app-icon name="minus" class="w-4 h-4"></app-icon>
+            </button>
         </div>
 
-        <!-- Properties Sidebar (Right) -->
-        <div class="w-80 bg-zinc-900 border-l border-zinc-800 p-6 flex flex-col z-20 shadow-2xl relative"
-            *ngIf="selectedElementId()">
+        <div class="control-group">
+            <button class="control-btn" (click)="snapEnabled.set(!snapEnabled())" [class.text-blue-400]="snapEnabled()"
+                title="Toggle Snap">
+                <app-icon name="grid" class="w-4 h-4"></app-icon>
+            </button>
+            <span class="control-label">Snap</span>
+        </div>
+    </div>
 
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-white font-semibold">Properties</h2>
-                <button (click)="onBackgroundClick()" class="text-zinc-500 hover:text-white">
-                    <app-icon name="x" class="w-4 h-4"></app-icon>
-                </button>
+    <!-- Main Infinite Canvas -->
+    <div #scrollContainer class="absolute inset-0 overflow-auto" (mousedown)="onBackgroundMouseDown($event)"
+        [style.cursor]="isPanning ? 'grabbing' : (activeTool() === 'pan' || isSpacePressed() ? 'grab' : 'default')">
+        <div class="relative min-w-[3000px] min-h-[3000px] transform-origin-top-left transition-transform duration-75 p-20"
+            [style.transform]="'scale(' + scale() + ')'">
+
+            <!-- Physical Boundary Label -->
+            <div
+                class="absolute top-10 left-20 warehouse-boundary-label text-xs font-mono text-zinc-400 pointer-events-none">
+                Boundaries: 150m x 100m
             </div>
 
-            <!-- ZONE PROPERTIES -->
-            <div *ngIf="selectedElementType() === 'zone'">
-                <ng-container *ngFor="let z of zones()">
-                    <div *ngIf="z.id === selectedElementId()" class="space-y-4">
-                        <div>
-                            <label class="text-xs text-zinc-400 block mb-1">Zone Name</label>
-                            <input type="text" [(ngModel)]="z.name"
-                                class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
+            <!-- Boundary Box -->
+            <div
+                class="border-2 border-dashed border-zinc-700 absolute top-20 left-20 w-[1500px] h-[1000px] rounded-lg pointer-events-none">
+            </div>
+
+            <!-- Selection Box Overlay -->
+            <div *ngIf="selectionBox() as box"
+                class="absolute border border-blue-500 bg-blue-500/10 pointer-events-none z-[100]"
+                [style.left.px]="box.x" [style.top.px]="box.y" [style.width.px]="box.width"
+                [style.height.px]="box.height">
+            </div>
+
+            <!-- Alignment Guides -->
+            <ng-container *ngFor="let guide of alignmentGuides()">
+                <div class="absolute border-dashed border-red-500/80 pointer-events-none z-[90]"
+                    [style.border-left-width.px]="guide.type === 'vertical' ? 1 : 0"
+                    [style.border-top-width.px]="guide.type === 'horizontal' ? 1 : 0"
+                    [style.left.px]="guide.type === 'vertical' ? guide.position : guide.start"
+                    [style.top.px]="guide.type === 'horizontal' ? guide.position : guide.start"
+                    [style.width.px]="guide.type === 'horizontal' ? (guide.end - guide.start) : 0"
+                    [style.height.px]="guide.type === 'vertical' ? (guide.end - guide.start) : 0">
+                </div>
+            </ng-container>
+
+            <!-- ZONES (Using Hierarchy for Performance/Consistency) -->
+            <div *ngFor="let zone of hierarchy().zones"
+                class="draggable-element element-zone group flex flex-col items-center justify-center transition-all"
+                [style.left.px]="zone.x" [style.top.px]="zone.y" [style.width.px]="zone.width"
+                [style.height.px]="zone.height" [style.borderColor]="zone.color"
+                [style.backgroundColor]="zone.color + '10'" [class.selected]="selectedElementIds().has(zone.id)"
+                (mousedown)="onMouseDown($event, zone.id, 'zone', zone.x, zone.y)"
+                (click)="selectElement(zone.id, 'zone', $event)">
+
+                <div class="selection-ring"></div>
+                <!-- Zone Label -->
+                <div class="zone-label" [style.backgroundColor]="zone.color">
+                    {{ zone.name }}
+                </div>
+
+                <!-- RACKS (Direct Children from Hierarchy) -->
+                <div *ngFor="let struct of zone.racks" class="draggable-element element-rack group"
+                    [style.left.px]="struct.x" [style.top.px]="struct.y" [style.width.px]="struct.width"
+                    [style.height.px]="struct.height" [class.selected]="selectedElementIds().has(struct.id)"
+                    (mousedown)="onMouseDown($event, struct.id, 'structure', struct.x, struct.y)"
+                    (click)="selectElement(struct.id, 'structure', $event)"
+                    (dblclick)="onElementDoubleClick(struct.id, 'structure', $event)">
+
+                    <div class="selection-ring"></div>
+
+                    <!-- Schematic Rack Visual -->
+                    <div class="rack-levels">
+                        <div *ngFor="let i of [].constructor(struct.levels || 0)" class="rack-level"></div>
+                    </div>
+
+                    <!-- Label Fallback (Visible Name) -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                        <span class="text-[10px] text-white/40 font-mono truncate px-1 select-none">
+                            {{ struct.code || struct.name }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OBSTACLES -->
+            <div *ngFor="let obs of obstacles()"
+                class="draggable-element element-obstacle rounded shadow-lg text-zinc-500" [style.left.px]="obs.x"
+                [style.top.px]="obs.y" [style.width.px]="obs.width" [style.height.px]="obs.height"
+                [class.selected]="selectedElementIds().has(obs.id)"
+                (mousedown)="onMouseDown($event, obs.id, 'obstacle', obs.x, obs.y)">
+
+                <div class="selection-ring"></div>
+                <app-icon name="slash" class="w-6 h-6 opacity-50"></app-icon>
+            </div>
+
+            <!-- DOORS -->
+            <div *ngFor="let door of doors()" class="draggable-element element-door" [style.left.px]="door.x"
+                [style.top.px]="door.y" [style.width.px]="door.width" [style.height.px]="door.height"
+                [class.selected]="selectedElementIds().has(door.id)"
+                (mousedown)="onMouseDown($event, door.id, 'door', door.x, door.y)">
+
+                <div class="selection-ring"></div>
+                <div class="door-indicator"></div>
+                <span class="door-label">{{ door.name }}</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Properties / Layers Panel -->
+    <div class="property-panel">
+        <!-- HEADER -->
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <ng-container *ngIf="selectedElementIds().size > 0; else layersTitle">
+                    {{ selectedElementId() ? 'Properties' : (selectedElementIds().size + ' Items Selected') }}
+                </ng-container>
+                <ng-template #layersTitle>
+                    Layers
+                </ng-template>
+            </h2>
+            <button class="close-btn" *ngIf="selectedElementIds().size > 0"
+                (click)="selectedElementIds().clear(); syncLegacySelection()">
+                <app-icon name="x" [size]="16"></app-icon>
+            </button>
+        </div>
+
+        <!-- SCENE GRAPH / LAYERS (Show when nothing selected) -->
+        <div *ngIf="selectedElementIds().size === 0" class="panel-content overflow-y-auto max-h-[calc(100vh-200px)]">
+
+            <!-- ROOT: Warehouse -->
+            <div class="mb-4">
+                <div
+                    class="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-default text-sm font-medium text-white/90">
+                    <app-icon name="box" [size]="16" class="text-blue-400"></app-icon>
+                    <span>{{ warehouse()?.name || 'Warehouse' }}</span>
+                    <span class="text-xs text-zinc-500 ml-auto">{{ zones().length }} Zones</span>
+                </div>
+
+                <!-- ZONE LIST -->
+                <div class="ml-4 border-l border-white/10 pl-2 mt-1 space-y-1">
+                    <div *ngFor="let z of hierarchy().zones" class="group">
+                        <!-- Zone Item -->
+                        <div (click)="selectFromTree(z.id, 'zone', $event)"
+                            class="flex items-center gap-2 p-1.5 rounded hover:bg-white/10 cursor-pointer transition-colors"
+                            [class.bg-blue-500-20]="selectedElementIds().has(z.id)">
+                            <!-- Zone Icon/Color -->
+                            <app-icon name="layout" [size]="14" [style.color]="z.color"></app-icon>
+                            <span class="text-xs text-zinc-300 group-hover:text-white">{{ z.name }}</span>
+                            <span class="text-[10px] text-zinc-600 ml-auto">{{ z.racks.length }}</span>
                         </div>
-                        <div>
-                            <label class="text-xs text-zinc-400 block mb-1">Color</label>
-                            <input type="color" [(ngModel)]="z.color"
-                                class="w-full h-8 bg-zinc-950 border border-zinc-700 rounded cursor-pointer">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-xs text-zinc-400 block mb-1">Width (px)</label>
-                                <input type="number" [(ngModel)]="z.width"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
-                            </div>
-                            <div>
-                                <label class="text-xs text-zinc-400 block mb-1">Height (px)</label>
-                                <input type="number" [(ngModel)]="z.height"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 mt-4 pt-4 border-t border-zinc-800">
-                            <div class="flex-1">
-                                <label class="text-xs text-zinc-400 block">X Pos</label>
-                                <input type="number" [(ngModel)]="z.x"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300">
-                            </div>
-                            <div class="flex-1">
-                                <label class="text-xs text-zinc-400 block">Y Pos</label>
-                                <input type="number" [(ngModel)]="z.y"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300">
+
+                        <!-- RACK LIST (Children) -->
+                        <div class="ml-4 border-l border-white/5 pl-2 mt-0.5 space-y-0.5" *ngIf="z.racks.length > 0">
+                            <div *ngFor="let r of z.racks" (click)="selectFromTree(r.id, 'structure', $event)"
+                                class="flex items-center gap-2 p-1 rounded hover:bg-white/5 cursor-pointer"
+                                [class.text-blue-400]="selectedElementIds().has(r.id)"
+                                [class.bg-blue-500-10]="selectedElementIds().has(r.id)">
+                                <app-icon name="grid" [size]="12" class="opacity-50"></app-icon>
+                                <span class="text-[11px] text-zinc-400 hover:text-white truncate max-w-[140px]">{{
+                                    r.name || r.code }}</span>
                             </div>
                         </div>
                     </div>
-                </ng-container>
+                </div>
             </div>
 
-            <!-- STRUCTURE PROPERTIES -->
-            <div *ngIf="selectedElementType() === 'structure'">
-                <ng-container *ngFor="let s of structures()">
-                    <div *ngIf="s.id === selectedElementId()" class="space-y-4">
-                        <div>
-                            <label class="text-xs text-zinc-400 block mb-1">Rack Name</label>
-                            <input type="text" [(ngModel)]="s.name"
-                                class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-xs text-zinc-400 block mb-1">Levels</label>
-                                <input type="number" [(ngModel)]="s.levels"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
-                            </div>
-                            <div>
-                                <label class="text-xs text-zinc-400 block mb-1">Bays</label>
-                                <input type="number" [(ngModel)]="s.bays"
-                                    class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
-                            </div>
-                        </div>
-                        <button (click)="onElementDoubleClick(s.id, 'structure', $event)"
-                            class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded flex items-center justify-center gap-2 text-sm mt-2">
-                            <app-icon name="eye" [size]="16"></app-icon> View Inventory
-                        </button>
-                    </div>
-                </ng-container>
+            <!-- ORPHANS / OBSTACLES -->
+            <div *ngIf="obstacles().length > 0" class="mb-4">
+                <div
+                    class="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-default text-sm font-medium text-white/90">
+                    <app-icon name="alert-circle" [size]="16" class="text-orange-400"></app-icon>
+                    <span>Obstacles</span>
+                </div>
+                <!-- List Obstackes -->
             </div>
 
-            <!-- OBSTACLE / DOOR PROPS -->
-            <div *ngIf="selectedElementType() === 'obstacle' || selectedElementType() === 'door'">
-                <p class="text-zinc-500 italic text-sm">Basic properties available for this element.</p>
-                <div class="mt-4" *ngIf="selectedElementType() === 'door'">
-                    <ng-container *ngFor="let d of doors()">
-                        <div *ngIf="d.id === selectedElementId()">
-                            <label class="text-xs text-zinc-400 block mb-1">Dock Name</label>
-                            <input type="text" [(ngModel)]="d.name"
-                                class="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-white text-sm">
+        </div>
+
+        <!-- PROPERTIES CONTENT (Show when selected) -->
+        <div class="panel-content custom-scrollbar" *ngIf="selectedElementIds().size > 0">
+            <!-- MULTI SELECTION MESSAGE -->
+            <div *ngIf="!selectedElementId()" class="p-4 bg-white/5 rounded-lg border border-white/10 text-center">
+                <p class="text-zinc-400 text-sm">Multiple elements selected.</p>
+                <p class="text-zinc-500 text-xs mt-1">Use drag to move group.</p>
+            </div>
+
+            <!-- SINGLE SELECTION EDITORS -->
+            <ng-container *ngIf="selectedElementId()">
+                <!-- ZONE PROPERTIES -->
+                <div *ngIf="selectedElementType() === 'zone'">
+                    <ng-container *ngFor="let z of zones()">
+                        <div *ngIf="z.id === selectedElementId()" class="space-y-4">
+                            <!-- Physical Data Display -->
+                            <div class="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                                <h3 class="text-xs font-bold text-blue-400 mb-2 uppercase tracking-wider">Physical
+                                    Measures</h3>
+
+                                <!-- Dimensions -->
+                                <div class="mb-2">
+                                    <span class="text-zinc-500 text-xs block mb-1">Dimensions (m)</span>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">W</span>
+                                            <input type="number" [ngModel]="z.width / 10"
+                                                (ngModelChange)="updateFromPhysical(z.id, 'zone', 'width', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">H</span>
+                                            <input type="number" [ngModel]="z.height / 10"
+                                                (ngModelChange)="updateFromPhysical(z.id, 'zone', 'height', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Position -->
+                                <div>
+                                    <span class="text-zinc-500 text-xs block mb-1">Global Position (m)</span>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">X</span>
+                                            <input type="number" [ngModel]="z.x / 10"
+                                                (ngModelChange)="updateFromPhysical(z.id, 'zone', 'x', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">Y</span>
+                                            <input type="number" [ngModel]="z.y / 10"
+                                                (ngModelChange)="updateFromPhysical(z.id, 'zone', 'y', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="text-xs text-zinc-400 block mb-1">Zone Name</label>
+                                <input type="text" [(ngModel)]="z.name" class="glass-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-xs text-zinc-400 block mb-1">Color Code</label>
+                                <div class="flex gap-2">
+                                    <input type="color" [(ngModel)]="z.color"
+                                        class="h-9 w-9 bg-transparent border border-zinc-600 rounded cursor-pointer p-0">
+                                    <input type="text" [(ngModel)]="z.color" class="glass-input flex-1 uppercase">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-zinc-400 block mb-1">Pixel Width</label>
+                                    <input type="number" [(ngModel)]="z.width" class="glass-input">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-zinc-400 block mb-1">Pixel Height</label>
+                                    <input type="number" [(ngModel)]="z.height" class="glass-input">
+                                </div>
+                            </div>
                         </div>
                     </ng-container>
                 </div>
-            </div>
 
-            <div class="mt-auto pt-6 flex flex-col gap-2">
-                <button (click)="saveChanges()" class="btn-glass-primary w-full justify-center">Save Changes</button>
-                <button (click)="deleteSelection()" class="text-red-400 hover:text-red-300 text-sm py-2">Delete
-                    Selection</button>
-            </div>
+                <!-- STRUCTURE PROPERTIES -->
+                <div *ngIf="selectedElementType() === 'structure'">
+                    <ng-container *ngFor="let s of structures()">
+                        <div *ngIf="s.id === selectedElementId()" class="space-y-4">
+                            <!-- Physical Data Display -->
+                            <div class="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                                <h3 class="text-xs font-bold text-blue-400 mb-2 uppercase tracking-wider">Physical
+                                    Measures</h3>
 
+                                <!-- Position -->
+                                <div class="mb-2">
+                                    <span class="text-zinc-500 text-xs block mb-1">Position ({{ getRelativePosition(s,
+                                        'structure').label }})</span>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">X</span>
+                                            <input type="number" [ngModel]="getRelativePosition(s, 'structure').x / 10"
+                                                (ngModelChange)="updateFromPhysical(s.id, 'structure', 'x', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">Y</span>
+                                            <input type="number" [ngModel]="getRelativePosition(s, 'structure').y / 10"
+                                                (ngModelChange)="updateFromPhysical(s.id, 'structure', 'y', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dimensions -->
+                                <div>
+                                    <span class="text-zinc-500 text-xs block mb-1">Dimensions (m)</span>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">W</span>
+                                            <input type="number" [ngModel]="s.width / 10"
+                                                (ngModelChange)="updateFromPhysical(s.id, 'structure', 'width', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                        <div class="relative">
+                                            <span class="absolute left-2 top-1.5 text-[10px] text-zinc-500">H</span>
+                                            <input type="number" [ngModel]="s.height / 10"
+                                                (ngModelChange)="updateFromPhysical(s.id, 'structure', 'height', $event)"
+                                                class="glass-input h-8 text-xs pl-6" step="0.1">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-right">
+                                    <span class="text-[10px] text-zinc-500">{{ s.levels }} Levels x {{ s.bays }}
+                                        Bays</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="text-xs text-zinc-400 block mb-1">Rack ID</label>
+                                <input type="text" [(ngModel)]="s.name" class="glass-input">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs text-zinc-400 block mb-1">Levels</label>
+                                    <input type="number" [(ngModel)]="s.levels" class="glass-input">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-zinc-400 block mb-1">Bays</label>
+                                    <input type="number" [(ngModel)]="s.bays" class="glass-input">
+                                </div>
+                            </div>
+                            <button (click)="onElementDoubleClick(s.id, 'structure', $event)"
+                                class="w-full py-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400 rounded-lg flex items-center justify-center gap-2 text-sm mt-4 transition-all">
+                                <app-icon name="eye" [size]="16"></app-icon> Visual Inventory
+                            </button>
+                        </div>
+                    </ng-container>
+                </div>
+
+                <!-- OBSTACLE / DOOR -->
+                <div *ngIf="selectedElementType() === 'obstacle' || selectedElementType() === 'door'">
+                    <div class="p-4 bg-white/5 rounded-lg border border-white/10 text-center">
+                        <p class="text-zinc-400 text-sm">Selection Mode Active</p>
+                    </div>
+                    <div class="mt-4" *ngIf="selectedElementType() === 'door'">
+                        <ng-container *ngFor="let d of doors()">
+                            <div *ngIf="d.id === selectedElementId()">
+                                <label class="text-xs text-zinc-400 block mb-1">Dock Label</label>
+                                <input type="text" [(ngModel)]="d.name" class="glass-input">
+                            </div>
+                        </ng-container>
+                    </div>
+                </div>
+            </ng-container>
         </div>
 
+        <div class="panel-footer flex flex-col gap-3">
+            <button (click)="saveChanges()" class="btn-primary-action w-full justify-center"
+                *ngIf="selectedElementId()">
+                Save Changes
+            </button>
+            <button (click)="deleteSelection()"
+                class="w-full py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-sm">
+                {{ selectedElementId() ? 'Delete Element' : 'Delete Selection (' + selectedElementIds().size + ')' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Dock Toolbar -->
+    <div class="floating-toolbar">
+        <!-- Tools -->
+        <button (click)="activeTool.set('select')" class="tool-btn" [class.active]="activeTool() === 'select'"
+            title="Select Tool (V)">
+            <app-icon name="cursor" class="w-6 h-6"></app-icon>
+        </button>
+        <button (click)="activeTool.set('pan')" class="tool-btn" [class.active]="activeTool() === 'pan'"
+            title="Pan Tool (H or Space)">
+            <app-icon name="hand" class="w-6 h-6"></app-icon>
+        </button>
+        <div class="toolbar-separator"></div>
+
+        <button (click)="addZone('racking')" class="tool-btn" title="Add Zone">
+            <app-icon name="layout" class="w-6 h-6"></app-icon>
+            <span>Zone</span>
+        </button>
+        <button (click)="addZone('bulk-stack')" class="tool-btn" title="Add Bulk Area">
+            <app-icon name="package" class="w-6 h-6"></app-icon>
+            <span>Bulk</span>
+        </button>
+        <button (click)="openRowWizard()" [disabled]="!selectedZoneId()" class="tool-btn"
+            [class.active]="selectedElementType() === 'structure'" title="Rack Wizard">
+            <app-icon name="layers" class="w-6 h-6"></app-icon>
+            <span>Rack Wizard</span>
+        </button>
+        <button (click)="addStructure()" [disabled]="!selectedZoneId()" class="tool-btn"
+            [class.active]="selectedElementType() === 'structure'" title="Add Single Rack">
+            <app-icon name="server" class="w-6 h-6"></app-icon>
+            <span>Rack</span>
+        </button>
+        <div class="toolbar-separator"></div>
+        <button (click)="addObstacle()" class="tool-btn" title="Add Obstacle">
+            <app-icon name="box" class="w-6 h-6"></app-icon>
+            <span>Obstacle</span>
+        </button>
+        <button (click)="addDoor()" class="tool-btn" title="Add Door">
+            <app-icon name="log-out" class="w-6 h-6"></app-icon>
+            <span>Door</span>
+        </button>
     </div>
 </div>
 
-<!-- Render Visualizer as Overlay -->
+<!-- Row Generator Wizard Modal -->
+<div *ngIf="showRowWizard()" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-[#1e293b] border border-white/10 rounded-2xl w-[400px] shadow-2xl p-6 flex flex-col gap-6">
+        <div class="flex justify-between items-center pb-4 border-b border-white/5">
+            <h2 class="text-xl font-bold text-white">Rack Row Generator</h2>
+            <button (click)="showRowWizard.set(false)" class="text-zinc-400 hover:text-white">
+                <app-icon name="x" class="w-5 h-5"></app-icon>
+            </button>
+        </div>
+
+        <div class="space-y-4">
+            <div class="form-group">
+                <label class="text-sm text-zinc-400 block mb-1">Number of Racks</label>
+                <input type="number" [(ngModel)]="rowWizardConfig.count" min="1" max="50" class="glass-input">
+            </div>
+
+            <div class="form-group">
+                <label class="text-sm text-zinc-400 block mb-1">Orientation</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button (click)="rowWizardConfig.orientation = 'horizontal'"
+                        [class.bg-blue-600]="rowWizardConfig.orientation === 'horizontal'"
+                        [class.bg-zinc-700]="rowWizardConfig.orientation !== 'horizontal'"
+                        class="py-2 rounded-lg text-sm text-white border border-white/5 transition-colors">
+                        Horizontal
+                    </button>
+                    <button (click)="rowWizardConfig.orientation = 'vertical'"
+                        [class.bg-blue-600]="rowWizardConfig.orientation === 'vertical'"
+                        [class.bg-zinc-700]="rowWizardConfig.orientation !== 'vertical'"
+                        class="py-2 rounded-lg text-sm text-white border border-white/5 transition-colors">
+                        Vertical
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="text-sm text-zinc-400 block mb-1">Spacing (px)</label>
+                <input type="number" [(ngModel)]="rowWizardConfig.spacing" step="10" class="glass-input">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-sm text-zinc-400 block mb-1">Levels</label>
+                    <input type="number" [(ngModel)]="rowWizardConfig.levels" class="glass-input">
+                </div>
+                <div>
+                    <label class="text-sm text-zinc-400 block mb-1">Bays</label>
+                    <input type="number" [(ngModel)]="rowWizardConfig.bays" class="glass-input">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button (click)="showRowWizard.set(false)"
+                class="flex-1 py-2.5 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors">
+                Cancel
+            </button>
+            <button (click)="generateRow()" class="flex-1 btn-primary-action justify-center">
+                Generate Row
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Rack Visualizer Overlay -->
 <app-rack-visualizer *ngIf="showRackVisualizer()" [structureId]="visualizerRackId()" (close)="closeVisualizer()">
 </app-rack-visualizer>

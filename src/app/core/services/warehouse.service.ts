@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, addDoc, updateDoc, deleteDoc, query, where, getDocs, collectionData, Timestamp, limit } from '@angular/fire/firestore';
+import { Firestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, query, where, getDocs, collectionData, Timestamp, limit } from '@angular/fire/firestore';
 import { Observable, from, map } from 'rxjs';
 import { Warehouse, WarehouseZone, StorageStructure, StorageLocation } from '../models/warehouse.model';
 
@@ -57,10 +57,17 @@ export class WarehouseService {
 
     getZones(warehouseId: string): Observable<WarehouseZone[]> {
         const q = query(this.zonesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }) as Observable<WarehouseZone[]>;
+        return collectionData(q, { idField: 'id' }).pipe(
+            map(data => data.map(item => this.convertTimestamps(item) as WarehouseZone))
+        );
     }
 
     async createZone(zone: Partial<WarehouseZone>): Promise<string> {
+        if (zone.id) {
+            const ref = doc(this.firestore, `warehouse_zones/${zone.id}`);
+            await setDoc(ref, zone);
+            return zone.id;
+        }
         const ref = await addDoc(this.zonesColl, zone);
         return ref.id;
     }
@@ -70,18 +77,67 @@ export class WarehouseService {
         await updateDoc(ref, updates);
     }
 
+    async deleteZone(id: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_zones/${id}`);
+        await deleteDoc(ref);
+    }
+
     // --- Obstacles ---
 
     getObstacles(warehouseId: string): Observable<any[]> {
         const q = query(this.obstaclesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' });
+        return collectionData(q, { idField: 'id' }).pipe(
+            map(data => data.map(item => this.convertTimestamps(item)))
+        );
+    }
+
+    async createObstacle(obstacle: any): Promise<string> {
+        if (obstacle.id) {
+            const ref = doc(this.firestore, `warehouse_obstacles/${obstacle.id}`);
+            await setDoc(ref, obstacle);
+            return obstacle.id;
+        }
+        const ref = await addDoc(this.obstaclesColl, obstacle);
+        return ref.id;
+    }
+
+    async updateObstacle(id: string, updates: any): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_obstacles/${id}`);
+        await updateDoc(ref, updates);
+    }
+
+    async deleteObstacle(id: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_obstacles/${id}`);
+        await deleteDoc(ref);
     }
 
     // --- Doors ---
 
     getDoors(warehouseId: string): Observable<any[]> {
         const q = query(this.doorsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' });
+        return collectionData(q, { idField: 'id' }).pipe(
+            map(data => data.map(item => this.convertTimestamps(item)))
+        );
+    }
+
+    async createDoor(door: any): Promise<string> {
+        if (door.id) {
+            const ref = doc(this.firestore, `warehouse_doors/${door.id}`);
+            await setDoc(ref, door);
+            return door.id;
+        }
+        const ref = await addDoc(this.doorsColl, door);
+        return ref.id;
+    }
+
+    async updateDoor(id: string, updates: any): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_doors/${id}`);
+        await updateDoc(ref, updates);
+    }
+
+    async deleteDoor(id: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_doors/${id}`);
+        await deleteDoc(ref);
     }
 
     // --- Structures (Racks) ---
@@ -91,10 +147,17 @@ export class WarehouseService {
         if (zoneId) {
             q = query(q, where('zoneId', '==', zoneId));
         }
-        return collectionData(q, { idField: 'id' }) as Observable<StorageStructure[]>;
+        return collectionData(q, { idField: 'id' }).pipe(
+            map(data => data.map(item => this.convertTimestamps(item) as StorageStructure))
+        );
     }
 
     async createStructure(structure: Partial<StorageStructure>): Promise<string> {
+        if (structure.id) {
+            const ref = doc(this.firestore, `warehouse_structures/${structure.id}`);
+            await setDoc(ref, structure);
+            return structure.id;
+        }
         const ref = await addDoc(this.structuresColl, structure);
         return ref.id;
     }
@@ -102,6 +165,11 @@ export class WarehouseService {
     async updateStructure(id: string, updates: Partial<StorageStructure>): Promise<void> {
         const ref = doc(this.firestore, `warehouse_structures/${id}`);
         await updateDoc(ref, updates);
+    }
+
+    async deleteStructure(id: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouse_structures/${id}`);
+        await deleteDoc(ref);
     }
 
     // --- Locations (Bins) ---

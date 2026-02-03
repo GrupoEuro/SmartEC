@@ -140,4 +140,8 @@ export const ICONS: Record<string, string> = {
     'terminal': '<polyline points="4 17 10 11 4 5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="19" x2="20" y2="19" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     'arrow_forward': '<line x1="5" y1="12" x2="19" y2="12" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12 5 19 12 12 19" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
     'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>', // Alias for log-out
+
+    // Tools
+    'hand': '<path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    'cursor': '<path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 13l6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
 };

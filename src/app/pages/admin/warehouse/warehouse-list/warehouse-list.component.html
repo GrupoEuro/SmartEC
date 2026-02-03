@@ -1,112 +1,123 @@
-<div class="p-6 space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
-                {{ 'ADMIN.WAREHOUSES.TITLE' | translate }}
-            </h1>
-            <p class="text-zinc-400 mt-1">
-                {{ 'ADMIN.WAREHOUSES.SUBTITLE' | translate }}
-            </p>
+<div class="product-dashboard-layout">
+    <!-- Sticky Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.WAREHOUSES.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="warehouses().length > 0">{{ warehouses().length }}</span>
+            </div>
         </div>
 
-        <button (click)="navigateToCreate()" class="btn-glass-primary flex items-center gap-2">
-            <app-icon name="plus" class="w-5 h-5"></app-icon>
-            <span>{{ 'ADMIN.WAREHOUSES.CREATE_NEW' | translate }}</span>
-        </button>
-    </div>
+        <div class="header-right">
+            <button class="btn-primary-action" (click)="navigateToCreate()">
+                <span class="icon">➕</span>
+                <span class="text">{{ 'ADMIN.WAREHOUSES.CREATE_NEW' | translate }}</span>
+            </button>
+        </div>
+    </header>
 
-    <!-- Warehouse Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div *ngFor="let warehouse of warehouses()"
-            class="warehouse-card group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl p-6 transition-all duration-300 hover:border-zinc-700 hover:shadow-2xl hover:shadow-purple-500/10">
+    <!-- Main Content Area -->
+    <main class="product-grid-view">
 
-            <!-- Background Gradient -->
-            <div
-                class="absolute inset-0 bg-gradient-to-br from-zinc-800/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        <!-- Unified Search & Filter Toolbar -->
+        <div class="table-toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="filterWarehouses()"
+                    [placeholder]="'ADMIN.WAREHOUSES.SEARCH_PLACEHOLDER' | translate">
             </div>
 
-            <!-- Content -->
-            <div class="relative z-10 flex flex-col h-full">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+            <!-- Status Filter -->
+            <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="filterWarehouses()">
+                <option value="all">{{ 'ADMIN.COMMON.ALL_STATUSES' | translate }}</option>
+                <option value="active">{{ 'ADMIN.COMMON.ACTIVE' | translate }}</option>
+                <option value="inactive">{{ 'ADMIN.COMMON.INACTIVE' | translate }}</option>
+            </select>
+
+            <button class="btn-clear-filters" *ngIf="statusFilter !== 'all' || searchTerm" (click)="resetFilters()">
+                Clear Filters
+            </button>
+        </div>
+
+        <!-- Glass Grid (Instead of Table) -->
+        <div class="warehouse-grid" *ngIf="filteredWarehouses().length > 0; else emptyState">
+            <div *ngFor="let warehouse of filteredWarehouses()" class="glass-card">
+
+                <div class="card-header">
+                    <div class="icon-wrapper">
                         <app-icon [name]="warehouse.type === 'physical' ? 'warehouse' : 'cloud'"
-                            class="w-6 h-6 text-purple-400">
-                        </app-icon>
+                            class="w-6 h-6"></app-icon>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-medium border"
+                    <span class="status-badge"
                         [ngClass]="warehouse.isActive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'">
-                        {{ (warehouse.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate }}
+                        {{ (warehouse.isActive ? 'ADMIN.COMMON.ACTIVE' : 'ADMIN.COMMON.INACTIVE') | translate }}
                     </span>
                 </div>
 
-                <h3 class="text-lg font-semibold text-white mb-1">{{ warehouse.name }}</h3>
-                <p class="text-sm text-zinc-500 mb-4 font-mono">{{ warehouse.code }}</p>
+                <div class="card-content">
+                    <h3>{{ warehouse.name }}</h3>
+                    <span class="card-code">{{ warehouse.code }}</span>
 
-                <div class="flex-1 space-y-3">
                     <!-- Physical Details -->
-                    <div *ngIf="warehouse.type === 'physical'" class="flex items-center gap-2 text-sm text-zinc-400">
-                        <app-icon name="map-pin" class="w-4 h-4"></app-icon>
+                    <div *ngIf="warehouse.type === 'physical'" class="detail-row">
+                        <app-icon name="map-pin" [size]="16"></app-icon>
                         <span class="truncate">{{ warehouse.address || 'No Address' }}</span>
                     </div>
 
                     <!-- Virtual Details -->
-                    <div *ngIf="warehouse.type === 'virtual'" class="flex items-center gap-2 text-sm text-zinc-400">
-                        <app-icon name="settings-2" class="w-4 h-4"></app-icon>
+                    <div *ngIf="warehouse.type === 'virtual'" class="detail-row">
+                        <app-icon name="settings-2" [size]="16"></app-icon>
                         <span class="capitalize">{{ warehouse.processType || 'General' }} Process</span>
                     </div>
-                </div>
 
-                <!-- Statistics Row -->
-                <div class="grid grid-cols-3 gap-3 mb-4" *ngIf="warehouse.type === 'physical'">
-                    <div class="bg-zinc-800/30 rounded-lg p-3 text-center">
-                        <div class="text-xs text-zinc-500 mb-1">Zones</div>
-                        <div class="text-lg font-bold text-white">{{ getWarehouseStats(warehouse.id!).zones }}</div>
-                    </div>
-                    <div class="bg-zinc-800/30 rounded-lg p-3 text-center">
-                        <div class="text-xs text-zinc-500 mb-1">Racks</div>
-                        <div class="text-lg font-bold text-white">{{ getWarehouseStats(warehouse.id!).racks }}</div>
-                    </div>
-                    <div class="bg-zinc-800/30 rounded-lg p-3 text-center">
-                        <div class="text-xs text-zinc-500 mb-1">Capacity</div>
-                        <div class="text-lg font-bold text-emerald-400">{{ getWarehouseStats(warehouse.id!).capacity }}%
+                    <!-- Statistics Grid -->
+                    <div class="stats-mini-grid" *ngIf="warehouse.type === 'physical'">
+                        <div class="stat-item">
+                            <span class="stat-label">Zones</span>
+                            <span class="stat-value">{{ getWarehouseStats(warehouse.id!).zones }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Racks</span>
+                            <span class="stat-value">{{ getWarehouseStats(warehouse.id!).racks }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Cap</span>
+                            <span class="stat-value highlight">{{ getWarehouseStats(warehouse.id!).capacity }}%</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Actions Footer -->
-                <div class="mt-6 pt-4 border-t border-zinc-800 flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                        <button (click)="viewLocator(warehouse.id!)"
-                            class="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors">
-                            <app-icon name="map-pin" [size]="14" class="inline mr-1"></app-icon>
+                <div class="card-actions">
+                    <div class="action-group">
+                        <button (click)="viewLocator(warehouse.id!)" class="btn-card-action">
+                            <app-icon name="map-pin" [size]="14"></app-icon>
                             Locator
                         </button>
                         <button (click)="editLayout(warehouse.id!)" *ngIf="warehouse.type === 'physical'"
-                            class="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors">
-                            <app-icon name="edit" [size]="14" class="inline mr-1"></app-icon>
+                            class="btn-card-action">
+                            <app-icon name="edit" [size]="14"></app-icon>
                             Edit
                         </button>
-                        <button (click)="deleteWarehouse(warehouse.id!)"
-                            class="text-xs px-3 py-1.5 rounded-lg bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 transition-colors">
-                            <app-icon name="trash-2" [size]="14" class="inline mr-1"></app-icon>
-                            Delete
+                        <button (click)="deleteWarehouse(warehouse.id!)" class="btn-card-action danger">
+                            <app-icon name="trash-2" [size]="14"></app-icon>
                         </button>
                     </div>
                     <a [routerLink]="['/admin/warehouses', warehouse.id]"
                         class="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1">
-                        {{ 'COMMON.MANAGE' | translate }}
+                        {{ 'ADMIN.COMMON.MANAGE' | translate }}
                         <app-icon name="arrow-right" class="w-4 h-4"></app-icon>
                     </a>
                 </div>
+
             </div>
         </div>
 
-        <!-- Empty State -->
-        <div *ngIf="warehouses().length === 0"
-            class="col-span-full flex flex-col items-center justify-center py-12 text-zinc-500">
-            <app-icon name="warehouse" class="w-12 h-12 mb-4 opacity-50"></app-icon>
-            <p class="text-lg">{{ 'ADMIN.WAREHOUSES.NO_DATA' | translate }}</p>
-        </div>
-    </div>
+        <ng-template #emptyState>
+            <div class="empty-state">
+                <app-icon name="warehouse" class="w-12 h-12 mb-4 opacity-50 mx-auto"></app-icon>
+                <p class="text-lg">{{ 'ADMIN.WAREHOUSES.NO_DATA' | translate }}</p>
+            </div>
+        </ng-template>
+
+    </main>
 </div>

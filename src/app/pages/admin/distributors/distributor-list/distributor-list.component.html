@@ -2,72 +2,57 @@
     <!-- Sticky Command Header -->
     <header class="command-header">
         <div class="header-left">
-            <h1 class="page-title">{{ 'ADMIN.DISTRIBUTORS.TITLE' | translate }}</h1>
-            <p class="page-subtitle">{{ 'ADMIN.DISTRIBUTORS.SUBTITLE' | translate }}</p>
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.DISTRIBUTORS.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="filteredDistributors.length > 0">{{ filteredDistributors.length
+                    }}</span>
+            </div>
+            <!-- Subtitle removed to match products, or kept if preferred - removing for exact match -->
         </div>
-        <div class="header-actions">
-            <button class="btn-glass" (click)="exportToCSV()" [disabled]="filteredDistributors.length === 0">
+
+        <div class="header-right" style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn-ghost" (click)="exportToCSV()" [disabled]="filteredDistributors.length === 0"
+                title="{{ 'ADMIN.DISTRIBUTORS.EXPORT' | translate }}"
+                style="color: #e4e4e7; background: #27272a; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <span class="icon">📥</span>
-                {{ 'ADMIN.DISTRIBUTORS.EXPORT' | translate }}
+                <span class="text" style="font-size: 0.9rem;">{{ 'ADMIN.DISTRIBUTORS.EXPORT' | translate }}</span>
             </button>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <div class="dashboard-content">
+    <main class="product-grid-view">
 
-        <!-- Top Toolbar (Filters & Search) -->
-        <div class="table-toolbar glass-panel">
-            <div class="search-group">
+        <!-- Unified Search & Filter Toolbar -->
+        <div class="table-toolbar">
+            <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
-                    [placeholder]="'ADMIN.DISTRIBUTORS.SEARCH_PLACEHOLDER' | translate" class="glass-input" />
+                    [placeholder]="'ADMIN.DISTRIBUTORS.SEARCH_PLACEHOLDER' | translate">
             </div>
 
-            <div class="filter-group">
-                <button class="filter-chip" [class.active]="statusFilter === 'all'"
-                    (click)="statusFilter = 'all'; applyFilters()">
-                    {{ 'ADMIN.DISTRIBUTORS.FILTERS.ALL' | translate }}
-                </button>
-                <button class="filter-chip" [class.active]="statusFilter === 'new'"
-                    (click)="statusFilter = 'new'; applyFilters()">
-                    {{ 'ADMIN.DISTRIBUTORS.FILTERS.NEW' | translate }}
-                </button>
-                <button class="filter-chip" [class.active]="statusFilter === 'contacted'"
-                    (click)="statusFilter = 'contacted'; applyFilters()">
-                    {{ 'ADMIN.DISTRIBUTORS.FILTERS.CONTACTED' | translate }}
-                </button>
-                <button class="filter-chip" [class.active]="statusFilter === 'pending'"
-                    (click)="statusFilter = 'pending'; applyFilters()">
-                    {{ 'ADMIN.DISTRIBUTORS.FILTERS.PENDING' | translate }}
-                </button>
-                <button class="filter-chip" [class.active]="statusFilter === 'converted'"
-                    (click)="statusFilter = 'converted'; applyFilters()">
-                    {{ 'ADMIN.DISTRIBUTORS.FILTERS.CONVERTED' | translate }}
-                </button>
-            </div>
-        </div>
+            <!-- Status Filter disguised as generic filter -->
+            <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+                <option value="all">{{ 'ADMIN.DISTRIBUTORS.FILTERS.ALL' | translate }}</option>
+                <option value="new">{{ 'ADMIN.DISTRIBUTORS.FILTERS.NEW' | translate }}</option>
+                <option value="contacted">{{ 'ADMIN.DISTRIBUTORS.FILTERS.CONTACTED' | translate }}</option>
+                <option value="pending">{{ 'ADMIN.DISTRIBUTORS.FILTERS.PENDING' | translate }}</option>
+                <option value="converted">{{ 'ADMIN.DISTRIBUTORS.FILTERS.CONVERTED' | translate }}</option>
+                <option value="rejected">{{ 'ADMIN.DISTRIBUTORS.FILTERS.REJECTED' | translate }}</option>
+            </select>
 
-        <!-- Loading State -->
-        <div *ngIf="isLoading" class="loading-container">
-            <div class="spinner"></div>
-            <p class="loading-text">{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
-        </div>
-
-        <!-- Empty State -->
-        <div *ngIf="!isLoading && filteredDistributors.length === 0" class="empty-state glass-panel">
-            <div class="empty-icon">📋</div>
-            <h3>{{ 'ADMIN.DISTRIBUTORS.NO_RESULTS' | translate }}</h3>
-            <p>{{ searchTerm ? ('ADMIN.COMMON.TRY_ADJUSTING_FILTERS' | translate) : ('ADMIN.DISTRIBUTORS.NO_LEADS_DESC'
-                | translate) }}</p>
+            <button class="btn-clear-filters" *ngIf="statusFilter !== 'all' || searchTerm"
+                (click)="statusFilter = 'all'; searchTerm = ''; applyFilters()">
+                Clear Filters
+            </button>
         </div>
 
         <!-- Glass Table -->
-        <div *ngIf="!isLoading && filteredDistributors.length > 0" class="table-glass-container glass-panel">
+        <div class="table-glass-container" *ngIf="!isLoading && filteredDistributors.length > 0; else noDataOrLoading">
             <table class="rich-table">
                 <thead>
                     <tr>
-                        <th style="width: 40px;"></th> <!-- Expand Toggle -->
+                        <th class="w-12"></th> <!-- Expand Toggle -->
                         <th>{{ 'ADMIN.DISTRIBUTORS.TABLE.DATE' | translate }}</th>
                         <th>{{ 'ADMIN.DISTRIBUTORS.TABLE.BUSINESS' | translate }}</th>
                         <th>{{ 'ADMIN.DISTRIBUTORS.TABLE.CONTACT' | translate }}</th>
@@ -88,9 +73,9 @@
                             </td>
                             <td class="date-cell">{{ distributor.createdAt | adminDate }}</td>
                             <td>
-                                <div class="business-info">
-                                    <span class="business-name">{{ distributor.business }}</span>
-                                    <span class="distributor-name">{{ distributor.name }}</span>
+                                <div class="product-identity">
+                                    <span class="product-name">{{ distributor.business }}</span>
+                                    <span class="product-sku">{{ distributor.name }}</span>
                                 </div>
                             </td>
                             <td>
@@ -100,8 +85,8 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="state-badge" [title]="getStateName(distributor.state)">
-                                    {{ distributor.state || '-' }}
+                                <span class="category-badge" style="background: #64748b;">
+                                    {{ distributor.state ? getStateName(distributor.state) : '-' }}
                                 </span>
                             </td>
                             <td>{{ distributor.volume || '-' }}</td>
@@ -124,7 +109,7 @@
                                 </div>
                             </td>
                             <td class="text-right">
-                                <button class="btn-icon" (click)="openEditModal(distributor)"
+                                <button class="btn-icon-ghost" (click)="openEditModal(distributor)"
                                     [title]="'ADMIN.COMMON.EDIT' | translate">
                                     ✏️
                                 </button>
@@ -137,23 +122,27 @@
                                 <div class="expanded-content">
                                     <div class="details-grid">
                                         <div class="detail-card">
-                                            <h4>Lead Comments</h4>
-                                            <p class="comment-text">{{ distributor.comments || 'No comments provided.'
-                                                }}</p>
+                                            <h4>{{ 'ADMIN.DISTRIBUTORS.DETAIL.LEAD_COMMENTS' | translate }}</h4>
+                                            <p class="comment-text">{{ distributor.comments ||
+                                                ('ADMIN.DISTRIBUTORS.DETAIL.NO_COMMENTS' | translate) }}</p>
                                         </div>
 
                                         <div class="detail-card">
-                                            <h4>Internal Notes</h4>
-                                            <p class="note-text">{{ distributor.notes || 'No internal notes.' }}</p>
+                                            <h4>{{ 'ADMIN.DISTRIBUTORS.DETAIL.INTERNAL_NOTES' | translate }}</h4>
+                                            <p class="note-text">{{ distributor.notes ||
+                                                ('ADMIN.DISTRIBUTORS.DETAIL.NO_NOTES' | translate) }}</p>
                                         </div>
 
                                         <div *ngIf="distributor.contactedBy" class="detail-card full-width">
-                                            <h4>Contact History</h4>
+                                            <h4>{{ 'ADMIN.DISTRIBUTORS.DETAIL.CONTACT_HISTORY' | translate }}</h4>
                                             <div class="history-item">
-                                                <span class="history-user">{{ distributor.contactedBy }}</span>
-                                                <span class="history-action">updated status on</span>
-                                                <span class="history-date">{{ distributor.contactedAt | adminDate
-                                                    }}</span>
+                                                <span class="history-user" style="color: white; font-weight: 600;">{{
+                                                    distributor.contactedBy }}</span>
+                                                <span class="history-action"
+                                                    style="color: var(--text-secondary); margin: 0 4px;">{{
+                                                    'ADMIN.DISTRIBUTORS.DETAIL.UPDATED_BY' | translate }}</span>
+                                                <span class="history-date" style="color: var(--primary-400);">{{
+                                                    distributor.contactedAt | adminDate }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -165,6 +154,17 @@
             </table>
         </div>
 
+        <ng-template #noDataOrLoading>
+            <div *ngIf="isLoading" class="glass-loader">
+                <div class="spinner"></div>
+                Loading Distributors...
+            </div>
+
+            <div *ngIf="!isLoading && filteredDistributors.length === 0" class="empty-state">
+                No distributors found matching your criteria.
+            </div>
+        </ng-template>
+
         <!-- Pagination -->
         <div class="pagination-wrapper" *ngIf="filteredDistributors.length > 0">
             <app-pagination [config]="paginationConfig" [translationPrefix]="'ADMIN.DISTRIBUTORS'"
@@ -172,71 +172,75 @@
             </app-pagination>
         </div>
 
-    </div>
+    </main>
 </div>
 
 <!-- Edit Modal -->
 <div *ngIf="showEditModal && editingDistributor" class="modal-overlay" (click)="closeEditModal()">
     <div class="glass-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
-            <h2>Edit Lead Details</h2>
-            <button class="btn-icon close-btn" (click)="closeEditModal()">✖</button>
+            <h2>{{ 'ADMIN.DISTRIBUTORS.MODAL.EDIT_TITLE' | translate }}</h2>
+            <button class="btn-icon-ghost close-btn" (click)="closeEditModal()">✖</button>
         </div>
 
         <div class="modal-body">
             <div class="info-grid">
                 <div class="info-item">
-                    <label>Name</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.NAME' | translate }}</label>
                     <p>{{ editingDistributor.name }}</p>
                 </div>
                 <div class="info-item">
-                    <label>Business</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.BUSINESS' | translate }}</label>
                     <p>{{ editingDistributor.business }}</p>
                 </div>
                 <div class="info-item">
-                    <label>Email</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.EMAIL' | translate }}</label>
                     <p>{{ editingDistributor.email }}</p>
                 </div>
                 <div class="info-item">
-                    <label>Phone</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.PHONE' | translate }}</label>
                     <p>{{ editingDistributor.phone }}</p>
                 </div>
                 <div class="info-item">
-                    <label>State</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.STATE' | translate }}</label>
                     <p>{{ getStateName(editingDistributor.state) }}</p>
                 </div>
                 <div class="info-item">
-                    <label>Volume</label>
+                    <label>{{ 'ADMIN.DISTRIBUTORS.MODAL.VOLUME' | translate }}</label>
                     <p>{{ editingDistributor.volume }}</p>
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Lead's Comments</label>
-                <div class="readonly-text">{{ editingDistributor.comments || 'No comments' }}</div>
+                <label>{{ 'ADMIN.DISTRIBUTORS.DETAIL.LEAD_COMMENTS' | translate }}</label>
+                <div class="readonly-text">{{ editingDistributor.comments || ('ADMIN.DISTRIBUTORS.DETAIL.NO_COMMENTS' |
+                    translate) }}</div>
             </div>
 
             <div class="form-group">
-                <label for="status">Status</label>
+                <label for="status">{{ 'ADMIN.DISTRIBUTORS.TABLE.STATUS' | translate }}</label>
                 <select id="status" [(ngModel)]="editForm.status" class="glass-select">
-                    <option value="new">New</option>
-                    <option value="contacted">Contacted</option>
-                    <option value="pending">Pending</option>
-                    <option value="converted">Approved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="new">{{ 'ADMIN.DISTRIBUTORS.STATUS.NEW' | translate }}</option>
+                    <option value="contacted">{{ 'ADMIN.DISTRIBUTORS.STATUS.CONTACTED' | translate }}</option>
+                    <option value="pending">{{ 'ADMIN.DISTRIBUTORS.STATUS.PENDING' | translate }}</option>
+                    <option value="converted">{{ 'ADMIN.DISTRIBUTORS.STATUS.APPROVED' | translate }}</option>
+                    <option value="rejected">{{ 'ADMIN.DISTRIBUTORS.STATUS.REJECTED' | translate }}</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="notes">Internal Notes</label>
-                <textarea id="notes" [(ngModel)]="editForm.notes" placeholder="Add notes about this lead..." rows="4"
+                <label for="notes">{{ 'ADMIN.DISTRIBUTORS.DETAIL.INTERNAL_NOTES' | translate }}</label>
+                <textarea id="notes" [(ngModel)]="editForm.notes"
+                    [placeholder]="'ADMIN.DISTRIBUTORS.DETAIL.NOTE_PLACEHOLDER' | translate" rows="4"
                     class="glass-textarea"></textarea>
             </div>
         </div>
 
         <div class="modal-footer">
-            <button class="btn-glass" (click)="closeEditModal()">Cancel</button>
-            <button class="btn-primary" (click)="saveEdit()">Save Changes</button>
+            <button class="btn-ghost" (click)="closeEditModal()"
+                style="border: 1px solid var(--border-medium); color: white;">{{ 'ADMIN.COMMON.CANCEL' | translate
+                }}</button>
+            <button class="btn-primary-action" (click)="saveEdit()">{{ 'ADMIN.COMMON.SAVE' | translate }}</button>
         </div>
     </div>
 </div>

@@ -9,6 +9,7 @@ import { Warehouse, WarehouseZone, StorageStructure, Obstacle, Door } from '../.
 import { RackVisualizerComponent } from '../../../../shared/components/rack-visualizer/rack-visualizer.component';
 
 type ElementType = 'zone' | 'structure' | 'obstacle' | 'door';
+type WarehouseElement = WarehouseZone | StorageStructure | Obstacle | Door;
 
 export interface AlignmentGuide {
     type: 'vertical' | 'horizontal';
@@ -54,7 +55,7 @@ export class MoveCommand implements Command {
 
 export class AddCommand implements Command {
     constructor(
-        private items: { id: string, type: ElementType, model: any }[],
+        private items: { id: string, type: ElementType, model: WarehouseElement }[],
         private service: WarehouseService,
         private component: LayoutEditorComponent
     ) { }
@@ -73,8 +74,8 @@ export class AddCommand implements Command {
             this.items.forEach(item => {
                 this.component.addLocalItem(item.id, item.type, item.model);
                 // Service calls
-                if (item.type === 'zone') this.service.createZone(item.model);
-                else if (item.type === 'structure') this.service.createStructure(item.model);
+                if (item.type === 'zone') this.service.createZone(item.model as WarehouseZone);
+                else if (item.type === 'structure') this.service.createStructure(item.model as StorageStructure);
                 // etc (assuming service creates if not exists or updates)
             });
         } else {
@@ -91,7 +92,7 @@ export class AddCommand implements Command {
 
 export class DeleteCommand implements Command {
     constructor(
-        private items: { id: string, type: ElementType, model: any }[],
+        private items: { id: string, type: ElementType, model: WarehouseElement }[],
         private service: WarehouseService,
         private component: LayoutEditorComponent
     ) { }
@@ -120,8 +121,8 @@ export class DeleteCommand implements Command {
             this.items.forEach(item => {
                 this.component.addLocalItem(item.id, item.type, item.model);
                 // Service create/restore calls
-                if (item.type === 'zone') this.service.createZone(item.model);
-                else if (item.type === 'structure') this.service.createStructure(item.model);
+                if (item.type === 'zone') this.service.createZone(item.model as WarehouseZone);
+                else if (item.type === 'structure') this.service.createStructure(item.model as StorageStructure);
                 // etc.
             });
         }
@@ -357,7 +358,7 @@ export class LayoutEditorComponent implements OnInit {
     }
 
     // Clipboard
-    clipboard: { type: ElementType, model: any }[] = [];
+    clipboard: { type: ElementType, model: WarehouseElement }[] = [];
 
     // ...
 
@@ -419,23 +420,31 @@ export class LayoutEditorComponent implements OnInit {
                 this.clipboard.push({ type, model: JSON.parse(JSON.stringify(item)) });
             }
         });
-        console.log('Copied items:', this.clipboard.length);
     }
 
     paste() {
         if (this.clipboard.length === 0) return;
 
-        const pastedItems: { id: string, type: ElementType, model: any }[] = [];
+        const pastedItems: { id: string, type: ElementType, model: WarehouseElement }[] = [];
         const newSelection = new Set<string>();
 
         this.clipboard.forEach(clip => {
             // Generate new ID
             const newId = crypto.randomUUID();
-            const newModel = { ...clip.model, id: newId, x: clip.model.x + 20, y: clip.model.y + 20 };
+            // We need to cast to any to access properties safely or use type guards, 
+            // but for simple cloning/properties spread it's okay if we are careful.
+            // However, TS might complain about 'x' and 'y' not existing on all types if not common.
+            // WarehouseZone, StorageStructure, Obstacle, Door ALL have x, y, width, height, id.
+            // So accessing .x .y is safe on the Union Type if defined in all interfaces.
+            // Let's check model.
+            // Yes, all have x, y.
 
-            // Adjust name to indicate copy
-            if (newModel.name) newModel.name += ' (Copy)';
-            if (newModel.code) newModel.code += '-CP';
+            const newModel = { ...clip.model, id: newId, x: clip.model.x + 20, y: clip.model.y + 20 } as WarehouseElement;
+
+            // Adjust name to indicate copy (Safe cast to access potential properties)
+            const mutableModel = newModel as any;
+            if (mutableModel.name) mutableModel.name += ' (Copy)';
+            if (mutableModel.code) mutableModel.code += '-CP';
 
             pastedItems.push({ id: newId, type: clip.type, model: newModel });
             newSelection.add(newId);
@@ -451,23 +460,28 @@ export class LayoutEditorComponent implements OnInit {
     }
 
     // Helpers for AddCommand
-    addLocalItem(id: string, type: ElementType, model: any) {
+    addLocalItem(id: string, type: ElementType, model: WarehouseElement) {
         // Prevent duplicates (Ghost Racks fix)
         // If item with same ID exists, do nothing or update? 
         // Ideally update, but for "Add" command, it should be new.
         // Let's safe-guard: if exists, replace. If not, add.
 
         const updateOrAdd = (list: any[], item: any) => {
+            // Leaving internal logic as any for generic array handling briefly, or type it properly?
+            // Signals are specific types.
+            // list is WarehouseZone[] | StorageStructure[] ...
+            // Let's keep internal lambda simple or type it:
+            // (list: WarehouseElement[], item: WarehouseElement)
             if (list.some(i => i.id === item.id)) {
                 return list.map(i => i.id === item.id ? item : i);
             }
             return [...list, item];
         };
 
-        if (type === 'zone') this.zones.update(l => updateOrAdd(l, model));
-        else if (type === 'structure') this.structures.update(l => updateOrAdd(l, model));
-        else if (type === 'obstacle') this.obstacles.update(l => updateOrAdd(l, model));
-        else if (type === 'door') this.doors.update(l => updateOrAdd(l, model));
+        if (type === 'zone') this.zones.update(l => updateOrAdd(l, model as WarehouseZone) as WarehouseZone[]);
+        else if (type === 'structure') this.structures.update(l => updateOrAdd(l, model as StorageStructure) as StorageStructure[]);
+        else if (type === 'obstacle') this.obstacles.update(l => updateOrAdd(l, model as Obstacle) as Obstacle[]);
+        else if (type === 'door') this.doors.update(l => updateOrAdd(l, model as Door) as Door[]);
     }
 
     removeLocalItem(id: string, type: ElementType) {
@@ -1292,39 +1306,38 @@ export class LayoutEditorComponent implements OnInit {
             const s = this.structures().find(i => i.id === id);
             if (s) await this.warehouseService.updateStructure(id, s);
         }
-    }
-        
+
         this.hasUnsavedChanges.set(false);
-this.onBackgroundClick();
+        this.onBackgroundClick();
     }
 
     async deleteSelection() {
-    if (!confirm('Delete selected elements?')) return;
-    const selectedIds = this.selectedElementIds();
-    if (selectedIds.size === 0) return;
+        if (!confirm('Delete selected elements?')) return;
+        const selectedIds = this.selectedElementIds();
+        if (selectedIds.size === 0) return;
 
-    const itemsToDelete: { id: string, type: ElementType, model: any }[] = [];
+        const itemsToDelete: { id: string, type: ElementType, model: any }[] = [];
 
-    selectedIds.forEach(id => {
-        const z = this.zones().find(i => i.id === id);
-        if (z) itemsToDelete.push({ id, type: 'zone', model: { ...z } });
+        selectedIds.forEach(id => {
+            const z = this.zones().find(i => i.id === id);
+            if (z) itemsToDelete.push({ id, type: 'zone', model: { ...z } });
 
-        const s = this.structures().find(i => i.id === id);
-        if (s) itemsToDelete.push({ id, type: 'structure', model: { ...s } });
+            const s = this.structures().find(i => i.id === id);
+            if (s) itemsToDelete.push({ id, type: 'structure', model: { ...s } });
 
-        const o = this.obstacles().find(i => i.id === id);
-        if (o) itemsToDelete.push({ id, type: 'obstacle', model: { ...o } });
+            const o = this.obstacles().find(i => i.id === id);
+            if (o) itemsToDelete.push({ id, type: 'obstacle', model: { ...o } });
 
-        const d = this.doors().find(i => i.id === id);
-        if (d) itemsToDelete.push({ id, type: 'door', model: { ...d } });
-    });
+            const d = this.doors().find(i => i.id === id);
+            if (d) itemsToDelete.push({ id, type: 'door', model: { ...d } });
+        });
 
-    if (itemsToDelete.length > 0) {
-        const cmd = new DeleteCommand(itemsToDelete, this.warehouseService, this);
-        this.executeCommand(cmd);
+        if (itemsToDelete.length > 0) {
+            const cmd = new DeleteCommand(itemsToDelete, this.warehouseService, this);
+            this.executeCommand(cmd);
 
-        this.selectedElementIds.set(new Set());
-        this.syncLegacySelection();
+            this.selectedElementIds.set(new Set());
+            this.syncLegacySelection();
+        }
     }
-}
 }

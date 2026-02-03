@@ -15,36 +15,51 @@ import { FormsModule } from '@angular/forms';
        
        <div *ngFor="let folder of folders()" class="folder-node">
           <div 
-            class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors group relative"
-            [class.bg-indigo-50]="selectedFolderId === folder.id"
-            [class.text-indigo-700]="selectedFolderId === folder.id"
-            [class.text-slate-600]="selectedFolderId !== folder.id"
-            [class.hover:bg-slate-100]="selectedFolderId !== folder.id"
+            class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group relative border border-transparent"
+            [class.bg-indigo-500_10]="selectedFolderId === folder.id"
+            [class.border-indigo-500_30]="selectedFolderId === folder.id"
+            [class.text-indigo-400]="selectedFolderId === folder.id"
+            [class.text-slate-400]="selectedFolderId !== folder.id"
+            [class.hover:bg-white_05]="selectedFolderId !== folder.id"
+            [class.hover:text-slate-200]="selectedFolderId !== folder.id"
             (click)="selectFolder(folder)"
             (contextmenu)="onContextMenu($event, folder)">
             
             <!-- Expand Toggle -->
             <button 
                 (click)="$event.stopPropagation(); toggleExpand(folder)"
-                class="p-0.5 rounded hover:bg-black/5 text-slate-400">
+                class="p-0.5 rounded hover:bg-white/10 text-slate-500 transition-colors">
                 <app-icon [name]="isExpanded(folder) ? 'chevron_down' : 'chevron_right'" [size]="14"></app-icon>
             </button>
 
             <!-- Icon -->
             <div class="relative">
                  <app-icon [name]="selectedFolderId === folder.id ? 'folder_open' : 'folder'" [size]="18"
-                 [class.text-indigo-500]="selectedFolderId === folder.id"
-                 [class.text-slate-400]="selectedFolderId !== folder.id"></app-icon>
+                 [class.text-indigo-400]="selectedFolderId === folder.id"
+                 [class.text-slate-500]="selectedFolderId !== folder.id"
+                 class="transition-colors"></app-icon>
             </div>
 
-            <span class="text-sm font-medium truncate select-none">{{ folder.name }}</span>
+            <span class="text-sm font-medium truncate select-none flex-1">{{ folder.name }}</span>
             
-            <!-- Quick Add Subfolder (Hover) -->
-            <button (click)="$event.stopPropagation(); promptCreateFolder(folder)"
-                class="ml-auto opacity-0 group-hover:opacity-100 p-1 hover:bg-indigo-100 text-indigo-600 rounded"
-                title="New Subfolder">
-                <app-icon name="plus" [size]="12"></app-icon>
-            </button>
+            <!-- Quick Actions (Hover) -->
+            <div class="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                <button (click)="$event.stopPropagation(); renameFolder(folder)"
+                    class="p-1 hover:bg-indigo-500/20 text-slate-500 hover:text-indigo-400 rounded transition-colors"
+                    title="Rename">
+                    <app-icon name="edit" [size]="12"></app-icon>
+                </button>
+                <button (click)="$event.stopPropagation(); deleteFolder(folder)"
+                    class="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-colors"
+                    title="Delete">
+                    <app-icon name="trash" [size]="12"></app-icon>
+                </button>
+                <button (click)="$event.stopPropagation(); promptCreateFolder(folder)"
+                    class="p-1 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 rounded transition-colors"
+                    title="New Subfolder">
+                    <app-icon name="plus" [size]="12"></app-icon>
+                </button>
+            </div>
           </div>
 
           <!-- Recursive Children -->
@@ -148,9 +163,25 @@ export class FolderTreeComponent implements OnInit {
         }
     }
 
+    async renameFolder(folder: MediaFolder) {
+        const newName = prompt('Rename folder:', folder.name);
+        if (newName && newName !== folder.name) {
+            await this.mediaService.renameFolder(folder.id!, newName);
+            // Refresh logic (simple signal update or reload)
+            // Ideally we reload parent. For now, let's just update local object if possible or trigger reload
+            folder.name = newName; // Optimistic update
+        }
+    }
+
+    async deleteFolder(folder: MediaFolder) {
+        if (confirm(`Delete folder "${folder.name}" and all its contents?`)) {
+            await this.mediaService.deleteFolder(folder.id!);
+            this.loadFolders(); // Reload this level
+        }
+    }
+
     onContextMenu(event: MouseEvent, folder: MediaFolder) {
         event.preventDefault();
-        // TODO: Implement Context Menu (Rename, Delete)
-
+        // Context menu replaced by hover actions
     }
 }

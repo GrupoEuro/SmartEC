@@ -33,6 +33,7 @@ export interface MediaFilter {
     category?: string;
     folderId?: string; // Filter by specific folder ID
     tag?: string;
+    searchQuery?: string;
     search?: string;
     limit?: number;
     startAfter?: any; // For pagination

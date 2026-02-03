@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject } from 'rxjs';
@@ -15,6 +15,7 @@ import { MediaAsset, MediaFilter, MediaFolder } from '../../../core/models/media
 import { MediaService } from '../../../core/services/media.service';
 import { SharedLink } from '../../../core/models/shared-link.model';
 import { DocumentSharingService } from '../../../core/services/document-sharing.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-media-library',
@@ -32,14 +33,20 @@ import { DocumentSharingService } from '../../../core/services/document-sharing.
     FolderTreeComponent
   ],
   templateUrl: './media-library.component.html',
-  styleUrls: ['./media-library.component.css']
+  styleUrls: ['./media-library.component.css'],
+  encapsulation: ViewEncapsulation.None
 })
 export class MediaLibraryComponent implements OnInit {
   private mediaService = inject(MediaService);
   private sharingService = inject(DocumentSharingService);
+  private toast = inject(ToastService);
 
-  // State
-  filter$ = new BehaviorSubject<MediaFilter>({ limit: 30 });
+
+
+  // ... (rest of class)
+
+
+  filter$ = new BehaviorSubject<MediaFilter>({ limit: 50 });
   assets = signal<MediaAsset[]>([]);
 
   editingAsset = signal<MediaAsset | null>(null);
@@ -159,11 +166,13 @@ export class MediaLibraryComponent implements OnInit {
         }
 
         this.lastDoc = result.lastDoc;
-        this.hasMore.set(result.assets.length === filter.limit); // If we got full page, assume more
+        this.hasMore.set(result.assets.length === filter.limit);
         this.isLoading.set(false);
       },
       error: (err) => {
+        // Safe fail
         console.error('Failed to load assets', err);
+        this.toast.error('Failed to load assets');
         this.isLoading.set(false);
       }
     });
@@ -205,8 +214,9 @@ export class MediaLibraryComponent implements OnInit {
       category: this.selectedCategory() || undefined,
       folderId: this.currentFolderId() !== null ? this.currentFolderId()! : undefined,
       sortField: this.sortField(),
-      sortDirection: this.sortDirection()
-      // search: this.searchQuery() || undefined 
+      sortDirection: this.sortDirection(),
+      searchQuery: this.searchQuery() || undefined,
+      limit: 50
     });
   }
 
@@ -223,24 +233,17 @@ export class MediaLibraryComponent implements OnInit {
 
   copyUrl(url: string) {
     navigator.clipboard.writeText(url);
-    // TODO: Show toast
+    this.toast.success('Link copied to clipboard');
   }
 
   // Selection State
   selectedAssets = signal<Set<string>>(new Set());
-  async migrateCategories() {
-    if (!confirm('This will move all assets from legacy categories into new Folders. Continue?')) return;
-    this.isLoading.set(true);
-    try {
-      const result = await this.mediaService.migrateLegacyCategories(this.CATEGORIES);
-      alert(`Migration Complete. Moved ${result.migrated} assets.`);
-      this.loadAssets(true);
-    } catch (e) {
-      alert('Migration failed');
-      console.error(e);
-    } finally {
-      this.isLoading.set(false);
-    }
+
+
+  clearFilters() {
+    this.searchQuery.set('');
+    this.selectedCategory.set('');
+    this.updateFilter();
   }
 
   async duplicateAsset(asset: MediaAsset) {
@@ -250,10 +253,10 @@ export class MediaLibraryComponent implements OnInit {
       // Refresh list
       // We could also just push to local state but full reload is safer for consistency
       this.loadAssets(true);
-      // Optional toast
+      this.toast.success('Asset duplicated');
     } catch (e) {
       console.error('Duplicate failed', e);
-      alert('Failed to duplicate asset');
+      this.toast.error('Failed to duplicate asset');
     } finally {
       this.isLoading.set(false);
     }
@@ -304,7 +307,7 @@ export class MediaLibraryComponent implements OnInit {
   async deleteSelected() {
     const ids = Array.from(this.selectedAssets());
     if (confirm(`Delete ${ids.length} assets? This cannot be undone.`)) {
-      alert('Bulk Delete is complex due to storage cleanup. Please delete individually for safer operations.');
+      this.toast.info('Bulk Delete is complex due to storage cleanup. Please delete individually for safer operations.');
     }
   }
 
@@ -373,7 +376,7 @@ export class MediaLibraryComponent implements OnInit {
     if (asset.contentType.startsWith('image/') || asset.contentType === 'image/svg+xml') {
       this.editingImage.set(asset);
     } else {
-      alert('Only images can be edited');
+      this.toast.warning('Only images can be edited');
     }
   }
 
@@ -418,7 +421,28 @@ export class MediaLibraryComponent implements OnInit {
 
   async recalculateStats() {
     if (confirm('Recalculate Storage Stats? This scans all assets.')) {
-      await this.mediaService.recalculateStorageStats();
+      try {
+        await this.mediaService.recalculateStorageStats();
+        this.toast.success('Storage stats updated');
+      } catch (e) {
+        this.toast.error('Failed to update stats');
+      }
+    }
+  }
+
+  async scanStorage() {
+    if (confirm('Scan Firebase Storage for missing files? This may take a while.')) {
+      this.isLoading.set(true);
+      try {
+        const stats = await this.mediaService.syncStorageToFirestore();
+        this.toast.success(`Sync Complete: Scanned ${stats.scanned}, Recovered ${stats.recovered}, Errors ${stats.errors}`);
+        this.loadAssets(true);
+      } catch (e) {
+        console.error(e);
+        this.toast.error('Sync failed');
+      } finally {
+        this.isLoading.set(false);
+      }
     }
   }
 }

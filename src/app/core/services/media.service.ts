@@ -28,7 +28,8 @@ import {
     getDownloadURL,
     deleteObject,
     StorageReference,
-    getMetadata
+    getMetadata,
+    listAll
 } from '@angular/fire/storage';
 import { getAuth } from '@angular/fire/auth';
 import { Observable, from, map, switchMap, of } from 'rxjs';
@@ -71,6 +72,123 @@ export class MediaService {
                 };
             })
         );
+    }
+
+    /**
+     * SYNC TOOL: Scans Firebase Storage and creates missing Firestore records.
+     * OPTIMIZED: Uses batching and pre-fetching to handle large sets efficiently.
+     */
+    async syncStorageToFirestore(): Promise<{ scanned: number, recovered: number, errors: number }> {
+        console.log('Starting Optimized Storage Sync (Batched)...');
+        const stats = { scanned: 0, recovered: 0, errors: 0 };
+        // Valid root folders
+        const foldersToScan = ['products', 'banners', 'site-assets', 'documents', 'blog', 'icons', 'media'];
+
+        // 1. Snapshot ALL existing assets from Firestore into memory
+        // This prevents N+1 queries.
+        const existingPaths = new Set<string>();
+        const q = query(collection(this.firestore, this.COLLECTION));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data['storagePath']) existingPaths.add(data['storagePath']);
+        });
+
+        console.log(`Loaded ${existingPaths.size} existing asset paths from Firestore.`);
+
+        // 2. Scan Storage Recursively (Parallel)
+        const missingItems: StorageReference[] = [];
+
+        const scanFolder = async (prefix: string) => {
+            const folderRef = ref(this.storage, prefix);
+            try {
+                const res = await listAll(folderRef);
+
+                // Process files
+                for (const item of res.items) {
+                    stats.scanned++;
+                    if (!existingPaths.has(item.fullPath)) {
+                        missingItems.push(item);
+                    }
+                }
+
+                // Process subfolders in parallel
+                await Promise.all(res.prefixes.map(p => scanFolder(p.fullPath)));
+            } catch (e) {
+                // Ignore empty or non-existent roots
+                // console.warn(`Skipping ${prefix}`, e);
+            }
+        };
+
+        await Promise.all(foldersToScan.map(f => scanFolder(f)));
+        console.log(`Partial Scan Complete. Found ${missingItems.length} orphan files.`);
+
+        // 3. Process Orphans in Chunks (Fetch Metadata -> Create Object)
+        const CHUNK_SIZE = 10;
+        const BATCH_SIZE = 400; // Safe batch limit
+
+        let batchOperations: MediaAsset[] = [];
+
+        // Fetch metadata in chunks
+        for (let i = 0; i < missingItems.length; i += CHUNK_SIZE) {
+            const chunk = missingItems.slice(i, i + CHUNK_SIZE);
+            const results = await Promise.all(chunk.map(async (itemRef) => {
+                try {
+                    const [url, meta] = await Promise.all([
+                        getDownloadURL(itemRef),
+                        getMetadata(itemRef)
+                    ]);
+
+                    const filename = itemRef.name;
+                    const folderName = itemRef.parent?.name || 'recovered';
+
+                    return {
+                        storagePath: itemRef.fullPath,
+                        publicUrl: url,
+                        filename: filename,
+                        contentType: meta.contentType || 'application/octet-stream',
+                        size: meta.size,
+                        metadata: {
+                            width: 0,
+                            height: 0,
+                            altText: filename,
+                            tags: ['recovered', 'auto-sync'],
+                            category: folderName,
+                            folderId: null
+                        },
+                        createdAt: serverTimestamp() as Timestamp,
+                        updatedAt: serverTimestamp() as Timestamp
+                    } as MediaAsset;
+                } catch (e) {
+                    console.error(`Failed to process ${itemRef.fullPath}`, e);
+                    stats.errors++;
+                    return null;
+                }
+            }));
+
+            const valid = results.filter((r): r is MediaAsset => r !== null);
+            batchOperations.push(...valid);
+        }
+
+        // 4. Commit Batches
+        if (batchOperations.length > 0) {
+            for (let i = 0; i < batchOperations.length; i += BATCH_SIZE) {
+                const batchChunk = batchOperations.slice(i, i + BATCH_SIZE);
+                const batch = writeBatch(this.firestore);
+
+                batchChunk.forEach(asset => {
+                    const newRef = doc(collection(this.firestore, this.COLLECTION));
+                    batch.set(newRef, asset);
+                    stats.recovered++;
+                });
+
+                await batch.commit();
+                console.log(`Committed batch of ${batchChunk.length} assets.`);
+            }
+        }
+
+        await this.recalculateStorageStats();
+        return stats;
     }
 
     /**
@@ -298,7 +416,28 @@ export class MediaService {
                 updatedAt: serverTimestamp()
             });
         });
+
         await batch.commit();
+    }
+
+    async renameFolder(id: string, newName: string): Promise<void> {
+        const ref = doc(this.firestore, this.FOLDERS_COLLECTION, id);
+        await updateDoc(ref, {
+            name: newName,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    async deleteFolder(id: string): Promise<void> {
+        // Recursive delete is complex (subfolders + assets).
+        // MVP: Only delete the folder doc.
+        // Ideally we should check for children and either block or recursive delete.
+        // For this task, we'll just delete the folder doc. 
+        // Assets/Subfolders will become orphaned (visible in 'All' but not in folder tree).
+
+        // Better: Check for children first?
+        // Let's just delete the folder for now as per "MVP" prompt.
+        await deleteDoc(doc(this.firestore, this.FOLDERS_COLLECTION, id));
     }
 
     async getFolder(id: string): Promise<MediaFolder | null> {

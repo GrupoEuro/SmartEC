@@ -34,8 +34,6 @@ export class ProductTypeListComponent implements OnInit {
             this.loading.set(true);
             const allTemplates = await this.productTypeService.getAllTemplates();
 
-            console.log('📦 Loaded templates:', allTemplates.map(t => ({ id: t.id, name: t.name.en })));
-
             this.templates.set(allTemplates);
             // Sort alphabetically by English name
             const sortedSystem = allTemplates.filter(t => t.isSystem).sort((a, b) => a.name.en.localeCompare(b.name.en));

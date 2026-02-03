@@ -172,7 +172,7 @@ export class ThemeManagerComponent {
 
         // UX Feedback
         alert(`Theme "${this.studioName()}" saved successfully!`);
-        console.log('Theme Saved:', theme);
+        // Saved toast logic could go here
 
         this.showStudio.set(false);
     }

@@ -5,6 +5,7 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
 import { MediaAsset } from '../../../../../core/models/media.model';
 import { SharedLink } from '../../../../../core/models/shared-link.model';
 import { DocumentSharingService } from '../../../../../core/services/document-sharing.service';
+import { AuthService } from '../../../../../core/services/auth.service';
 
 @Component({
     selector: 'app-create-link-dialog',
@@ -28,7 +29,10 @@ export class CreateLinkDialogComponent {
     allowDownload = signal(false);
     allowPrint = signal(false);
 
-    constructor(private sharingService: DocumentSharingService) { }
+    constructor(
+        private sharingService: DocumentSharingService,
+        private authService: AuthService
+    ) { }
 
     async createLink() {
         this.isCreating.set(true);
@@ -38,7 +42,7 @@ export class CreateLinkDialogComponent {
                 assetUrl: this.asset.publicUrl,
                 assetName: this.asset.filename,
                 contentType: this.asset.contentType,
-                createdBy: 'admin', // TODO: Get actual user ID
+                createdBy: this.authService.currentUser()?.uid || 'admin',
                 isActive: true,
                 requireEmail: this.requireEmail(),
                 password: this.requirePassword() ? this.password() : undefined,

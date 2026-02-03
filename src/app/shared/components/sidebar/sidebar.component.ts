@@ -41,15 +41,7 @@ import { AuthService } from '../../../core/services/auth.service';
       </div>
 
       <!-- 2. Search (Quick Filter) -->
-      <div class="search-box" *ngIf="!isCollapsed()">
-          <span class="search-icon">
-              <app-icon name="search" [size]="16"></app-icon>
-          </span>
-          <input type="text" 
-                 [(ngModel)]="searchQuery" 
-                 placeholder="Search modules..." 
-                 class="search-input">
-      </div>
+
 
       <!-- 3. Navigation Items (Scrollable) -->
       <div class="nav-scroll-area">
@@ -286,26 +278,13 @@ export class SidebarComponent {
     @Output() onLogout = new EventEmitter<void>();
 
     isCollapsed = signal(false);
-    searchQuery = signal('');
 
     translate = inject(TranslateService);
     private authService = inject(AuthService);
 
     profile = this.authService.currentProfile;
 
-    filteredItems = computed(() => {
-        const query = this.searchQuery().toLowerCase();
-        if (!query) return this.items;
-
-        return this.items.filter(item => {
-            const translatedTitle = this.translate.instant(item.title).toLowerCase();
-            const childrenMatch = item.children?.some(c =>
-                this.translate.instant(c.title).toLowerCase().includes(query)
-            );
-
-            return translatedTitle.includes(query) || childrenMatch;
-        });
-    });
+    filteredItems = computed(() => this.items);
 
     toggleCollapse() {
         this.isCollapsed.update(v => !v);

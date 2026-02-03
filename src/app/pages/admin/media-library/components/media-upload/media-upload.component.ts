@@ -26,6 +26,7 @@ export class MediaUploadComponent {
   private mediaService = inject(MediaService);
   private http = inject(HttpClient);
 
+  @Input() currentPath: string = '';
   @Input() targetFolderId: string | null = null;
   @Output() uploadComplete = new EventEmitter<MediaAsset[]>();
 

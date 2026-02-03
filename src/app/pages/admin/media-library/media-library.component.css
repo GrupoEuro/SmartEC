@@ -1,0 +1,299 @@
+/* === PREMIUM DARK GLASS THEME === */
+@import '../products/visual-enhancements.css';
+
+/* Global Layout */
+.product-dashboard-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-body, #0f172a);
+}
+
+.media-layout-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 0;
+    /* Critical for nested flex scrolling */
+}
+
+/* --- Sticky Command Header --- */
+.command-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: var(--bg-header, rgba(15, 23, 42, 0.9));
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-shrink: 0;
+}
+
+.header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.header-title-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.product-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    padding: 4px 10px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #60a5fa;
+}
+
+/* --- Sidebar (Glass Panel) --- */
+.glass-sidebar {
+    width: 280px;
+    background: rgba(30, 41, 59, 0.3);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.sidebar-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 1rem 1.5rem 0.5rem;
+    display: block;
+}
+
+/* --- Main View Area --- */
+.product-grid-view {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    position: relative;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    /* Ensure this also shrinks if needed */
+}
+
+/* --- Unified Toolbar --- */
+.table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.search-box {
+    flex: 1;
+    position: relative;
+    max-width: 600px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    color: white;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.search-box input:focus {
+    outline: none;
+    background: rgba(15, 23, 42, 0.8);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.toolbar-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* --- Select All Toggle --- */
+.btn-select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-select-all:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.btn-select-all.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+
+/* --- Glass Card (Media Assets) --- */
+/* --- Glass Card (Media Assets) --- */
+.media-grid {
+    display: grid;
+    /* Reduced min-width for more compact cards */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.25rem;
+}
+
+.glass-card {
+    position: relative;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 12px;
+    padding: 0;
+    /* Override for full image */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    cursor: pointer;
+}
+
+.glass-card.selected {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+.asset-preview-area {
+    aspect-ratio: 1/1;
+    /* Square for better grid fit */
+    background: rgba(0, 0, 0, 0.2);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    /* Add padding so icons don't touch edges */
+}
+
+.asset-footer {
+    padding: 12px 16px;
+    background: rgba(30, 41, 59, 0.3);
+}
+
+.asset-name {
+    color: #f1f5f9;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.asset-meta {
+    display: flex;
+    justify-content: space-between;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Button override */
+.btn-primary-action {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    transition: all 0.2s;
+}
+
+.btn-primary-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

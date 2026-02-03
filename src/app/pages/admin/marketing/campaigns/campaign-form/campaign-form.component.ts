@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { Firestore, doc, getDoc, setDoc, addDoc, collection, Timestamp } from '@angular/fire/firestore';
 import { ThemeService } from '../../../../../core/services/theme.service';
+import { AuthService } from '../../../../../core/services/auth.service';
 import { WebsiteTheme } from '../../../../../core/models/campaign.model';
 import { AppIconComponent } from '../../../../../shared/components/app-icon/app-icon.component';
 
@@ -127,6 +128,7 @@ export class CampaignFormComponent implements OnInit {
     private router = inject(Router);
     private route = inject(ActivatedRoute);
     private themeService = inject(ThemeService);
+    private authService = inject(AuthService);
 
     form!: FormGroup;
     themes = this.themeService.getAvailableThemes();
@@ -206,7 +208,10 @@ export class CampaignFormComponent implements OnInit {
                 await setDoc(doc(this.firestore, 'campaigns', this.campaignId), payload, { merge: true });
             } else {
                 payload.createdAt = Timestamp.now();
-                payload.createdBy = 'admin'; // TODO: Get actual user
+
+                const user = this.authService.currentUser();
+                payload.createdBy = user ? (user.uid || user.email || 'admin') : 'admin';
+
                 await addDoc(collection(this.firestore, 'campaigns'), payload);
             }
 

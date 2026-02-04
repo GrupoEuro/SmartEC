@@ -11,6 +11,7 @@ import { MoveAssetsDialogComponent } from './components/move-assets-dialog/move-
 import { MediaUploadComponent } from './components/media-upload/media-upload.component';
 import { CreateLinkDialogComponent } from './components/create-link-dialog/create-link-dialog.component';
 import { LinkStatsDialogComponent } from './components/link-stats-dialog/link-stats-dialog.component';
+import { BulkEditDialogComponent } from './components/bulk-edit-dialog/bulk-edit-dialog.component';
 import { MediaAsset, MediaFilter, MediaFolder } from '../../../core/models/media.model';
 import { MediaService } from '../../../core/services/media.service';
 import { SharedLink } from '../../../core/models/shared-link.model';
@@ -29,6 +30,7 @@ import { ToastService } from '../../../core/services/toast.service';
     MoveAssetsDialogComponent, // Added
     CreateLinkDialogComponent,
     LinkStatsDialogComponent,
+    BulkEditDialogComponent,
     AppIconComponent,
     FolderTreeComponent
   ],
@@ -58,22 +60,22 @@ export class MediaLibraryComponent implements OnInit {
 
   // Bulk Actions
   isBulkMode = signal(false);
+  isBulkEditOpen = signal(false);
   bulkTags = '';
 
-  readonly CATEGORIES = [
-    { id: 'products', label: 'Products', icon: 'tag' },
-    { id: 'banners', label: 'Banners', icon: 'image' },
-    { id: 'site-assets', label: 'Site Assets', icon: 'monitor' },
-    { id: 'documents', label: 'Documents', icon: 'file_text' },
-    { id: 'blog', label: 'Blog', icon: 'pencil' },
-    { id: 'icons', label: 'Icons', icon: 'star' }
+  readonly FILE_TYPES = [
+    { id: 'all', label: 'All Files', icon: 'grid' },
+    { id: 'image', label: 'Images', icon: 'image' },
+    { id: 'vector', label: 'Vectors', icon: 'tool' }, // Using 'tool' (pen-like) for vectors
+    { id: 'video', label: 'Videos', icon: 'film' }, // Assuming film icon exists or using default
+    { id: 'document', label: 'Documents', icon: 'file_text' }
   ];
 
   isLoading = signal(false);
   hasMore = signal(true);
   private lastDoc: any = null;
 
-  selectedCategory = signal<string>('');
+  selectedType = signal<string>('all');
   searchQuery = signal<string>('');
   isUploadOpen = signal<boolean>(false);
   viewMode = signal<'grid' | 'list'>('grid');
@@ -101,7 +103,7 @@ export class MediaLibraryComponent implements OnInit {
   // Folder Actions
   onFolderSelected(folder: MediaFolder) {
     this.currentFolderId.set(folder.id || null);
-    this.selectedCategory.set(''); // Clear category when entering folder 
+    this.selectedType.set('all'); // Clear type when entering folder 
     this.updateFilter();
     this.buildBreadcrumbs(folder);
   }
@@ -170,9 +172,14 @@ export class MediaLibraryComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (err) => {
-        // Safe fail
         console.error('Failed to load assets', err);
-        this.toast.error('Failed to load assets');
+        // Check for missing index error
+        if (err.code === 'failed-precondition' && err.message.includes('index')) {
+          this.toast.error('Missing Index: Check console for creation link!');
+          alert('Firestore Index Required! Check the browser console for the link to create it.');
+        } else {
+          this.toast.error('Failed to load assets');
+        }
         this.isLoading.set(false);
       }
     });
@@ -183,8 +190,9 @@ export class MediaLibraryComponent implements OnInit {
     this.loadAssets(false);
   }
 
-  onCategoryChange(category: string) {
-    this.selectedCategory.set(category);
+  onTypeChange(type: string) {
+    this.selectedType.set(type);
+    this.currentFolderId.set(null);
     this.updateFilter();
   }
 
@@ -211,7 +219,8 @@ export class MediaLibraryComponent implements OnInit {
     const current = this.filter$.value;
     this.filter$.next({
       ...current,
-      category: this.selectedCategory() || undefined,
+      category: undefined,
+      type: this.selectedType() === 'all' ? undefined : (this.selectedType() as any),
       folderId: this.currentFolderId() !== null ? this.currentFolderId()! : undefined,
       sortField: this.sortField(),
       sortDirection: this.sortDirection(),
@@ -242,7 +251,7 @@ export class MediaLibraryComponent implements OnInit {
 
   clearFilters() {
     this.searchQuery.set('');
-    this.selectedCategory.set('');
+    this.selectedType.set('all');
     this.updateFilter();
   }
 
@@ -307,7 +316,48 @@ export class MediaLibraryComponent implements OnInit {
   async deleteSelected() {
     const ids = Array.from(this.selectedAssets());
     if (confirm(`Delete ${ids.length} assets? This cannot be undone.`)) {
-      this.toast.info('Bulk Delete is complex due to storage cleanup. Please delete individually for safer operations.');
+      this.isLoading.set(true);
+      try {
+        const assetsToDelete = this.assets().filter(a => ids.includes(a.id!));
+
+        // Sequential delete to avoid overwhelming (or use Promise.all for speed if safe)
+        // Promise.all is better for UX here
+        await Promise.all(assetsToDelete.map(asset => this.mediaService.deleteAsset(asset)));
+
+        this.selectedAssets.set(new Set());
+        this.isBulkMode.set(false);
+        this.updateFilter(); // Reload
+        this.toast.success(`Deleted ${ids.length} assets`);
+      } catch (e) {
+        console.error('Bulk delete failed', e);
+        this.toast.error('Some assets failed to delete');
+      } finally {
+        this.isLoading.set(false);
+      }
+    }
+  }
+
+  launchBulkEdit() {
+    this.isBulkEditOpen.set(true);
+  }
+
+  async onBulkEditComplete(changes: { tags?: string[], category?: string }) {
+    this.isBulkEditOpen.set(false);
+    if (!changes.tags && !changes.category) return;
+
+    const ids = Array.from(this.selectedAssets());
+    this.isLoading.set(true);
+    try {
+      await this.mediaService.bulkUpdateMetadata(ids, changes);
+      this.toast.success(`Updated ${ids.length} assets`);
+      this.selectedAssets.set(new Set());
+      this.isBulkMode.set(false);
+      this.loadAssets(true);
+    } catch (e) {
+      console.error('Bulk edit failed', e);
+      this.toast.error('Failed to update assets');
+    } finally {
+      this.isLoading.set(false);
     }
   }
 
@@ -331,10 +381,14 @@ export class MediaLibraryComponent implements OnInit {
   // Drag & Drop
   isDragging = signal(false);
 
+  // --- File Upload Drag & Drop ---
   onDragOver(event: DragEvent) {
     event.preventDefault();
     event.stopPropagation();
-    this.isDragging.set(true);
+    // Only show upload drop zone if dragging files from OS
+    if (event.dataTransfer?.types.includes('Files')) {
+      this.isDragging.set(true);
+    }
   }
 
   onDragLeave(event: DragEvent) {
@@ -350,13 +404,113 @@ export class MediaLibraryComponent implements OnInit {
 
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      // Open upload dialog or handle directly
-      // For now, let's just open the upload dialog with these files 
-      // (assuming we pass them, or just open the dialog and user re-selects - MVP)
       this.isUploadOpen.set(true);
-      // Ideally: this.mediaUpload.handleFiles(files);
     }
   }
+
+  // --- Internal Asset Drag & Drop (Move to Folder) ---
+  draggedAssets = signal<MediaAsset[]>([]);
+
+  onAssetDragStart(event: DragEvent, asset: MediaAsset) {
+    // If dragging a selection, move all selected. If just one item (not in selection), move just that one.
+    let assetsToMove: MediaAsset[] = [];
+    if (this.selectedAssets().has(asset.id!)) {
+      assetsToMove = this.assets().filter(a => this.selectedAssets().has(a.id!));
+    } else {
+      assetsToMove = [asset];
+    }
+
+    this.draggedAssets.set(assetsToMove);
+    event.dataTransfer!.effectAllowed = 'move';
+    event.dataTransfer!.setData('application/json', JSON.stringify(assetsToMove.map(a => a.id)));
+
+    // Set custom drag image
+    const ghost = this.createDragGhost(assetsToMove);
+    document.body.appendChild(ghost);
+    event.dataTransfer!.setDragImage(ghost, 0, 0);
+    // Remove after drag starts - slight delay to ensure browser captures it
+    setTimeout(() => document.body.removeChild(ghost), 10);
+  }
+
+  createDragGhost(assets: MediaAsset[]): HTMLElement {
+    const el = document.createElement('div');
+    if (!assets || assets.length === 0) return el;
+
+    el.id = 'drag-ghost-element';
+    el.style.width = '160px';
+    el.style.height = '48px';
+    el.style.backgroundColor = '#0f172a'; // slate-900
+    el.style.border = '1px solid #6366f1'; // indigo-500
+    el.style.borderRadius = '8px';
+    el.style.padding = '8px';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.gap = '10px';
+    el.style.position = 'fixed';
+    el.style.top = '-9999px'; // Move off-screen initially to avoid flicker, or 0 if z-index trick needed
+    el.style.left = '-9999px';
+    el.style.zIndex = '9999';
+    el.style.pointerEvents = 'none';
+
+    // Safely get asset properties
+    const asset = assets[0];
+    const isImage = asset.contentType ? asset.contentType.startsWith('image/') : false;
+
+    // Icon
+    const iconDiv = document.createElement('div');
+    iconDiv.style.minWidth = '24px';
+    iconDiv.style.width = '24px';
+    iconDiv.style.height = '24px';
+    iconDiv.style.borderRadius = '4px';
+    iconDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    iconDiv.style.display = 'flex';
+    iconDiv.style.alignItems = 'center';
+    iconDiv.style.justifyContent = 'center';
+    iconDiv.style.fontSize = '14px';
+
+    if (assets.length > 1) {
+      iconDiv.textContent = '📚';
+    } else {
+      iconDiv.textContent = isImage ? '🖼️' : '📄';
+    }
+    el.appendChild(iconDiv);
+
+    // Text
+    const text = document.createElement('span');
+    text.style.color = '#f8fafc';
+    text.style.fontSize = '12px';
+    text.style.fontWeight = '500';
+    text.style.whiteSpace = 'nowrap';
+    text.style.overflow = 'hidden';
+    text.style.textOverflow = 'ellipsis';
+
+    if (assets.length > 1) {
+      text.textContent = `${assets.length} items`;
+    } else {
+      const name = asset.filename || 'Unknown';
+      text.textContent = name.length > 15 ? name.substring(0, 15) + '...' : name;
+    }
+    el.appendChild(text);
+
+    return el;
+  }
+
+  onAssetDragEnd(event: DragEvent) {
+    this.draggedAssets.set([]);
+  }
+
+  // Handle drop from FolderTree
+  onFolderDrop(event: { folder: MediaFolder, assetIds: string[] }) {
+    if (!event.folder.id) return;
+
+    this.mediaService.moveAssets(event.assetIds, event.folder.id).then(() => {
+      this.toast.success(`Moved ${event.assetIds.length} items to ${event.folder.name}`);
+      this.loadAssets(); // Refresh grid
+      this.selectedAssets.set(new Set()); // Clear selection
+      this.draggedAssets.set([]); // Clear dragged state
+    });
+  }
+
 
   shareAsset(asset: MediaAsset) {
     this.sharingAsset.set(asset);
@@ -445,4 +599,14 @@ export class MediaLibraryComponent implements OnInit {
       }
     }
   }
+
+  formatDate(date: any): Date | null {
+    if (!date) return null;
+    if (date.toDate && typeof date.toDate === 'function') {
+      return date.toDate();
+    }
+    return new Date(date);
+  }
 }
+
+

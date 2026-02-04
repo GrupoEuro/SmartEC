@@ -10,17 +10,20 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
     standalone: true,
     imports: [CommonModule, FolderTreeComponent, AppIconComponent],
     template: `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-slate-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
             
             <!-- Header -->
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-white/5">
                 <div>
-                    <h3 class="font-semibold text-slate-800">Move Assets</h3>
-                    <p class="text-xs text-slate-500">Select destination for {{ assets.length }} item(s)</p>
+                    <h3 class="font-semibold text-white flex items-center gap-2">
+                        <app-icon name="folder_move" [size]="20" class="text-indigo-400"></app-icon>
+                        Move Assets
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Select destination for <span class="text-slate-200 font-medium">{{ assets.length }}</span> item(s)</p>
                 </div>
-                <button (click)="cancel.emit()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                    <app-icon name="x_mark" [size]="20"></app-icon>
+                <button (click)="cancel.emit()" class="text-slate-400 hover:text-white transition-colors">
+                    <app-icon name="x" [size]="20"></app-icon>
                 </button>
             </div>
 
@@ -29,19 +32,21 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
                 
                 <!-- Root Option -->
                 <button (click)="selectRoot()" 
-                    class="w-full flex items-center gap-2 p-2 rounded-lg transition-colors mb-2 text-sm font-medium"
-                    [class.bg-indigo-50]="selectedFolderId() === null"
-                    [class.text-indigo-700]="selectedFolderId() === null"
-                    [class.text-slate-600]="selectedFolderId() !== null"
-                    [class.hover:bg-slate-50]="selectedFolderId() !== null">
-                    <app-icon name="home" [size]="16"></app-icon>
+                    class="w-full flex items-center gap-3 p-3 rounded-lg transition-all mb-2 text-sm font-medium border border-transparent"
+                    [class.bg-indigo-500_10]="selectedFolderId() === null"
+                    [class.border-indigo-500_30]="selectedFolderId() === null"
+                    [class.text-indigo-400]="selectedFolderId() === null"
+                    [class.text-slate-300]="selectedFolderId() !== null"
+                    [class.hover:bg-white_05]="selectedFolderId() !== null"
+                    [class.hover:text-white]="selectedFolderId() !== null">
+                    <app-icon name="home" [size]="18"></app-icon>
                     <span>Home (Root)</span>
-                    <app-icon *ngIf="selectedFolderId() === null" name="check" [size]="14" class="ml-auto"></app-icon>
+                    <app-icon *ngIf="selectedFolderId() === null" name="check" [size]="16" class="ml-auto text-indigo-400"></app-icon>
                 </button>
 
                 <!-- Tree -->
-                <div class="border-t border-slate-100 pt-2">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Folders</p>
+                <div class="border-t border-white/5 pt-4 mt-2">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">Folders</p>
                     <app-folder-tree 
                         [selectedFolderId]="selectedFolderId() || undefined"
                         (folderSelected)="onFolderSelected($event)">
@@ -50,14 +55,14 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
             </div>
 
             <!-- Footer -->
-            <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2">
+            <div class="px-6 py-4 bg-slate-950/50 border-t border-white/5 flex justify-end gap-3">
                 <button (click)="cancel.emit()" 
-                    class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">
+                    class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors hover:bg-white/5 rounded-lg">
                     Cancel
                 </button>
                 <button (click)="confirmMove()" 
                     [disabled]="isLoading()"
-                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span *ngIf="isLoading()" class="animate-spin w-3 h-3 border-2 border-white/30 border-t-white rounded-full"></span>
                     <span>{{ isLoading() ? 'Moving...' : 'Move Here' }}</span>
                 </button>
@@ -68,7 +73,8 @@ import { AppIconComponent } from '../../../../../shared/components/app-icon/app-
     styles: [`
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #475569; }
   `]
 })
 export class MoveAssetsDialogComponent {

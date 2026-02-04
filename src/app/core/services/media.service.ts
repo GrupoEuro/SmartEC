@@ -32,7 +32,7 @@ import {
     listAll
 } from '@angular/fire/storage';
 import { getAuth } from '@angular/fire/auth';
-import { Observable, from, map, switchMap, of } from 'rxjs';
+import { Observable, from, map, switchMap, of, shareReplay, tap } from 'rxjs';
 import { MediaAsset, MediaFilter, MediaFolder } from '../models/media.model';
 
 export interface StorageStats {
@@ -62,15 +62,17 @@ export class MediaService {
      */
     getStorageStats(): Observable<StorageStats> {
         const docRef = doc(this.firestore, this.STATS_DOC);
-        return from(getDoc(docRef)).pipe(
-            map(snap => {
-                const data = snap.data() as any;
+        return docData(docRef).pipe(
+            tap(data => console.log('Storage Stats Update:', data)),
+            map(data => {
+                const d = data as any;
                 return {
-                    totalBytes: data?.totalBytes || 0,
-                    count: data?.count || 0,
+                    totalBytes: d?.totalBytes || 0,
+                    count: d?.count || 0,
                     maxCapacity: 1073741824 // 1 GB Hard limit for now
                 };
-            })
+            }),
+            shareReplay(1)
         );
     }
 
@@ -296,6 +298,14 @@ export class MediaService {
 
         let q = query(colRef, orderBy(field, dir));
 
+        if (filter.type && filter.type !== 'all') {
+            const types = this.getMimeTypes(filter.type);
+            if (types.length) {
+                // 'in' query supports up to 10 values
+                q = query(q, where('contentType', 'in', types));
+            }
+        }
+
         if (filter.category) {
             q = query(q, where('metadata.category', '==', filter.category));
         }
@@ -312,8 +322,8 @@ export class MediaService {
             q = query(q, limit(filter.limit));
         }
 
-        if (lastDoc) {
-            q = query(q, startAfter(lastDoc));
+        if (filter.lastDoc) {
+            q = query(q, startAfter(filter.lastDoc));
         }
 
         return from(getDocs(q)).pipe(
@@ -323,6 +333,28 @@ export class MediaService {
                 return { assets, lastDoc: last };
             })
         );
+    }
+
+    private getMimeTypes(type: 'image' | 'video' | 'document' | 'audio' | 'vector' | 'all'): string[] {
+        switch (type) {
+            case 'image':
+                return ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+            case 'vector':
+                return ['image/svg+xml'];
+            case 'video':
+                return ['video/mp4', 'video/webm', 'video/quicktime'];
+            case 'document':
+                return [
+                    'application/pdf',
+                    'text/plain',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                ];
+            default:
+                return [];
+        }
     }
 
     /**

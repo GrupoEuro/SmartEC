@@ -39,4 +39,6 @@ export interface MediaFilter {
     startAfter?: any; // For pagination
     sortField?: 'createdAt' | 'size' | 'filename';
     sortDirection?: 'asc' | 'desc';
+    type?: 'image' | 'video' | 'document' | 'audio' | 'vector' | 'all';
+    lastDoc?: any;
 }

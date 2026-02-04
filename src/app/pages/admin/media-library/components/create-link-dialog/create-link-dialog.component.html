@@ -1,12 +1,16 @@
 <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+        class="bg-slate-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
 
         <!-- Header -->
-        <div class="flex justify-between items-center p-4 border-b border-slate-100">
-            <h3 class="font-bold text-lg text-slate-800">Share Document</h3>
-            <button (click)="close.emit()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                <app-icon name="x_mark" [size]="20"></app-icon>
+        <div class="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-white/5">
+            <h3 class="font-semibold text-lg text-white flex items-center gap-2">
+                <app-icon name="share" [size]="20" class="text-indigo-400"></app-icon>
+                Share Document
+            </h3>
+            <button (click)="close.emit()" class="text-slate-400 hover:text-white transition-colors">
+                <app-icon name="x" [size]="20"></app-icon>
             </button>
         </div>
 
@@ -14,25 +18,29 @@
         <div class="p-6">
 
             <!-- Success State -->
-            <div *ngIf="createdLink()" class="text-center space-y-4">
+            <div *ngIf="createdLink()"
+                class="text-center space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div
-                    class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <app-icon name="check" [size]="24"></app-icon>
+                    class="w-14 h-14 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                    <app-icon name="check" [size]="28"></app-icon>
                 </div>
-                <h4 class="text-xl font-bold text-slate-800">Link Created!</h4>
-                <p class="text-slate-500 text-sm">Your secure link is ready to share.</p>
+                <div>
+                    <h4 class="text-xl font-bold text-white">Link Created!</h4>
+                    <p class="text-slate-400 text-sm mt-1">Your secure link is ready to share.</p>
+                </div>
 
-                <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-4">
+                <div class="flex items-center gap-2 bg-black/20 p-3 rounded-lg border border-white/10 mt-2">
                     <input readonly [value]="createdLink()"
-                        class="flex-1 bg-transparent text-sm text-slate-600 outline-none">
-                    <button (click)="copyLink()" class="text-indigo-600 font-bold text-sm hover:text-indigo-800">
+                        class="flex-1 bg-transparent text-sm text-slate-300 outline-none font-mono">
+                    <button (click)="copyLink()"
+                        class="text-indigo-400 font-bold text-xs hover:text-indigo-300 tracking-wider">
                         COPY
                     </button>
                 </div>
 
-                <div class="pt-4">
+                <div class="pt-2">
                     <button (click)="close.emit()"
-                        class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors">
+                        class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors border border-white/5">
                         Done
                     </button>
                 </div>
@@ -41,94 +49,79 @@
             <!-- Creation Form -->
             <div *ngIf="!createdLink()" class="space-y-6">
                 <!-- Asset Info -->
-                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/5">
                     <div
-                        class="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center text-slate-400">
+                        class="w-10 h-10 bg-slate-800 rounded border border-white/10 flex items-center justify-center text-slate-400">
                         <app-icon name="file_text" [size]="20"></app-icon>
                     </div>
                     <div class="overflow-hidden">
-                        <p class="font-semibold text-sm text-slate-700 truncate">{{ asset.filename }}</p>
+                        <p class="font-medium text-sm text-slate-200 truncate">{{ asset.filename }}</p>
                         <p class="text-xs text-slate-500 uppercase">{{ asset.contentType.split('/')[1] }}</p>
                     </div>
                 </div>
 
                 <!-- Settings -->
-                <div class="space-y-4">
+                <div class="space-y-5">
 
                     <!-- Gatekeeper Settings -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Access
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Access
                             Control</label>
 
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm text-slate-700 font-medium">Require Email</span>
+                            <span class="text-sm text-slate-300 font-medium">Require Email</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" [(ngModel)]="requireEmail" class="sr-only peer">
                                 <div
-                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
                                 </div>
                             </label>
                         </div>
 
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm text-slate-700 font-medium">Password Protection</span>
+                            <span class="text-sm text-slate-300 font-medium">Password Protection</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" [(ngModel)]="requirePassword" class="sr-only peer">
                                 <div
-                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                                    class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
                                 </div>
                             </label>
                         </div>
 
                         <div *ngIf="requirePassword()" class="animate-in slide-in-from-top-2 duration-200">
                             <input type="text" [(ngModel)]="password" placeholder="Set password..."
-                                class="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                class="w-full mt-2 px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder:text-slate-600 transition-all">
                         </div>
                     </div>
 
-                    <div class="h-px bg-slate-100"></div>
+                    <div class="h-px bg-white/5"></div>
 
                     <!-- Expiration -->
                     <div>
                         <label
-                            class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Expiration</label>
-                        <select [(ngModel)]="expiresInDays"
-                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option [value]="1">Expires in 1 Day</option>
-                            <option [value]="7">Expires in 7 Days</option>
-                            <option [value]="30">Expires in 30 Days</option>
-                            <option [value]="0">Never Expires</option>
-                        </select>
-                    </div>
-
-                    <!-- Permissions -->
-                    <!-- Hidden for V1 as per plan to force secure view -->
-                    <!--
-                    <div class="h-px bg-slate-100"></div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Viewer Permissions</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center gap-2 text-sm text-slate-600">
-                                <input type="checkbox" [(ngModel)]="allowDownload" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                Allow Download
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-slate-600">
-                                <input type="checkbox" [(ngModel)]="allowPrint" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                Allow Print
-                            </label>
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Expiration</label>
+                        <div class="relative">
+                            <select [(ngModel)]="expiresInDays"
+                                class="w-full px-3 py-2.5 bg-black/20 border border-white/10 rounded-lg text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none appearance-none transition-all">
+                                <option [value]="1">Expires in 1 Day</option>
+                                <option [value]="7">Expires in 7 Days</option>
+                                <option [value]="30">Expires in 30 Days</option>
+                                <option [value]="0">Never Expires</option>
+                            </select>
+                            <app-icon name="chevron_down" [size]="16"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></app-icon>
                         </div>
                     </div>
-                    -->
                 </div>
 
                 <!-- Footer Actions -->
-                <div class="pt-4 flex gap-3">
+                <div class="pt-2 flex gap-3">
                     <button (click)="close.emit()"
-                        class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold rounded-lg transition-colors">
+                        class="flex-1 py-2.5 border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white font-medium rounded-lg transition-colors">
                         Cancel
                     </button>
                     <button (click)="createLink()" [disabled]="isCreating()"
-                        class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg shadow-indigo-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-70">
+                        class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg shadow-lg shadow-indigo-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span *ngIf="isCreating()"
                             class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         {{ isCreating() ? 'Creating...' : 'Create Link' }}

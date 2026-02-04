@@ -2,133 +2,156 @@
     (mousemove)="onMouseMove($event)" (mouseup)="stopDrag()" (mouseleave)="stopDrag()">
 
     <div
-        class="bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden border border-slate-700">
+        class="bg-slate-900 rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex overflow-hidden border border-white/10 animate-in zoom-in-95 duration-200">
 
         <!-- Sidebar (Tools) -->
-        <div class="w-72 bg-slate-900 border-r border-slate-700 flex flex-col">
-            <div class="p-4 border-b border-slate-800">
+        <div class="w-72 bg-slate-950 border-r border-white/5 flex flex-col">
+            <div class="p-4 border-b border-white/5 bg-white/5">
                 <h3 class="text-white font-medium flex items-center gap-2 truncate" [title]="asset.filename">
-                    <app-icon [name]="mode() === 'svg' ? 'star' : 'image'" [class]="'text-indigo-400'"></app-icon>
-                    <span class="truncate">{{ asset.filename }}</span>
+                    <app-icon [name]="mode() === 'svg' ? 'star' : 'image'" class="text-indigo-400"
+                        [size]="18"></app-icon>
+                    <span class="truncate text-sm">{{ asset.filename }}</span>
                 </h3>
-                <div class="flex gap-4 mt-2 text-xs text-slate-300 font-mono">
+                <div class="flex gap-4 mt-1.5 text-[10px] text-slate-400 font-mono uppercase tracking-wide">
                     <span>{{ asset.metadata.width }}x{{ asset.metadata.height }}</span>
                     <span>{{ (asset.size / 1024).toFixed(1) }} KB</span>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div class="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
 
-                <!-- Helper: Mode Switcher (if mixed content? No, strictly typed for now) -->
+                <!-- Helper: Mode Switcher -->
 
                 <!-- SVG Tools -->
                 <div *ngIf="mode() === 'svg'" class="space-y-4">
-                    <div class="space-y-2">
-                        <label class="text-xs font-semibold uppercase text-slate-500 tracking-wider">Color</label>
-                        <div class="flex items-center gap-3 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                    <div class="space-y-3">
+                        <label
+                            class="text-xs font-semibold uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                            <app-icon name="palette" [size]="12"></app-icon>
+                            Color
+                        </label>
+                        <div
+                            class="flex items-center gap-3 bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
                             <input type="color" [(ngModel)]="svgColor" (change)="applySvgColor()"
-                                class="h-8 w-12 rounded cursor-pointer bg-transparent border-0 p-0">
+                                class="h-8 w-10 rounded cursor-pointer bg-transparent border-0 p-0 shadow-sm">
                             <div class="flex-1">
-                                <div class="text-white text-sm">Fill Color</div>
-                                <div class="text-slate-400 text-xs">Updates all paths</div>
+                                <div class="text-slate-200 text-sm font-medium">Fill Color</div>
+                                <div class="text-slate-500 text-[10px] mt-0.5">Updates all paths</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Image Tools -->
-                <div *ngIf="mode() !== 'svg'" class="space-y-6">
+                <div *ngIf="mode() !== 'svg'" class="space-y-8">
 
                     <!-- Crop Tool -->
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
-                            <label class="text-xs font-semibold uppercase text-slate-500 tracking-wider">Crop</label>
+                            <label
+                                class="text-xs font-semibold uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                                <app-icon name="crop" [size]="12"></app-icon>
+                                Crop
+                            </label>
                             <button (click)="centerCropRect()"
-                                class="text-xs text-indigo-400 hover:text-indigo-300">Reset</button>
+                                class="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wide px-2 py-1 rounded hover:bg-indigo-500/10 transition-colors">
+                                Reset
+                            </button>
                         </div>
-                        <div class="text-xs text-slate-400">
-                            Drag handles on the image to crop.
+                        <div
+                            class="text-xs text-slate-400 leading-relaxed bg-white/5 p-2 rounded text-center border border-white/5">
+                            Drag image handles to crop
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700 text-center">
-                                <div class="text-slate-500 text-[10px] uppercase">Width</div>
-                                <div class="text-white">{{ cropRect.w | number:'1.0-0' }}px</div>
+                            <div class="bg-black/20 p-2.5 rounded border border-white/5 text-center">
+                                <div class="text-slate-500 text-[9px] uppercase font-bold tracking-wider mb-0.5">Width
+                                </div>
+                                <div class="text-slate-200 font-mono text-xs">{{ cropRect.w | number:'1.0-0' }}px</div>
                             </div>
-                            <div class="bg-slate-800 p-2 rounded border border-slate-700 text-center">
-                                <div class="text-slate-500 text-[10px] uppercase">Height</div>
-                                <div class="text-white">{{ cropRect.h | number:'1.0-0' }}px</div>
+                            <div class="bg-black/20 p-2.5 rounded border border-white/5 text-center">
+                                <div class="text-slate-500 text-[9px] uppercase font-bold tracking-wider mb-0.5">Height
+                                </div>
+                                <div class="text-slate-200 font-mono text-xs">{{ cropRect.h | number:'1.0-0' }}px</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="h-px bg-slate-800"></div>
+                    <div class="h-px bg-white/5"></div>
 
                     <!-- Transform -->
                     <div class="space-y-3">
-                        <label class="text-xs font-semibold uppercase text-slate-500 tracking-wider">Transform</label>
+                        <label
+                            class="text-xs font-semibold uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                            <app-icon name="maximize" [size]="12"></app-icon>
+                            Transform
+                        </label>
                         <div class="grid grid-cols-3 gap-2">
                             <button (click)="rotate(-90)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300"
+                                class="p-2.5 bg-white/5 hover:bg-white/10 rounded border border-white/5 text-slate-300 hover:text-white transition-colors"
                                 title="Rotate Left">
                                 ↺
                             </button>
                             <button (click)="rotate(90)"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300"
+                                class="p-2.5 bg-white/5 hover:bg-white/10 rounded border border-white/5 text-slate-300 hover:text-white transition-colors"
                                 title="Rotate Right">
                                 ↻
                             </button>
                             <button (click)="flip('H')"
-                                class="p-2 bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 text-slate-300"
+                                class="p-2.5 bg-white/5 hover:bg-white/10 rounded border border-white/5 text-slate-300 hover:text-white transition-colors"
                                 title="Flip Horizontal">
                                 ↔
                             </button>
                         </div>
                     </div>
 
-                    <div class="h-px bg-slate-800"></div>
+                    <div class="h-px bg-white/5"></div>
 
                     <!-- Adjustments -->
-                    <div class="space-y-4">
-                        <label class="text-xs font-semibold uppercase text-slate-500 tracking-wider">Adjustments</label>
+                    <div class="space-y-5">
+                        <label
+                            class="text-xs font-semibold uppercase text-slate-500 tracking-wider flex items-center gap-2">
+                            <app-icon name="sliders" [size]="12"></app-icon>
+                            Adjustments
+                        </label>
 
-                        <div class="space-y-1">
+                        <div class="space-y-2">
                             <div class="flex justify-between text-xs text-slate-400 px-1">
                                 <span>Brightness</span>
-                                <span>{{ imageAdjustments.brightness }}%</span>
+                                <span class="font-mono text-indigo-400">{{ imageAdjustments.brightness }}%</span>
                             </div>
                             <input type="range" [(ngModel)]="imageAdjustments.brightness" min="0" max="200"
-                                class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400">
                         </div>
 
-                        <div class="space-y-1">
+                        <div class="space-y-2">
                             <div class="flex justify-between text-xs text-slate-400 px-1">
                                 <span>Contrast</span>
-                                <span>{{ imageAdjustments.contrast }}%</span>
+                                <span class="font-mono text-indigo-400">{{ imageAdjustments.contrast }}%</span>
                             </div>
                             <input type="range" [(ngModel)]="imageAdjustments.contrast" min="0" max="200"
-                                class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400">
                         </div>
 
-                        <div class="space-y-1">
+                        <div class="space-y-2">
                             <div class="flex justify-between text-xs text-slate-400 px-1">
                                 <span>Saturation</span>
-                                <span>{{ imageAdjustments.saturation }}%</span>
+                                <span class="font-mono text-indigo-400">{{ imageAdjustments.saturation }}%</span>
                             </div>
                             <input type="range" [(ngModel)]="imageAdjustments.saturation" min="0" max="200"
-                                class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400">
                         </div>
                     </div>
 
                 </div>
             </div>
 
-            <div class="p-4 border-t border-slate-800 bg-slate-900 flex gap-2">
+            <div class="p-4 border-t border-white/5 bg-slate-950 flex gap-3">
                 <button (click)="close.emit(false)"
-                    class="flex-1 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700">
+                    class="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors border border-transparent">
                     Cancel
                 </button>
                 <button (click)="mode() === 'svg' ? saveSvg() : saveImage()" [disabled]="isSaving()"
-                    class="flex-1 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                    class="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 transition-all">
                     <span *ngIf="isSaving()"
                         class="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></span>
                     <span>Save</span>
@@ -138,57 +161,57 @@
 
         <!-- Main Stage -->
         <div
-            class="flex-1 bg-slate-100 relative overflow-hidden flex flex-col items-center justify-center p-8 select-none">
+            class="flex-1 bg-black/40 relative overflow-hidden flex flex-col items-center justify-center p-8 select-none">
 
             <div *ngIf="corsError()"
-                class="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 backdrop-blur-sm">
+                class="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 backdrop-blur-sm border border-white/10">
                 <app-icon name="alert-triangle" class="w-4 h-4"></app-icon>
                 <span>Preview Only: SVG editing disabled due to server security (CORS).</span>
             </div>
 
             <!-- Checkerboard Background for Canvas -->
-            <div class="absolute inset-0 checkered-bg z-0 pointer-events-none opacity-50"></div>
+            <div class="absolute inset-0 checkered-bg z-0 pointer-events-none opacity-20"></div>
 
             <div *ngIf="isLoading()"
                 class="absolute inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                <div
+                    class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent shadow-2xl">
+                </div>
             </div>
 
             <!-- SVG Container -->
             <div *ngIf="mode() === 'svg' && !isLoading()"
                 class="rounded-lg shadow-2xl relative z-10 w-full max-w-2xl aspect-square flex items-center justify-center p-12 bg-transparent">
-                <div [innerHTML]="sanitizedSvg()" class="w-full h-full svg-preview drop-shadow-sm"></div>
+                <div [innerHTML]="sanitizedSvg()"
+                    class="w-full h-full svg-preview drop-shadow-md transition-all duration-300"></div>
             </div>
 
             <!-- Image Container -->
-            <div *ngIf="mode() !== 'svg'" class="relative z-10 inline-block shadow-2xl">
+            <div *ngIf="mode() !== 'svg'" class="relative z-10 inline-block shadow-2xl shadow-black/50">
                 <!-- Main Image with Filters/Transform -->
                 <img #image [src]="asset.publicUrl" (load)="onImageLoad()" [style]="imageStyle"
-                    class="h-[60vh] w-full object-contain pointer-events-none block rounded-sm shadow-black/50 bg-black/5">
-
-                <!-- Crop Overlay (Static relative to image container? No, needs to match transformed image) -->
-                <!-- Ideally for crop we render to canvas. For now, strict limitation: Crop resets if you rotate/flip to avoid complex math bugs. -->
+                    class="h-[65vh] w-full object-contain pointer-events-none block rounded-sm shadow-black/50 bg-black/5">
 
                 <!-- Simple Crop Box OVER the image container -->
                 <div *ngIf="imgLoaded" [style.left.px]="cropRect.x" [style.top.px]="cropRect.y"
                     [style.width.px]="cropRect.w" [style.height.px]="cropRect.h"
-                    class="absolute border border-white outline outline-1 outline-black/50 bg-indigo-500/10 cursor-move"
+                    class="absolute border-2 border-white outline outline-[100vmax] outline-black/60 bg-transparent cursor-move shadow-sm"
                     (mousedown)="startDrag($event, 'move')">
 
                     <!-- Grid Lines or Crosshair -->
-                    <div class="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-30">
-                        <div class="border-r border-b border-white/50"></div>
-                        <div class="border-r border-b border-white/50"></div>
-                        <div class="border-b border-white/50"></div>
-                        <div class="border-r border-b border-white/50"></div>
-                        <div class="border-r border-b border-white/50"></div>
-                        <div class="border-b border-white/50"></div>
-                        <div class="border-r border-white/50"></div>
-                        <div class="border-r border-white/50"></div>
+                    <div class="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                        <div class="border-r border-b border-white/30"></div>
+                        <div class="border-r border-b border-white/30"></div>
+                        <div class="border-b border-white/30"></div>
+                        <div class="border-r border-b border-white/30"></div>
+                        <div class="border-r border-b border-white/30"></div>
+                        <div class="border-b border-white/30"></div>
+                        <div class="border-r border-white/30"></div>
+                        <div class="border-r border-white/30"></div>
                     </div>
 
                     <!-- Handles -->
-                    <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-indigo-600 cursor-se-resize shadow-sm"
+                    <div class="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-indigo-500 border-2 border-white rounded-full cursor-se-resize shadow-md hover:scale-125 transition-transform"
                         (mousedown)="startDrag($event, 'br')"></div>
                 </div>
             </div>
@@ -200,15 +223,32 @@
 
 <style>
     .checkered-bg {
-        background-color: #f8fafc;
-        /* Slate-50 */
-        background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+        background-color: #1e293b;
+        /* Slate-800 */
+        background-image: radial-gradient(#334155 1px, transparent 1px);
         background-size: 20px 20px;
     }
 
     .svg-preview ::ng-deep svg {
         width: 100%;
         height: 100%;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #334155;
+        border-radius: 3px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: #475569;
     }
 </style>

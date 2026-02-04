@@ -145,6 +145,20 @@
             ]
         },
         {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "contentType",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "media_folders",
             "queryScope": "COLLECTION",
             "fields": [
@@ -154,6 +168,90 @@
                 },
                 {
                     "fieldPath": "name",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "size",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "size",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "filename",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "media_assets",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "metadata.folderId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "filename",
                     "order": "ASCENDING"
                 }
             ]

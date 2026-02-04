@@ -117,8 +117,10 @@
 
 .search-box {
     flex: 1;
+    /* Grow to fill space */
     position: relative;
-    max-width: 600px;
+    max-width: none;
+    /* Explicitly remove limit */
 }
 
 .search-icon {

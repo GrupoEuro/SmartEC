@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MediaFolder } from '../../../../../core/models/media.model';
+import { MediaFolder, MediaAsset } from '../../../../../core/models/media.model';
 import { MediaService } from '../../../../../core/services/media.service';
 import { AppIconComponent } from '../../../../../shared/components/app-icon/app-icon.component';
 import { FormsModule } from '@angular/forms';
@@ -14,16 +14,19 @@ import { FormsModule } from '@angular/forms';
        <!-- Root Create Action (Only shown at top level if desired, or handled by parent) -->
        
        <div *ngFor="let folder of folders()" class="folder-node">
-          <div 
-            class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group relative border border-transparent"
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group relative border border-transparent"
             [class.bg-indigo-500_10]="selectedFolderId === folder.id"
-            [class.border-indigo-500_30]="selectedFolderId === folder.id"
-            [class.text-indigo-400]="selectedFolderId === folder.id"
+            [class.border-indigo-500_30]="selectedFolderId === folder.id || dragOverFolderId() === folder.id"
+            [class.bg-indigo-500_20]="dragOverFolderId() === folder.id"
+            [class.text-indigo-400]="selectedFolderId === folder.id || dragOverFolderId() === folder.id"
             [class.text-slate-400]="selectedFolderId !== folder.id"
-            [class.hover:bg-white_05]="selectedFolderId !== folder.id"
+            [class.hover:bg-white_05]="selectedFolderId !== folder.id && dragOverFolderId() !== folder.id"
             [class.hover:text-slate-200]="selectedFolderId !== folder.id"
             (click)="selectFolder(folder)"
-            (contextmenu)="onContextMenu($event, folder)">
+            (contextmenu)="onContextMenu($event, folder)"
+            (dragover)="onDragOver($event, folder)"
+            (dragleave)="onDragLeave($event, folder)"
+            (drop)="onDrop($event, folder)">
             
             <!-- Expand Toggle -->
             <button 
@@ -184,4 +187,60 @@ export class FolderTreeComponent implements OnInit {
         event.preventDefault();
         // Context menu replaced by hover actions
     }
+
+    // --- Drag & Drop Support ---
+    @Output() folderDrop = new EventEmitter<{ folder: MediaFolder, assetIds: string[] }>();
+    dragOverFolderId = signal<string | null>(null);
+
+    onDragOver(event: DragEvent, folder: MediaFolder) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.dataTransfer?.types.includes('application/json')) {
+            this.dragOverFolderId.set(folder.id!);
+            event.dataTransfer.dropEffect = 'move';
+        }
+    }
+
+    onDragLeave(event: DragEvent, folder: MediaFolder) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (this.dragOverFolderId() === folder.id) {
+            this.dragOverFolderId.set(null);
+        }
+    }
+
+    onDrop(event: DragEvent, folder: MediaFolder) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.dragOverFolderId.set(null);
+
+        const data = event.dataTransfer?.getData('application/json');
+        if (data) {
+            try {
+                // We just pass IDs, parent component resolves them
+                // But wait, parent passed full assets? No, we need to restructure.
+                // Actually, the parent handles the drop event bubbled up? 
+                // No, we emit an event. Ideally we pass back the IDs.
+                // Let's rely on parent to know what's being dragged via signal or pass minimal data.
+                // Since this component doesn't know about "assets", let's pass the IDs up.
+                // Revising Output signature:
+                // EventEmitter<{folder: MediaFolder, assetIds: string[]}>
+                const assetIds = JSON.parse(data) as string[];
+                // We emit a simpler event, parent component reconstructs assets if needed 
+                // or just uses IDs (MediaService.moveAssets uses IDs).
+                // Let's emit 'folderDrop' with folder and assetIds.
+                // Wait, my previous plan said "assets: MediaAsset[]". 
+                // I'll emit "any" payload or change existing Output.
+                // Let's check parent: onFolderDrop(event: { folder: MediaFolder, assets: MediaAsset[] })
+                // Parent expects Assets. But I only have IDs here.
+                // BETTER: Parent handles the drop on its own signal? 
+                // No, parent needs to know WHICH folder. This component knows.
+                // So I will emit { folder, assetIds } and update parent to use IDs.
+                this.folderDrop.emit({ folder, assetIds });
+            } catch (e) {
+                console.error('Drop error', e);
+            }
+        }
+    }
+
 }

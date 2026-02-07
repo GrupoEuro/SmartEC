@@ -13,6 +13,8 @@ export interface Banner {
   link?: string;
   order: number;
   active: boolean;
+  createdAt?: any; // Timestamp or Date
+  updatedAt?: any;
 }
 
 @Injectable({
@@ -41,7 +43,11 @@ export class BannerService {
     banner.imagePath = path;
 
     const colRef = collection(this.firestore, this.collectionName);
-    const docRef = await addDoc(colRef, banner);
+    const docRef = await addDoc(colRef, {
+      ...banner,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
     this.logService.log('CREATE', 'BANNER', `Created banner: ${banner.title}`, docRef.id);
   }
 
@@ -68,7 +74,10 @@ export class BannerService {
     }
 
     const docRef = doc(this.firestore, this.collectionName, id);
-    await updateDoc(docRef, { ...banner });
+    await updateDoc(docRef, {
+      ...banner,
+      updatedAt: new Date()
+    });
     this.logService.log('UPDATE', 'BANNER', `Updated banner: ${banner.title}`, id);
   }
 

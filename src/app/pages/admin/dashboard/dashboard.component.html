@@ -1,141 +1,317 @@
-<app-admin-page-header icon="📊" [title]="'ADMIN.DASHBOARD.WELCOME' | translate"
-    [subtitle]="'ADMIN.DASHBOARD.SUBTITLE' | translate">
-</app-admin-page-header>
-
-<div class="dashboard-container">
-
-    @if (error) {
-    <div class="error-message">
-        <h3>{{ 'ADMIN.COMMON.ERROR' | translate }}</h3>
-        <p>{{ error }}</p>
-    </div>
-    }
-
-    @if (isLoading) {
-    <div class="loading-state">
-        <div class="spinner"></div>
-        <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
-    </div>
-    } @else {
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #e3f2fd;">👥</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.USERS' | translate }}</div>
-                <div class="stat-value">{{ stats.users }}</div>
+<div class="dashboard-layout">
+    <!-- Sticky Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-group">
+                <h1>{{ 'ADMIN.DASHBOARD.WELCOME' | translate }}</h1>
+                <div class="breadcrumbs">Overview / System Status</div>
             </div>
         </div>
-
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #f3e5f5;">✍️</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.POSTS' | translate }}</div>
-                <div class="stat-value">{{ stats.posts }}</div>
+        <div class="header-right">
+            <div class="header-actions">
+                <div class="date-pill">
+                    {{ now | date:'EEEE, MMMM d, y, h:mm a' }}
+                </div>
             </div>
         </div>
+    </header>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #fff3e0;">📚</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PDFS' | translate }}</div>
-                <div class="stat-value">{{ stats.pdfs }}</div>
-            </div>
+    <main class="dashboard-content">
+        @if (isLoading) {
+        <div class="glass-loader">
+            <div class="spinner"></div>
+            <p>Initializing Dashboard...</p>
         </div>
+        } @else {
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #e8f5e9;">🖼️</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.BANNERS' | translate }}</div>
-                <div class="stat-value">{{ stats.banners }}</div>
-            </div>
-        </div>
+        <div class="bento-grid">
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #fce4ec;">📋</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.DISTRIBUTORS' | translate }}</div>
-                <div class="stat-value">{{ stats.distributors }}</div>
-            </div>
-        </div>
+            <!-- Main Column (Left) -->
+            <div class="main-column">
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #f1f8e9;">📧</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.NEWSLETTER' | translate }}</div>
-                <div class="stat-value">{{ stats.newsletter }}</div>
-            </div>
-        </div>
+                <!-- Row 1: Hero Stats (4 Cols) -->
+                <div class="hero-stats-row">
+                    <!-- Users -->
+                    <div class="stat-card-hero">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value-large">{{ stats.users }}</div>
+                        <div class="stat-trend positive">
+                            <span>↗</span> 12% vs last month
+                        </div>
+                    </div>
 
-        <!-- Product Statistics -->
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #e1f5fe;">🛒</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_TOTAL' | translate }}</div>
-                <div class="stat-value">{{ stats.products }}</div>
-            </div>
-        </div>
+                    <!-- Products -->
+                    <div class="stat-card-hero">
+                        <div class="stat-label">Products</div>
+                        <div class="stat-value-large">{{ stats.products }}</div>
+                        <div class="stat-trend neutral">
+                            <span>•</span> {{ stats.productsActive }} Active
+                        </div>
+                    </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #e8f5e9;">✅</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_ACTIVE' | translate }}</div>
-                <div class="stat-value">{{ stats.productsActive }}</div>
-            </div>
-        </div>
+                    <!-- Orders/Leads -->
+                    <div class="stat-card-hero">
+                        <div class="stat-label">Distributors</div>
+                        <div class="stat-value-large">{{ stats.distributors }}</div>
+                        <div class="stat-trend positive">
+                            <span>+2</span> this week
+                        </div>
+                    </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #fff3e0;">⚠️</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_LOW_STOCK' | translate }}</div>
-                <div class="stat-value">{{ stats.productsLowStock }}</div>
-            </div>
-        </div>
+                    <!-- Total Orders (Site Pulse) -->
+                    <div class="stat-card-hero">
+                        <div class="stat-label">Total Orders</div>
+                        <div class="stat-value-large">{{ stats.orders }}</div>
+                        <div class="stat-trend positive">
+                            <span>❤️</span> Site Pulse
+                        </div>
+                    </div>
+                </div>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #ffebee;">❌</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.DASHBOARD.STATS.PRODUCTS_OUT_STOCK' | translate }}</div>
-                <div class="stat-value">{{ stats.productsOutStock }}</div>
-            </div>
-        </div>
+                <!-- Row 2: Command Grid (3 Cols) -->
+                <div class="command-grid-section">
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #f3e5f5;">🏷️</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.SIDEBAR.BRANDS' | translate }}</div>
-                <div class="stat-value">{{ stats.brands }}</div>
-            </div>
-        </div>
+                    <!-- Product Management (Large) -->
+                    <a routerLink="/admin/products" class="cmd-card large">
+                        <div class="cmd-icon">
+                            <!-- Shopping Bag Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                        </div>
+                        <div class="cmd-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </div>
+                        <div class="cmd-content">
+                            <h3>Product Catalog</h3>
+                            <p>Manage inventory, prices, and stock levels.</p>
+                        </div>
+                    </a>
 
-        <div class="stat-card">
-            <div class="stat-icon" style="background: #e0f2f1;">📂</div>
-            <div class="stat-content">
-                <div class="stat-label">{{ 'ADMIN.SIDEBAR.CATEGORIES' | translate }}</div>
-                <div class="stat-value">{{ stats.categories }}</div>
-            </div>
-        </div>
-    </div>
+                    <!-- Blog Management -->
+                    <a routerLink="/admin/blog" class="cmd-card">
+                        <div class="cmd-icon">
+                            <!-- Pencil Square -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                            </svg>
+                        </div>
+                        <div class="cmd-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </div>
+                        <div class="cmd-content">
+                            <h3>Blog Posts</h3>
+                            <p>Publish news & updates.</p>
+                        </div>
+                    </a>
 
-    <div class="quick-actions">
-        <h2>{{ 'ADMIN.COMMON.ACTIONS' | translate }}</h2>
-        <div class="actions-grid">
-            <button class="action-btn" routerLink="/admin/blog/new">
-                <span class="icon">✍️</span>
-                <span class="text">{{ 'ADMIN.DASHBOARD.BLOG_DESC' | translate }}</span>
-            </button>
-            <button class="action-btn" routerLink="/admin/pdfs/new">
-                <span class="icon">📚</span>
-                <span class="text">{{ 'ADMIN.DASHBOARD.PDF_DESC' | translate }}</span>
-            </button>
-            <button class="action-btn" routerLink="/admin/banners/new">
-                <span class="icon">🖼️</span>
-                <span class="text">{{ 'ADMIN.DASHBOARD.BANNERS_DESC' | translate }}</span>
-            </button>
-            <button class="action-btn" routerLink="/admin/users">
-                <span class="icon">👥</span>
-                <span class="text">{{ 'ADMIN.SIDEBAR.USERS' | translate }}</span>
-            </button>
-        </div>
-    </div>
-    }
+                    <!-- Banners -->
+                    <a routerLink="/admin/banners" class="cmd-card">
+                        <div class="cmd-icon">
+                            <!-- Photo -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                        </div>
+                        <div class="cmd-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </div>
+                        <div class="cmd-content">
+                            <h3>Banners</h3>
+                            <p>Update homepage sliders.</p>
+                        </div>
+                    </a>
+
+                    <!-- Users -->
+                    <a routerLink="/admin/users" class="cmd-card">
+                        <div class="cmd-icon">
+                            <!-- Users Group -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                            </svg>
+                        </div>
+                        <div class="cmd-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </div>
+                        <div class="cmd-content">
+                            <h3>Users</h3>
+                            <p>Manage customer accounts.</p>
+                        </div>
+                    </a>
+
+                    <!-- Media Library -->
+                    <a routerLink="/admin/media-library" class="cmd-card">
+                        <div class="cmd-icon">
+                            <!-- Folder -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                            </svg>
+                        </div>
+                        <div class="cmd-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </div>
+                        <div class="cmd-content">
+                            <h3>Media Library</h3>
+                            <p>Manage uploaded assets.</p>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Row 3: Utility Grid (Inventory, Actions, Pending) -->
+                <div class="utility-grid">
+
+                    <!-- Col 1: Inventory Health -->
+                    <div class="panel-card"
+                        [ngClass]="{'glow-warning': stats.productsLowStock > 0 || stats.productsOutStock > 0}">
+                        <div class="panel-title">Inventory Health</div>
+                        <div class="status-list">
+                            <div class="status-item warning" *ngIf="stats.productsLowStock > 0">
+                                <div class="status-dot"></div>
+                                <div class="status-info">
+                                    <span class="status-label">Low Stock</span>
+                                    <span class="status-count">{{ stats.productsLowStock }} items</span>
+                                </div>
+                            </div>
+                            <div class="status-item critical" *ngIf="stats.productsOutStock > 0">
+                                <div class="status-dot"></div>
+                                <div class="status-info">
+                                    <span class="status-label">Out of Stock</span>
+                                    <span class="status-count">{{ stats.productsOutStock }} items</span>
+                                </div>
+                            </div>
+                            <div class="status-item good"
+                                *ngIf="stats.productsLowStock === 0 && stats.productsOutStock === 0">
+                                <div class="status-dot"></div>
+                                <div class="status-info">
+                                    <span class="status-label">Stock Status</span>
+                                    <span class="status-count">In Good Standing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Col 2: Quick Actions -->
+                    <div class="panel-card actions">
+                        <div class="panel-title">Quick Actions</div>
+                        <div class="action-list">
+                            <a routerLink="/admin/products/new" class="action-item">
+                                <span class="action-icon-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                </span>
+                                <span>Add Product</span>
+                                <span class="kbd-shortcut">N</span>
+                            </a>
+                            <a routerLink="/admin/blog/new" class="action-item">
+                                <span class="action-icon-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                    </svg>
+                                </span>
+                                <span>Write Post</span>
+                            </a>
+                            <a routerLink="/admin/banners/new" class="action-item">
+                                <span class="action-icon-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                    </svg>
+                                </span>
+                                <span>New Banner</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Col 3: Pending Tasks (NEW) -->
+                    <div class="panel-card" [ngClass]="{'glow-warning': stats.pendingOrders > 0}">
+                        <div class="panel-title">Pending Tasks</div>
+                        <div class="status-list">
+                            <div class="status-item warning" *ngIf="stats.pendingOrders > 0">
+                                <div class="status-dot"></div>
+                                <div class="status-info">
+                                    <span class="status-label">Pending Orders</span>
+                                    <span class="status-count">{{ stats.pendingOrders }} orders to ship</span>
+                                </div>
+                            </div>
+                            <div class="status-item good" *ngIf="stats.pendingOrders === 0">
+                                <div class="status-dot"></div>
+                                <div class="status-info">
+                                    <span class="status-label">Orders Queue</span>
+                                    <span class="status-count">All Caught Up!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- End Utility Grid -->
+
+            </div> <!-- End Main Column -->
+
+            <!-- Side Panel (Right) -->
+            <aside class="side-panel">
+
+                <!-- 1. Recent Activity (Oversight Stream) -->
+                <div class="panel-card activity-monitor">
+                    <div class="panel-title">Recent Activity</div>
+
+                    @if (activities.length === 0) {
+                    <div class="empty-state">
+                        <p>No recent activity found.</p>
+                    </div>
+                    } @else {
+                    <ul class="activity-feed">
+                        <li class="activity-item" *ngFor="let activity of activities">
+                            <a [routerLink]="activity.link" class="activity-link-wrapper">
+                                <div class="activity-dot" [ngClass]="activity.type"></div>
+                                <div class="activity-content">
+                                    {{ activity.text }}
+                                    <span class="activity-time">{{ activity.timeString }}</span>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                    }
+                </div>
+
+            </aside>
+
+        </div> <!-- End Bento Grid -->
+        }
+    </main>
 </div>

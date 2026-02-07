@@ -1,8 +1,9 @@
 <app-admin-page-header icon="📂"
     [title]="isEditing ? ('ADMIN.CATEGORIES.EDIT_TITLE' | translate) : ('ADMIN.CATEGORIES.NEW_TITLE' | translate)"
-    [subtitle]="isEditing ? ('ADMIN.CATEGORIES.EDIT_SUBTITLE' | translate) : ('ADMIN.CATEGORIES.NEW_SUBTITLE' | translate)"
-    [showSaveCancel]="true" [isSaving]="isSubmitting" [isFormInvalid]="categoryForm.invalid"
-    [hasUnsavedChanges]="categoryForm.dirty" [confirmOnCancel]="false" (onSave)="onSubmit()" (onCancel)="onCancel()">
+    [subtitle]="isEditing ? ('ADMIN.CATEGORIES.EDIT_SUBTITLE' | translate) : ('ADMIN.CATEGORIES.NEW_SUBTITLE' | translate)">
+    <button type="button" class="btn-secondary" (click)="onCancel()">
+        {{ 'ADMIN.COMMON.CANCEL' | translate }}
+    </button>
 </app-admin-page-header>
 
 <div class="form-container">
@@ -10,126 +11,213 @@
 
     <form *ngIf="categoryForm" [formGroup]="categoryForm" (ngSubmit)="onSubmit()">
 
-        <!-- Basic Information Section -->
-        <div class="form-section">
+        <!-- Basic Information -->
+        <section class="form-section">
             <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_BASIC' | translate }}</h3>
 
-            <div class="form-row">
+            <div class="form-row cols-2">
                 <div class="form-group">
-                    <label for="nameEn">{{ 'ADMIN.CATEGORIES.FORM.NAME_EN' | translate }} *</label>
-                    <input type="text" id="nameEn" formControlName="nameEn"
-                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_EN_PLACEHOLDER' | translate" class="form-control">
+                    <label for="nameEn">
+                        {{ 'ADMIN.CATEGORIES.FORM.NAME_EN' | translate }} <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nameEn" formControlName="nameEn" class="form-control"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_EN_PLACEHOLDER' | translate">
                     <div class="error"
                         *ngIf="categoryForm.get('nameEn')?.invalid && categoryForm.get('nameEn')?.touched">
-                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                        This field is required
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="nameEs">{{ 'ADMIN.CATEGORIES.FORM.NAME_ES' | translate }} *</label>
-                    <input type="text" id="nameEs" formControlName="nameEs"
-                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_ES_PLACEHOLDER' | translate" class="form-control">
+                    <label for="nameEs">
+                        {{ 'ADMIN.CATEGORIES.FORM.NAME_ES' | translate }} <span class="required">*</span>
+                    </label>
+                    <input type="text" id="nameEs" formControlName="nameEs" class="form-control"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.NAME_ES_PLACEHOLDER' | translate">
                     <div class="error"
                         *ngIf="categoryForm.get('nameEs')?.invalid && categoryForm.get('nameEs')?.touched">
-                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                        This field is required
                     </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="slug">{{ 'ADMIN.CATEGORIES.FORM.SLUG' | translate }} *</label>
-                <input type="text" id="slug" formControlName="slug"
-                    [placeholder]="'ADMIN.CATEGORIES.FORM.SLUG_PLACEHOLDER' | translate" class="form-control">
-                <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.SLUG_HINT' | translate }}</small>
-                <div class="error" *ngIf="categoryForm.get('slug')?.invalid && categoryForm.get('slug')?.touched">
-                    {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label for="slug">
+                        {{ 'ADMIN.CATEGORIES.FORM.SLUG' | translate }} <span class="required">*</span>
+                        <span class="help-icon" [title]="'ADMIN.CATEGORIES.FORM.SLUG_HINT' | translate">ℹ️</span>
+                    </label>
+                    <input type="text" id="slug" formControlName="slug" class="form-control"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.SLUG_PLACEHOLDER' | translate">
+                    <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.SLUG_HINT' | translate }}</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="parentId">
+                        {{ 'ADMIN.CATEGORIES.FORM.PARENT_CATEGORY' | translate }}
+                        <span class="help-icon" [title]="'ADMIN.CATEGORIES.FORM.PARENT_HINT' | translate">ℹ️</span>
+                    </label>
+                    <select id="parentId" formControlName="parentId" class="form-control">
+                        <option [ngValue]="null">{{ 'ADMIN.CATEGORIES.FORM.NO_PARENT' | translate }}</option>
+                        <option *ngFor="let cat of parentCategories" [value]="cat.id">
+                            {{ cat.name.en }} / {{ cat.name.es }}
+                        </option>
+                    </select>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Description Section -->
-        <div class="form-section">
+        <!-- Visual & Organization -->
+        <section class="form-section">
+            <h3 class="section-title">
+                {{ 'ADMIN.CATEGORIES.SECTION_VISUAL' | translate }}
+            </h3>
+
+            <!-- Image Upload -->
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.CATEGORIES.FORM.IMAGE' | translate }}</label>
+
+                    <div class="image-upload-section">
+                        <!-- Preview -->
+                        <div class="image-preview" *ngIf="imagePreview">
+                            <img [src]="imagePreview" alt="Category Preview">
+                            <button type="button" class="btn-remove-image" (click)="removeImage()">
+                                <app-icon name="trash-2" [size]="16"></app-icon>
+                            </button>
+                        </div>
+
+                        <!-- Upload Buttons -->
+                        <div class="upload-actions" *ngIf="!imagePreview">
+                            <div class="upload-area" (click)="fileInput.click()">
+                                <input #fileInput type="file" (change)="onImageSelected($event)" accept="image/*"
+                                    class="file-input">
+                                <div class="upload-label">
+                                    <span class="upload-icon">☁️</span>
+                                    <span>{{ 'ADMIN.CATEGORIES.FORM.UPLOAD_IMAGE' | translate }}</span>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn-library" (click)="openMediaLibrary()">
+                                <app-icon name="image" [size]="20"></app-icon>
+                                <span>Select from Library</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-group">
+                        <label for="icon">
+                            {{ 'ADMIN.CATEGORIES.FORM.ICON' | translate }}
+                            <span class="help-icon" [title]="'ADMIN.CATEGORIES.FORM.ICON_HINT' | translate">ℹ️</span>
+                        </label>
+                        <div class="input-with-prefix cursor-pointer" (click)="openIconPicker()">
+                            <span class="currency-prefix">
+                                <app-icon [name]="categoryForm.get('icon')?.value || 'folder'" [size]="16"></app-icon>
+                            </span>
+                            <div
+                                class="form-control with-prefix flex items-center text-slate-300 hover:border-blue-500/50 transition-colors">
+                                {{ categoryForm.get('icon')?.value || 'Select icon...' }}
+                            </div>
+                            <span class="currency-suffix text-slate-500">
+                                <app-icon name="search" [size]="14"></app-icon>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <label for="order">{{ 'ADMIN.CATEGORIES.FORM.ORDER' | translate }}</label>
+                        <input type="number" id="order" formControlName="order" class="form-control" min="0">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Descriptions -->
+        <section class="form-section">
             <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_DESCRIPTION' | translate }}</h3>
-
-            <div class="form-group">
-                <label for="descriptionEn">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_EN' | translate }}</label>
-                <textarea id="descriptionEn" formControlName="descriptionEn" rows="3"
-                    [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"
-                    class="form-control"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="descriptionEs">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_ES' | translate }}</label>
-                <textarea id="descriptionEs" formControlName="descriptionEs" rows="3"
-                    [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"
-                    class="form-control"></textarea>
-            </div>
-        </div>
-
-        <!-- Visual & Organization Section -->
-        <div class="form-section">
-            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_VISUAL' | translate }}</h3>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="icon">{{ 'ADMIN.CATEGORIES.FORM.ICON' | translate }}</label>
-                    <input type="text" id="icon" formControlName="icon" placeholder="📁" class="form-control">
-                    <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.ICON_HINT' | translate }}</small>
+                    <label for="descriptionEn">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_EN' | translate }}</label>
+                    <textarea id="descriptionEn" formControlName="descriptionEn" class="form-control" rows="3"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
                 </div>
+            </div>
 
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="order">{{ 'ADMIN.CATEGORIES.FORM.ORDER' | translate }} *</label>
-                    <input type="number" id="order" formControlName="order" min="0" class="form-control">
+                    <label for="descriptionEs">{{ 'ADMIN.CATEGORIES.FORM.DESCRIPTION_ES' | translate }}</label>
+                    <textarea id="descriptionEs" formControlName="descriptionEs" class="form-control" rows="3"
+                        [placeholder]="'ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
                 </div>
             </div>
+        </section>
 
-            <!-- Image Upload -->
-            <div class="form-group">
-                <label>{{ 'ADMIN.CATEGORIES.FORM.IMAGE' | translate }}</label>
-                <div class="image-upload-section">
-                    <div *ngIf="imagePreview" class="image-preview">
-                        <img [src]="imagePreview" alt="Category image">
-                        <button type="button" class="btn-remove-image" (click)="removeImage()">✕</button>
-                    </div>
-                    <div class="upload-area" *ngIf="!imagePreview">
-                        <input type="file" id="imageInput" accept="image/*" (change)="onImageSelected($event)"
-                            class="file-input">
-                        <label for="imageInput" class="upload-label">
-                            <span class="upload-icon">📷</span>
-                            <span>{{ 'ADMIN.CATEGORIES.FORM.UPLOAD_IMAGE' | translate }}</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Hierarchy Section -->
-        <div class="form-section">
-            <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_HIERARCHY' | translate }}</h3>
-
-            <div class="form-group">
-                <label for="parentId">{{ 'ADMIN.CATEGORIES.FORM.PARENT_CATEGORY' | translate }}</label>
-                <select id="parentId" formControlName="parentId" class="form-control">
-                    <option [value]="null">{{ 'ADMIN.CATEGORIES.FORM.NO_PARENT' | translate }}</option>
-                    <option *ngFor="let parent of parentCategories" [value]="parent.id">
-                        {{ parent.name.en }} / {{ parent.name.es }}
-                    </option>
-                </select>
-                <small class="form-hint">{{ 'ADMIN.CATEGORIES.FORM.PARENT_HINT' | translate }}</small>
-            </div>
-        </div>
-
-        <!-- Status Section -->
-        <div class="form-section">
+        <!-- Status & Visibility -->
+        <section class="form-section">
             <h3 class="section-title">{{ 'ADMIN.CATEGORIES.SECTION_STATUS' | translate }}</h3>
 
-            <!-- Active Toggle -->
-            <div class="form-group">
-                <app-toggle-switch [control]="$any(categoryForm.get('active'))"
-                    [label]="'ADMIN.CATEGORIES.FORM.ACTIVE' | translate" icon="✅"
-                    [hint]="'ADMIN.CATEGORIES.FORM.ACTIVE_HINT' | translate">
-                </app-toggle-switch>
+            <div class="form-row">
+                <div class="form-group">
+                    <app-toggle-switch [control]="$any(categoryForm.get('active'))"
+                        [label]="'ADMIN.CATEGORIES.FORM.ACTIVE' | translate" icon="✅">
+                    </app-toggle-switch>
+                    <small class="form-hint toggle-hint">{{ 'ADMIN.CATEGORIES.FORM.ACTIVE_HINT' | translate }}</small>
+                </div>
             </div>
+        </section>
+
+        <!-- Submit Actions -->
+        <div class="submit-actions">
+            <!-- Error Message Display -->
+            <div class="submit-error-message" *ngIf="submitState === 'error'">
+                <app-icon name="alert-circle" [size]="16" class="text-red-500"></app-icon>
+                <span class="text-red-500 text-sm">Error saving category</span>
+            </div>
+
+            <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="isSubmitting">
+                {{ 'ADMIN.COMMON.CANCEL' | translate }}
+            </button>
+
+            <button type="submit" class="btn btn-primary" [disabled]="categoryForm.invalid || isSubmitting" [ngClass]="{
+                    'loading': submitState === 'validating' || submitState === 'saving',
+                    'success': submitState === 'success',
+                    'error': submitState === 'error'
+                }">
+
+                <!-- Idle State -->
+                <span *ngIf="submitState === 'idle'">
+                    {{ isEditing ? ('ADMIN.COMMON.SAVE' | translate) : ('ADMIN.CATEGORIES.BTN_ADD' | translate) }}
+                </span>
+
+                <!-- Saving State -->
+                <span *ngIf="submitState === 'saving'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+                    {{ 'ADMIN.COMMON.SAVING' | translate }}...
+                </span>
+
+                <!-- Success State -->
+                <span *ngIf="submitState === 'success'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="check" [size]="16"></app-icon>
+                    Saved!
+                </span>
+
+                <!-- Error State -->
+                <span *ngIf="submitState === 'error'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="x" [size]="16"></app-icon>
+                    Failed
+                </span>
+            </button>
         </div>
+
     </form>
 </div>
+
+<app-icon-picker-dialog *ngIf="showIconPicker" (iconSelected)="onIconSelected($event)" (close)="closeIconPicker()">
+</app-icon-picker-dialog>
+
+<app-media-picker-dialog *ngIf="showMediaPicker" (assetSelected)="onMediaAssetSelected($event)"
+    (close)="closeMediaPicker()">
+</app-media-picker-dialog>

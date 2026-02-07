@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, from, BehaviorSubject } from 'rxjs';
+import { map, shareReplay } from 'rxjs/operators';
 import { UserProfile, UserRole } from '../models/user.model';
 
 @Injectable({
@@ -12,7 +12,16 @@ export class UserManagementService {
     private usersCollection = collection(this.firestore, 'users');
     private customersCollection = collection(this.firestore, 'customers');
 
-    getCustomers(): Observable<UserProfile[]> {
+    private customersCache$ = new BehaviorSubject<UserProfile[] | null>(null);
+
+    getCustomers(forceRefresh = false): Observable<UserProfile[]> {
+        // Return cached data if available and not forcing refresh
+        if (this.customersCache$.value && !forceRefresh) {
+            return this.customersCache$.asObservable().pipe(
+                map(users => users || [])
+            );
+        }
+
         // Fetch directly from 'customers' collection
         return from(getDocs(this.customersCollection)).pipe(
             map(snapshot => {
@@ -20,8 +29,10 @@ export class UserManagementService {
                 snapshot.forEach(doc => {
                     customers.push(this.mapUser(doc.id, doc.data()));
                 });
+                this.customersCache$.next(customers); // Update cache
                 return customers;
-            })
+            }),
+            shareReplay(1)
         );
     }
 
@@ -98,6 +109,9 @@ export class UserManagementService {
     }
 
     private mapUser(uid: string, data: any): UserProfile {
+        const createdAt = data['createdAt']?.toDate ? data['createdAt'].toDate() : (data['createdAt'] ? new Date(data['createdAt']) : undefined);
+        const lastLogin = data['lastLogin']?.toDate ? data['lastLogin'].toDate() : (data['lastLogin'] ? new Date(data['lastLogin']) : undefined);
+
         return {
             uid,
             email: data['email'] || '',
@@ -105,8 +119,8 @@ export class UserManagementService {
             photoURL: data['photoURL'] || '',
             role: data['role'] || 'CUSTOMER',
             isActive: data['isActive'] !== undefined ? data['isActive'] : true,
-            createdAt: data['createdAt'],
-            lastLogin: data['lastLogin'],
+            createdAt: createdAt,
+            lastLogin: lastLogin,
             phone: data['phone'],
             stats: data['stats'],
             shippingAddress: data['shippingAddress']

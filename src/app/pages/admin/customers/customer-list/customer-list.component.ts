@@ -8,6 +8,7 @@ import { UserProfile } from '../../../../core/models/user.model';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { PaginationComponent } from '../../shared/pagination/pagination.component';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
     selector: 'app-customer-list',
@@ -18,6 +19,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 })
 export class CustomerListComponent implements OnInit {
     private userService = inject(UserManagementService);
+    private toast = inject(ToastService);
 
     customers: UserProfile[] = [];
     filteredCustomers: UserProfile[] = [];
@@ -46,7 +48,10 @@ export class CustomerListComponent implements OnInit {
     }
 
     loadCustomers() {
-        this.isLoading = true;
+        if (this.customers.length === 0) {
+            this.isLoading = true;
+        }
+
         this.userService.getCustomers().subscribe({
             next: (customers) => {
                 this.customers = customers;
@@ -139,13 +144,14 @@ export class CustomerListComponent implements OnInit {
         return this.filteredCustomers.slice(start, start + this.pageSize);
     }
 
-    sort(column: any) { // using any to match string literal types above easily
+    sort(column: any) {
         if (this.sortColumn === column) {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
             this.sortColumn = column;
             this.sortDirection = 'asc';
         }
+        this.currentPage = 1; // Reset to first page
         this.applyFilters();
     }
 
@@ -158,6 +164,10 @@ export class CustomerListComponent implements OnInit {
         return customer.stats?.totalSpend || 0;
     }
 
+    trackByUid(index: number, item: UserProfile): string {
+        return item.uid;
+    }
+
     getItemsBgColor(seed: string): string {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'];
         let hash = 0;
@@ -165,5 +175,34 @@ export class CustomerListComponent implements OnInit {
             hash = seed.charCodeAt(i) + ((hash << 5) - hash);
         }
         return colors[Math.abs(hash) % colors.length];
+    }
+    exportToCSV() {
+        if (this.filteredCustomers.length === 0) return;
+
+        const headers = ['Name', 'Email', 'Joined', 'Total Orders', 'Total Spend', 'Status', 'Last Active'];
+        const rows = this.filteredCustomers.map(c => [
+            c.displayName || 'Guest',
+            c.email,
+            c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-',
+            c.stats?.totalOrders || 0,
+            c.stats?.totalSpend || 0,
+            c.isActive ? 'Active' : 'Inactive',
+            c.lastLogin ? new Date(c.lastLogin).toLocaleDateString() : '-'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `customers-export-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        this.toast.success('Exported to CSV');
     }
 }

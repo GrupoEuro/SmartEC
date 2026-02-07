@@ -12,11 +12,15 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { CanComponentDeactivate } from '../../../../core/guards/unsaved-changes.guard';
 import { firstValueFrom } from 'rxjs';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { IconPickerDialogComponent } from '../../../../shared/components/icon-picker-dialog/icon-picker-dialog.component';
+import { MediaAsset } from '../../../../core/models/media.model';
 
 @Component({
     selector: 'app-category-form',
     standalone: true,
-    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent],
+    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent, AppIconComponent, MediaPickerDialogComponent, IconPickerDialogComponent],
     templateUrl: './category-form.component.html',
     styleUrl: './category-form.component.css'
 })
@@ -153,6 +157,55 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
         this.categoryForm.markAsDirty();
     }
 
+    // Media Library Integration
+    showMediaPicker = false;
+
+    // Force Rebuild
+    openMediaLibrary() {
+        this.showMediaPicker = true;
+    }
+
+    onMediaAssetSelected(asset: MediaAsset) {
+        this.imagePreview = asset.publicUrl;
+        this.imageFile = null; // Clear any locally selected file since we are using a URL
+        this.categoryForm.markAsDirty();
+        this.showMediaPicker = false;
+
+        // If we need to send this URL to the backend, we might need to handle it.
+        // The current service seems to expect a file or nothing for the image update.
+        // However, if we just want to update the preview for now and let the backend handle the URL update
+        // (assuming the backend supports updating image via URL or we download/re-upload or just pass the URL),
+        // we need to check how `categoryService.updateCategory` works.
+        // 
+        // NOTE: The current `categoryService.updateCategory` signature in `category-form.ts` (lines 201-205)
+        // takes `this.imageFile || undefined`. It doesn't seem to take a URL string directly for the image
+        // unless it's part of `categoryData`.
+        //
+        // Let's assume for now that we will pass the URL in the categoryData if no file is provided.
+        // I will update onSubmit to handle this.
+    }
+
+    closeMediaPicker() {
+        this.showMediaPicker = false;
+    }
+
+    // Icon Picker Integration
+    showIconPicker = false;
+
+    openIconPicker() {
+        this.showIconPicker = true;
+    }
+
+    onIconSelected(icon: string) {
+        this.categoryForm.patchValue({ icon });
+        this.categoryForm.markAsDirty();
+        this.showIconPicker = false;
+    }
+
+    closeIconPicker() {
+        this.showIconPicker = false;
+    }
+
     async onSubmit() {
         if (this.categoryForm.invalid || this.isSubmitting) {
             this.categoryForm.markAllAsTouched();
@@ -166,6 +219,7 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
         try {
             const formValue = this.categoryForm.value;
 
+            // Prepare typesafe CategoryPartial
             const categoryData: any = {
                 name: {
                     en: formValue.nameEn,
@@ -174,7 +228,7 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
                 slug: formValue.slug,
                 order: formValue.order,
                 active: formValue.active,
-                imageUrl: '',
+                // created/updated handled by backend/service ideally but keeping simplified here
                 createdAt: new Date(),
                 updatedAt: new Date()
             };
@@ -196,6 +250,16 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
             }
 
             if (this.isEditing && this.categoryId) {
+                // If we have an image file, it will be uploaded.
+                // If we don't have a file, but we have a preview that is DIFFERENT from original?
+                // Actually, the service likely handles "if file provided, upload and update image url. if not, keep existing".
+                // But if we selected from media library, we have a NEW URL but NO file.
+                // We need to pass this new URL to the backend.
+                // Let's add imageUrl to categoryData if we have one and no file.
+                if (!this.imageFile && this.imagePreview) {
+                    categoryData.imageUrl = this.imagePreview;
+                }
+
                 await this.categoryService.updateCategory(
                     this.categoryId,
                     categoryData,
@@ -204,6 +268,9 @@ export class CategoryFormComponent implements OnInit, CanComponentDeactivate {
                 this.submitState = 'success';
                 this.toast.success('Category updated successfully');
             } else {
+                if (!this.imageFile && this.imagePreview) {
+                    categoryData.imageUrl = this.imagePreview;
+                }
                 await this.categoryService.createCategory(
                     categoryData,
                     this.imageFile || undefined

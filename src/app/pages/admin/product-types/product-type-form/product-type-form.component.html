@@ -63,7 +63,18 @@
 
                 <div class="form-group">
                     <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.ICON' | translate }}</label>
-                    <input type="text" formControlName="icon" class="form-input" placeholder="🪖">
+                    <div class="input-with-prefix cursor-pointer" (click)="openIconPicker()">
+                        <span class="currency-prefix">
+                            <app-icon [name]="productTypeForm?.get('icon')?.value || 'folder'" [size]="18"></app-icon>
+                        </span>
+                        <div
+                            class="form-input with-prefix flex items-center text-slate-300 hover:border-blue-500/50 transition-colors">
+                            {{ productTypeForm?.get('icon')?.value || 'Select icon...' }}
+                        </div>
+                        <span class="currency-suffix">
+                            <app-icon name="search" [size]="14"></app-icon>
+                        </span>
+                    </div>
                     <p class="form-hint">{{ 'PRODUCT_TYPES.FORM.ICON_HINT' | translate }}</p>
                 </div>
 
@@ -372,3 +383,6 @@
         </div>
     </form>
 </div>
+
+<app-icon-picker-dialog *ngIf="showIconPicker" (iconSelected)="onIconSelected($event)" (close)="closeIconPicker()">
+</app-icon-picker-dialog>

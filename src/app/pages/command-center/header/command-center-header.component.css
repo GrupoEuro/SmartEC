@@ -9,7 +9,8 @@
     border-bottom: 1px solid rgba(148, 163, 184, 0.1);
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: 60;
+    /* Fixed: Must be higher than Sidebar (50) */
 }
 
 .command-center-header {
@@ -204,6 +205,11 @@
     height: 40px;
     gap: 0.75rem;
     min-width: 180px;
+}
+
+.period-btn>* {
+    pointer-events: none;
+    /* Ensure click bubbles to button */
 }
 
 .period-label {

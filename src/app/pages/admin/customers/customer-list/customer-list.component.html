@@ -2,21 +2,27 @@
     <!-- Sticky Command Header -->
     <header class="command-header">
         <div class="header-left">
-            <h1 class="page-title">{{ 'ADMIN.CUSTOMERS.TITLE' | translate }}</h1>
-            <span class="product-count" *ngIf="paginationConfig.totalItems > 0">
-                {{ paginationConfig.totalItems }}
-            </span>
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.CUSTOMERS.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="filteredCustomers.length > 0">{{ filteredCustomers.length }}</span>
+            </div>
         </div>
 
-        <div class="header-right">
-            <!-- Future Export Button -->
+        <div class="header-right" style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn-ghost" (click)="exportToCSV()" [disabled]="filteredCustomers.length === 0"
+                title="{{ 'ADMIN.COMMON.EXPORT' | translate }}"
+                style="color: #e4e4e7; background: #27272a; border: 1px solid #3f3f46; padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span class="icon">📥</span>
+                <span class="text" style="font-size: 0.9rem;">{{ 'ADMIN.COMMON.EXPORT' | translate }}</span>
+            </button>
         </div>
     </header>
 
-    <div class="product-grid-view">
-        <!-- Unified Toolbar -->
+    <!-- Main Content Area -->
+    <main class="product-grid-view">
+
+        <!-- Unified Search & Filter Toolbar -->
         <div class="table-toolbar">
-            <!-- Search -->
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" [formControl]="searchControl"
@@ -30,54 +36,63 @@
                 <option value="new">New Signups</option>
             </select>
 
-            <!-- Clear Filters -->
-            <button *ngIf="filterType !== 'all' || searchControl.value" class="btn-clear-filters"
+            <button class="btn-clear-filters" *ngIf="filterType !== 'all' || searchControl.value"
                 (click)="setFilterType('all'); searchControl.reset()">
                 {{ 'ADMIN.COMMON.CLEAR_FILTERS' | translate }}
             </button>
         </div>
 
         <!-- Glass Table -->
-        <div class="table-glass-container">
+        <div class="table-glass-container" *ngIf="!isLoading && filteredCustomers.length > 0; else noDataOrLoading">
             <table class="rich-table">
                 <thead>
                     <tr>
                         <th class="sortable" (click)="sort('displayName')">
                             {{ 'ADMIN.CUSTOMERS.TABLE.CUSTOMER' | translate }}
+                            <span *ngIf="sortColumn === 'displayName'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                            <span *ngIf="sortColumn !== 'displayName'" class="sort-hint">↕</span>
                         </th>
                         <th class="sortable" (click)="sort('email')">
                             {{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}
+                            <span *ngIf="sortColumn === 'email'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                            <span *ngIf="sortColumn !== 'email'" class="sort-hint">↕</span>
                         </th>
                         <th class="sortable" (click)="sort('createdAt')">
                             {{ 'ADMIN.CUSTOMERS.TABLE.JOINED' | translate }}
+                            <span *ngIf="sortColumn === 'createdAt'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                            <span *ngIf="sortColumn !== 'createdAt'" class="sort-hint">↕</span>
                         </th>
                         <th class="text-right sortable" (click)="sort('orders')">
                             {{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}
+                            <span *ngIf="sortColumn === 'orders'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                            <span *ngIf="sortColumn !== 'orders'" class="sort-hint">↕</span>
                         </th>
                         <th class="text-right sortable" (click)="sort('spend')">
                             {{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}
+                            <span *ngIf="sortColumn === 'spend'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                            <span *ngIf="sortColumn !== 'spend'" class="sort-hint">↕</span>
                         </th>
                         <th>Status</th>
-                        <th>{{ 'ADMIN.CUSTOMERS.TABLE.ACTIONS' | translate }}</th>
+                        <th class="text-right">{{ 'ADMIN.CUSTOMERS.TABLE.ACTIONS' | translate }}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let customer of paginatedCustomers">
+                    <tr *ngFor="let customer of paginatedCustomers; trackBy: trackByUid">
                         <td>
-                            <div class="product-identity" style="flex-direction: row; align-items: center; gap: 1rem;">
-                                <div class="img-thumbnail" style="border-radius: 50%; width: 40px; height: 40px;">
-                                    <img *ngIf="customer.photoURL" [src]="customer.photoURL"
-                                        style="border-radius: 50%;">
+                            <div class="product-identity">
+                                <div class="img-thumbnail">
+                                    <img *ngIf="customer.photoURL" [src]="customer.photoURL">
                                     <div *ngIf="!customer.photoURL" class="img-placeholder"
                                         [style.background-color]="getItemsBgColor(customer.email)"
-                                        style="border-radius: 50%; color: white; font-size: 1rem;">
-                                        {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase
-                                        }}
+                                        style="color: white; font-size: 1rem;">
+                                        {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase }}
                                     </div>
                                 </div>
-                                <span class="product-name" [routerLink]="['/admin/customers', customer.uid]">
-                                    {{ customer.displayName || 'Guest' }}
-                                </span>
+                                <div>
+                                    <a [routerLink]="['/admin/customers', customer.uid]" class="product-name">
+                                        {{ customer.displayName || 'Guest' }}
+                                    </a>
+                                </div>
                             </div>
                         </td>
                         <td>
@@ -89,9 +104,7 @@
                             </div>
                         </td>
                         <td class="text-right">
-                            <span class="badge-count">
-                                {{ customer.stats?.totalOrders || 0 }}
-                            </span>
+                            <span class="badge-count">{{ customer.stats?.totalOrders || 0 }}</span>
                         </td>
                         <td class="text-right">
                             <span class="price-text">{{ (customer.stats?.totalSpend || 0) | currency }}</span>
@@ -100,11 +113,11 @@
                             <div class="stock-pill" [class.success]="customer.isActive"
                                 [class.danger]="!customer.isActive">
                                 <span class="dot"></span>
-                                <span class="status-text">{{ customer.isActive ? 'Active' : 'Inactive' }}</span>
+                                {{ customer.isActive ? 'Active' : 'Inactive' }}
                             </div>
                         </td>
-                        <td>
-                            <div class="row-actions">
+                        <td class="text-right">
+                            <div class="row-actions" style="justify-content: flex-end;">
                                 <a [routerLink]="['/admin/customers', customer.uid]" class="btn-icon-ghost"
                                     [title]="'ADMIN.COMMON.VIEW' | translate">
                                     👁️
@@ -112,23 +125,20 @@
                             </div>
                         </td>
                     </tr>
-
-                    <!-- Empty State -->
-                    <tr *ngIf="!isLoading && filteredCustomers.length === 0">
-                        <td colspan="7" class="no-data">
-                            {{ 'ADMIN.CUSTOMERS.NO_RESULTS' | translate }}
-                        </td>
-                    </tr>
-
-                    <!-- Loading State -->
-                    <tr *ngIf="isLoading">
-                        <td colspan="7" class="no-data">
-                            {{ 'ADMIN.COMMON.LOADING' | translate }}
-                        </td>
-                    </tr>
                 </tbody>
             </table>
         </div>
+
+        <ng-template #noDataOrLoading>
+            <div *ngIf="isLoading" class="glass-loader">
+                <div class="spinner"></div>
+                Loading Customers...
+            </div>
+
+            <div *ngIf="!isLoading && filteredCustomers.length === 0" class="empty-state">
+                <span class="no-data">{{ 'ADMIN.CUSTOMERS.NO_RESULTS' | translate }}</span>
+            </div>
+        </ng-template>
 
         <!-- Pagination -->
         <div class="pagination-wrapper" *ngIf="filteredCustomers.length > 0">
@@ -137,5 +147,5 @@
                 (pageChange)="onPageChange($event)" (itemsPerPageChange)="pageSize = $event; currentPage = 1;">
             </app-pagination>
         </div>
-    </div>
+    </main>
 </div>

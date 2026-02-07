@@ -1,99 +1,74 @@
-<app-admin-page-header icon="📊" [title]="'ADMIN.CATALOG_OVERVIEW.TITLE' | translate"
-    [subtitle]="'ADMIN.CATALOG_OVERVIEW.SUBTITLE' | translate">
-</app-admin-page-header>
+<div class="cosmos-layout">
+    <app-admin-page-header iconName="share-2" [title]="'ADMIN.CATALOG_OVERVIEW.TITLE' | translate"
+        [subtitle]="'ADMIN.CATALOG_OVERVIEW.SUBTITLE' | translate">
+    </app-admin-page-header>
 
-<div class="overview-container" *ngIf="!isLoading; else loading">
-
-    <!-- Quick Stats Row -->
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-value">{{ totalProducts }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_PRODUCTS' | translate }}</div>
+    <div class="cosmos-viewport">
+        @if (catalogData$ | async; as nodes) {
+        @if (nodes.length > 0) {
+        <div class="cosmos-tree">
+            <ng-container *ngTemplateOutlet="nodeTemplate; context: { $implicit: nodes }"></ng-container>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ totalBrands }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_BRANDS' | translate }}</div>
+        } @else {
+        <div class="empty-cosmos">
+            <app-icon name="loader" class="spin" [size]="48"></app-icon>
+            <p>Initializing Neural Network...</p>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ totalCategories }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.TOTAL_CATEGORIES' | translate }}</div>
+        }
+        } @else {
+        <div class="empty-cosmos">
+            <app-icon name="loader" class="spin" [size]="48"></app-icon>
+            <p>Connecting to Database...</p>
         </div>
-        <div class="stat-card warning" *ngIf="productsWithoutBrand > 0 || productsWithoutCategory > 0">
-            <div class="stat-value" style="color: #ef4444;">{{ productsWithoutBrand + productsWithoutCategory }}</div>
-            <div class="stat-label">{{ 'ADMIN.CATALOG_OVERVIEW.ISSUES_DETECTED' | translate }}</div>
-        </div>
-    </div>
-
-    <!-- Master Visualizer Tree -->
-    <div class="section visualizer-section">
-        <div class="section-header">
-            <h2>{{ 'ADMIN.CATALOG_OVERVIEW.HIERARCHY' | translate }}</h2>
-            <div class="legend">
-                <span class="legend-item"><span class="dot type"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.TYPE' |
-                    translate }}</span>
-                <span class="legend-item"><span class="dot cat"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.CATEGORY' |
-                    translate }}</span>
-                <span class="legend-item"><span class="dot brand"></span>{{ 'ADMIN.CATALOG_OVERVIEW.LEGEND.BRAND' |
-                    translate }}</span>
-            </div>
-        </div>
-
-        <div class="category-tree">
-            <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: masterTree }"></ng-container>
-
-            <div *ngIf="masterTree.length === 0" class="empty-state">
-                {{ 'ADMIN.CATALOG_OVERVIEW.NO_DATA' | translate }}
-            </div>
-        </div>
+        }
     </div>
 </div>
 
-<ng-template #treeNode let-nodes>
-    <div class="tree-level">
-        <div class="tree-item" *ngFor="let node of nodes">
-            <div class="node-content" [class.expanded]="node.expanded" [attr.data-type]="node.type">
-                <div class="node-main" (click)="toggleNode(node)">
-                    <!-- Expand Icon -->
-                    <span class="expand-icon" [style.visibility]="node.children.length ? 'visible' : 'hidden'">
-                        {{ node.expanded ? '▼' : '▶' }}
-                    </span>
+<!-- Recursive Node Template -->
+<ng-template #nodeTemplate let-nodes>
+    <div class="node-group">
+        @for (node of nodes; track node.id) {
+        <div class="node-wrapper" [class.expanded]="node.expanded" [attr.data-level]="node.level"
+            [attr.data-type]="node.type">
 
-                    <!-- Node Icon or Image -->
-                    <div class="node-icon-wrapper">
-                        <div *ngIf="node.type === 'brand' && node.image" class="node-brand-logo">
-                            <img [src]="node.image" alt="logo">
-                        </div>
-                        <div *ngIf="!node.image" class="node-icon">{{ node.icon || (node.type === 'brand' ? '🏷️' :
-                            '📁') }}</div>
+            <!-- The Node Itself -->
+            <div class="cosmos-node" (click)="toggleNode(node)">
+
+                <!-- Connector Line (Visual) -->
+                <div class="connector-line"></div>
+
+                <!-- Content -->
+                <div class="node-content">
+                    <div class="icon-placard" [class.glowing]="node.expanded">
+                        <app-icon [name]="node.iconName" [size]="18"></app-icon>
                     </div>
 
-                    <!-- Details -->
                     <div class="node-details">
                         <span class="node-name">{{ node.name }}</span>
-                        <span class="product-count badge">{{ node.count }} products</span>
+                        <span class="node-count">{{ node.count | number }} items</span>
                     </div>
 
-                    <!-- Actions -->
-                    <div class="node-actions" *ngIf="node.actions">
-                        <a *ngFor="let action of node.actions" [routerLink]="action.link" class="edit-btn"
-                            (click)="$event.stopPropagation()">
-                            {{ action.icon }}
-                        </a>
+                    @if (node.children.length > 0) {
+                    <div class="node-chevron">
+                        <app-icon name="chevron-right" [size]="16" [class.rotated]="node.expanded"></app-icon>
                     </div>
+                    }
+                </div>
+
+                <!-- Actions (Hover Only) -->
+                <div class="node-actions">
+                    <!-- Contextual actions based on type can go here -->
+                    <app-icon name="more-horizontal" [size]="16"></app-icon>
                 </div>
             </div>
 
-            <!-- Children Recursion -->
-            <div class="node-children" *ngIf="node.expanded && node.children.length > 0">
-                <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: node.children }"></ng-container>
+            <!-- Children Container -->
+            @if (node.expanded && node.children.length > 0) {
+            <div class="node-children">
+                <ng-container *ngTemplateOutlet="nodeTemplate; context: { $implicit: node.children }"></ng-container>
             </div>
+            }
         </div>
-    </div>
-</ng-template>
-
-<ng-template #loading>
-    <div class="loading-state">
-        <div class="spinner"></div>
-        <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+        }
     </div>
 </ng-template>

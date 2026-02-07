@@ -1,4 +1,4 @@
-<app-admin-page-header icon="🏷️"
+<app-admin-page-header icon="tag"
     [title]="isEditing ? ('ADMIN.BRANDS.EDIT_TITLE' | translate) : ('ADMIN.BRANDS.NEW_TITLE' | translate)"
     [subtitle]="isEditing ? ('ADMIN.BRANDS.EDIT_SUBTITLE' | translate) : ('ADMIN.BRANDS.NEW_SUBTITLE' | translate)"
     [showSaveCancel]="true" [isSaving]="isSubmitting" [isFormInvalid]="brandForm.invalid"
@@ -11,12 +11,12 @@
     <form *ngIf="brandForm" [formGroup]="brandForm" (ngSubmit)="onSubmit()" class="admin-form">
 
         <!-- Basic Information Section -->
-        <div class="form-section">
+        <section class="form-section">
             <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_BASIC' | translate }}</h3>
 
-            <div class="form-row">
+            <div class="form-row cols-2">
                 <div class="form-group">
-                    <label>{{ 'ADMIN.BRANDS.FORM.NAME' | translate }} *</label>
+                    <label>{{ 'ADMIN.BRANDS.FORM.NAME' | translate }} <span class="required">*</span></label>
                     <input type="text" formControlName="name"
                         [placeholder]="'ADMIN.BRANDS.FORM.NAME_PLACEHOLDER' | translate" class="form-control">
                     <div class="error" *ngIf="brandForm.get('name')?.invalid && brandForm.get('name')?.touched">
@@ -31,7 +31,7 @@
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="form-row cols-2">
                 <div class="form-group">
                     <label>{{ 'ADMIN.BRANDS.FORM.WEBSITE' | translate }}</label>
                     <input type="url" formControlName="website" placeholder="https://www.example.com"
@@ -39,77 +39,106 @@
                 </div>
 
                 <div class="form-group">
-                    <label>{{ 'ADMIN.BRANDS.FORM.SLUG' | translate }} *</label>
+                    <label>
+                        {{ 'ADMIN.BRANDS.FORM.SLUG' | translate }} <span class="required">*</span>
+                        <span class="help-icon" [title]="'ADMIN.BRANDS.FORM.SLUG_HINT' | translate">ℹ️</span>
+                    </label>
                     <input type="text" formControlName="slug"
                         [placeholder]="'ADMIN.BRANDS.FORM.SLUG_PLACEHOLDER' | translate" class="form-control">
                     <small class="form-hint">{{ 'ADMIN.BRANDS.FORM.SLUG_HINT' | translate }}</small>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Description Section -->
-        <div class="form-section">
-            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_DESCRIPTION' | translate }}</h3>
-            <div class="form-group">
-                <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_ES' | translate }}</label>
-                <textarea formControlName="description_es" rows="3"
-                    [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
-                    class="form-control"></textarea>
-            </div>
-            <div class="form-group">
-                <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_EN' | translate }}</label>
-                <textarea formControlName="description_en" rows="3"
-                    [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
-                    class="form-control"></textarea>
-            </div>
-        </div>
-
-        <!-- Visual Section -->
-        <div class="form-section">
+        <!-- Visual & Organization Section -->
+        <section class="form-section">
             <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_VISUAL' | translate }}</h3>
 
-            <div class="form-group">
-                <label>{{ 'ADMIN.BRANDS.FORM.ORDER' | translate }}</label>
-                <input type="number" formControlName="order" min="0" class="form-control">
-            </div>
-
-            <div class="form-group">
-                <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
-                <div class="image-upload-section">
-                    <div *ngIf="previewUrl" class="image-preview">
-                        <img [src]="previewUrl" alt="Logo preview">
-                        <button type="button" class="btn-remove-image" (click)="removeImage()">✕</button>
-                    </div>
-                    <div class="upload-area" *ngIf="!previewUrl">
-                        <input type="file" id="logoInput" (change)="onFileSelected($event)" accept="image/*"
-                            class="file-input">
-                        <label for="logoInput" class="upload-label">
-                            <span class="upload-icon">📷</span>
-                            <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Status Section -->
-        <div class="form-section">
-            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_STATUS' | translate }}</h3>
-
-            <div class="toggle-switches-group">
+            <div class="form-row cols-2">
+                <!-- Logo Upload (Left Col) -->
                 <div class="form-group">
-                    <app-toggle-switch [control]="$any(brandForm.get('featured'))"
-                        [label]="'ADMIN.BRANDS.FORM.FEATURED' | translate" icon="⭐"
-                        [hint]="'ADMIN.BRANDS.FORM.FEATURED_HINT' | translate">
-                    </app-toggle-switch>
+                    <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
+
+                    <div class="image-upload-section">
+                        <!-- Preview -->
+                        <div *ngIf="previewUrl" class="image-preview">
+                            <img [src]="previewUrl" alt="Logo preview">
+                            <button type="button" class="btn-remove-image" (click)="removeImage()">
+                                <app-icon name="trash-2" [size]="16"></app-icon>
+                            </button>
+                        </div>
+
+                        <!-- Upload Buttons -->
+                        <div class="upload-actions" *ngIf="!previewUrl">
+                            <div class="upload-area" (click)="fileInput.click()">
+                                <input #fileInput type="file" id="logoInput" (change)="onFileSelected($event)"
+                                    accept="image/*" class="file-input">
+                                <div class="upload-label">
+                                    <app-icon name="upload-cloud" [size]="24" class="upload-icon"></app-icon>
+                                    <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn-library" (click)="openMediaPicker()">
+                                <app-icon name="image" [size]="20"></app-icon>
+                                <span>Select from Library</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Organization & Status (Right Col) -->
+                <div class="form-group">
+                    <div class="form-group">
+                        <label>{{ 'ADMIN.BRANDS.FORM.ORDER' | translate }}</label>
+                        <input type="number" formControlName="order" min="0" class="form-control">
+                    </div>
+
+                    <div class="form-group mt-6">
+                        <app-toggle-switch [control]="$any(brandForm.get('featured'))"
+                            [label]="'ADMIN.BRANDS.FORM.FEATURED' | translate" icon="star"
+                            [hint]="'ADMIN.BRANDS.FORM.FEATURED_HINT' | translate">
+                        </app-toggle-switch>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Description Section -->
+        <section class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_DESCRIPTION' | translate }}</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_ES' | translate }}</label>
+                    <textarea formControlName="description_es" rows="3"
+                        [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                        class="form-control"></textarea>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BRANDS.FORM.DESCRIPTION_EN' | translate }}</label>
+                    <textarea formControlName="description_en" rows="3"
+                        [placeholder]="'ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER' | translate"
+                        class="form-control"></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status Section (Remaining) -->
+        <section class="form-section">
+            <h3 class="section-title">{{ 'ADMIN.BRANDS.SECTION_STATUS' | translate }}</h3>
+            <div class="form-row">
                 <div class="form-group">
                     <app-toggle-switch [control]="$any(brandForm.get('active'))"
-                        [label]="'ADMIN.BRANDS.FORM.ACTIVE' | translate" icon="✅">
+                        [label]="'ADMIN.BRANDS.FORM.ACTIVE' | translate" icon="check-circle">
                     </app-toggle-switch>
                 </div>
             </div>
-        </div>
+        </section>
 
     </form>
 </div>
+
+<app-media-picker-dialog *ngIf="showMediaPicker" (mediaSelected)="onMediaSelected($event)" (close)="closeMediaPicker()">
+</app-media-picker-dialog>

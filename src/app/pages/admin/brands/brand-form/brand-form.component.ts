@@ -13,11 +13,13 @@ import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.s
 import { CanComponentDeactivate } from '../../../../core/guards/unsaved-changes.guard';
 import { take } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-brand-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, ValidationSummaryComponent, MediaPickerDialogComponent, AppIconComponent],
     templateUrl: './brand-form.component.html',
     styleUrl: './brand-form.component.css'
 })
@@ -37,6 +39,8 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
     selectedFile: File | null = null;
     currentBrandId: string | null = null;
     currentBrand: Brand | null = null;
+
+    showMediaPicker = false;
 
     // Field labels for validation summary
     fieldLabels: { [key: string]: string } = {
@@ -124,6 +128,23 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
         }
     }
 
+    openMediaPicker() {
+        this.showMediaPicker = true;
+    }
+
+    closeMediaPicker() {
+        this.showMediaPicker = false;
+    }
+
+    onMediaSelected(asset: any) {
+        // Handle both MediaAsset object and direct URL string (legacy support)
+        const url = asset.publicUrl || asset;
+        this.previewUrl = url;
+        this.selectedFile = null;
+        this.brandForm.markAsDirty();
+        this.showMediaPicker = false;
+    }
+
     removeImage() {
         this.selectedFile = null;
         this.previewUrl = null;
@@ -179,6 +200,11 @@ export class BrandFormComponent implements OnInit, CanComponentDeactivate {
 
         if (formValue.countryOfOrigin) {
             brandData.countryOfOrigin = formValue.countryOfOrigin;
+        }
+
+        // If using media library (no file selected but previewUrl exists), assume previewUrl is the remote URL
+        if (!this.selectedFile && this.previewUrl && !this.previewUrl.startsWith('data:')) {
+            brandData.logoUrl = this.previewUrl;
         }
 
         try {

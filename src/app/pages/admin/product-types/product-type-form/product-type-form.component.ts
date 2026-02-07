@@ -8,11 +8,12 @@ import { ProductTypeTemplate, SpecificationFieldTemplate } from '../../../../cor
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { trigger, state, style, transition, animate, keyframes } from '@angular/animations';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { IconPickerDialogComponent } from '../../../../shared/components/icon-picker-dialog/icon-picker-dialog.component';
 
 @Component({
     selector: 'app-product-type-form',
     standalone: true,
-    imports: [CommonModule, RouterModule, ReactiveFormsModule, AppIconComponent, DragDropModule, TranslateModule],
+    imports: [CommonModule, RouterModule, ReactiveFormsModule, AppIconComponent, DragDropModule, TranslateModule, IconPickerDialogComponent],
     templateUrl: './product-type-form.component.html',
     styleUrls: ['./product-type-form.component.css'],
     animations: [
@@ -207,6 +208,21 @@ export class ProductTypeFormComponent implements OnInit {
     ];
 
     showTemplates = false;
+    showIconPicker = false;
+
+    openIconPicker() {
+        this.showIconPicker = true;
+    }
+
+    onIconSelected(icon: string) {
+        this.productTypeForm?.patchValue({ icon });
+        this.productTypeForm?.markAsDirty();
+        this.showIconPicker = false;
+    }
+
+    closeIconPicker() {
+        this.showIconPicker = false;
+    }
 
     productTypeForm: FormGroup | null = null;
 

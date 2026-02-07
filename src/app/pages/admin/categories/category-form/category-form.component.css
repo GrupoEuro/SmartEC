@@ -1,4 +1,55 @@
-/* Import Shared Admin Form Styles */
-@import '../../shared/admin-forms.css';
+/* Category Form Styles
+   Most styles are now inherited from admin-forms.css in global styles
+*/
 
-/* Category-specific overrides and additions can go here */
+/* Force the left column form-group to fill the grid cell */
+.form-row.cols-2>.form-group:first-child {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.image-upload-section {
+    flex: 1;
+    /* Grow to fill available height */
+    display: flex;
+    flex-direction: column;
+    margin-top: 0;
+}
+
+.upload-actions {
+    flex: 1;
+    /* Enable flex growth */
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    margin-top: 0;
+    /* Remove top margin so it aligns with right input */
+    height: 100%;
+    /* Force height to match container */
+}
+
+/* Ensure equal width and height */
+.upload-actions>* {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    /* Let parent flex control height */
+}
+
+.upload-area {
+    margin-bottom: 0;
+    height: 100%;
+    padding: 1rem;
+}
+
+/* Specific fix for the button to ensure it fills height */
+.btn-library {
+    height: 100%;
+    margin: 0;
+}
+
+/* Any specific category form overrides can go here */

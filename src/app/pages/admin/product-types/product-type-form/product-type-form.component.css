@@ -251,6 +251,38 @@
     margin: 0;
 }
 
+/* Input with Prefix/Suffix */
+.input-with-prefix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-prefix,
+.currency-suffix {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.currency-prefix {
+    left: 12px;
+}
+
+.currency-suffix {
+    right: 12px;
+}
+
+.with-prefix {
+    padding-left: 40px !important;
+}
+
 .form-error {
     display: flex;
     align-items: center;

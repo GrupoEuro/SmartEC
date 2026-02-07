@@ -1,5 +1,5 @@
 /* ================================================
-   SHARED ADMIN FORM STYLES - DARK GLASSMORPHISM
+   SHARED ADMIN FORM STYLES - DARK GLASSMORPHISM (V3)
    ================================================ */
 
 /* Design Tokens */
@@ -67,6 +67,8 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: var(--admin-space-6);
+    padding-bottom: 5rem;
+    /* Space for sticky footer */
 }
 
 /* ================================================
@@ -81,10 +83,12 @@
     margin-bottom: var(--admin-space-6);
     backdrop-filter: blur(12px);
     transition: border-color var(--admin-transition-base);
+    box-shadow: var(--admin-shadow-sm);
 }
 
 .form-section:hover {
     border-color: var(--admin-border-hover);
+    box-shadow: var(--admin-shadow-md);
 }
 
 .section-title {
@@ -206,6 +210,34 @@ textarea.form-control {
     font-family: inherit;
 }
 
+/* Input with Prefix/Suffix */
+.input-with-prefix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-prefix,
+.currency-suffix {
+    position: absolute;
+    font-size: var(--admin-text-sm);
+    font-weight: 600;
+    color: var(--admin-text-secondary);
+}
+
+.currency-prefix {
+    left: 1rem;
+}
+
+.currency-suffix {
+    right: 1rem;
+}
+
+.form-control.with-prefix {
+    padding-left: 2.5rem;
+    padding-right: 3.5rem;
+}
+
 /* ================================================
    VALIDATION & HINTS
    ================================================ */
@@ -229,6 +261,19 @@ textarea.form-control {
 .error::before {
     content: '⚠';
     font-size: var(--admin-text-sm);
+}
+
+/* Help Icons */
+.help-icon {
+    cursor: help;
+    color: var(--admin-text-muted);
+    font-size: var(--admin-text-sm);
+    transition: color var(--admin-transition-fast);
+    margin-left: 0.25rem;
+}
+
+.help-icon:hover {
+    color: var(--admin-primary-light);
 }
 
 /* ================================================
@@ -325,27 +370,281 @@ textarea.form-control {
     border-radius: 10px;
     padding: var(--admin-space-4);
     margin-top: var(--admin-space-4);
+    display: flex;
+    gap: 0.75rem;
 }
 
-.info-card-header {
-    display: flex;
-    align-items: center;
-    gap: var(--admin-space-2);
-    margin-bottom: var(--admin-space-2);
+.info-card svg {
+    flex-shrink: 0;
+    color: #60a5fa;
+    margin-top: 0.125rem;
+}
+
+.info-content {
+    font-size: 0.813rem;
+    color: var(--admin-text-secondary);
+    line-height: 1.5;
+}
+
+.info-content strong {
+    color: var(--admin-text-primary);
     font-weight: 600;
+}
+
+
+/* ================================================
+   PREMIUM FEATURES (Product Type, etc)
+   ================================================ */
+
+.product-type-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--admin-space-4);
+    margin-top: var(--admin-space-6);
+}
+
+.type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--admin-space-3);
+    padding: var(--admin-space-6);
+    background: var(--admin-bg-input);
+    border: 2px solid var(--admin-border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all var(--admin-transition-base);
+    user-select: none;
+}
+
+.type-card:hover {
+    border-color: var(--admin-border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--admin-shadow-md);
+}
+
+.type-card.selected {
+    border-color: var(--admin-primary);
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.type-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.type-name {
+    font-size: var(--admin-text-sm);
+    font-weight: 600;
+    color: var(--admin-text-primary);
+    text-align: center;
+}
+
+.type-card.selected .type-name {
     color: var(--admin-primary-light);
 }
 
-.info-card-body {
-    font-size: var(--admin-text-sm);
-    color: var(--admin-text-secondary);
-    margin: 0;
-}
-
 /* ================================================
-   IMAGE UPLOAD
+   UNIFIED DRAG & DROP IMAGE MANAGEMENT
    ================================================ */
 
+/* Action Buttons */
+.image-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.btn-upload,
+.btn-library {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-radius: 10px;
+    color: #60a5fa;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-upload:hover,
+.btn-library:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.btn-upload svg,
+.btn-library svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+/* Unified Images Grid */
+.images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+/* Image Card */
+.image-card {
+    position: relative;
+    border-radius: 12px;
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    background: rgba(15, 23, 42, 0.3);
+    overflow: hidden;
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.image-card:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.image-card.cdk-drag-preview {
+    opacity: 0.8;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    transform: rotate(2deg);
+}
+
+.image-card.cdk-drag-animating {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* 16:9 Container */
+.image-container-16x9 {
+    aspect-ratio: 16/9;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-container-16x9 img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Main Badge */
+.main-badge {
+    position: absolute;
+    top: 0.625rem;
+    left: 0.625rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Remove Button for Cards */
+.btn-remove-card {
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    width: 30px;
+    height: 30px;
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    z-index: 10;
+    opacity: 0;
+}
+
+.image-card:hover .btn-remove-card {
+    opacity: 1;
+}
+
+.btn-remove-card:hover {
+    background: #ef4444;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+}
+
+.btn-remove-card svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Drag Indicator */
+.drag-indicator {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    background: rgba(148, 163, 184, 0.3);
+    backdrop-filter: blur(4px);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 5;
+}
+
+.image-card:hover .drag-indicator {
+    opacity: 1;
+}
+
+.drag-indicator svg {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+}
+
+/* Helper Text */
+.helper-text {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.helper-text svg {
+    width: 16px;
+    height: 16px;
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+
+/* Simple Image Preview (for basic forms like Category) */
 .image-upload-section {
     margin-top: var(--admin-space-4);
 }
@@ -357,6 +656,7 @@ textarea.form-control {
     border-radius: 12px;
     overflow: hidden;
     border: 2px solid var(--admin-border-color);
+    background: var(--admin-bg-surface);
 }
 
 .image-preview img {
@@ -380,10 +680,12 @@ textarea.form-control {
     justify-content: center;
     cursor: pointer;
     transition: all var(--admin-transition-fast);
+    box-shadow: var(--admin-shadow-sm);
 }
 
 .btn-remove-image:hover {
     transform: scale(1.1);
+    box-shadow: var(--admin-shadow-md);
 }
 
 .upload-area {
@@ -393,6 +695,7 @@ textarea.form-control {
     text-align: center;
     transition: all var(--admin-transition-base);
     cursor: pointer;
+    background: rgba(59, 130, 246, 0.02);
 }
 
 .upload-area:hover {
@@ -418,6 +721,89 @@ textarea.form-control {
 }
 
 /* ================================================
+   MARKETING & SEO
+   ================================================ */
+
+.seo-score-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.score-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.score-details {
+    flex: 1;
+}
+
+.score-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--admin-text-primary);
+    margin: 0 0 0.25rem 0;
+}
+
+.score-subtitle {
+    font-size: 0.813rem;
+    color: var(--admin-text-secondary);
+    margin: 0;
+}
+
+.score-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    min-width: 120px;
+}
+
+.score-badge.excellent {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.score-badge.good {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.score-badge.fair {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.score-badge.poor {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.score-value {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+}
+
+.submit-actions {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(to top, var(--admin-bg-primary) 70%, transparent);
+    padding: var(--admin-space-6) 0;
+    margin-top: var(--admin-space-8);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--admin-space-4);
+    z-index: 10;
+}
+
+/* ================================================
    RESPONSIVE
    ================================================ */
 
@@ -434,5 +820,14 @@ textarea.form-control {
 
     .form-section {
         padding: var(--admin-space-6);
+    }
+
+    .images-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .image-actions {
+        flex-direction: column;
     }
 }

@@ -225,6 +225,7 @@
             "DELETE": "Delete",
             "VIEW": "View",
             "SAVE": "Save",
+            "SAVING": "Saving...",
             "CANCEL": "Cancel",
             "LOADING": "Loading...",
             "Loading": "Loading...",
@@ -242,7 +243,8 @@
             "MANAGE": "Manage",
             "ACTIVE": "Active",
             "INACTIVE": "Inactive",
-            "ALL_STATUSES": "All Statuses"
+            "ALL_STATUSES": "All Statuses",
+            "CHANGES_DISCARDED": "Changes discarded"
         },
         "CATEGORIES": {
             "TITLE": "Categories",
@@ -488,6 +490,21 @@
         "LOGS": {
             "TITLE": "Activity Logs",
             "SUBTITLE": "Monitor system changes and user actions",
+            "TOTAL": "Total Logs",
+            "PAGE": "Page",
+            "OF": "of",
+            "SEARCH_PLACEHOLDER": "Search by user, IP or details...",
+            "FILTERS": {
+                "ALL_MODULES": "All Modules",
+                "ALL_ACTIONS": "All Actions"
+            },
+            "TH_DATE": "Date/Time",
+            "TH_USER": "User",
+            "TH_IP": "IP Address",
+            "TH_MODULE": "Module",
+            "TH_ACTION": "Action",
+            "TH_DETAILS": "Event Details",
+            "EMPTY": "No activity logs found with current filters.",
             "TABLE": {
                 "USER": "User",
                 "ACTION": "Action",
@@ -500,6 +517,25 @@
             "TITLE": "User Management",
             "SUBTITLE": "Manage system access and roles",
             "INVITE_USER": "Invite User",
+            "INVITE": "Invite",
+            "SEARCH_PLACEHOLDER": "Search users...",
+            "NO_USERS": "No users found.",
+            "INVITE_TITLE": "Invite New User",
+            "SEND_INVITE": "Send Invitation",
+            "EMAIL": "Email Address",
+            "ROLE": "User Role",
+            "FILTERS": {
+                "ALL_ROLES": "All Roles",
+                "ALL_STATUS": "All Statuses"
+            },
+            "STATUS": {
+                "ACTIVE": "Active",
+                "INACTIVE": "Inactive"
+            },
+            "ACTIONS": {
+                "ACTIVATE": "Activate User",
+                "DEACTIVATE": "Deactivate User"
+            },
             "TABLE": {
                 "USER": "User",
                 "ROLE": "Role",
@@ -525,10 +561,6 @@
             "SUBTITLE": "Customize the look and feel of your store",
             "CURRENT_THEME": "Current Theme",
             "AVAILABLE_THEMES": "Available Themes"
-        },
-        "SETTINGS": {
-            "TITLE": "Website Settings",
-            "SUBTITLE": "Configure general options"
         },
         "CUSTOMERS": {
             "TITLE": "Customer Management",
@@ -2419,11 +2451,11 @@
             "DRAFT": "Draft",
             "PUBLISHED": "Published",
             "ARCHIVED": "Archived",
-            "META_TITLE": "Meta Title",
+            "META_TITLE": "Meta Title Template",
             "META_TITLE_HELP": "Title for search engines (SEO)",
-            "META_TITLE_PLACEHOLDER": "4 Tires + Balancing Kit - Importadora Euro",
-            "META_TITLE_HINT": "Recommended: 50-60 characters",
-            "META_DESCRIPTION": "Meta Description",
+            "META_TITLE_PLACEHOLDER": "{{page_title}} | {{site_name}}",
+            "META_TITLE_HINT": "Use {{page_title}} and {{site_name}} as dynamic variables",
+            "META_DESCRIPTION": "Default Meta Description",
             "META_DESC_HELP": "Description for search results (SEO)",
             "META_DESC_PLACEHOLDER": "Save by buying our complete kit of 4 tires with balancing service included",
             "META_DESC_HINT": "Recommended: 150-160 characters",
@@ -2726,116 +2758,6 @@
         "CREATED": "Created",
         "EMPTY": "No PDFs found"
     },
-    "SETTINGS": {
-        "TITLE": "Website Settings",
-        "SUBTITLE": "Manage general information, social media links, and site features.",
-        "LAST_SAVED": "Last saved",
-        "UNSAVED_CHANGES": "You have unsaved changes",
-        "TO_SAVE": "to save",
-        "TO_UNDO": "to undo",
-        "AUTO_SAVING": "Auto-saving...",
-        "ALL_SAVED": "All changes saved",
-        "SAVE_ERROR": "Error saving",
-        "UNDO": "Undo",
-        "REDO": "Redo",
-        "UNDONE": "Change undone",
-        "REDONE": "Change redone",
-        "COPIED": "Copied to clipboard!",
-        "COPY_FAILED": "Failed to copy",
-        "DISCARD_CHANGES": "Discard unsaved changes?",
-        "TABS": {
-            "GENERAL": "General",
-            "SOCIAL": "Social Media",
-            "FEATURES": "Features",
-            "HOURS": "Business Hours"
-        },
-        "GENERAL": {
-            "COMPANY": "Company Name",
-            "COMPANY_PLACEHOLDER": "e.g., Importadora Euro",
-            "COMPANY_HELP": "Your official business name as it appears on documents",
-            "PHONE": "Main Phone",
-            "PHONE_PLACEHOLDER": "e.g., +52 444 824 0757",
-            "PHONE_HELP": "Main contact number with country code (+52 for Mexico)",
-            "WHATSAPP": "WhatsApp (intl format)",
-            "WHATSAPP_PLACEHOLDER": "e.g., +52 1 444 200 4677",
-            "WHATSAPP_HINT": "Include country code with + prefix",
-            "WHATSAPP_HELP": "WhatsApp number in international format for click-to-chat",
-            "EMAIL": "Contact Email",
-            "EMAIL_PLACEHOLDER": "e.g., ventas@importadoraeuro.com",
-            "EMAIL_HELP": "Primary email address for customer inquiries",
-            "EMAIL_SUGGESTION": "Did you mean",
-            "ADDRESS": "Physical Address",
-            "ADDRESS_PLACEHOLDER": "Full business address",
-            "ADDRESS_HELP": "Complete physical address including street, city, and postal code"
-        },
-        "SOCIAL": {
-            "URL_LABEL": "Profile URL",
-            "SHOW_LABEL": "Show on site",
-            "TEST_LINK": "Test Link",
-            "FACEBOOK_PLACEHOLDER": "https://facebook.com/yourpage",
-            "INSTAGRAM_PLACEHOLDER": "https://instagram.com/yourprofile",
-            "LINKEDIN_PLACEHOLDER": "https://linkedin.com/company/yourcompany",
-            "TWITTER_PLACEHOLDER": "https://twitter.com/yourhandle",
-            "YOUTUBE_PLACEHOLDER": "https://youtube.com/@yourchannel",
-            "TIKTOK_PLACEHOLDER": "https://tiktok.com/@yourprofile",
-            "BULK_TOGGLE": "Quick Actions",
-            "SHOW_ALL": "Show All",
-            "HIDE_ALL": "Hide All",
-            "ALL_SHOWN": "All social media links are now visible",
-            "ALL_HIDDEN": "All social media links are now hidden"
-        },
-        "HOURS": {
-            "TITLE": "Business Hours",
-            "SUBTITLE": "Configure your weekly schedule",
-            "MONDAY": "Monday",
-            "TUESDAY": "Tuesday",
-            "WEDNESDAY": "Wednesday",
-            "THURSDAY": "Thursday",
-            "FRIDAY": "Friday",
-            "SATURDAY": "Saturday",
-            "SUNDAY": "Sunday",
-            "OPEN": "Open",
-            "CLOSE": "Close",
-            "CLOSED": "Closed all day",
-            "NOT_SET": "Not set",
-            "PRESET_LABEL": "Quick Templates",
-            "SELECT_PRESET": "Choose a template...",
-            "PRESET_STANDARD": "Standard (9-5)",
-            "PRESET_RETAIL": "Retail (10-8)",
-            "PRESET_RESTAURANT": "Restaurant (11-10)",
-            "PRESET_24X7": "24/7 Open",
-            "PRESET_APPLIED": "Template applied successfully",
-            "COPY_TO_WEEKDAYS": "Copy Mon to Weekdays",
-            "COPY_TO_WEEKDAYS_HINT": "Copy Monday's hours to Tuesday through Friday",
-            "COPIED_TO_WEEKDAYS": "Hours copied to weekdays",
-            "SET_ALL_SAME": "Set All Same",
-            "SET_ALL_SAME_HINT": "Apply the same hours to all days",
-            "SET_ALL_SAME_PROMPT": "Enter hours in format HH:MM-HH:MM (e.g., 09:00-17:00)",
-            "APPLIED_TO_ALL": "Hours applied to all days",
-            "INVALID_FORMAT": "Invalid format. Use HH:MM-HH:MM",
-            "RESET": "Reset to Defaults",
-            "RESET_HINT": "Restore default business hours",
-            "RESET_CONFIRM": "Are you sure you want to reset to default hours?",
-            "RESET_SUCCESS": "Hours reset to defaults",
-            "INVALID_TIME_RANGE": "Closing time must be after opening time",
-            "PREVIEW_TITLE": "Live Preview",
-            "PREVIEW_SUBTITLE": "How customers will see your hours"
-        },
-        "FEATURES": {
-            "MAINTENANCE": "Maintenance Mode",
-            "MAINTENANCE_HINT": "If active, visitors will see a 'Coming Soon' page.",
-            "PROMO": "Promo Banner",
-            "PROMO_TEXT": "Promo Text",
-            "PROMO_TEXT_PLACEHOLDER": "e.g., Free shipping on orders over $3000",
-            "CHAT": "Chat Widget (WhatsApp)"
-        },
-        "VALIDATION": {
-            "INVALID_EMAIL": "Please enter a valid email address",
-            "INVALID_URL": "Please enter a valid URL",
-            "INVALID_PHONE": "Please enter a valid phone number"
-        },
-        "SUCCESS": "Settings updated successfully"
-    },
     "PRODUCT_DETAIL": {
         "BREADCRUMB_HOME": "Home",
         "BREADCRUMB_CATALOG": "Catalog",
@@ -2883,27 +2805,6 @@
         "FIELD_MAX": "{{field}} must be at most {{max}}",
         "FIELD_EMAIL": "{{field}} must be a valid email address",
         "FIELD_PATTERN": "{{field}} has an invalid format"
-    },
-    "CUSTOMERS": {
-        "TITLE": "Customers",
-        "SUBTITLE": "Manage registered customers and purchase history",
-        "SEARCH_PLACEHOLDER": "Search by name or email...",
-        "TABLE": {
-            "CUSTOMER": "Customer",
-            "EMAIL": "Email",
-            "JOINED": "Joined",
-            "ORDERS": "Orders",
-            "SPEND": "Total Spend",
-            "ACTIONS": "Actions"
-        },
-        "EMPTY": "No customers found",
-        "NO_RESULTS": "No customers match your search",
-        "DETAIL": {
-            "SUBTITLE": "Customer profile and history",
-            "STATS": "Customer Stats",
-            "ORDER_HISTORY": "Order History",
-            "NO_ORDERS": "No orders found for this customer"
-        }
     },
     "GLOSSARY": {
         "TERMS": {
@@ -3278,5 +3179,119 @@
                 "FILTERABLE": "If checked, this field appears as a filter option in the catalog"
             }
         }
+    },
+    "WEBSITE_SETTINGS": {
+        "TITLE": "Website Settings",
+        "SUBTITLE": "Configure general options and contact info",
+        "TABS": {
+            "GENERAL": "General",
+            "SOCIAL": "Social Media",
+            "HOURS": "Business Hours",
+            "FEATURES": "Features",
+            "SEO": "SEO & Metadata"
+        },
+        "GENERAL": {
+            "TITLE": "General Information",
+            "BRAND_ASSETS": "Brand Assets",
+            "LOGO": "Site Logo",
+            "LOGO_HINT": "Recommended: 200x50px PNG or transparent SVG",
+            "FAVICON": "Favicon",
+            "FAVICON_HINT": "Recommended: 32x32px PNG or ICO",
+            "UPLOAD_BTN": "Upload Image",
+            "REMOVE_BTN": "Remove",
+            "COMPANY": "Company Name",
+            "COMPANY_PLACEHOLDER": "e.g. Euro Imports",
+            "COMPANY_HELP": "This name will appear in the page title and emails.",
+            "PHONE": "Main Phone",
+            "PHONE_PLACEHOLDER": "+52 444 123 4567",
+            "WHATSAPP": "Sales WhatsApp",
+            "WHATSAPP_PLACEHOLDER": "+52 1 444 123 4567",
+            "EMAIL": "Contact Email",
+            "EMAIL_PLACEHOLDER": "contact@example.com",
+            "EMAIL_SUGGESTION": "Did you mean",
+            "ADDRESS": "Physical Address",
+            "ADDRESS_PLACEHOLDER": "Street, Number, Neighborhood, City, State, ZIP"
+        },
+        "SOCIAL": {
+            "TITLE": "Social Media",
+            "BULK_TOGGLE": "Global Visibility",
+            "SHOW_ALL": "Show All",
+            "HIDE_ALL": "Hide All",
+            "FACEBOOK_PLACEHOLDER": "https://facebook.com/your-page",
+            "INSTAGRAM_PLACEHOLDER": "https://instagram.com/your-user",
+            "LINKEDIN_PLACEHOLDER": "https://linkedin.com/company/your-company",
+            "TWITTER_PLACEHOLDER": "https://twitter.com/your-user",
+            "YOUTUBE_PLACEHOLDER": "https://youtube.com/@your-channel",
+            "TIKTOK_PLACEHOLDER": "https://tiktok.com/@your-user",
+            "ALL_SHOWN": "All social networks are now visible.",
+            "ALL_HIDDEN": "All social networks are now hidden.",
+            "NETWORKS": {
+                "FACEBOOK": "Facebook",
+                "INSTAGRAM": "Instagram",
+                "LINKEDIN": "LinkedIn",
+                "TWITTER": "Twitter / X",
+                "YOUTUBE": "YouTube",
+                "TIKTOK": "TikTok"
+            }
+        },
+        "HOURS": {
+            "TITLE": "Business Hours",
+            "SUBTITLE": "Define when you are available for your customers",
+            "PRESET_LABEL": "Quick Presets",
+            "SELECT_PRESET": "Select a preset...",
+            "PRESET_STANDARD": "Standard Office (9-5)",
+            "PRESET_RETAIL": "Retail (10-8)",
+            "PRESET_RESTAURANT": "Restaurant (11-10)",
+            "PRESET_24X7": "Open 24 Hours",
+            "COPY_TO_WEEKDAYS": "Copy Mon to Weekdays",
+            "COPIED_TO_WEEKDAYS": "Hours copied from Monday to weekdays",
+            "COPY_TO_WEEKDAYS_HINT": "Applies Monday hours to Tuesday-Friday",
+            "SET_ALL_SAME": "Set All Same",
+            "SET_ALL_SAME_HINT": "Define a single schedule for the whole week",
+            "SET_ALL_SAME_PROMPT": "Enter hours (e.g. 09:00 - 18:00):",
+            "INVALID_FORMAT": "Invalid format. Use HH:MM - HH:MM",
+            "APPLIED_TO_ALL": "Schedule applied to all days",
+            "RESET": "Reset",
+            "RESET_HINT": "Return to default values",
+            "RESET_CONFIRM": "Are you sure you want to reset hours to defaults?",
+            "RESET_SUCCESS": "Hours reset",
+            "CLOSED": "Closed",
+            "INVALID_TIME_RANGE": "Opening time must be before closing time",
+            "PREVIEW_TITLE": "Live Preview",
+            "PREVIEW_SUBTITLE": "This is how your hours will look on the footer and contact page.",
+            "NOT_SET": "Not set",
+            "PRESET_APPLIED": "Schedule preset applied successfully",
+            "MONDAY": "Monday",
+            "TUESDAY": "Tuesday",
+            "WEDNESDAY": "Wednesday",
+            "THURSDAY": "Thursday",
+            "FRIDAY": "Friday",
+            "SATURDAY": "Saturday",
+            "SUNDAY": "Sunday"
+        },
+        "FEATURES": {
+            "TITLE": "Features & Extras",
+            "MAINTENANCE": "Maintenance Mode",
+            "MAINTENANCE_HINT": "Enable this to temporarily close the store to the public. Only admins will have access.",
+            "CHAT": "Chat Widget",
+            "CHAT_HINT": "Enable the customer support chat widget on the storefront.",
+            "PROMO": "Promo Bar",
+            "PROMO_TEXT": "Promo Text",
+            "PROMO_TEXT_PLACEHOLDER": "e.g. Free shipping on orders over $999!"
+        },
+        "SEO": {
+            "TITLE": "SEO & Metadata",
+            "META_TITLE": "Page Title (Meta Title)",
+            "META_TITLE_PLACEHOLDER": "{{page_title}} | {{site_name}}",
+            "META_TITLE_HINT": "Use {{page_title}} and {{site_name}} as dynamic variables.",
+            "META_DESC": "Description (Meta Description)",
+            "META_DESC_PLACEHOLDER": "A brief description of your site for search engines...",
+            "OG_IMAGE": "Social Media Image (OG Image)",
+            "OG_IMAGE_PLACEHOLDER": "Image URL (https://...)"
+        },
+        "SUCCESS": "Settings saved successfully",
+        "COPIED": "Copied to clipboard",
+        "COPY_FAILED": "Failed to copy",
+        "CHANGES_DISCARDED": "Changes discarded"
     }
 }

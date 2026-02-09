@@ -1,8 +1,9 @@
-<app-admin-page-header icon="tag"
+<app-admin-page-header iconName="tag"
     [title]="isEditing ? ('ADMIN.BRANDS.EDIT_TITLE' | translate) : ('ADMIN.BRANDS.NEW_TITLE' | translate)"
-    [subtitle]="isEditing ? ('ADMIN.BRANDS.EDIT_SUBTITLE' | translate) : ('ADMIN.BRANDS.NEW_SUBTITLE' | translate)"
-    [showSaveCancel]="true" [isSaving]="isSubmitting" [isFormInvalid]="brandForm.invalid"
-    [hasUnsavedChanges]="brandForm.dirty" [confirmOnCancel]="false" (onSave)="onSubmit()" (onCancel)="onCancel()">
+    [subtitle]="isEditing ? ('ADMIN.BRANDS.EDIT_SUBTITLE' | translate) : ('ADMIN.BRANDS.NEW_SUBTITLE' | translate)">
+    <button type="button" class="btn-secondary" (click)="onCancel()">
+        {{ 'ADMIN.COMMON.CANCEL' | translate }}
+    </button>
 </app-admin-page-header>
 
 <div class="form-container">
@@ -56,7 +57,8 @@
 
             <div class="form-row cols-2">
                 <!-- Logo Upload (Left Col) -->
-                <div class="form-group">
+                <!-- Logo Upload (Left Col) -->
+                <div class="form-group logo-upload-group">
                     <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
 
                     <div class="image-upload-section">
@@ -69,15 +71,14 @@
                         </div>
 
                         <!-- Upload Buttons -->
+                        <!-- Upload Buttons -->
                         <div class="upload-actions" *ngIf="!previewUrl">
-                            <div class="upload-area" (click)="fileInput.click()">
+                            <button type="button" class="btn-upload" (click)="fileInput.click()">
                                 <input #fileInput type="file" id="logoInput" (change)="onFileSelected($event)"
                                     accept="image/*" class="file-input">
-                                <div class="upload-label">
-                                    <app-icon name="upload-cloud" [size]="24" class="upload-icon"></app-icon>
-                                    <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
-                                </div>
-                            </div>
+                                <app-icon name="upload-cloud" [size]="24"></app-icon>
+                                <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
+                            </button>
 
                             <button type="button" class="btn-library" (click)="openMediaPicker()">
                                 <app-icon name="image" [size]="20"></app-icon>
@@ -136,6 +137,49 @@
                 </div>
             </div>
         </section>
+
+        <!-- Submit Actions -->
+        <div class="submit-actions">
+            <!-- Error Message Display -->
+            <div class="submit-error-message" *ngIf="submitState === 'error'">
+                <app-icon name="alert-circle" [size]="16" class="text-red-500"></app-icon>
+                <span class="text-red-500 text-sm">Error saving brand</span>
+            </div>
+
+            <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="isSubmitting">
+                {{ 'ADMIN.COMMON.CANCEL' | translate }}
+            </button>
+
+            <button type="submit" class="btn btn-primary" [disabled]="brandForm.invalid || isSubmitting" [ngClass]="{
+                    'loading': submitState === 'validating' || submitState === 'saving',
+                    'success': submitState === 'success',
+                    'error': submitState === 'error'
+                }">
+
+                <!-- Idle State -->
+                <span *ngIf="submitState === 'idle'">
+                    {{ isEditing ? ('ADMIN.COMMON.SAVE' | translate) : ('ADMIN.COMMON.SAVE' | translate) }}
+                </span>
+
+                <!-- Saving State -->
+                <span *ngIf="submitState === 'saving'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+                    {{ 'ADMIN.COMMON.SAVING' | translate }}...
+                </span>
+
+                <!-- Success State -->
+                <span *ngIf="submitState === 'success'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="check" [size]="16"></app-icon>
+                    Saved!
+                </span>
+
+                <!-- Error State -->
+                <span *ngIf="submitState === 'error'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="x" [size]="16"></app-icon>
+                    Failed
+                </span>
+            </button>
+        </div>
 
     </form>
 </div>

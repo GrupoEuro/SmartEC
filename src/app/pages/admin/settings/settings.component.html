@@ -1,32 +1,36 @@
 <div class="settings-page">
-    <app-admin-page-header icon="⚙️" [title]="'SETTINGS.TITLE' | translate" [subtitle]="'SETTINGS.SUBTITLE' | translate"
-        [showKeyboardHints]="true" [showStatus]="true" [showUndoRedo]="true" [showProgress]="true"
-        [showSaveCancel]="true" [saveStatus]="saveStatus" [lastSaved]="lastSaved" [canUndo]="canUndo"
-        [canRedo]="canRedo" [progress]="getOverallProgress()" [isSaving]="isSaving"
-        [hasUnsavedChanges]="hasUnsavedChanges" [isFormInvalid]="settingsForm.invalid" (onSave)="onSubmit()"
-        (onCancel)="settingsForm.reset()" (onUndo)="undo()" (onRedo)="redo()">
+    <app-admin-page-header iconName="settings" [title]="'WEBSITE_SETTINGS.TITLE' | translate"
+        [subtitle]="'WEBSITE_SETTINGS.SUBTITLE' | translate">
     </app-admin-page-header>
 
     <!-- Content Container -->
-    <div class="form-container settings-container">
+    <div class="form-container">
 
         <!-- Tabs -->
-        <div class="settings-tabs">
-            <button type="button" class="tab-btn" [class.active]="activeTab === 'general'"
+        <div class="settings-tabs-nav">
+            <button type="button" class="tab-link" [class.active]="activeTab === 'general'"
                 (click)="setActiveTab('general')">
-                🏢 {{ 'SETTINGS.TABS.GENERAL' | translate }}
+                <app-icon name="building" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.GENERAL' | translate }}</span>
             </button>
-            <button type="button" class="tab-btn" [class.active]="activeTab === 'social'"
+            <button type="button" class="tab-link" [class.active]="activeTab === 'social'"
                 (click)="setActiveTab('social')">
-                🌐 {{ 'SETTINGS.TABS.SOCIAL' | translate }}
+                <app-icon name="globe" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.SOCIAL' | translate }}</span>
             </button>
-            <button type="button" class="tab-btn" [class.active]="activeTab === 'hours'"
+            <button type="button" class="tab-link" [class.active]="activeTab === 'hours'"
                 (click)="setActiveTab('hours')">
-                🕐 {{ 'SETTINGS.TABS.HOURS' | translate }}
+                <app-icon name="clock" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.HOURS' | translate }}</span>
             </button>
-            <button type="button" class="tab-btn" [class.active]="activeTab === 'features'"
+            <button type="button" class="tab-link" [class.active]="activeTab === 'features'"
                 (click)="setActiveTab('features')">
-                ⚡ {{ 'SETTINGS.TABS.FEATURES' | translate }}
+                <app-icon name="zap" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.FEATURES' | translate }}</span>
+            </button>
+            <button type="button" class="tab-link" [class.active]="activeTab === 'seo'" (click)="setActiveTab('seo')">
+                <app-icon name="search" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.SEO' | translate }}</span>
             </button>
         </div>
 
@@ -34,362 +38,468 @@
 
             <!-- General Tab -->
             <div class="tab-content" *ngIf="activeTab === 'general'" formGroupName="general">
-                <div class="tab-progress-bar">
-                    <div class="progress-fill" [style.width.%]="getTabProgress('general')"></div>
-                </div>
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <app-icon name="info" [size]="24" class="text-blue-500"></app-icon>
+                        {{ 'WEBSITE_SETTINGS.GENERAL.TITLE' | translate }}
+                    </h3>
 
-                <div class="form-group">
-                    <label>{{ 'SETTINGS.GENERAL.COMPANY' | translate }}</label>
-                    <input type="text" formControlName="companyName"
-                        [placeholder]="'SETTINGS.GENERAL.COMPANY_PLACEHOLDER' | translate">
-                    <small class="help-text">{{ 'SETTINGS.GENERAL.COMPANY_HELP' | translate }}</small>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
+                    <!-- Company Name -->
+                    <div class="form-group mb-6">
                         <label>
-                            {{ 'SETTINGS.GENERAL.PHONE' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('general.phone')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('general.phone')">✗</span>
+                            <app-icon name="briefcase" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.GENERAL.COMPANY' | translate }}
+                        </label>
+                        <input type="text" formControlName="companyName" class="form-control"
+                            [placeholder]="'WEBSITE_SETTINGS.GENERAL.COMPANY_PLACEHOLDER' | translate">
+                        <small class="form-hint">{{ 'WEBSITE_SETTINGS.GENERAL.COMPANY_HELP' | translate }}</small>
+                    </div>
+
+                    <!-- Brand Assets -->
+                    <div class="form-group mb-8">
+                        <label class="mb-4 block">
+                            <app-icon name="image" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.GENERAL.BRAND_ASSETS' | translate }}
+                        </label>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Logo -->
+                            <div
+                                class="asset-upload-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)]">
+                                <label class="text-sm font-semibold mb-2 block">{{ 'WEBSITE_SETTINGS.GENERAL.LOGO' |
+                                    translate }}</label>
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="preview-box w-32 h-16 bg-[var(--admin-bg-main)] rounded-lg flex items-center justify-center border border-dashed border-[var(--admin-border-color)] overflow-hidden relative">
+                                        <img *ngIf="settingsForm.get('general.logo')?.value"
+                                            [src]="settingsForm.get('general.logo')?.value"
+                                            class="max-w-full max-h-full object-contain">
+                                        <app-icon *ngIf="!settingsForm.get('general.logo')?.value" name="image"
+                                            [size]="24" class="text-[var(--admin-text-muted)]"></app-icon>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <div class="flex gap-2">
+                                            <button type="button" class="btn-secondary btn-sm"
+                                                (click)="logoInput.click()">
+                                                {{ 'WEBSITE_SETTINGS.GENERAL.UPLOAD_BTN' | translate }}
+                                            </button>
+                                            <button *ngIf="settingsForm.get('general.logo')?.value" type="button"
+                                                class="btn-danger-ghost btn-sm" (click)="removeAsset('logo')">
+                                                <app-icon name="trash-2" [size]="14"></app-icon>
+                                            </button>
+                                        </div>
+                                        <input #logoInput type="file" hidden accept="image/*"
+                                            (change)="onFileSelected($event, 'logo')">
+                                        <span class="text-xs text-[var(--admin-text-muted)]">{{
+                                            'WEBSITE_SETTINGS.GENERAL.LOGO_HINT' | translate }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Favicon -->
+                            <div
+                                class="asset-upload-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)]">
+                                <label class="text-sm font-semibold mb-2 block">{{ 'WEBSITE_SETTINGS.GENERAL.FAVICON' |
+                                    translate }}</label>
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="preview-box w-16 h-16 bg-[var(--admin-bg-main)] rounded-lg flex items-center justify-center border border-dashed border-[var(--admin-border-color)] overflow-hidden relative">
+                                        <img *ngIf="settingsForm.get('general.favicon')?.value"
+                                            [src]="settingsForm.get('general.favicon')?.value"
+                                            class="w-8 h-8 object-contain">
+                                        <app-icon *ngIf="!settingsForm.get('general.favicon')?.value" name="globe"
+                                            [size]="24" class="text-[var(--admin-text-muted)]"></app-icon>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <div class="flex gap-2">
+                                            <button type="button" class="btn-secondary btn-sm"
+                                                (click)="faviconInput.click()">
+                                                {{ 'WEBSITE_SETTINGS.GENERAL.UPLOAD_BTN' | translate }}
+                                            </button>
+                                            <button *ngIf="settingsForm.get('general.favicon')?.value" type="button"
+                                                class="btn-danger-ghost btn-sm" (click)="removeAsset('favicon')">
+                                                <app-icon name="trash-2" [size]="14"></app-icon>
+                                            </button>
+                                        </div>
+                                        <input #faviconInput type="file" hidden accept="image/*"
+                                            (change)="onFileSelected($event, 'favicon')">
+                                        <span class="text-xs text-[var(--admin-text-muted)]">{{
+                                            'WEBSITE_SETTINGS.GENERAL.FAVICON_HINT' | translate }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row cols-2">
+                        <!-- Phone -->
+                        <div class="form-group">
+                            <label>
+                                <app-icon name="phone" [size]="16"></app-icon>
+                                {{ 'WEBSITE_SETTINGS.GENERAL.PHONE' | translate }}
+                                <app-icon *ngIf="isFieldValid('general.phone')" name="check" [size]="14"
+                                    class="text-green-500"></app-icon>
+                            </label>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="phone" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.GENERAL.PHONE_PLACEHOLDER' | translate"
+                                    (blur)="formatPhoneNumber($event, 'general.phone')">
+                                <button type="button" class="copy-btn"
+                                    (click)="copyToClipboard(settingsForm.get('general.phone')?.value, 'phone')"
+                                    [disabled]="!settingsForm.get('general.phone')?.value"
+                                    [class.copied]="copiedField === 'phone'">
+                                    <app-icon [name]="copiedField === 'phone' ? 'check' : 'copy'"
+                                        [size]="16"></app-icon>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- WhatsApp -->
+                        <div class="form-group">
+                            <label>
+                                <app-icon name="message-circle" [size]="16"></app-icon>
+                                {{ 'WEBSITE_SETTINGS.GENERAL.WHATSAPP' | translate }}
+                                <app-icon *ngIf="isFieldValid('general.whatsapp')" name="check" [size]="14"
+                                    class="text-green-500"></app-icon>
+                            </label>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="whatsapp" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.GENERAL.WHATSAPP_PLACEHOLDER' | translate"
+                                    (blur)="formatPhoneNumber($event, 'general.whatsapp')">
+                                <button type="button" class="copy-btn"
+                                    (click)="copyToClipboard(settingsForm.get('general.whatsapp')?.value, 'whatsapp')"
+                                    [disabled]="!settingsForm.get('general.whatsapp')?.value"
+                                    [class.copied]="copiedField === 'whatsapp'">
+                                    <app-icon [name]="copiedField === 'whatsapp' ? 'check' : 'copy'"
+                                        [size]="16"></app-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group mb-6">
+                        <label>
+                            <app-icon name="mail" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.GENERAL.EMAIL' | translate }}
+                            <app-icon *ngIf="isFieldValid('general.email')" name="check" [size]="14"
+                                class="text-green-500"></app-icon>
                         </label>
                         <div class="input-with-copy">
-                            <input type="text" formControlName="phone"
-                                [placeholder]="'SETTINGS.GENERAL.PHONE_PLACEHOLDER' | translate"
-                                (blur)="formatPhoneNumber($event, 'general.phone')">
+                            <input type="email" formControlName="email" class="form-control"
+                                [placeholder]="'WEBSITE_SETTINGS.GENERAL.EMAIL_PLACEHOLDER' | translate">
                             <button type="button" class="copy-btn"
-                                (click)="copyToClipboard(settingsForm.get('general.phone')?.value, 'phone')"
-                                [disabled]="!settingsForm.get('general.phone')?.value"
-                                [class.copied]="copiedField === 'phone'">
-                                <span *ngIf="copiedField !== 'phone'">📋</span>
-                                <span *ngIf="copiedField === 'phone'">✓</span>
+                                (click)="copyToClipboard(settingsForm.get('general.email')?.value, 'email')"
+                                [disabled]="!settingsForm.get('general.email')?.value"
+                                [class.copied]="copiedField === 'email'">
+                                <app-icon [name]="copiedField === 'email' ? 'check' : 'copy'" [size]="16"></app-icon>
                             </button>
                         </div>
-                        <small class="help-text">{{ 'SETTINGS.GENERAL.PHONE_HELP' | translate }}</small>
+                        <div class="email-suggestion"
+                            *ngIf="getEmailSuggestion(settingsForm.get('general.email')?.value) as suggestion">
+                            <span>{{ 'WEBSITE_SETTINGS.GENERAL.EMAIL_SUGGESTION' | translate }}: </span>
+                            <button type="button" class="suggestion-btn" (click)="applySuggestion(suggestion)">
+                                {{ suggestion }}
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Address -->
                     <div class="form-group">
                         <label>
-                            {{ 'SETTINGS.GENERAL.WHATSAPP' | translate }}
-                            <span class="hint-icon" [title]="'SETTINGS.GENERAL.WHATSAPP_HINT' | translate">ℹ️</span>
-                            <span class="validation-icon" *ngIf="isFieldValid('general.whatsapp')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('general.whatsapp')">✗</span>
+                            <app-icon name="map-pin" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.GENERAL.ADDRESS' | translate }}
+                            <span class="char-counter" [ngClass]="getCharCountClass(addressCharCount, maxAddressChars)">
+                                {{addressCharCount}}/{{maxAddressChars}}
+                            </span>
                         </label>
-                        <div class="input-with-copy">
-                            <input type="text" formControlName="whatsapp"
-                                [placeholder]="'SETTINGS.GENERAL.WHATSAPP_PLACEHOLDER' | translate"
-                                (blur)="formatPhoneNumber($event, 'general.whatsapp')">
-                            <button type="button" class="copy-btn"
-                                (click)="copyToClipboard(settingsForm.get('general.whatsapp')?.value, 'whatsapp')"
-                                [disabled]="!settingsForm.get('general.whatsapp')?.value"
-                                [class.copied]="copiedField === 'whatsapp'">
-                                <span *ngIf="copiedField !== 'whatsapp'">📋</span>
-                                <span *ngIf="copiedField === 'whatsapp'">✓</span>
-                            </button>
-                        </div>
-                        <small class="help-text">{{ 'SETTINGS.GENERAL.WHATSAPP_HELP' | translate }}</small>
+                        <textarea formControlName="address" rows="3" class="form-control"
+                            [placeholder]="'WEBSITE_SETTINGS.GENERAL.ADDRESS_PLACEHOLDER' | translate"
+                            [maxlength]="maxAddressChars"></textarea>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        {{ 'SETTINGS.GENERAL.EMAIL' | translate }}
-                        <span class="validation-icon" *ngIf="isFieldValid('general.email')">✓</span>
-                        <span class="validation-icon error" *ngIf="isFieldInvalid('general.email')">✗</span>
-                    </label>
-                    <div class="input-with-copy">
-                        <input type="email" formControlName="email"
-                            [placeholder]="'SETTINGS.GENERAL.EMAIL_PLACEHOLDER' | translate">
-                        <button type="button" class="copy-btn"
-                            (click)="copyToClipboard(settingsForm.get('general.email')?.value, 'email')"
-                            [disabled]="!settingsForm.get('general.email')?.value"
-                            [class.copied]="copiedField === 'email'">
-                            <span *ngIf="copiedField !== 'email'">📋</span>
-                            <span *ngIf="copiedField === 'email'">✓</span>
-                        </button>
-                    </div>
-                    <div class="email-suggestion"
-                        *ngIf="getEmailSuggestion(settingsForm.get('general.email')?.value) as suggestion">
-                        <span>{{ 'SETTINGS.GENERAL.EMAIL_SUGGESTION' | translate }}: </span>
-                        <button type="button" class="suggestion-btn" (click)="applySuggestion(suggestion)">
-                            {{ suggestion }}
-                        </button>
-                    </div>
-                    <small class="help-text">{{ 'SETTINGS.GENERAL.EMAIL_HELP' | translate }}</small>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        {{ 'SETTINGS.GENERAL.ADDRESS' | translate }}
-                        <span class="char-counter" [ngClass]="getCharCountClass(addressCharCount, maxAddressChars)">
-                            {{addressCharCount}}/{{maxAddressChars}}
-                        </span>
-                    </label>
-                    <textarea formControlName="address" rows="3"
-                        [placeholder]="'SETTINGS.GENERAL.ADDRESS_PLACEHOLDER' | translate"
-                        [maxlength]="maxAddressChars"></textarea>
-                    <small class="help-text">{{ 'SETTINGS.GENERAL.ADDRESS_HELP' | translate }}</small>
                 </div>
             </div>
 
             <!-- Social Tab -->
             <div class="tab-content" *ngIf="activeTab === 'social'" formGroupName="social">
-                <div class="tab-progress-bar">
-                    <div class="progress-fill" [style.width.%]="getTabProgress('social')"></div>
-                </div>
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <app-icon name="share-2" [size]="24" class="text-purple-500"></app-icon>
+                        {{ 'WEBSITE_SETTINGS.SOCIAL.TITLE' | translate }}
+                    </h3>
 
-                <!-- Bulk Toggle -->
-                <div class="bulk-toggle-section">
-                    <p class="bulk-toggle-label">{{ 'SETTINGS.SOCIAL.BULK_TOGGLE' | translate }}</p>
-                    <div class="bulk-toggle-buttons">
-                        <button type="button" class="bulk-btn" (click)="toggleAllSocialMedia(true)">
-                            👁️ {{ 'SETTINGS.SOCIAL.SHOW_ALL' | translate }}
-                        </button>
-                        <button type="button" class="bulk-btn" (click)="toggleAllSocialMedia(false)">
-                            🚫 {{ 'SETTINGS.SOCIAL.HIDE_ALL' | translate }}
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Facebook -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            Facebook {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.facebook')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.facebook')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="facebook"
-                                [placeholder]="'SETTINGS.SOCIAL.FACEBOOK_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.facebook')?.value)"
-                                [disabled]="!settingsForm.get('social.facebook')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
+                    <!-- Bulk Toggles -->
+                    <div
+                        class="flex items-center justify-between mb-8 p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-elevated)]">
+                        <span class="font-semibold text-[var(--admin-text-primary)]">{{
+                            'WEBSITE_SETTINGS.SOCIAL.BULK_TOGGLE' |
+                            translate }}</span>
+                        <div class="flex gap-2">
+                            <button type="button" class="btn-secondary btn-sm" (click)="toggleAllSocialMedia(true)">
+                                <app-icon name="eye" [size]="16"></app-icon>
+                                {{ 'WEBSITE_SETTINGS.SOCIAL.SHOW_ALL' | translate }}
+                            </button>
+                            <button type="button" class="btn-secondary btn-sm" (click)="toggleAllSocialMedia(false)">
+                                <app-icon name="eye-off" [size]="16"></app-icon>
+                                {{ 'WEBSITE_SETTINGS.SOCIAL.HIDE_ALL' | translate }}
                             </button>
                         </div>
                     </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showFacebook'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
-                    </div>
-                </div>
 
-                <!-- Instagram -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            Instagram {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.instagram')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.instagram')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="instagram"
-                                [placeholder]="'SETTINGS.SOCIAL.INSTAGRAM_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.instagram')?.value)"
-                                [disabled]="!settingsForm.get('social.instagram')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showInstagram'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
-                    </div>
-                </div>
+                    <!-- Social Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                <!-- LinkedIn -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            LinkedIn {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.linkedin')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.linkedin')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="linkedin"
-                                [placeholder]="'SETTINGS.SOCIAL.LINKEDIN_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.linkedin')?.value)"
-                                [disabled]="!settingsForm.get('social.linkedin')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
-                            </button>
+                        <!-- Facebook -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-blue-500/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="facebook" [size]="18" class="text-blue-500"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.FACEBOOK' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showFacebook'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="facebook" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.FACEBOOK_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.facebook')?.value)"
+                                    [disabled]="!settingsForm.get('social.facebook')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showLinkedin'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
-                    </div>
-                </div>
 
-                <!-- Twitter/X -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            Twitter/X {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.twitter')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.twitter')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="twitter"
-                                [placeholder]="'SETTINGS.SOCIAL.TWITTER_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.twitter')?.value)"
-                                [disabled]="!settingsForm.get('social.twitter')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
-                            </button>
+                        <!-- Instagram -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-pink-500/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="instagram" [size]="18" class="text-pink-500"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.INSTAGRAM' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showInstagram'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="instagram" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.INSTAGRAM_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.instagram')?.value)"
+                                    [disabled]="!settingsForm.get('social.instagram')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showTwitter'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
-                    </div>
-                </div>
 
-                <!-- YouTube -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            YouTube {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.youtube')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.youtube')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="youtube"
-                                [placeholder]="'SETTINGS.SOCIAL.YOUTUBE_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.youtube')?.value)"
-                                [disabled]="!settingsForm.get('social.youtube')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
-                            </button>
+                        <!-- LinkedIn -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-blue-700/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="linkedin" [size]="18" class="text-blue-700"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.LINKEDIN' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showLinkedin'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="linkedin" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.LINKEDIN_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.linkedin')?.value)"
+                                    [disabled]="!settingsForm.get('social.linkedin')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showYoutube'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
-                    </div>
-                </div>
 
-                <!-- TikTok -->
-                <div class="social-row">
-                    <div class="form-group flex-grow">
-                        <label>
-                            TikTok {{ 'SETTINGS.SOCIAL.URL_LABEL' | translate }}
-                            <span class="validation-icon" *ngIf="isFieldValid('social.tiktok')">✓</span>
-                            <span class="validation-icon error" *ngIf="isFieldInvalid('social.tiktok')">✗</span>
-                        </label>
-                        <div class="input-with-button">
-                            <input type="text" formControlName="tiktok"
-                                [placeholder]="'SETTINGS.SOCIAL.TIKTOK_PLACEHOLDER' | translate">
-                            <button type="button" class="test-link-btn"
-                                (click)="openUrlInNewTab(settingsForm.get('social.tiktok')?.value)"
-                                [disabled]="!settingsForm.get('social.tiktok')?.value">
-                                🔗 {{ 'SETTINGS.SOCIAL.TEST_LINK' | translate }}
-                            </button>
+                        <!-- Twitter (X) -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-gray-500/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="twitter" [size]="18" class="text-gray-400"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.TWITTER' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showTwitter'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="twitter" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.TWITTER_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.twitter')?.value)"
+                                    [disabled]="!settingsForm.get('social.twitter')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group toggle-group">
-                        <app-toggle-switch [control]="$any(settingsForm.get('social.showTiktok'))"
-                            [label]="'SETTINGS.SOCIAL.SHOW_LABEL' | translate">
-                        </app-toggle-switch>
+
+                        <!-- YouTube -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-red-600/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="youtube" [size]="18" class="text-red-600"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.YOUTUBE' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showYoutube'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="youtube" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.YOUTUBE_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.youtube')?.value)"
+                                    [disabled]="!settingsForm.get('social.youtube')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TikTok -->
+                        <div
+                            class="social-card p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] hover:border-pink-400/50 transition-colors">
+                            <div class="flex justify-between items-start mb-3">
+                                <label class="font-semibold flex items-center gap-2">
+                                    <app-icon name="video" [size]="18" class="text-pink-400"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.SOCIAL.NETWORKS.TIKTOK' | translate }}
+                                </label>
+                                <app-toggle-switch
+                                    [control]="$any(settingsForm.get('social.showTiktok'))"></app-toggle-switch>
+                            </div>
+                            <div class="input-with-copy">
+                                <input type="text" formControlName="tiktok" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.SOCIAL.TIKTOK_PLACEHOLDER' | translate">
+                                <button type="button" class="copy-btn"
+                                    (click)="openUrlInNewTab(settingsForm.get('social.tiktok')?.value)"
+                                    [disabled]="!settingsForm.get('social.tiktok')?.value">
+                                    <app-icon name="external-link" [size]="16"></app-icon>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Business Hours Tab -->
             <div class="tab-content" *ngIf="activeTab === 'hours'" formGroupName="businessHours">
-                <div class="hours-header">
-                    <div>
-                        <h3>{{ 'SETTINGS.HOURS.TITLE' | translate }}</h3>
-                        <p>{{ 'SETTINGS.HOURS.SUBTITLE' | translate }}</p>
-                    </div>
-
-                    <!-- Preset Templates -->
-                    <div class="preset-selector">
-                        <label>{{ 'SETTINGS.HOURS.PRESET_LABEL' | translate }}</label>
-                        <select (change)="applyPreset($event)" class="preset-dropdown">
-                            <option value="">{{ 'SETTINGS.HOURS.SELECT_PRESET' | translate }}</option>
-                            <option value="standard">🏢 {{ 'SETTINGS.HOURS.PRESET_STANDARD' | translate }}</option>
-                            <option value="retail">🛍️ {{ 'SETTINGS.HOURS.PRESET_RETAIL' | translate }}</option>
-                            <option value="restaurant">🍽️ {{ 'SETTINGS.HOURS.PRESET_RESTAURANT' | translate }}</option>
-                            <option value="24x7">🌐 {{ 'SETTINGS.HOURS.PRESET_24X7' | translate }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Quick Actions Toolbar -->
-                <div class="quick-actions">
-                    <button type="button" class="action-btn" (click)="copyMondayToWeekdays()"
-                        title="{{ 'SETTINGS.HOURS.COPY_TO_WEEKDAYS_HINT' | translate }}">
-                        📋 {{ 'SETTINGS.HOURS.COPY_TO_WEEKDAYS' | translate }}
-                    </button>
-                    <button type="button" class="action-btn" (click)="openSetAllSameModal()"
-                        title="{{ 'SETTINGS.HOURS.SET_ALL_SAME_HINT' | translate }}">
-                        ⚡ {{ 'SETTINGS.HOURS.SET_ALL_SAME' | translate }}
-                    </button>
-                    <button type="button" class="action-btn" (click)="resetToDefaults()"
-                        title="{{ 'SETTINGS.HOURS.RESET_HINT' | translate }}">
-                        🔄 {{ 'SETTINGS.HOURS.RESET' | translate }}
-                    </button>
-                </div>
-
-                <div class="hours-content-wrapper">
-                    <!-- Hours Grid -->
-                    <div class="hours-grid">
-                        <div class="hours-row" *ngFor="let day of daysOfWeek" [formGroupName]="day"
-                            [class.has-error]="hasTimeError(day)"
-                            [class.is-closed]="settingsForm.get('businessHours.' + day + '.closed')?.value">
-                            <div class="day-label">
-                                <span class="day-icon">{{ getDayIcon(day) }}</span>
-                                <span class="day-name">{{ getDayLabel(day) }}</span>
+                <div class="form-section">
+                    <div class="hours-header mb-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                                <app-icon name="clock" [size]="24"></app-icon>
                             </div>
-                            <div class="hours-inputs">
-                                <div class="time-input-group">
-                                    <div class="time-input">
-                                        <label>{{ 'SETTINGS.HOURS.OPEN' | translate }}</label>
-                                        <input type="time" formControlName="open"
-                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
-                                            (change)="validateTimeRange(day)">
-                                    </div>
-                                    <span class="time-separator">→</span>
-                                    <div class="time-input">
-                                        <label>{{ 'SETTINGS.HOURS.CLOSE' | translate }}</label>
-                                        <input type="time" formControlName="close"
-                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
-                                            (change)="validateTimeRange(day)">
-                                    </div>
-                                </div>
-                                <div class="closed-toggle">
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" formControlName="closed" (change)="onClosedToggle(day)">
-                                        <span class="toggle-slider"></span>
-                                        <span class="toggle-label">{{ 'SETTINGS.HOURS.CLOSED' | translate }}</span>
-                                    </label>
-                                </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-[var(--admin-text-primary)]">{{
+                                    'WEBSITE_SETTINGS.HOURS.TITLE'
+                                    | translate }}</h3>
+                                <p class="text-[var(--admin-text-secondary)]">{{ 'WEBSITE_SETTINGS.HOURS.SUBTITLE' |
+                                    translate
+                                    }}</p>
                             </div>
-                            <div class="error-message" *ngIf="hasTimeError(day)">
-                                ⚠️ {{ 'SETTINGS.HOURS.INVALID_TIME_RANGE' | translate }}
+                        </div>
+
+                        <div
+                            class="flex items-end gap-3 p-4 bg-[var(--admin-bg-elevated)] rounded-xl border border-[var(--admin-border-color)]">
+                            <div class="flex-1">
+                                <label class="text-sm font-semibold mb-1 block">{{ 'WEBSITE_SETTINGS.HOURS.PRESET_LABEL'
+                                    |
+                                    translate }}</label>
+                                <select class="form-control" (change)="applyBusinessHoursPreset($event)">
+                                    <option value="">{{ 'WEBSITE_SETTINGS.HOURS.SELECT_PRESET' | translate }}</option>
+                                    <option value="standard">{{ 'WEBSITE_SETTINGS.HOURS.PRESET_STANDARD' | translate }}
+                                    </option>
+                                    <option value="retail">{{ 'WEBSITE_SETTINGS.HOURS.PRESET_RETAIL' | translate }}
+                                    </option>
+                                    <option value="restaurant">{{ 'WEBSITE_SETTINGS.HOURS.PRESET_RESTAURANT' | translate
+                                        }}
+                                    </option>
+                                    <option value="24x7">{{ 'WEBSITE_SETTINGS.HOURS.PRESET_24X7' | translate }}</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Live Preview Card -->
-                    <div class="hours-preview-card">
-                        <div class="preview-header">
-                            <h4>👁️ {{ 'SETTINGS.HOURS.PREVIEW_TITLE' | translate }}</h4>
-                            <p>{{ 'SETTINGS.HOURS.PREVIEW_SUBTITLE' | translate }}</p>
+                    <!-- Quick Actions Toolbar -->
+                    <div class="flex gap-4 mb-8">
+                        <button type="button" class="btn-secondary flex-1 justify-center"
+                            (click)="copyMondayToWeekdays()">
+                            <app-icon name="copy" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.HOURS.COPY_TO_WEEKDAYS' | translate }}
+                        </button>
+                        <button type="button" class="btn-secondary flex-1 justify-center"
+                            (click)="openSetAllSameModal()">
+                            <app-icon name="check-square" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.HOURS.SET_ALL_SAME' | translate }}
+                        </button>
+                        <button type="button" class="btn-secondary flex-1 justify-center" (click)="resetToDefaults()">
+                            <app-icon name="rotate-ccw" [size]="16"></app-icon>
+                            {{ 'WEBSITE_SETTINGS.HOURS.RESET' | translate }}
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Hours Grid -->
+                        <div class="hours-grid lg:col-span-2 flex flex-col gap-4">
+                            <div class="hours-row p-4 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] flex items-center gap-4 transition-all"
+                                *ngFor="let day of daysOfWeek" [formGroupName]="day"
+                                [class.opacity-50]="settingsForm.get('businessHours.' + day + '.closed')?.value"
+                                [class.bg-[var(--admin-bg-elevated)]]="settingsForm.get('businessHours.' + day + '.closed')?.value">
+
+                                <div class="day-label w-32 font-semibold flex items-center gap-2">
+                                    <app-icon name="calendar" [size]="16"
+                                        class="text-[var(--admin-text-secondary)]"></app-icon>
+                                    {{ getDayLabel(day) }}
+                                </div>
+
+                                <div class="hours-inputs flex-1 flex items-center gap-4">
+                                    <div class="time-input-group flex items-center gap-2">
+                                        <input type="time" formControlName="open" class="form-control"
+                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
+                                            (change)="validateTimeRange(day)">
+                                        <span class="text-[var(--admin-text-secondary)]">→</span>
+                                        <input type="time" formControlName="close" class="form-control"
+                                            [disabled]="settingsForm.get('businessHours.' + day + '.closed')?.value"
+                                            (change)="validateTimeRange(day)">
+                                    </div>
+
+                                    <app-toggle-switch
+                                        [control]="$any(settingsForm.get('businessHours.' + day + '.closed'))"
+                                        [label]="'WEBSITE_SETTINGS.HOURS.CLOSED' | translate">
+                                    </app-toggle-switch>
+                                </div>
+
+                                <div class="error-message text-red-500 text-sm flex items-center gap-1"
+                                    *ngIf="hasTimeError(day)">
+                                    <app-icon name="alert-circle" [size]="14"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.HOURS.INVALID_TIME_RANGE' | translate }}
+                                </div>
+                            </div>
                         </div>
-                        <div class="preview-content">
-                            <div class="preview-row" *ngFor="let day of daysOfWeek">
-                                <span class="preview-day">{{ getDayLabel(day) }}</span>
-                                <span class="preview-hours"
-                                    [class.closed]="settingsForm.get('businessHours.' + day + '.closed')?.value">
-                                    {{ getHoursPreview(day) }}
-                                </span>
+
+                        <!-- Live Preview Card -->
+                        <div
+                            class="hours-preview-card p-6 border border-[var(--admin-border-color)] rounded-xl bg-[var(--admin-bg-surface)] h-fit sticky top-6">
+                            <div class="preview-header mb-4 pb-2 border-b border-[var(--admin-border-color)]">
+                                <h4 class="text-lg font-bold flex items-center gap-2 mb-1">
+                                    <app-icon name="eye" [size]="20" class="text-[var(--admin-primary)]"></app-icon>
+                                    {{ 'WEBSITE_SETTINGS.HOURS.PREVIEW_TITLE' | translate }}
+                                </h4>
+                                <p class="text-sm text-[var(--admin-text-secondary)]">{{
+                                    'WEBSITE_SETTINGS.HOURS.PREVIEW_SUBTITLE' | translate }}</p>
+                            </div>
+                            <div class="preview-content flex flex-col gap-2">
+                                <div class="preview-row flex justify-between text-sm py-1 border-b border-[var(--admin-border-color)] last:border-0"
+                                    *ngFor="let day of daysOfWeek">
+                                    <span class="font-medium">{{ getDayLabel(day) }}</span>
+                                    <span class="text-[var(--admin-text-secondary)]"
+                                        [class.text-red-400]="settingsForm.get('businessHours.' + day + '.closed')?.value">
+                                        {{ getHoursPreview(day) }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -398,38 +508,124 @@
 
             <!-- Features Tab -->
             <div class="tab-content" *ngIf="activeTab === 'features'" formGroupName="features">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <app-icon name="sliders" [size]="24" class="text-orange-500"></app-icon>
+                        {{ 'WEBSITE_SETTINGS.FEATURES.TITLE' | translate }}
+                    </h3>
 
-                <div class="form-group feature-card">
-                    <app-toggle-switch [control]="$any(settingsForm.get('features.maintenanceMode'))"
-                        [label]="'SETTINGS.FEATURES.MAINTENANCE' | translate" icon="🔧"
-                        [hint]="'SETTINGS.FEATURES.MAINTENANCE_HINT' | translate">
-                    </app-toggle-switch>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <!-- Maintenance Mode -->
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-orange-500/10 text-orange-500">
+                                    <app-icon name="tool" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('features.maintenanceMode'))"
+                                        [label]="'WEBSITE_SETTINGS.FEATURES.MAINTENANCE' | translate">
+                                    </app-toggle-switch>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mt-2">
+                                        {{ 'WEBSITE_SETTINGS.FEATURES.MAINTENANCE_HINT' | translate }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Widget -->
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-blue-500/10 text-blue-500">
+                                    <app-icon name="message-square" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('features.enableChatWidget'))"
+                                        [label]="'WEBSITE_SETTINGS.FEATURES.CHAT' | translate">
+                                    </app-toggle-switch>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mt-2">
+                                        {{ 'WEBSITE_SETTINGS.FEATURES.CHAT_HINT' | translate }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Promo Banner -->
+                        <div class="feature-card md:col-span-2">
+                            <div class="flex items-start gap-4 mb-4">
+                                <div class="p-3 rounded-lg bg-purple-500/10 text-purple-500">
+                                    <app-icon name="megaphone" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('features.showPromoBanner'))"
+                                        [label]="'WEBSITE_SETTINGS.FEATURES.PROMO' | translate">
+                                    </app-toggle-switch>
+                                </div>
+                            </div>
+
+                            <div class="pl-[60px]" *ngIf="settingsForm.get('features.showPromoBanner')?.value">
+                                <label class="block mb-2 font-medium">{{ 'WEBSITE_SETTINGS.FEATURES.PROMO_TEXT' |
+                                    translate
+                                    }}</label>
+                                <input type="text" formControlName="promoText" class="form-control"
+                                    [placeholder]="'WEBSITE_SETTINGS.FEATURES.PROMO_TEXT_PLACEHOLDER' | translate">
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
 
-                <hr class="divider">
+            <!-- SEO Tab -->
+            <div class="tab-content" *ngIf="$any(activeTab) === 'seo'" formGroupName="seo">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <app-icon name="search" [size]="24" class="text-green-500"></app-icon>
+                        {{ 'WEBSITE_SETTINGS.SEO.TITLE' | translate }}
+                    </h3>
 
-                <div class="form-group feature-card">
-                    <app-toggle-switch [control]="$any(settingsForm.get('features.enableChatWidget'))"
-                        [label]="'SETTINGS.FEATURES.CHAT' | translate" icon="💬">
-                    </app-toggle-switch>
-                </div>
-
-                <hr class="divider">
-
-                <div class="feature-section">
-                    <div class="form-group feature-card">
-                        <app-toggle-switch [control]="$any(settingsForm.get('features.showPromoBanner'))"
-                            [label]="'SETTINGS.FEATURES.PROMO' | translate" icon="📢">
-                        </app-toggle-switch>
+                    <div class="form-group mb-6">
+                        <label>
+                            {{ 'WEBSITE_SETTINGS.SEO.META_TITLE' | translate }}
+                        </label>
+                        <input type="text" formControlName="metaTitle" class="form-control"
+                            placeholder="{{ 'WEBSITE_SETTINGS.SEO.META_TITLE_PLACEHOLDER' | translate }}">
+                        <small class="form-hint">{{ 'WEBSITE_SETTINGS.SEO.META_TITLE_HINT' | translate }}</small>
                     </div>
 
-                    <div class="form-group" style="margin-top: 1rem;"
-                        *ngIf="settingsForm.get('features.showPromoBanner')?.value">
-                        <label>{{ 'SETTINGS.FEATURES.PROMO_TEXT' | translate }}</label>
-                        <input type="text" formControlName="promoText"
-                            [placeholder]="'SETTINGS.FEATURES.PROMO_TEXT_PLACEHOLDER' | translate">
+                    <div class="form-group mb-6">
+                        <label>
+                            {{ 'WEBSITE_SETTINGS.SEO.META_DESC' | translate }}
+                        </label>
+                        <textarea formControlName="metaDescription" rows="3" class="form-control"
+                            [placeholder]="'WEBSITE_SETTINGS.SEO.META_DESC_PLACEHOLDER' | translate"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            {{ 'WEBSITE_SETTINGS.SEO.OG_IMAGE' | translate }}
+                        </label>
+                        <input type="text" formControlName="ogImage" class="form-control"
+                            [placeholder]="'WEBSITE_SETTINGS.SEO.OG_IMAGE_PLACEHOLDER' | translate">
                     </div>
                 </div>
+            </div>
+
+            <!-- Sticky Footer Action Bar -->
+            <div
+                class="sticky-footer-actions bg-[var(--admin-bg-main)] border-t border-[var(--admin-border-color)] p-4 flex justify-end gap-3 sticky bottom-0 z-10 mt-8 shadow-[-0px_-4px_6px_rgba(0,0,0,0.05)]">
+                <button type="button" class="btn-secondary min-w-[100px]" (click)="onCancel()" [disabled]="isSaving">
+                    {{ 'ADMIN.COMMON.CANCEL' | translate }}
+                </button>
+                <button type="submit" class="btn-primary min-w-[140px]" [disabled]="settingsForm.invalid || isSaving">
+                    <span *ngIf="!isSaving" class="flex items-center gap-2">
+                        <app-icon name="save" [size]="18"></app-icon>
+                        {{ 'ADMIN.COMMON.SAVE' | translate }}
+                    </span>
+                    <span *ngIf="isSaving" class="flex items-center gap-2">
+                        <app-icon name="loader" [size]="18" class="animate-spin"></app-icon>
+                        {{ 'ADMIN.COMMON.SAVING' | translate }}...
+                    </span>
+                </button>
             </div>
         </form>
     </div>

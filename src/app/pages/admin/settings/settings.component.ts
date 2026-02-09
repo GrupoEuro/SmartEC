@@ -5,14 +5,15 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { SettingsService, WebsiteSettings } from '../../../core/services/settings.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { AdminPageHeaderComponent } from '../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../shared/toggle-switch/toggle-switch.component';
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-settings',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TranslateModule, RouterLink, AdminPageHeaderComponent, ToggleSwitchComponent],
+    imports: [CommonModule, ReactiveFormsModule, TranslateModule, RouterLink, AdminPageHeaderComponent, ToggleSwitchComponent, AppIconComponent],
     templateUrl: './settings.component.html',
     styleUrls: ['./settings.component.css']
 })
@@ -26,24 +27,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     settingsForm: FormGroup;
     isLoading = true;
     isSaving = false;
-    isAutoSaving = false;
-    saveStatus: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
-    activeTab: 'general' | 'social' | 'features' | 'hours' = 'general';
-    lastSaved: Date | undefined = undefined;
-    hasUnsavedChanges = false;
+    activeTab: 'general' | 'social' | 'features' | 'hours' | 'seo' = 'general';
     daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-    // Change history for undo/redo
-    private changeHistory: any[] = [];
-    private historyIndex = -1;
-    canUndo = false;
-    canRedo = false;
 
     // Character counters
     addressCharCount = 0;
-    promoTextCharCount = 0;
     maxAddressChars = 200;
-    maxPromoChars = 100;
 
     // Clipboard feedback
     copiedField: string | null = null;
@@ -55,7 +44,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 phone: [''],
                 whatsapp: [''],
                 email: ['', [Validators.email]],
-                address: ['']
+                address: [''],
+                logo: [''],
+                favicon: ['']
             }),
             social: this.fb.group({
                 facebook: [''],
@@ -85,16 +76,35 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 showPromoBanner: [false],
                 promoText: [''],
                 enableChatWidget: [true]
+            }),
+            seo: this.fb.group({
+                metaTitle: ['{{page_title}} | {{site_name}}'],
+                metaDescription: [''],
+                ogImage: ['']
             })
         });
     }
 
     ngOnInit() {
+        this.loadSettings();
+
+        // Track character count
+        this.settingsForm.get('general.address')?.valueChanges
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(val => this.addressCharCount = (val || '').length);
+    }
+
+    ngOnDestroy() {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    loadSettings() {
+        this.isLoading = true;
         this.settingsService.settings$.subscribe({
             next: (settings) => {
                 if (settings) {
                     this.settingsForm.patchValue(settings);
-                    this.saveToHistory();
                 }
                 this.isLoading = false;
             },
@@ -103,46 +113,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 this.isLoading = false;
             }
         });
-
-        // Auto-save with debouncing
-        this.settingsForm.valueChanges
-            .pipe(
-                debounceTime(2000),
-                distinctUntilChanged(),
-                takeUntil(this.destroy$)
-            )
-            .subscribe(() => {
-                if (this.hasUnsavedChanges && !this.isSaving) {
-                    this.autoSave();
-                }
-            });
-
-        // Track form changes for unsaved warning
-        this.settingsForm.valueChanges
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => {
-                this.hasUnsavedChanges = true;
-                this.updateCharacterCounts();
-            });
-
-        // Initial character count
-        this.updateCharacterCounts();
     }
 
-    ngOnDestroy() {
-        this.destroy$.next();
-        this.destroy$.complete();
+    setActiveTab(tab: 'general' | 'social' | 'features' | 'hours' | 'seo') {
+        this.activeTab = tab;
     }
 
-    @HostListener('window:beforeunload', ['$event'])
-    unloadNotification($event: any): void {
-        if (this.hasUnsavedChanges) {
-            $event.returnValue = true;
+    // Brand Assets Handlers
+    onFileSelected(event: any, field: 'logo' | 'favicon'): void {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                this.settingsForm.get(`general.${field}`)?.setValue(e.target.result);
+                this.settingsForm.markAsDirty();
+            };
+            reader.readAsDataURL(file);
         }
     }
 
-    setActiveTab(tab: 'general' | 'social' | 'features' | 'hours') {
-        this.activeTab = tab;
+    removeAsset(field: 'logo' | 'favicon'): void {
+        this.settingsForm.get(`general.${field}`)?.setValue('');
+        this.settingsForm.markAsDirty();
     }
 
     async onSubmit() {
@@ -152,15 +144,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
         try {
             const formValue = this.settingsForm.value as WebsiteSettings;
             await this.settingsService.updateSettings(formValue);
-            this.lastSaved = new Date();
-            this.hasUnsavedChanges = false;
-            this.toast.success(this.translate.instant('SETTINGS.SUCCESS'));
+            this.settingsForm.markAsPristine();
+            this.toast.success(this.translate.instant('WEBSITE_SETTINGS.SUCCESS'));
         } catch (error) {
             console.error(error);
             this.toast.error(this.translate.instant('ADMIN.COMMON.ERROR'));
         } finally {
             this.isSaving = false;
         }
+    }
+
+    onCancel() {
+        // Reload settings to reset changes
+        this.loadSettings();
+        this.settingsForm.markAsPristine();
+        this.toast.info(this.translate.instant('ADMIN.COMMON.CHANGES_DISCARDED'));
     }
 
     // Validation helpers
@@ -204,49 +202,36 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
 
     getDayLabel(day: string): string {
-        return this.translate.instant(`SETTINGS.HOURS.${day.toUpperCase()}`);
-    }
-
-    getDayIcon(day: string): string {
-        const icons: { [key: string]: string } = {
-            monday: '📅',
-            tuesday: '📅',
-            wednesday: '📅',
-            thursday: '📅',
-            friday: '📅',
-            saturday: '🎉',
-            sunday: '☀️'
-        };
-        return icons[day] || '📅';
+        return this.translate.instant(`WEBSITE_SETTINGS.HOURS.${day.toUpperCase()}`);
     }
 
     // Preset templates
-    private presets = {
-        standard: {
-            weekdays: { open: '09:00', close: '17:00', closed: false },
-            saturday: { open: '09:00', close: '13:00', closed: false },
-            sunday: { open: '00:00', close: '00:00', closed: true }
-        },
-        retail: {
-            weekdays: { open: '10:00', close: '20:00', closed: false },
-            saturday: { open: '10:00', close: '20:00', closed: false },
-            sunday: { open: '11:00', close: '18:00', closed: false }
-        },
-        restaurant: {
-            weekdays: { open: '11:00', close: '22:00', closed: false },
-            saturday: { open: '11:00', close: '23:00', closed: false },
-            sunday: { open: '11:00', close: '21:00', closed: false }
-        },
-        '24x7': {
-            all: { open: '00:00', close: '23:59', closed: false }
-        }
-    };
-
-    applyPreset(event: any): void {
+    applyBusinessHoursPreset(event: any): void {
         const presetName = event.target.value;
         if (!presetName) return;
 
-        const preset = this.presets[presetName as keyof typeof this.presets];
+        const presets: any = {
+            standard: {
+                weekdays: { open: '09:00', close: '17:00', closed: false },
+                saturday: { open: '09:00', close: '13:00', closed: false },
+                sunday: { open: '00:00', close: '00:00', closed: true }
+            },
+            retail: {
+                weekdays: { open: '10:00', close: '20:00', closed: false },
+                saturday: { open: '10:00', close: '20:00', closed: false },
+                sunday: { open: '11:00', close: '18:00', closed: false }
+            },
+            restaurant: {
+                weekdays: { open: '11:00', close: '22:00', closed: false },
+                saturday: { open: '11:00', close: '23:00', closed: false },
+                sunday: { open: '11:00', close: '21:00', closed: false }
+            },
+            '24x7': {
+                all: { open: '00:00', close: '23:59', closed: false }
+            }
+        };
+
+        const preset = presets[presetName];
         if (!preset) return;
 
         const businessHours = this.settingsForm.get('businessHours');
@@ -268,7 +253,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
         // Reset dropdown
         event.target.value = '';
-        this.toast.success(this.translate.instant('SETTINGS.HOURS.PRESET_APPLIED'));
+        this.toast.success(this.translate.instant('WEBSITE_SETTINGS.HOURS.PRESET_APPLIED'));
     }
 
     copyMondayToWeekdays(): void {
@@ -279,16 +264,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
             this.settingsForm.get(`businessHours.${day}`)?.patchValue(mondayHours);
         });
 
-        this.toast.success(this.translate.instant('SETTINGS.HOURS.COPIED_TO_WEEKDAYS'));
+        this.toast.success(this.translate.instant('WEBSITE_SETTINGS.HOURS.COPIED_TO_WEEKDAYS'));
     }
 
     openSetAllSameModal(): void {
-        const time = prompt(this.translate.instant('SETTINGS.HOURS.SET_ALL_SAME_PROMPT'));
+        const time = prompt(this.translate.instant('WEBSITE_SETTINGS.HOURS.SET_ALL_SAME_PROMPT'));
         if (!time) return;
 
         const [open, close] = time.split('-').map(t => t.trim());
         if (!open || !close) {
-            this.toast.error(this.translate.instant('SETTINGS.HOURS.INVALID_FORMAT'));
+            this.toast.error(this.translate.instant('WEBSITE_SETTINGS.HOURS.INVALID_FORMAT'));
             return;
         }
 
@@ -300,11 +285,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
             });
         });
 
-        this.toast.success(this.translate.instant('SETTINGS.HOURS.APPLIED_TO_ALL'));
+        this.toast.success(this.translate.instant('WEBSITE_SETTINGS.HOURS.APPLIED_TO_ALL'));
     }
 
     resetToDefaults(): void {
-        const confirmed = confirm(this.translate.instant('SETTINGS.HOURS.RESET_CONFIRM'));
+        const confirmed = confirm(this.translate.instant('WEBSITE_SETTINGS.HOURS.RESET_CONFIRM'));
         if (!confirmed) return;
 
         const defaults = {
@@ -318,7 +303,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         };
 
         this.settingsForm.get('businessHours')?.patchValue(defaults);
-        this.toast.success(this.translate.instant('SETTINGS.HOURS.RESET_SUCCESS'));
+        this.toast.success(this.translate.instant('WEBSITE_SETTINGS.HOURS.RESET_SUCCESS'));
     }
 
     // Time validation
@@ -358,11 +343,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
         const { open, close, closed } = dayGroup.value;
 
         if (closed) {
-            return this.translate.instant('SETTINGS.HOURS.CLOSED');
+            return this.translate.instant('WEBSITE_SETTINGS.HOURS.CLOSED');
         }
 
         if (!open || !close) {
-            return this.translate.instant('SETTINGS.HOURS.NOT_SET');
+            return this.translate.instant('WEBSITE_SETTINGS.HOURS.NOT_SET');
         }
 
         return `${this.formatTime(open)} - ${this.formatTime(close)}`;
@@ -377,35 +362,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
         return `${displayHour}:${minutes} ${ampm}`;
     }
 
-    // Auto-save functionality
-    private async autoSave(): Promise<void> {
-        if (this.settingsForm.invalid) return;
-
-        this.isAutoSaving = true;
-        this.saveStatus = 'saving';
-
-        try {
-            const formValue = this.settingsForm.value as WebsiteSettings;
-            await this.settingsService.updateSettings(formValue);
-            this.lastSaved = new Date();
-            this.hasUnsavedChanges = false;
-            this.saveStatus = 'saved';
-            this.saveToHistory();
-
-            // Reset status after 3 seconds
-            setTimeout(() => {
-                if (this.saveStatus === 'saved') {
-                    this.saveStatus = 'idle';
-                }
-            }, 3000);
-        } catch (error) {
-            console.error(error);
-            this.saveStatus = 'error';
-        } finally {
-            this.isAutoSaving = false;
-        }
-    }
-
     // Keyboard shortcuts
     @HostListener('document:keydown', ['$event'])
     handleKeyboardShortcuts(event: KeyboardEvent): void {
@@ -414,39 +370,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
             event.preventDefault();
             this.onSubmit();
         }
-
-        // Cmd/Ctrl + Z to undo
-        if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
-            event.preventDefault();
-            this.undo();
-        }
-
-        // Cmd/Ctrl + Shift + Z to redo
-        if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'z') {
-            event.preventDefault();
-            this.redo();
-        }
-
-        // Escape to clear unsaved changes warning
-        if (event.key === 'Escape' && this.hasUnsavedChanges) {
-            const confirmed = confirm(this.translate.instant('SETTINGS.DISCARD_CHANGES'));
-            if (confirmed) {
-                this.settingsService.settings$.subscribe(settings => {
-                    if (settings) {
-                        this.settingsForm.patchValue(settings);
-                        this.hasUnsavedChanges = false;
-                    }
-                });
-            }
-        }
     }
 
     // Clipboard functionality
     async copyToClipboard(value: string, fieldName: string): Promise<void> {
+        if (!value) return;
         try {
             await navigator.clipboard.writeText(value);
             this.copiedField = fieldName;
-            this.toast.success(this.translate.instant('SETTINGS.COPIED'));
+            this.toast.success(this.translate.instant('WEBSITE_SETTINGS.COPIED'));
 
             // Reset after 2 seconds
             setTimeout(() => {
@@ -454,56 +386,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
             }, 2000);
         } catch (error) {
             console.error('Failed to copy:', error);
-            this.toast.error(this.translate.instant('SETTINGS.COPY_FAILED'));
+            this.toast.error(this.translate.instant('WEBSITE_SETTINGS.COPY_FAILED'));
         }
-    }
-
-    // Change history for undo/redo
-    private saveToHistory(): void {
-        const currentState = this.settingsForm.value;
-
-        // Remove any future states if we're not at the end
-        if (this.historyIndex < this.changeHistory.length - 1) {
-            this.changeHistory = this.changeHistory.slice(0, this.historyIndex + 1);
-        }
-
-        this.changeHistory.push(JSON.parse(JSON.stringify(currentState)));
-        this.historyIndex = this.changeHistory.length - 1;
-
-        // Limit history to 20 states
-        if (this.changeHistory.length > 20) {
-            this.changeHistory.shift();
-            this.historyIndex--;
-        }
-
-        this.updateUndoRedoState();
-    }
-
-    undo(): void {
-        if (!this.canUndo) return;
-
-        this.historyIndex--;
-        const previousState = this.changeHistory[this.historyIndex];
-        this.settingsForm.patchValue(previousState, { emitEvent: false });
-        this.hasUnsavedChanges = true;
-        this.updateUndoRedoState();
-        this.toast.info(this.translate.instant('SETTINGS.UNDONE'));
-    }
-
-    redo(): void {
-        if (!this.canRedo) return;
-
-        this.historyIndex++;
-        const nextState = this.changeHistory[this.historyIndex];
-        this.settingsForm.patchValue(nextState, { emitEvent: false });
-        this.hasUnsavedChanges = true;
-        this.updateUndoRedoState();
-        this.toast.info(this.translate.instant('SETTINGS.REDONE'));
-    }
-
-    private updateUndoRedoState(): void {
-        this.canUndo = this.historyIndex > 0;
-        this.canRedo = this.historyIndex < this.changeHistory.length - 1;
     }
 
     // Social media bulk toggle
@@ -521,25 +405,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
         });
 
         const message = show
-            ? this.translate.instant('SETTINGS.SOCIAL.ALL_SHOWN')
-            : this.translate.instant('SETTINGS.SOCIAL.ALL_HIDDEN');
+            ? this.translate.instant('WEBSITE_SETTINGS.SOCIAL.ALL_SHOWN')
+            : this.translate.instant('WEBSITE_SETTINGS.SOCIAL.ALL_HIDDEN');
         this.toast.success(message);
-    }
-
-    // Character counter
-    private updateCharacterCounts(): void {
-        const address = this.settingsForm.get('general.address')?.value || '';
-        const promoText = this.settingsForm.get('features.promoText')?.value || '';
-
-        this.addressCharCount = address.length;
-        this.promoTextCharCount = promoText.length;
     }
 
     getCharCountClass(current: number, max: number): string {
         const percentage = (current / max) * 100;
-        if (percentage >= 90) return 'char-count-danger';
-        if (percentage >= 75) return 'char-count-warning';
-        return 'char-count-normal';
+        if (percentage >= 90) return 'text-red-500';
+        if (percentage >= 75) return 'text-orange-500';
+        return 'text-[var(--admin-text-muted)]';
     }
 
     // Phone number formatting
@@ -592,25 +467,5 @@ export class SettingsComponent implements OnInit, OnDestroy {
         const email = this.settingsForm.get('general.email')?.value || '';
         const [username] = email.split('@');
         this.settingsForm.get('general.email')?.setValue(`${username}@${suggestion}`);
-    }
-
-    // Form progress calculation
-    getTabProgress(tab: string): number {
-        const group = this.settingsForm.get(tab);
-        if (!group) return 0;
-
-        const controls = Object.keys((group as FormGroup).controls);
-        const filledControls = controls.filter(key => {
-            const value = group.get(key)?.value;
-            return value !== null && value !== '' && value !== false;
-        });
-
-        return Math.round((filledControls.length / controls.length) * 100);
-    }
-
-    getOverallProgress(): number {
-        const tabs = ['general', 'social', 'features', 'businessHours'];
-        const totalProgress = tabs.reduce((sum, tab) => sum + this.getTabProgress(tab), 0);
-        return Math.round(totalProgress / tabs.length);
     }
 }

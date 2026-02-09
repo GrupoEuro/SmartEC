@@ -99,7 +99,8 @@ export class UserManagementService {
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const role = data['role'];
-                    if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'EDITOR') {
+                    // Include all staff roles
+                    if (['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'MANAGER', 'OPERATIONS'].includes(role)) {
                         staff.push(this.mapUser(doc.id, data));
                     }
                 });

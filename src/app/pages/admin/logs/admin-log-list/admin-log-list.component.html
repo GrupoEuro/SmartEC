@@ -1,65 +1,99 @@
-<app-admin-page-header icon="📊" [title]="'ADMIN.LOGS.TITLE' | translate" subtitle="View admin activity history">
-    <div class="stats" *ngIf="!loading && !error">
-        <span class="total-logs">{{ 'ADMIN.LOGS.TOTAL' | translate }}: {{ allLogs.length }}</span>
-        <span class="page-info">{{ 'ADMIN.LOGS.PAGE' | translate }} {{ currentPage }} {{ 'ADMIN.LOGS.OF' | translate }}
-            {{ totalPages }}</span>
-    </div>
-</app-admin-page-header>
+<div class="product-dashboard-layout">
+    <!-- Sticky Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.LOGS.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="paginationConfig.totalItems as count">
+                    {{ count }}
+                </span>
+            </div>
+        </div>
+    </header>
 
-<div class="log-list-container">
+    <!-- Main Content Area -->
+    <main class="product-grid-view">
 
-    <div class="table-responsive" *ngIf="!loading && !error">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th style="width: 180px;">{{ 'ADMIN.LOGS.TH_DATE' | translate }}</th>
-                    <th style="width: 250px;">{{ 'ADMIN.LOGS.TH_USER' | translate }}</th>
-                    <th style="width: 140px;">{{ 'ADMIN.LOGS.TH_IP' | translate }}</th>
-                    <th style="width: 120px;">{{ 'ADMIN.LOGS.TH_MODULE' | translate }}</th>
-                    <th style="width: 100px;">{{ 'ADMIN.LOGS.TH_ACTION' | translate }}</th>
-                    <th>{{ 'ADMIN.LOGS.TH_DETAILS' | translate }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let log of displayedLogs">
-                    <td class="timestamp-cell">{{ log.timestamp | date:'MMM d, y, h:mm a' }}</td>
-                    <td class="user-cell">{{ log.userEmail }}</td>
-                    <td><span class="badg-ip">{{ log.ipAddress || '—' }}</span></td>
-                    <td><span class="badge badge-module" [attr.data-module]="log.module">{{ log.module }}</span></td>
-                    <td><span class="badge badge-action" [attr.data-action]="log.action">{{ log.action }}</span></td>
-                    <td class="details-cell">{{ log.details }}</td>
-                </tr>
-                <tr *ngIf="displayedLogs.length === 0">
-                    <td colspan="5" class="no-data">{{ 'ADMIN.LOGS.EMPTY' | translate }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+        <!-- Toolbar Card -->
+        <div class="toolbar-card" *ngIf="!loading && !error">
+            <!-- Unified Search & Filter Toolbar -->
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                        [placeholder]="'ADMIN.LOGS.SEARCH_PLACEHOLDER' | translate">
+                </div>
 
-    <!-- Pagination -->
-    <div class="pagination" *ngIf="!loading && !error && totalPages > 1">
-        <button class="pagination-btn" (click)="previousPage()" [disabled]="currentPage === 1">
-            ← {{ 'ADMIN.COMMON.PREVIOUS' | translate }}
-        </button>
+                <div class="toolbar-actions">
+                    <!-- Module Filter -->
+                    <select class="filter-select" [(ngModel)]="selectedModule" (ngModelChange)="onFilterChange()">
+                        <option value="">{{ 'ADMIN.LOGS.FILTERS.ALL_MODULES' | translate }}</option>
+                        <option *ngFor="let m of modules" [value]="m">{{ m }}</option>
+                    </select>
 
-        <div class="page-numbers">
-            <button *ngFor="let page of pageNumbers" class="page-number" [class.active]="page === currentPage"
-                (click)="goToPage(page)">
-                {{ page }}
-            </button>
+                    <!-- Action Filter -->
+                    <select class="filter-select" [(ngModel)]="selectedAction" (ngModelChange)="onFilterChange()">
+                        <option value="">{{ 'ADMIN.LOGS.FILTERS.ALL_ACTIONS' | translate }}</option>
+                        <option *ngFor="let a of actions" [value]="a">{{ a }}</option>
+                    </select>
+
+                    <button class="btn-clear-filters" *ngIf="selectedModule || selectedAction || searchTerm"
+                        (click)="clearFilters()">
+                        {{ 'ADMIN.COMMON.CLEAR_FILTERS' | translate }}
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <button class="pagination-btn" (click)="nextPage()" [disabled]="currentPage === totalPages">
-            {{ 'ADMIN.COMMON.NEXT' | translate }} →
-        </button>
-    </div>
+        <!-- Table Card -->
+        <div class="table-card">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th style="width: 180px;">{{ 'ADMIN.LOGS.TH_DATE' | translate }}</th>
+                        <th style="width: 250px;">{{ 'ADMIN.LOGS.TH_USER' | translate }}</th>
+                        <th style="width: 140px;">{{ 'ADMIN.LOGS.TH_IP' | translate }}</th>
+                        <th style="width: 120px;">{{ 'ADMIN.LOGS.TH_MODULE' | translate }}</th>
+                        <th style="width: 120px;">{{ 'ADMIN.LOGS.TH_ACTION' | translate }}</th>
+                        <th>{{ 'ADMIN.LOGS.TH_DETAILS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngIf="loading">
+                        <td colspan="6" class="loading-state">
+                            <div class="spinner"></div>
+                            <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
+                        </td>
+                    </tr>
 
-    <div *ngIf="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
-    </div>
+                    <tr *ngFor="let log of displayedLogs">
+                        <td class="timestamp-cell">{{ log.timestamp | date:'MMM d, y, h:mm a' }}</td>
+                        <td class="user-cell">{{ log.userEmail }}</td>
+                        <td><span class="badg-ip">{{ log.ipAddress || '—' }}</span></td>
+                        <td><span class="badge-module" [attr.data-module]="log.module">{{ log.module }}</span></td>
+                        <td><span class="badge-action" [attr.data-action]="log.action">{{ log.action }}</span></td>
+                        <td class="details-cell">{{ log.details }}</td>
+                    </tr>
 
-    <div *ngIf="error" class="error-state">
-        <p>{{ 'ADMIN.COMMON.ERROR' | translate }}</p>
-    </div>
+                    <tr *ngIf="displayedLogs.length === 0 && !loading">
+                        <td colspan="6" class="no-data">
+                            <p>{{ 'ADMIN.LOGS.EMPTY' | translate }}</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+            <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+                (itemsPerPageChange)="onItemsPerPageChange($event)">
+            </app-pagination>
+        </div>
+
+        <div *ngIf="error" class="error-state">
+            <p>{{ 'ADMIN.COMMON.ERROR' | translate }}</p>
+        </div>
+
+    </main>
 </div>

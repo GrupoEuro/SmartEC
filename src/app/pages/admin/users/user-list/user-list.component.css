@@ -22,16 +22,35 @@
 
 .header-left {
     display: flex;
-    align-items: baseline;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-title-section {
+    display: flex;
+    align-items: center;
     gap: 1rem;
 }
 
 .page-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 1.875rem;
+    /* 3xl */
+    font-weight: 800;
+    color: white;
     margin: 0;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.025em;
+    line-height: 1;
+}
+
+/* Badge Style matching HTML .product-badge */
+.product-badge {
+    background: var(--accent);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
 .product-count {
@@ -40,12 +59,22 @@
     font-weight: 500;
 }
 
-.search-command-bar {
-    position: relative;
-    width: 400px;
+/* --- Unifed Toolbar (Matches .table-toolbar in HTML) --- */
+.table-toolbar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0;
+    /* Grid view handles gap */
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-.search-command-bar input {
+.search-box {
+    position: relative;
+    width: 350px;
+}
+
+.search-box input {
     width: 100%;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--glass-border);
@@ -56,19 +85,59 @@
     transition: all 0.2s ease;
 }
 
-.search-command-bar input:focus {
+.search-box input:focus {
     outline: none;
     border-color: var(--accent);
     background: rgba(0, 0, 0, 0.4);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
-.search-command-bar .search-icon {
+.search-box .search-icon {
     position: absolute;
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Filter Selects */
+.filter-select {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    padding: 0.6rem 2rem 0.6rem 1rem;
+    /* Extra padding for arrow */
+    border-radius: 99px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='white' stroke-opacity='0.5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.btn-clear-filters {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-left: auto;
+    /* Push to right if space permits */
+}
+
+.btn-clear-filters:hover {
+    color: var(--accent);
 }
 
 .btn-primary-action {
@@ -302,36 +371,43 @@ details[open] .chevron {
 }
 
 /* Rich Table */
-.table-glass-container {
-    background: var(--bg-glass);
-    border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    overflow: hidden;
-}
-
 .rich-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 .rich-table th {
     text-align: left;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.2);
-    color: var(--text-secondary);
+    padding: 1rem 1.5rem;
+    background: #0f172a;
+    /* Slate-900 - Darker header */
+    color: #94a3b8;
+    /* Slate-400 */
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--glass-border);
+    letter-spacing: 0.1em;
+    /* Tracking wider */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     cursor: pointer;
+    transition: color 0.2s;
+}
+
+.rich-table th.sortable:hover {
+    color: #f8fafc;
+    /* Slate-50 */
 }
 
 .rich-table td {
-    padding: 1rem;
+    padding: 1.25rem 1.5rem;
+    /* More vertical padding */
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     vertical-align: middle;
-    color: var(--text-primary);
+    color: #e2e8f0;
+    /* Slate-200 */
+    transition: background 0.2s;
+    background: transparent;
 }
 
 .rich-table tr:last-child td {
@@ -339,7 +415,8 @@ details[open] .chevron {
 }
 
 .rich-table tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(59, 130, 246, 0.08);
+    /* Stronger hover highlight */
 }
 
 /* Column Specifics */
@@ -350,10 +427,10 @@ details[open] .chevron {
 }
 
 .avatar-circle {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
     border: 1px solid var(--glass-border);
     display: flex;
     align-items: center;
@@ -361,6 +438,7 @@ details[open] .chevron {
     font-weight: 600;
     color: var(--accent);
     overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .avatar-circle img {
@@ -372,6 +450,7 @@ details[open] .chevron {
 .user-info {
     display: flex;
     flex-direction: column;
+    gap: 2px;
 }
 
 .name-display {
@@ -533,4 +612,25 @@ details[open] .chevron {
 
 .inactive-row td {
     opacity: 0.6;
+}
+
+/* --- Cards and Layout --- */
+.toolbar-card {
+    background: #1e293b;
+    /* Slate-800 - Solid/Darker for better contrast */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    /* Matching the sample's likely radius */
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.table-card {
+    background: #1e293b;
+    /* Slate-800 */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }

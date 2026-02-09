@@ -2,210 +2,191 @@
     <!-- Sticky Command Header -->
     <header class="command-header">
         <div class="header-left">
-            <h1 class="page-title">{{ 'ADMIN.USERS.TITLE' | translate }}</h1>
-            <span class="product-count" *ngIf="(paginatedUsers$ | async)?.length as count">
-                {{ paginationConfig.totalItems }} Users
-            </span>
-        </div>
-
-        <div class="header-center">
-            <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-                    [placeholder]="'ADMIN.USERS.SEARCH_PLACEHOLDER' | translate">
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.USERS.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="paginationConfig.totalItems as count">{{
+                    count }}</span>
             </div>
         </div>
 
         <div class="header-right">
-            <button class="btn-primary-action" (click)="toggleInviteForm()">
-                <span class="icon">{{ showInviteForm ? '✕' : '+' }}</span>
-                <span class="text">{{ showInviteForm ? ('ADMIN.COMMON.CLOSE' | translate) : ('ADMIN.USERS.INVITE' |
-                    translate) }}</span>
+            <button class="btn-primary-action" (click)="openInviteModal()">
+                <span class="icon">+</span>
+                <span class="text">{{ 'ADMIN.USERS.INVITE' | translate }}</span>
             </button>
         </div>
     </header>
 
-    <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-                <button class="btn-text-tiny"
-                    (click)="searchTerm = ''; selectedRole = ''; selectedStatus = ''; onFilterChange()">
-                    Reset
-                </button>
+    <!-- Main Content Area -->
+    <main class="product-grid-view">
+
+        <!-- Toolbar Card -->
+        <div class="toolbar-card">
+            <!-- Unified Search & Filter Toolbar -->
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                        [placeholder]="'ADMIN.USERS.SEARCH_PLACEHOLDER' | translate">
+                </div>
+
+                <div class="toolbar-actions">
+                    <!-- Role Filter -->
+                    <select class="filter-select" [(ngModel)]="selectedRole" (ngModelChange)="onFilterChange()">
+                        <option value="">{{ 'ADMIN.USERS.FILTERS.ALL_ROLES' | translate }}</option>
+                        <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                    </select>
+
+                    <!-- Status Filter -->
+                    <select class="filter-select" [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+                        <option value="">{{ 'ADMIN.USERS.FILTERS.ALL_STATUS' | translate }}</option>
+                        <option value="active">{{ 'ADMIN.USERS.STATUS.ACTIVE' | translate }}</option>
+                        <option value="inactive">{{ 'ADMIN.USERS.STATUS.INACTIVE' | translate }}</option>
+                    </select>
+
+                    <button class="btn-clear-filters" *ngIf="selectedRole || selectedStatus || searchTerm"
+                        (click)="searchTerm = ''; selectedRole = ''; selectedStatus = ''; onFilterChange()">
+                        Clear
+                    </button>
+                </div>
             </div>
+        </div>
 
-            <!-- Role Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Role</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="role" value="" [checked]="selectedRole === ''"
-                            (change)="selectedRole = ''; onFilterChange()">
-                        <span>All Roles</span>
-                    </label>
-                    <label class="radio-option" *ngFor="let r of roles">
-                        <input type="radio" name="role" [value]="r" [checked]="selectedRole === r"
-                            (change)="selectedRole = r; onFilterChange()">
-                        <span>{{ r }}</span>
-                    </label>
-                </div>
-            </details>
-
-            <!-- Status Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Status</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="" [checked]="selectedStatus === ''"
-                            (change)="selectedStatus = ''; onFilterChange()">
-                        <span>All</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="active" [checked]="selectedStatus === 'active'"
-                            (change)="selectedStatus = 'active'; onFilterChange()">
-                        <span>Active</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="status" value="inactive" [checked]="selectedStatus === 'inactive'"
-                            (change)="selectedStatus = 'inactive'; onFilterChange()">
-                        <span>Inactive</span>
-                    </label>
-                </div>
-            </details>
-        </aside>
-
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
-
-            <!-- Invite Form Panel -->
-            <div class="invite-panel glass-panel" *ngIf="showInviteForm">
-                <div class="panel-header">
-                    <h3>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h3>
-                    <p class="text-muted">Send an invitation to a new team member.</p>
-                </div>
-                <form [formGroup]="inviteForm" (ngSubmit)="onInvite()" class="invite-form-grid">
-                    <div class="form-group">
-                        <label>{{ 'ADMIN.USERS.EMAIL' | translate }}</label>
-                        <input type="email" formControlName="email" placeholder="colleague@example.com"
-                            class="glass-input">
-                    </div>
-
-                    <div class="form-group">
-                        <label>{{ 'ADMIN.USERS.ROLE' | translate }}</label>
-                        <select formControlName="role" class="glass-select">
-                            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-                        </select>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary-action small"
-                            [disabled]="inviteForm.invalid || isSubmitting">
-                            {{ isSubmitting ? ('ADMIN.COMMON.SAVING' | translate) : ('ADMIN.USERS.SEND_INVITE' |
-                            translate) }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="table-glass-container">
-                <table class="rich-table">
-                    <thead>
-                        <tr>
-                            <th class="sortable" (click)="onSortChange('name')">
-                                {{ 'ADMIN.USERS.TABLE.USER' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.USERS.TABLE.ROLE' | translate }}</th>
-                            <th>{{ 'ADMIN.USERS.TABLE.STATUS' | translate }}</th>
-                            <th class="sortable" (click)="onSortChange('lastLogin')">
-                                {{ 'ADMIN.USERS.TABLE.LAST_LOGIN' | translate }}
-                            </th>
-                            <th>{{ 'ADMIN.USERS.TABLE.ACTIONS' | translate }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let user of paginatedUsers$ | async" [class.inactive-row]="!user.isActive">
-                            <td>
-                                <div class="user-profile-cell">
-                                    <div class="avatar-circle">
-                                        <img *ngIf="user.photoURL" [src]="user.photoURL" alt="avatar">
-                                        <span *ngIf="!user.photoURL">{{ (user.displayName || user.email).charAt(0) |
-                                            uppercase }}</span>
-                                    </div>
-                                    <div class="user-info">
-                                        <!-- Inline Edit Name -->
-                                        <div *ngIf="editingUserId === user.uid" class="inline-edit-wrapper">
-                                            <input type="text" class="glass-input tiny" [(ngModel)]="editingName"
-                                                (blur)="saveDisplayName(user)" (keyup.enter)="saveDisplayName(user)"
-                                                (keyup.escape)="cancelEdit()" autofocus>
-                                        </div>
-                                        <div *ngIf="editingUserId !== user.uid" class="name-display"
-                                            (click)="startEdit(user)" title="Click to edit">
-                                            <span class="user-name">{{ user.displayName || 'Set Name' }}</span>
-                                            <span class="edit-hint">✎</span>
-                                        </div>
-                                        <span class="user-email">{{ user.email }}</span>
-                                    </div>
+        <!-- Table Card -->
+        <div class="table-card">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" (click)="onSortChange('name')">
+                            {{ 'ADMIN.USERS.TABLE.USER' | translate }}
+                        </th>
+                        <th>{{ 'ADMIN.USERS.TABLE.ROLE' | translate }}</th>
+                        <th>{{ 'ADMIN.USERS.TABLE.STATUS' | translate }}</th>
+                        <th class="sortable" (click)="onSortChange('lastLogin')">
+                            {{ 'ADMIN.USERS.TABLE.LAST_LOGIN' | translate }}
+                        </th>
+                        <th class="text-right">{{ 'ADMIN.USERS.TABLE.ACTIONS' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngIf="isLoading">
+                        <td colspan="5" class="loading-state">
+                            {{ 'ADMIN.COMMON.LOADING' | translate }}
+                        </td>
+                    </tr>
+                    <tr *ngFor="let user of paginatedUsers" [class.inactive-row]="!user.isActive">
+                        <td>
+                            <div class="user-profile-cell">
+                                <div class="avatar-circle">
+                                    <img *ngIf="user.photoURL" [src]="user.photoURL" alt="avatar">
+                                    <span *ngIf="!user.photoURL">{{ (user.displayName || user.email).charAt(0) |
+                                        uppercase }}</span>
                                 </div>
-                            </td>
-                            <td>
-                                <select class="role-badge-select" [ngModel]="user.role"
-                                    (ngModelChange)="updateRoleFromModel(user, $event)"
-                                    [disabled]="!(isSuperAdmin$ | async)"
-                                    [class.admin]="user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'"
-                                    [class.editor]="user.role === 'EDITOR'">
-                                    <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-                                </select>
-                            </td>
-                            <td>
-                                <div class="stock-pill" [class.success]="user.isActive" [class.danger]="!user.isActive">
-                                    <span class="dot"></span>
-                                    <span class="status-text">
-                                        {{ user.isActive ? ('ADMIN.USERS.STATUS.ACTIVE' | translate) :
-                                        ('ADMIN.USERS.STATUS.INACTIVE' | translate) }}
-                                    </span>
+                                <div class="user-info">
+                                    <!-- Inline Edit Name -->
+                                    <div *ngIf="editingUserId === user.uid" class="inline-edit-wrapper">
+                                        <input type="text" class="glass-input tiny" [(ngModel)]="editingName"
+                                            (blur)="saveDisplayName(user)" (keyup.enter)="saveDisplayName(user)"
+                                            (keyup.escape)="cancelEdit()" autofocus>
+                                    </div>
+                                    <div *ngIf="editingUserId !== user.uid" class="name-display"
+                                        (click)="startEdit(user)" title="Click to edit">
+                                        <span class="user-name">{{ user.displayName || 'Set Name' }}</span>
+                                        <span class="edit-hint">✎</span>
+                                    </div>
+                                    <span class="user-email">{{ user.email }}</span>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="text-muted text-sm">
-                                    {{ user.lastLogin ? (user.lastLogin.toDate() | date:'short') : 'Never' }}
+                            </div>
+                        </td>
+                        <td>
+                            <select class="role-badge-select" [ngModel]="user.role"
+                                (ngModelChange)="updateRoleFromModel(user, $event)"
+                                [disabled]="!(isSuperAdmin$ | async)"
+                                [class.admin]="user.role === 'ADMIN' || user.role === 'SUPER_ADMIN'"
+                                [class.editor]="user.role === 'EDITOR'">
+                                <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="stock-pill" [class.success]="user.isActive" [class.danger]="!user.isActive">
+                                <span class="dot"></span>
+                                <span class="status-text">
+                                    {{ user.isActive ? ('ADMIN.USERS.STATUS.ACTIVE' | translate) :
+                                    ('ADMIN.USERS.STATUS.INACTIVE' | translate) }}
                                 </span>
-                            </td>
-                            <td>
-                                <div class="row-actions">
-                                    <button class="btn-icon-ghost" (click)="toggleStatus(user)"
-                                        [title]="user.isActive ? ('ADMIN.USERS.ACTIONS.DEACTIVATE' | translate) : ('ADMIN.USERS.ACTIONS.ACTIVATE' | translate)"
-                                        [class.danger]="user.isActive" [class.success]="!user.isActive">
-                                        {{ user.isActive ? '🚫' : '✅' }}
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-muted text-sm">
+                                {{ user.lastLogin ? (user.lastLogin | date:'short') : 'Never' }}
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <div class="row-actions">
+                                <button class="btn-icon-ghost" (click)="toggleStatus(user)"
+                                    [title]="user.isActive ? ('ADMIN.USERS.ACTIONS.DEACTIVATE' | translate) : ('ADMIN.USERS.ACTIONS.ACTIVATE' | translate)"
+                                    [class.danger]="user.isActive" [class.success]="!user.isActive">
+                                    {{ user.isActive ? '🚫' : '✅' }}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
 
-                        <tr *ngIf="(paginatedUsers$ | async)?.length === 0">
-                            <td colspan="5" class="no-data">
-                                <div class="empty-state-content">
-                                    <span class="empty-icon">👥</span>
-                                    <p>{{ 'ADMIN.USERS.NO_USERS' | translate }}</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <tr *ngIf="paginatedUsers.length === 0 && !isLoading">
+                        <td colspan="5" class="no-data">
+                            <div class="empty-state-content">
+                                <span class="empty-icon">👥</span>
+                                <p>{{ 'ADMIN.USERS.NO_USERS' | translate }}</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-            <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
-                <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
-                    (itemsPerPageChange)="onItemsPerPageChange($event)">
-                </app-pagination>
-            </div>
-        </main>
+        <!-- Pagination -->
+        <div class="pagination-wrapper" *ngIf="paginationConfig.totalItems > 0">
+            <app-pagination [config]="paginationConfig" (pageChange)="onPageChange($event)"
+                (itemsPerPageChange)="onItemsPerPageChange($event)">
+            </app-pagination>
+        </div>
+
+    </main>
+</div>
+
+<!-- Invite Modal -->
+<div *ngIf="showInviteModal" class="modal-overlay" (click)="closeInviteModal()">
+    <div class="glass-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h2>
+            <button class="btn-icon-ghost close-btn" (click)="closeInviteModal()">✖</button>
+        </div>
+
+        <div class="modal-body">
+            <form [formGroup]="inviteForm" (ngSubmit)="onInvite()">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.USERS.EMAIL' | translate }}</label>
+                    <input type="email" formControlName="email" placeholder="colleague@example.com" class="glass-input">
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.USERS.ROLE' | translate }}</label>
+                    <select formControlName="role" class="glass-select">
+                        <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-ghost" (click)="closeInviteModal()"
+                        style="border: 1px solid var(--border-medium); color: white;">
+                        {{ 'ADMIN.COMMON.CANCEL' | translate }}
+                    </button>
+                    <button type="submit" class="btn-primary-action" [disabled]="inviteForm.invalid || isSubmitting">
+                        {{ isSubmitting ? ('ADMIN.COMMON.SAVING' | translate) : ('ADMIN.USERS.SEND_INVITE' | translate)
+                        }}
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>

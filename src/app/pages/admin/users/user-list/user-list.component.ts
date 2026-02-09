@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { UserManagementService } from '../../../../core/services/user-management.service';
@@ -6,7 +6,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { UserProfile, UserRole } from '../../../../core/models/user.model';
 import { AuthService } from '../../../../core/services/auth.service';
-import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
@@ -23,17 +23,20 @@ export class UserListComponent implements OnInit {
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
     private authService = inject(AuthService);
+    private cdr = inject(ChangeDetectorRef);
 
-    // Data observables
-    users$: Observable<UserProfile[]> = this.userService.getUsers();
-    paginatedUsers$!: Observable<UserProfile[]>;
+    // Data
+    users: UserProfile[] = [];
+    filteredUsers: UserProfile[] = [];
+    paginatedUsers: UserProfile[] = [];
 
     // Check if current user is SUPER_ADMIN
     isSuperAdmin$: Observable<boolean> = this.authService.userProfile$.pipe(
         map(profile => profile?.role === 'SUPER_ADMIN')
     );
 
-    showInviteForm = false;
+    // Modal State
+    showInviteModal = false;
     inviteForm: FormGroup;
     isSubmitting = false;
 
@@ -57,7 +60,7 @@ export class UserListComponent implements OnInit {
         totalItems: 0
     };
 
-    private filterSubject = new BehaviorSubject<void>(undefined);
+    isLoading = true;
 
     constructor() {
         this.inviteForm = this.fb.group({
@@ -67,33 +70,33 @@ export class UserListComponent implements OnInit {
     }
 
     ngOnInit() {
-        this.setupFiltering();
+        this.loadUsers();
     }
 
-    setupFiltering() {
-        this.paginatedUsers$ = combineLatest([
-            this.users$,
-            this.filterSubject
-        ]).pipe(
-            map(([users]) => {
-                // Apply filters
-                let filtered = this.applyFilters(users);
-
-                // Apply sorting
-                filtered = this.applySorting(filtered);
-
-                // Update pagination total
-                this.paginationConfig.totalItems = filtered.length;
-
-                // Apply pagination
-                return this.applyPagination(filtered);
-            })
-        );
+    loadUsers() {
+        this.isLoading = true;
+        this.cdr.markForCheck(); // Signal update
+        this.userService.getStaff().subscribe({
+            next: (users) => {
+                console.log('Staff loaded:', users.length, users);
+                this.users = users || [];
+                this.applyFilters();
+                this.isLoading = false;
+                this.cdr.detectChanges(); // Force update
+            },
+            error: (err) => {
+                console.error('Error loading users:', err);
+                this.toast.error('Failed to load users');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
-    applyFilters(users: UserProfile[]): UserProfile[] {
-        let filtered = users;
+    applyFilters() {
+        let filtered = [...this.users];
 
+        // 1. Search
         if (this.searchTerm.trim()) {
             const searchLower = this.searchTerm.toLowerCase();
             filtered = filtered.filter(u =>
@@ -102,42 +105,56 @@ export class UserListComponent implements OnInit {
             );
         }
 
+        // 2. Role Filter
         if (this.selectedRole) {
             filtered = filtered.filter(u => u.role === this.selectedRole);
         }
 
+        // 3. Status Filter
         if (this.selectedStatus) {
             const isActive = this.selectedStatus === 'active';
             filtered = filtered.filter(u => u.isActive === isActive);
         }
 
-        return filtered;
+        // 4. Sort
+        filtered = this.sortUsers(filtered);
+
+        this.filteredUsers = filtered;
+        this.paginationConfig.totalItems = filtered.length;
+        this.applyPagination();
     }
 
-    applySorting(users: UserProfile[]): UserProfile[] {
-        return [...users].sort((a, b) => {
+    sortUsers(users: UserProfile[]): UserProfile[] {
+        return users.sort((a, b) => {
             let comparison = 0;
             if (this.sortField === 'name') {
                 const nameA = a.displayName || a.email || '';
                 const nameB = b.displayName || b.email || '';
                 comparison = nameA.localeCompare(nameB);
             } else if (this.sortField === 'lastLogin') {
-                const dateA = a.lastLogin ? a.lastLogin.toDate().getTime() : 0;
-                const dateB = b.lastLogin ? b.lastLogin.toDate().getTime() : 0;
+                const dateA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+                const dateB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
                 comparison = dateA - dateB;
             }
             return this.sortDirection === 'asc' ? comparison : -comparison;
         });
     }
 
-    applyPagination(users: UserProfile[]): UserProfile[] {
+    applyPagination() {
         const start = (this.paginationConfig.currentPage - 1) * this.paginationConfig.itemsPerPage;
         const end = start + this.paginationConfig.itemsPerPage;
-        return users.slice(start, end);
+        this.paginatedUsers = this.filteredUsers.slice(start, end);
+        this.cdr.markForCheck();
     }
 
-    toggleInviteForm() {
-        this.showInviteForm = !this.showInviteForm;
+    // Modal Control
+    openInviteModal() {
+        this.showInviteModal = true;
+    }
+
+    closeInviteModal() {
+        this.showInviteModal = false;
+        this.inviteForm.reset({ role: 'ADMIN' });
     }
 
     async onInvite() {
@@ -149,53 +166,52 @@ export class UserListComponent implements OnInit {
         try {
             await this.userService.inviteUser(email, role);
             this.toast.success('User invited successfully');
-            this.inviteForm.reset({ role: 'ADMIN' });
-            this.showInviteForm = false;
+            this.closeInviteModal();
+            this.loadUsers(); // Reload list
         } catch (error: any) {
             console.error(error);
             this.toast.error('Failed to invite user');
         } finally {
             this.isSubmitting = false;
+            this.cdr.detectChanges();
         }
     }
 
     async toggleStatus(user: UserProfile) {
         try {
             await this.userService.toggleUserStatus(user.uid, !user.isActive);
-            this.toast.success(`User ${user.isActive ? 'deactivated' : 'activated'}`);
-            // Force refresh if needed, but observable users$ should auto-update if service updates the store/firestore
+            user.isActive = !user.isActive; // Optimistic update
+            this.toast.success(`User ${user.isActive ? 'activated' : 'deactivated'}`); // Fix logic text
+            this.cdr.detectChanges();
         } catch (error) {
             this.toast.error('Failed to update status');
+            // Revert if needed, or just reload
+            this.loadUsers();
         }
-    }
-
-    async updateRole(user: UserProfile, event: any) {
-        // Logic handled by updateRoleFromModel
     }
 
     async updateRoleFromModel(user: UserProfile, newRole: UserRole) {
         const originalRole = user.role;
 
-        // Check permission first
-        const currentUserProfile = await this.authService.userProfile$.pipe(
-            map(profile => profile)
-        ).toPromise();
+        // Check if I am super admin
+        this.isSuperAdmin$.subscribe(async (isSuper) => {
+            if (!isSuper) {
+                this.toast.error('Only Super Admins can change user roles');
+                user.role = originalRole;
+                this.cdr.detectChanges();
+                return;
+            }
 
-        if (currentUserProfile?.role !== 'SUPER_ADMIN') {
-            this.toast.error('Only Super Admins can change user roles');
-            // Revert to original
-            user.role = originalRole;
-            return;
-        }
-
-        try {
-            await this.userService.updateUserRole(user.uid, newRole);
-            this.toast.success('Role updated');
-        } catch (error) {
-            this.toast.error('Failed to update role');
-            // Revert to original
-            user.role = originalRole;
-        }
+            try {
+                await this.userService.updateUserRole(user.uid, newRole);
+                user.role = newRole; // Optimistic
+                this.toast.success('Role updated');
+            } catch (error) {
+                this.toast.error('Failed to update role');
+                user.role = originalRole;
+            }
+            this.cdr.detectChanges();
+        });
     }
 
     startEdit(user: UserProfile) {
@@ -217,8 +233,10 @@ export class UserListComponent implements OnInit {
         try {
             await this.userService.updateDisplayName(user.uid, this.editingName.trim());
             this.toast.success('Name updated');
+            user.displayName = this.editingName.trim(); // Optimistic
             this.editingUserId = null;
             this.editingName = '';
+            this.cdr.detectChanges();
         } catch (error) {
             this.toast.error('Failed to update name');
         }
@@ -226,12 +244,12 @@ export class UserListComponent implements OnInit {
 
     onSearchChange() {
         this.paginationConfig.currentPage = 1;
-        this.filterSubject.next();
+        this.applyFilters();
     }
 
     onFilterChange() {
         this.paginationConfig.currentPage = 1;
-        this.filterSubject.next();
+        this.applyFilters();
     }
 
     onSortChange(field: string) {
@@ -241,18 +259,18 @@ export class UserListComponent implements OnInit {
             this.sortField = field;
             this.sortDirection = 'asc';
         }
-        this.filterSubject.next();
+        this.applyFilters();
     }
 
     onPageChange(page: number) {
         this.paginationConfig.currentPage = page;
-        this.filterSubject.next();
+        this.applyPagination();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     onItemsPerPageChange(itemsPerPage: number) {
         this.paginationConfig.itemsPerPage = itemsPerPage;
         this.paginationConfig.currentPage = 1;
-        this.filterSubject.next();
+        this.applyFilters();
     }
 }

@@ -41,6 +41,8 @@ export interface WebsiteSettings {
         whatsapp: string;
         email: string;
         address: string;
+        logo: string;
+        favicon: string;
     };
     social: SocialLinks;
     businessHours: BusinessHours;
@@ -50,6 +52,11 @@ export interface WebsiteSettings {
         promoText: string;
         enableChatWidget: boolean;
     };
+    seo: {
+        metaTitle: string;
+        metaDescription: string;
+        ogImage: string;
+    };
 }
 
 const DEFAULT_SETTINGS: WebsiteSettings = {
@@ -58,7 +65,9 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
         phone: '+52 444 824 0757',
         whatsapp: '+52 1 444 200 4677',
         email: 'ventas@importadoraeuro.com',
-        address: 'San Luis Potosí, México'
+        address: 'San Luis Potosí, México',
+        logo: '',
+        favicon: ''
     },
     social: {
         facebook: 'https://facebook.com',
@@ -88,6 +97,11 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
         showPromoBanner: false,
         promoText: '',
         enableChatWidget: true
+    },
+    seo: {
+        metaTitle: '{{page_title}} | Importadora Eurollantas',
+        metaDescription: 'Importadora Euro: Distribuidor líder de llantas de motocicleta (Michelin, Praxis) y refacciones en México. Envíos nacionales y excelente servicio garantizado.',
+        ogImage: 'https://tiendapraxis.web.app/assets/social-share.jpg'
     }
 };
 
@@ -112,7 +126,8 @@ export class SettingsService {
                     general: { ...DEFAULT_SETTINGS.general, ...data['general'] },
                     social: { ...DEFAULT_SETTINGS.social, ...data['social'] },
                     businessHours: { ...DEFAULT_SETTINGS.businessHours, ...data['businessHours'] },
-                    features: { ...DEFAULT_SETTINGS.features, ...data['features'] }
+                    features: { ...DEFAULT_SETTINGS.features, ...data['features'] },
+                    seo: { ...DEFAULT_SETTINGS.seo, ...data['seo'] }
                 });
             } else {
                 observer.next(DEFAULT_SETTINGS);

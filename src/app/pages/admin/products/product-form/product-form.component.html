@@ -7,7 +7,10 @@
 </app-admin-page-header>
 
 <div class="form-container">
-    <app-validation-summary [form]="productForm" [fieldLabels]="fieldLabels"></app-validation-summary>
+    <app-validation-summary [form]="productForm" [fieldLabels]="fieldLabels"
+        [showAlways]="isEditing || submitState === 'error'"
+        [validationMode]="submitState === 'error' || isEditing ? 'error' : 'info'">
+    </app-validation-summary>
 
     <form *ngIf="productForm" [formGroup]="productForm" (ngSubmit)="onSubmit()">
 
@@ -529,7 +532,7 @@
                 Cancel
             </button>
 
-            <button type="submit" class="btn btn-primary" [disabled]="productForm.invalid || isSubmitting" [ngClass]="{
+            <button type="submit" class="btn btn-primary" [disabled]="isSubmitting" [ngClass]="{
                     'loading': submitState === 'validating' || submitState === 'uploading' || submitState === 'saving',
                     'success': submitState === 'success',
                     'error': submitState === 'error'

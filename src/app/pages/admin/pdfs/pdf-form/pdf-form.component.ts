@@ -5,27 +5,31 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PdfService } from '../../../../core/services/pdf.service';
+import { PdfUtilService } from '../../../../core/services/pdf-util.service'; // Added import
 import { PDF, PDFFormData } from '../../../../core/models/pdf.model';
 import { take } from 'rxjs/operators';
 
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-pdf-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, AppIconComponent],
     templateUrl: './pdf-form.component.html',
     styleUrls: ['./pdf-form.component.css', '../../shared/admin-forms.css']
 })
 export class PdfFormComponent implements OnInit {
     fb = inject(FormBuilder);
     pdfService = inject(PdfService);
+    pdfUtilService = inject(PdfUtilService); // Injected service
     router = inject(Router);
     route = inject(ActivatedRoute);
 
     pdfForm: FormGroup;
     isEditing = false;
     isSubmitting = false;
+    isProcessing = false; // Processing flag
     pdfPreviewUrl: string | null = null;
     thumbnailPreviewUrl: string | null = null;
     selectedPdfFile: File | null = null;
@@ -88,7 +92,7 @@ export class PdfFormComponent implements OnInit {
         });
     }
 
-    onPdfFileSelected(event: Event) {
+    async onPdfFileSelected(event: Event) {
         const file = (event.target as HTMLInputElement).files?.[0];
         if (file) {
             if (file.type !== 'application/pdf') {
@@ -97,6 +101,35 @@ export class PdfFormComponent implements OnInit {
             }
             this.selectedPdfFile = file;
             this.pdfPreviewUrl = URL.createObjectURL(file);
+
+            // Auto-process PDF
+            this.isProcessing = true;
+            try {
+                // 1. Generate Thumbnail if none selected
+                if (!this.selectedThumbnailFile && !this.thumbnailPreviewUrl && !this.currentPdf?.thumbnailUrl) {
+                    const thumbnail = await this.pdfUtilService.generateThumbnail(file);
+                    this.selectedThumbnailFile = thumbnail;
+                    this.thumbnailPreviewUrl = URL.createObjectURL(thumbnail);
+                }
+
+                // 2. Extract Text for Description if empty
+                const currentDescEs = this.pdfForm.get('description_es')?.value;
+                const currentDescEn = this.pdfForm.get('description_en')?.value;
+
+                if (!currentDescEs && !currentDescEn) {
+                    const text = await this.pdfUtilService.extractText(file);
+                    if (text) {
+                        this.pdfForm.patchValue({
+                            description_es: text,
+                            description_en: text
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error auto-processing PDF:', error);
+            } finally {
+                this.isProcessing = false;
+            }
         }
     }
 
@@ -191,5 +224,13 @@ export class PdfFormComponent implements OnInit {
 
     onCancel() {
         this.router.navigate(['/admin/pdfs']);
+    }
+
+    formatFileSize(bytes: number): string {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 }

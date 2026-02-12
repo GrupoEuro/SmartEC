@@ -10,7 +10,7 @@
 
         <div class="header-right">
             <button class="btn-primary-action" routerLink="/admin/pdfs/new">
-                <span class="icon">➕</span>
+                <span class="icon"><app-icon name="plus" [size]="20"></app-icon></span>
                 <span class="text">{{ 'ADMIN.PDF_LIST.BTN_ADD' | translate }}</span>
             </button>
         </div>
@@ -39,7 +39,8 @@
                                     @if (pdf.thumbnailUrl) {
                                     <img [src]="pdf.thumbnailUrl" alt="Thumbnail" class="pdf-thumb">
                                     } @else {
-                                    <span class="pdf-thumb-placeholder">📄</span>
+                                    <span class="pdf-thumb-placeholder"><app-icon name="file-text" [size]="24"
+                                            class="text-gray-400"></app-icon></span>
                                     }
                                 </div>
                             </td>
@@ -90,13 +91,17 @@
                             </td>
                             <td>
                                 <div class="row-actions">
+                                    <button class="btn-icon-ghost" (click)="openPreview(pdf)"
+                                        [title]="'ADMIN.COMMON.PREVIEW' | translate">
+                                        <app-icon name="eye" [size]="18"></app-icon>
+                                    </button>
                                     <button class="btn-icon-ghost" [routerLink]="['/admin/pdfs/edit', pdf.id]"
                                         [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        ✏️
+                                        <app-icon name="edit" [size]="18"></app-icon>
                                     </button>
                                     <button class="btn-icon-ghost danger" (click)="deletePDF(pdf)"
                                         [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        🗑️
+                                        <app-icon name="trash-2" [size]="18"></app-icon>
                                     </button>
                                 </div>
                             </td>
@@ -104,7 +109,8 @@
                         <tr *ngIf="(pdfs$ | async)?.length === 0">
                             <td colspan="7" class="no-data">
                                 <div class="empty-state-content">
-                                    <span class="empty-icon">📄</span>
+                                    <span class="empty-icon"><app-icon name="file-text" [size]="48"
+                                            class="text-gray-300"></app-icon></span>
                                     <p>{{ 'ADMIN.PDF_LIST.EMPTY' | translate }}</p>
                                 </div>
                             </td>

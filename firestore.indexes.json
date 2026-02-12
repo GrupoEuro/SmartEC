@@ -1,6 +1,20 @@
 {
     "indexes": [
         {
+            "collectionGroup": "pdfs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "active",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
             "collectionGroup": "inventory_ledger",
             "queryScope": "COLLECTION",
             "fields": [

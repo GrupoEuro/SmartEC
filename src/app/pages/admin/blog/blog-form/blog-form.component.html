@@ -1,65 +1,117 @@
-<app-admin-page-header 
-    icon="✍️" 
+<app-admin-page-header [iconName]="isEditing ? 'edit' : 'plus'"
     [title]="isEditing ? ('ADMIN.BLOG.EDIT_TITLE' | translate) : ('ADMIN.BLOG.NEW_TITLE' | translate)"
-    [showSaveCancel]="true"
-    [hasUnsavedChanges]="postForm.dirty"
-    [isFormInvalid]="postForm.invalid"
-    (onSave)="onSubmit()"
-    (onCancel)="onCancel()">
+    [showSaveCancel]="true" [hasUnsavedChanges]="postForm.dirty" [isFormInvalid]="postForm.invalid"
+    [isSaving]="isSubmitting" (onSave)="onSubmit()" (onCancel)="onCancel()">
 </app-admin-page-header>
 
-<div class="form-container">
-    <form [formGroup]="postForm" (ngSubmit)="onSubmit()" class="admin-form">
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.TITLE' | translate }}</label>
-            <input type="text" formControlName="title" (change)="generateSlug()">
+<div class="admin-form-container">
+    <form [formGroup]="postForm" (ngSubmit)="onSubmit()" class="admin-form-glass">
+
+        <!-- Main Content Section -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <app-icon name="file-text" [size]="20"></app-icon>
+                {{ 'ADMIN.BLOG.FORM.SECTION_GENERAL' | translate }}
+            </h3>
+
+            <div class="form-grid">
+                <div class="form-group span-2">
+                    <label>{{ 'ADMIN.BLOG.FORM.TITLE' | translate }}</label>
+                    <div class="input-with-icon">
+                        <input type="text" formControlName="title" (change)="generateSlug()" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group span-2">
+                    <label>{{ 'ADMIN.BLOG.FORM.SLUG' | translate }}</label>
+                    <div class="input-with-icon">
+                        <app-icon name="link" [size]="16" class="field-icon"></app-icon>
+                        <input type="text" formControlName="slug" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BLOG.FORM.CATEGORY' | translate }}</label>
+                    <div class="select-wrapper">
+                        <select formControlName="category" class="form-control">
+                            <option value="Mantenimiento">{{ 'ADMIN.BLOG.CATEGORIES.MAINTENANCE' | translate }}</option>
+                            <option value="Novedades">{{ 'ADMIN.BLOG.CATEGORIES.NEWS' | translate }}</option>
+                            <option value="Consejos">{{ 'ADMIN.BLOG.CATEGORIES.TIPS' | translate }}</option>
+                            <option value="Tecnología">{{ 'ADMIN.BLOG.CATEGORIES.TECH' | translate }}</option>
+                        </select>
+                        <app-icon name="chevron-down" [size]="16" class="select-icon"></app-icon>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BLOG.FORM.READ_TIME' | translate }}</label>
+                    <div class="input-with-icon">
+                        <app-icon name="clock" [size]="16" class="field-icon"></app-icon>
+                        <input type="number" formControlName="readTime" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-group span-2">
+                    <label>{{ 'ADMIN.BLOG.FORM.TAGS' | translate }}</label>
+                    <div class="input-with-icon">
+                        <app-icon name="tag" [size]="16" class="field-icon"></app-icon>
+                        <input type="text" formControlName="tags" class="form-control"
+                            placeholder="e.g. tires, maintenance, safety">
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.SLUG' | translate }}</label>
-            <input type="text" formControlName="slug">
-        </div>
+        <!-- Content Section -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <app-icon name="align-left" [size]="20"></app-icon>
+                Content
+            </h3>
 
-        <div class="form-row">
             <div class="form-group">
-                <label>{{ 'ADMIN.BLOG.FORM.CATEGORY' | translate }}</label>
-                <select formControlName="category">
-                    <option value="Mantenimiento">{{ 'ADMIN.BLOG.CATEGORIES.MAINTENANCE' | translate }}</option>
-                    <option value="Novedades">{{ 'ADMIN.BLOG.CATEGORIES.NEWS' | translate }}</option>
-                    <option value="Consejos">{{ 'ADMIN.BLOG.CATEGORIES.TIPS' | translate }}</option>
-                    <option value="Tecnología">{{ 'ADMIN.BLOG.CATEGORIES.TECH' | translate }}</option>
-                </select>
+                <label>{{ 'ADMIN.BLOG.FORM.EXCERPT' | translate }}</label>
+                <textarea formControlName="excerpt" rows="3" class="form-control"></textarea>
             </div>
 
             <div class="form-group">
-                <label>{{ 'ADMIN.BLOG.FORM.READ_TIME' | translate }}</label>
-                <input type="number" formControlName="readTime">
+                <label>{{ 'ADMIN.BLOG.FORM.CONTENT' | translate }}</label>
+                <textarea formControlName="content" rows="15" class="form-control content-editor"></textarea>
+                <small class="hint-text">
+                    <app-icon name="info" [size]="14"></app-icon>
+                    {{ 'ADMIN.BLOG.FORM.HTML_HINT' | translate }}
+                </small>
             </div>
         </div>
 
-        <!-- Tags Input -->
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.TAGS' | translate }}</label>
-            <input type="text" formControlName="tags">
-        </div>
+        <!-- Media Section -->
+        <div class="form-section">
+            <h3 class="section-title">
+                <app-icon name="image" [size]="20"></app-icon>
+                Media
+            </h3>
 
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.EXCERPT' | translate }}</label>
-            <textarea formControlName="excerpt" rows="3"></textarea>
-        </div>
+            <div class="form-group">
+                <label>{{ 'ADMIN.BLOG.FORM.COVER_IMAGE' | translate }}</label>
 
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.CONTENT' | translate }}</label>
-            <textarea formControlName="content" rows="15" class="content-editor"></textarea>
-            <small>{{ 'ADMIN.BLOG.FORM.HTML_HINT' | translate }}</small>
-        </div>
+                <div class="file-upload-zone" (click)="fileInput.click()" [class.has-file]="previewUrl">
+                    <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
 
-        <div class="form-group">
-            <label>{{ 'ADMIN.BLOG.FORM.COVER_IMAGE' | translate }}</label>
-            <input type="file" (change)="onFileSelected($event)" accept="image/*">
-            <div *ngIf="previewUrl" class="image-preview">
-                <img [src]="previewUrl" alt="Preview">
+                    <div class="upload-placeholder" *ngIf="!previewUrl">
+                        <app-icon name="upload-cloud" [size]="32"></app-icon>
+                        <span>Click to upload cover image</span>
+                    </div>
+
+                    <div class="image-preview-wrapper" *ngIf="previewUrl">
+                        <img [src]="previewUrl" alt="Preview" class="cover-preview">
+                        <div class="preview-overlay">
+                            <app-icon name="edit" [size]="24"></app-icon>
+                            <span>Change Image</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
     </form>
 </div>

@@ -1,5 +1,6 @@
-<app-admin-page-header icon="📚" [title]="isEditing ? '✏️ Edit PDF' : '➕ Add New PDF'" [showSaveCancel]="true"
-    [hasUnsavedChanges]="pdfForm.dirty" [isFormInvalid]="pdfForm.invalid" (onSave)="onSubmit()" (onCancel)="onCancel()">
+<app-admin-page-header [iconName]="isEditing ? 'edit' : 'plus'" [title]="isEditing ? 'Edit PDF' : 'Add New PDF'"
+    [showSaveCancel]="true" [hasUnsavedChanges]="pdfForm.dirty" [isFormInvalid]="pdfForm.invalid" (onSave)="onSubmit()"
+    (onCancel)="onCancel()">
 </app-admin-page-header>
 
 <div class="form-container">
@@ -87,10 +88,30 @@
                 <input #pdfFileInput type="file" id="pdfFile" accept=".pdf" (change)="onPdfFileSelected($event)"
                     class="file-input">
 
-                @if (pdfPreviewUrl && !selectedPdfFile) {
-                <div class="helper-text">
-                    <span>Current file: </span>
-                    <a [href]="pdfPreviewUrl" target="_blank" class="text-primary">View PDF</a>
+                @if (isEditing && currentPdf && !selectedPdfFile) {
+                <div class="current-file-info">
+                    <div class="file-icon">📄</div>
+                    <div class="file-details">
+                        <span class="file-name">{{ currentPdf.fileName }}</span>
+                        <span class="file-meta">{{ formatFileSize(currentPdf.fileSize) }} • <a
+                                [href]="currentPdf.fileUrl" target="_blank" class="view-link">View File</a></span>
+                    </div>
+                </div>
+                }
+                @if (selectedPdfFile) {
+                <div class="current-file-info new-file">
+                    <div class="file-icon">🆕</div>
+                    <div class="file-details">
+                        <span class="file-name">{{ selectedPdfFile.name }}</span>
+                        <span class="file-meta">{{ formatFileSize(selectedPdfFile.size) }}</span>
+                    </div>
+                </div>
+                }
+
+                @if (isProcessing) {
+                <div class="processing-indicator">
+                    <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+                    <span>Analyzing PDF... generating thumbnail & extracting text</span>
                 </div>
                 }
             </div>

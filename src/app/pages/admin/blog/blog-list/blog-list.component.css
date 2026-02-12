@@ -6,18 +6,204 @@
     overflow: hidden;
 }
 
-/* --- Sticky Command Header --- */
-.command-header {
+.dashboard-content {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Main Grid View --- */
+.product-grid-view {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    position: relative;
+    flex: 1;
+}
+
+/* --- Toolbar (Search & Filter) --- */
+.table-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1rem 2rem;
-    background: var(--bg-glass-strong);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--glass-border);
-    position: sticky;
-    top: 0;
-    z-index: 50;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+}
+
+.filter-select {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    min-width: 180px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* --- Table Styles (Overrides/Specifics) --- */
+.blog-thumb-wrapper {
+    width: 80px;
+    height: 48px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-glass);
+    border: 1px solid var(--glass-border);
+}
+
+.blog-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.product-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.product-name.strong {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: white;
+}
+
+.product-sku {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.category-pill {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    display: inline-block;
+}
+
+.date-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-main {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.read-time {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.inline-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 4px;
+    opacity: 0.7;
+}
+
+.row-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.btn-icon-ghost {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-icon-ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-icon-ghost.danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* Empty State */
+.no-data {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-secondary);
+}
+
+.pagination-wrapper {
+    margin-top: 1.5rem;
 }
 
 .header-left {

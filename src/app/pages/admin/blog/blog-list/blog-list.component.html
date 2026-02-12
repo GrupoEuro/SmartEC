@@ -1,75 +1,53 @@
 <div class="product-dashboard-layout">
-    <!-- Sticky Command Header -->
-    <header class="command-header">
-        <div class="header-left">
-            <h1 class="page-title">{{ 'ADMIN.BLOG.TITLE' | translate }}</h1>
-            <span class="product-count" *ngIf="(paginatedPosts$ | async)?.length as count">
-                {{ paginationConfig.totalItems }} Posts
-            </span>
-        </div>
-
-        <div class="header-center">
-            <div class="search-command-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-                    [placeholder]="'ADMIN.BLOG.SEARCH_PLACEHOLDER' | translate">
-            </div>
-        </div>
-
-        <div class="header-right">
-            <button class="btn-primary-action" routerLink="/admin/blog/new">
-                <span class="icon">➕</span>
-                <span class="text">{{ 'ADMIN.BLOG.BTN_ADD' | translate }}</span>
-            </button>
-        </div>
-    </header>
+    <!-- Admin Header -->
+    <app-admin-page-header iconName="file-text" [title]="'ADMIN.BLOG.TITLE' | translate" ctaText="ADMIN.BLOG.BTN_ADD"
+        ctaLink="/admin/blog/new">
+    </app-admin-page-header>
 
     <div class="dashboard-content">
-        <!-- Smart Filter Sidebar -->
-        <aside class="filter-sidebar">
-            <div class="sidebar-header">
-                <h3>Filters</h3>
-                <button class="btn-text-tiny" (click)="searchTerm = ''; selectedCategory = ''; onFilterChange()">
-                    Reset
+        <!-- Main Grid Area -->
+        <main class="product-grid-view">
+
+            <!-- Toolbar -->
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">
+                        <app-icon name="search" [size]="18"></app-icon>
+                    </span>
+                    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                        [placeholder]="'ADMIN.BLOG.SEARCH_PLACEHOLDER' | translate">
+                </div>
+
+                <select class="filter-select" [(ngModel)]="selectedCategory" (ngModelChange)="onFilterChange()">
+                    <option value="">All Categories</option>
+                    <option *ngFor="let cat of uniqueCategories" [value]="cat">{{ cat }}</option>
+                </select>
+
+                <button class="btn-icon-ghost" (click)="exportToCSV()" [title]="'ADMIN.COMMON.EXPORT' | translate">
+                    <app-icon name="download" [size]="20"></app-icon>
                 </button>
             </div>
 
-            <!-- Category Filter -->
-            <details class="filter-group" open>
-                <summary>
-                    <span>Categories</span>
-                    <span class="chevron">▼</span>
-                </summary>
-                <div class="filter-options">
-                    <label class="radio-option">
-                        <input type="radio" name="category" value="" [checked]="selectedCategory === ''"
-                            (change)="selectedCategory = ''; onFilterChange()">
-                        <span>All Categories</span>
-                    </label>
-                    <label class="radio-option" *ngFor="let cat of uniqueCategories">
-                        <input type="radio" name="category" [value]="cat" [checked]="selectedCategory === cat"
-                            (change)="selectedCategory = cat; onFilterChange()">
-                        <span>{{ cat }}</span>
-                    </label>
-                </div>
-            </details>
-        </aside>
-
-        <!-- Main Grid Area -->
-        <main class="product-grid-view">
+            <!-- Table -->
             <div class="table-glass-container">
                 <table class="rich-table">
                     <thead>
                         <tr>
-                            <th style="width: 120px;">{{ 'ADMIN.BLOG.TH_COVER' | translate }}</th>
+                            <th style="width: 80px;">{{ 'ADMIN.BLOG.TH_COVER' | translate }}</th>
                             <th class="sortable" (click)="onSortChange('title')">
                                 {{ 'ADMIN.BLOG.TH_TITLE' | translate }}
+                                <app-icon *ngIf="sortField === 'title'"
+                                    [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="14"
+                                    class="inline-icon"></app-icon>
                             </th>
                             <th>{{ 'ADMIN.BLOG.TH_CATEGORY' | translate }}</th>
                             <th class="sortable" (click)="onSortChange('date')">
                                 {{ 'ADMIN.BLOG.TH_DATE' | translate }}
+                                <app-icon *ngIf="sortField === 'date'"
+                                    [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="14"
+                                    class="inline-icon"></app-icon>
                             </th>
-                            <th>{{ 'ADMIN.BLOG.TH_ACTIONS' | translate }}</th>
+                            <th class="text-right">{{ 'ADMIN.BLOG.TH_ACTIONS' | translate }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -85,10 +63,6 @@
                                         {{ post.title }}
                                     </span>
                                     <span class="product-sku">{{ post.slug }}</span>
-                                    <div class="badges-row" *ngIf="post.tags && post.tags.length">
-                                        <span class="tiny-badge" *ngFor="let tag of post.tags.slice(0, 3)">#{{ tag
-                                            }}</span>
-                                    </div>
                                 </div>
                             </td>
                             <td>
@@ -100,15 +74,15 @@
                                     <span class="read-time" *ngIf="post.readTime">{{ post.readTime }} min read</span>
                                 </div>
                             </td>
-                            <td>
+                            <td class="text-right">
                                 <div class="row-actions">
                                     <button class="btn-icon-ghost" [routerLink]="['/admin/blog/edit', post.id]"
                                         [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        ✏️
+                                        <app-icon name="edit" [size]="18"></app-icon>
                                     </button>
                                     <button class="btn-icon-ghost danger" (click)="deletePost(post)"
                                         [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        🗑️
+                                        <app-icon name="trash-2" [size]="18"></app-icon>
                                     </button>
                                 </div>
                             </td>
@@ -117,7 +91,7 @@
                         <tr *ngIf="(paginatedPosts$ | async)?.length === 0">
                             <td colspan="5" class="no-data">
                                 <div class="empty-state-content">
-                                    <span class="empty-icon">✍️</span>
+                                    <app-icon name="file-text" [size]="48" class="text-muted"></app-icon>
                                     <p>{{ 'ADMIN.BLOG.EMPTY' | translate }}</p>
                                 </div>
                             </td>

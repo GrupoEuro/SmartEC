@@ -2,17 +2,21 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { PdfService } from '../../../../core/services/pdf.service';
 import { PDF } from '../../../../core/models/pdf.model';
+import { Dialog, DialogModule } from '@angular/cdk/dialog';
+import { PdfPreviewDialogComponent } from '../pdf-preview-dialog/pdf-preview-dialog.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-pdf-list',
     standalone: true,
-    imports: [CommonModule, RouterLink, TranslateModule, AdminPageHeaderComponent],
+    imports: [CommonModule, RouterLink, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
     templateUrl: './pdf-list.component.html',
     styleUrls: ['./pdf-list.component.css', '../../admin-tables.css']
 })
@@ -21,10 +25,31 @@ export class PdfListComponent implements OnInit {
     private translate = inject(TranslateService);
     private confirmDialog = inject(ConfirmDialogService);
     private toast = inject(ToastService);
+    private dialog = inject(Dialog);
     pdfs$!: Observable<PDF[]>;
 
     ngOnInit() {
-        this.pdfs$ = this.pdfService.getAllPDFs();
+        this.pdfs$ = this.pdfService.getAllPDFs().pipe(
+            map(pdfs => pdfs.map(pdf => ({
+                ...pdf,
+                createdAt: (pdf.createdAt as any)?.toDate ? (pdf.createdAt as any).toDate() : pdf.createdAt
+            })))
+        );
+    }
+
+    openPreview(pdf: PDF) {
+        if (pdf.fileUrl) {
+            this.dialog.open(PdfPreviewDialogComponent, {
+                data: {
+                    pdfUrl: pdf.fileUrl,
+                    title: pdf.title.en || pdf.fileName
+                },
+                width: '95vw',
+                maxWidth: '1200px',
+                height: '90vh',
+                panelClass: 'pdf-preview-dialog-panel'
+            });
+        }
     }
 
     async deletePDF(pdf: PDF) {

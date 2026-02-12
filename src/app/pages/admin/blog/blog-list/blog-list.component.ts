@@ -12,13 +12,16 @@ import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.s
 import { ToastService } from '../../../../core/services/toast.service';
 import { ExportService } from '../../../../core/services/export.service';
 import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
+
+// Sanitized: Verified imports and route configuration
 
 @Component({
   selector: 'app-blog-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent],
+  imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent, AppIconComponent],
   templateUrl: './blog-list.component.html',
-  styleUrl: './blog-list.component.css'
+  styleUrls: ['./blog-list.component.css', '../../admin-tables.css']
 })
 export class BlogListComponent implements OnInit {
   blogService = inject(BlogService);

@@ -8,13 +8,16 @@ import { take } from 'rxjs/operators';
 
 import { TranslateModule } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
+
+// Sanitized: Verified imports and route configuration
 
 @Component({
   selector: 'app-blog-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
   templateUrl: './blog-form.component.html',
-  styleUrl: './blog-form.component.css'
+  styleUrls: ['./blog-form.component.css', '../../shared/admin-forms.css']
 })
 export class BlogFormComponent implements OnInit {
   fb = inject(FormBuilder);

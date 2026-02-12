@@ -533,15 +533,33 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
         // Validation phase
         this.submitState = 'validating';
 
+        // Check for product images (custom validation)
+        if (this.productImages.length === 0) {
+            this.toast.error('At least one product image is required');
+            this.errorMessage = 'Please upload at least one product image';
+            this.submitState = 'error';
+
+            // Scroll to image section
+            const imageSection = document.querySelector('.images-grid');
+            if (imageSection) {
+                imageSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+
         if (this.productForm.invalid) {
             this.productForm.markAllAsTouched();
 
             // Count validation errors
             this.errorCount = this.countFormErrors(this.productForm);
 
+            // Get list of invalid fields for better feedback
+            const invalidFields = this.getInvalidFields(this.productForm);
+            console.log('Invalid fields:', invalidFields);
+
             // Show validation error toast
-            this.toast.error(`Cannot save - Please fix ${this.errorCount} error(s)`);
-            this.errorMessage = `Please fix ${this.errorCount} validation error(s)`;
+            this.toast.error(`Please fix ${this.errorCount} error(s) in: ${invalidFields.join(', ')}`);
+            this.errorMessage = `Please fix validation errors in: ${invalidFields.join(', ')}`;
             this.submitState = 'error';
 
             // Scroll to validation summary
@@ -550,11 +568,11 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
                 summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
-            // Reset error state after 3 seconds
+            // Reset error state after 5 seconds (gave user more time to read)
             setTimeout(() => {
-                this.submitState = 'idle';
-                this.errorMessage = '';
-            }, 3000);
+                // Keep error state visible but clear message if needed
+                // this.submitState = 'idle'; 
+            }, 5000);
             return;
         }
 
@@ -735,6 +753,40 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
     hasLowStock(): boolean {
         const stock = this.productForm.get('stockQuantity')?.value;
         return stock !== null && stock >= 0 && stock < 5;
+    }
+
+    private getInvalidFields(form: FormGroup, prefix = ''): string[] {
+        const invalidFields: string[] = [];
+        const controls = form.controls;
+
+        for (const name in controls) {
+            const control = controls[name];
+            if (control.invalid) {
+                if (control instanceof FormGroup) {
+                    // Recursively check nested groups (like specifications)
+                    const nested = this.getInvalidFields(control, prefix + name + '.');
+                    invalidFields.push(...nested);
+                } else if (control instanceof FormArray) {
+                    // Recursively check form arrays
+                    control.controls.forEach((c, index) => {
+                        if (c instanceof FormGroup) {
+                            const nested = this.getInvalidFields(c, `${prefix}${name}[${index}].`);
+                            invalidFields.push(...nested);
+                        } else if (c.invalid) {
+                            const fieldKey = `${prefix}${name}[${index}]`;
+                            const label = this.fieldLabels[fieldKey] || fieldKey;
+                            invalidFields.push(label);
+                        }
+                    });
+                } else {
+                    // Get human readable label if available
+                    const fieldKey = prefix + name;
+                    const label = this.fieldLabels[fieldKey] || fieldKey;
+                    invalidFields.push(label);
+                }
+            }
+        }
+        return invalidFields;
     }
 
     // Image metadata extraction helpers

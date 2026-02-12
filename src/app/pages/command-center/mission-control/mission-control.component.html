@@ -3,9 +3,9 @@
         <div>
             <h1 class="page-title">
                 <app-icon name="command-center" [size]="24" class="mr-2"></app-icon>
-                Mission Control
+                {{ 'COMMAND_CENTER.MISSION_CONTROL.TITLE' | translate }}
             </h1>
-            <p class="page-subtitle">Strategic Orchestration & Omnichannel Intelligence</p>
+            <p class="page-subtitle">{{ 'COMMAND_CENTER.MISSION_CONTROL.SUBTITLE' | translate }}</p>
         </div>
         <div class="actions">
             <!-- Channel Selector (The "God Mode" View) -->
@@ -13,13 +13,13 @@
                 <button class="btn-channel" [class.active]="contextService.selectedChannels().length === 0"
                     (click)="selectChannel(null)">
                     <app-icon name="grid" [size]="16"></app-icon>
-                    All
+                    {{ 'COMMAND_CENTER.CHANNELS.ALL' | translate }}
                 </button>
                 <button *ngFor="let c of contextService.availableChannels" class="btn-channel"
                     [class.active]="contextService.selectedChannels().includes(c.id)" (click)="selectChannel(c.id)"
-                    [title]="c.label">
+                    [title]="('COMMAND_CENTER.CHANNELS.' + c.id) | translate">
                     <app-icon [name]="c.icon" [size]="16"></app-icon>
-                    <span class="channel-label">{{ c.id.replace('_', ' ') }}</span>
+                    <span class="channel-label">{{ ('COMMAND_CENTER.CHANNELS.' + c.id) | translate }}</span>
                 </button>
             </div>
         </div>

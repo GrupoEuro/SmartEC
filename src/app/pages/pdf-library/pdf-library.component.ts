@@ -1,7 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, BehaviorSubject, combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { PdfService } from '../../core/services/pdf.service';
 import { PDF } from '../../core/models/pdf.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -38,13 +39,46 @@ export class PdfLibraryComponent implements OnInit {
         { value: 'other', label: 'Other' }
     ];
 
+    private searchSubject = new BehaviorSubject<string>('');
+    private categorySubject = new BehaviorSubject<string>('all');
+
     ngOnInit() {
         this.metaService.updateTags({
             title: 'Biblioteca PDF - Manuales y Catálogos',
             description: 'Descarga manuales oficiales, fichas técnicas y catálogos de llantas Michelin y Praxis. Recursos exclusivos para distribuidores.',
             image: 'assets/images/library-hero.jpg'
         });
-        this.pdfs$ = this.pdfService.getPublicPDFs();
+
+        this.pdfs$ = combineLatest([
+            this.pdfService.getPublicPDFs(),
+            this.searchSubject,
+            this.categorySubject
+        ]).pipe(
+            map(([pdfs, search, category]) => {
+                return pdfs.filter(pdf => {
+                    const term = search.toLowerCase();
+                    const matchesSearch = !term ||
+                        pdf.title.en.toLowerCase().includes(term) ||
+                        pdf.title.es.toLowerCase().includes(term) ||
+                        (pdf.tags && pdf.tags.some(tag => tag.toLowerCase().includes(term)));
+
+                    const matchesCategory = category === 'all' || pdf.category === category;
+
+                    return matchesSearch && matchesCategory;
+                });
+            })
+        );
+    }
+
+    onSearch(event: Event) {
+        const query = (event.target as HTMLInputElement).value;
+        this.searchQuery = query;
+        this.searchSubject.next(query);
+    }
+
+    setCategory(category: string) {
+        this.selectedCategory = category;
+        this.categorySubject.next(category);
     }
 
     async downloadPDF(pdf: PDF) {

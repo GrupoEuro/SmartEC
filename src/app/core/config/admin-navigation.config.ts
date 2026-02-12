@@ -111,10 +111,29 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 route: '/admin/media-library'
             },
             {
-                id: 'pdf_library',
+                id: 'pdfs',
                 title: 'ADMIN.SIDEBAR.PDF_LIBRARY',
-                icon: 'document',
-                route: '/admin/pdf-library'
+                icon: 'file-text',
+                route: '/admin/pdfs'
+            }
+        ]
+    },
+    {
+        id: 'marketing',
+        title: 'ADMIN.SIDEBAR.SECTION_MARKETING',
+        icon: 'trending-up',
+        children: [
+            {
+                id: 'coupons',
+                title: 'ADMIN.SIDEBAR.COUPONS',
+                icon: 'gift',
+                route: '/admin/marketing/coupons'
+            },
+            {
+                id: 'campaigns',
+                title: 'ADMIN.SIDEBAR.CAMPAIGNS',
+                icon: 'target',
+                route: '/admin/marketing/campaigns'
             }
         ]
     },

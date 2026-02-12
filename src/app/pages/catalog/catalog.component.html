@@ -160,13 +160,15 @@
                     <!-- Product Cards -->
                     <div *ngFor="let product of products; trackBy: trackByProduct; let i = index" class="product-card">
                         <div class="product-badges">
-                            <span *ngIf="product.newArrival" class="badge badge-new">New</span>
-                            <span *ngIf="product.bestSeller" class="badge badge-bestseller">Hot</span>
+                            <span *ngIf="product.newArrival" class="badge badge-new">{{ 'COMMON.BADGES.NEW' | translate
+                                }}</span>
+                            <span *ngIf="product.bestSeller" class="badge badge-bestseller">{{
+                                'COMMON.BADGES.BESTSELLER' | translate }}</span>
                         </div>
 
                         <div class="product-image">
                             <img [ngSrc]="product.images.main || 'assets/images/euro-logo-new.png'"
-                                [alt]="product.name.en || 'Product Image'" fill [priority]="i < 4"
+                                [alt]="product.name.en || ('COMMON.NO_IMAGE' | translate)" fill [priority]="i < 4"
                                 (error)="product.images.main = 'assets/images/euro-logo-new.png'">
 
                             <!-- Quick View Overlay Button -->
@@ -195,7 +197,7 @@
                                 <div class="price-row">
                                     <span class="current-price">{{ product.price |
                                         currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-                                    <span class="price-suffix">MXN</span>
+                                    <span class="price-suffix">{{ 'COMMON.CURRENCY' | translate }}</span>
                                 </div>
                                 <span class="tax-info">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
                             </div>

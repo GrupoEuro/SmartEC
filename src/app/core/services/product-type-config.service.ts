@@ -117,7 +117,7 @@ export class ProductTypeConfigService {
     private initializeTireType(): void {
         this.productTypes.set('tire', {
             id: 'tire',
-            name: { es: 'Neumático', en: 'Tire' },
+            name: { es: 'Llanta', en: 'Tire' },
             icon: '🛞',
             specificationSchema: [
                 {

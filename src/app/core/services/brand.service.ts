@@ -15,7 +15,7 @@ import {
     Timestamp
 } from '@angular/fire/firestore';
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
-import { Observable, map } from 'rxjs';
+import { Observable, map, firstValueFrom } from 'rxjs';
 import { Brand } from '../models/catalog.model';
 
 @Injectable({
@@ -147,13 +147,13 @@ export class BrandService {
                 logoPath = uploadResult.path;
             }
 
-            const brandData = {
+            const brandData = this.cleanData({
                 ...brand,
                 logoUrl,
                 logoPath,
                 createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now()
-            };
+            });
 
             const docRef = await addDoc(this.brandsCollection, brandData);
             return docRef.id;
@@ -169,15 +169,18 @@ export class BrandService {
     async updateBrand(id: string, brand: Partial<Brand>, logoFile?: File): Promise<void> {
         try {
             const brandDoc = doc(this.firestore, `brands/${id}`);
+
+            // 1. Prepare base update data
             let updateData: any = {
                 ...brand,
                 updatedAt: Timestamp.now()
             };
 
-            // Upload new logo if provided
+            // 2. Upload new logo if provided
             if (logoFile) {
                 // Delete old logo if exists
-                const currentBrand = await this.getBrandById(id).pipe(map(b => b)).toPromise();
+                // Use firstValueFrom instead of toPromise
+                const currentBrand = await firstValueFrom(this.getBrandById(id));
                 if (currentBrand?.logoPath) {
                     await this.deleteLogo(currentBrand.logoPath);
                 }
@@ -186,6 +189,9 @@ export class BrandService {
                 updateData.logoUrl = uploadResult.url;
                 updateData.logoPath = uploadResult.path;
             }
+
+            // 3. Clean undefined values to prevent Firestore errors
+            updateData = this.cleanData(updateData);
 
             await updateDoc(brandDoc, updateData);
         } catch (error) {
@@ -200,7 +206,7 @@ export class BrandService {
     async deleteBrand(id: string): Promise<void> {
         try {
             // Get brand to delete its logo
-            const brand = await this.getBrandById(id).pipe(map(b => b)).toPromise();
+            const brand = await firstValueFrom(this.getBrandById(id));
 
             // Delete logo if exists
             if (brand?.logoPath) {
@@ -252,5 +258,19 @@ export class BrandService {
             createdAt: brand.createdAt?.toDate() || new Date(),
             updatedAt: brand.updatedAt?.toDate() || new Date()
         };
+    }
+
+    /**
+     * Helper to remove undefined fields from an object
+     * Firestore throws if you try to save 'undefined'
+     */
+    private cleanData(data: any): any {
+        const clean: any = {};
+        Object.keys(data).forEach(key => {
+            if (data[key] !== undefined) {
+                clean[key] = data[key];
+            }
+        });
+        return clean;
     }
 }

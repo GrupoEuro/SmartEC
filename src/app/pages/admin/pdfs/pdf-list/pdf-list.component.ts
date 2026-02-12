@@ -14,7 +14,7 @@ import { ToastService } from '../../../../core/services/toast.service';
     standalone: true,
     imports: [CommonModule, RouterLink, TranslateModule, AdminPageHeaderComponent],
     templateUrl: './pdf-list.component.html',
-    styleUrl: './pdf-list.component.css'
+    styleUrls: ['./pdf-list.component.css', '../../admin-tables.css']
 })
 export class PdfListComponent implements OnInit {
     private pdfService = inject(PdfService);

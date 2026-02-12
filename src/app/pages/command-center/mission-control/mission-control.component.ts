@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ChannelRevenueWidgetComponent } from './widgets/channel-revenue-widget/channel-revenue-widget.component';
 import { MarketingRoiWidgetComponent } from './widgets/marketing-roi-widget/marketing-roi-widget.component';
 import { StockoutPredictionWidgetComponent } from './widgets/stockout-prediction-widget/stockout-prediction-widget.component';
@@ -15,6 +16,7 @@ import { DashboardDiagnosticsComponent } from '../../../shared/components/dashbo
     standalone: true,
     imports: [
         CommonModule,
+        TranslateModule,
         ChannelRevenueWidgetComponent,
         MarketingRoiWidgetComponent,
         StockoutPredictionWidgetComponent,
@@ -29,6 +31,7 @@ import { DashboardDiagnosticsComponent } from '../../../shared/components/dashbo
 })
 export class MissionControlComponent {
     public contextService = inject(CommandCenterContextService);
+    private translate = inject(TranslateService);
 
     get activeChannelLabel() {
         const channels = this.contextService.selectedChannels();

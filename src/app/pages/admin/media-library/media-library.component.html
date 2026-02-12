@@ -4,7 +4,7 @@
     <header class="command-header">
         <div class="header-left">
             <div class="header-title-section">
-                <h1 class="page-title">Media Library</h1>
+                <h1 class="page-title">{{ 'ADMIN.MEDIA_LIBRARY.TITLE' | translate }}</h1>
                 <span class="product-badge" *ngIf="(storageStats$ | async) as stats">
                     {{ assets().length }} of {{ stats.count }}
                 </span>
@@ -16,7 +16,7 @@
                     class="hover:text-indigo-400 transition-colors flex items-center gap-1"
                     [class.text-indigo-400]="breadcrumbs().length === 0">
                     <app-icon name="home" [size]="14"></app-icon>
-                    <span>Home</span>
+                    <span>{{ 'ADMIN.MEDIA_LIBRARY.HOME' | translate }}</span>
                 </button>
                 <ng-container *ngFor="let crumb of breadcrumbs(); let last = last">
                     <app-icon name="chevron_right" [size]="12" class="text-slate-600"></app-icon>
@@ -29,11 +29,11 @@
             <button (click)="scanStorage()"
                 class="px-4 py-2 text-sm font-semibold text-indigo-400 hover:text-white hover:bg-white/5 rounded-lg border border-indigo-500/30 transition-all flex items-center gap-2">
                 <app-icon name="refresh-cw" [size]="16"></app-icon>
-                Sync Storage
+                {{ 'ADMIN.MEDIA_LIBRARY.SYNC_BTN' | translate }}
             </button>
             <button class="btn-primary-action" (click)="toggleUpload()">
                 <app-icon name="upload-cloud" [size]="18"></app-icon>
-                <span>Upload Media</span>
+                <span>{{ 'ADMIN.MEDIA_LIBRARY.UPLOAD_BTN' | translate }}</span>
             </button>
         </div>
     </header>
@@ -43,8 +43,32 @@
         <!-- Glass Sidebar -->
         <aside class="glass-sidebar hidden md:flex">
             <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                <span class="sidebar-section-title">Folders</span>
-                <div class="mb-6">
+                <!-- Quick Filters (Now Top) -->
+                <span class="sidebar-section-title">{{ 'ADMIN.MEDIA_LIBRARY.FILTERS.QUICK_FILTERS' | translate }}</span>
+                <div class="space-y-1 mb-6">
+                    <button *ngFor="let type of FILE_TYPES" (click)="onTypeChange(type.id)"
+                        [class.bg-indigo-500_20]="selectedType() === type.id"
+                        [class.text-indigo-400]="selectedType() === type.id"
+                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all group">
+                        <app-icon [name]="type.icon" [size]="16"
+                            class="group-hover:text-indigo-400 transition-colors"></app-icon>
+                        <span>{{ type.label | translate }}</span>
+                    </button>
+                </div>
+
+                <!-- Folders (Now Bottom & Collapsible) -->
+                <div class="flex items-center justify-between mb-2">
+                    <span class="sidebar-section-title mb-0">{{ 'ADMIN.MEDIA_LIBRARY.FILTERS.FOLDERS' | translate
+                        }}</span>
+                    <button (click)="isFoldersCollapsed.set(!isFoldersCollapsed())"
+                        class="text-slate-500 hover:text-white transition-colors"
+                        [title]="isFoldersCollapsed() ? ('ADMIN.MEDIA_LIBRARY.ACTIONS.SHOW_FOLDERS' | translate) : ('ADMIN.MEDIA_LIBRARY.ACTIONS.HIDE_FOLDERS' | translate)">
+                        <app-icon [name]="isFoldersCollapsed() ? 'chevron-right' : 'chevron-down'"
+                            [size]="16"></app-icon>
+                    </button>
+                </div>
+
+                <div [class.hidden]="isFoldersCollapsed()" class="mb-6 animate-in slide-in-from-top-2 duration-200">
                     <app-folder-tree [selectedFolderId]="currentFolderId() || undefined"
                         (folderSelected)="onFolderSelected($event)" (folderDrop)="onFolderDrop($event)">
                     </app-folder-tree>
@@ -52,22 +76,7 @@
                     <button (click)="createFolder()"
                         class="w-full mt-2 flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-400 hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-all border border-dashed border-slate-700 hover:border-indigo-500/50">
                         <app-icon name="plus" [size]="14"></app-icon>
-                        Create New Folder
-                    </button>
-                </div>
-
-                <span class="sidebar-section-title">Quick Filters</span>
-                <div class="space-y-1">
-                    <!-- Shared Links temporarily disabled until implemented as filter -->
-                    <!-- <button ... > -->
-
-                    <button *ngFor="let type of FILE_TYPES" (click)="onTypeChange(type.id)"
-                        [class.bg-indigo-500_20]="selectedType() === type.id"
-                        [class.text-indigo-400]="selectedType() === type.id"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all group">
-                        <app-icon [name]="type.icon" [size]="16"
-                            class="group-hover:text-indigo-400 transition-colors"></app-icon>
-                        <span>{{ type.label }}</span>
+                        {{ 'ADMIN.MEDIA_LIBRARY.CREATE_FOLDER' | translate }}
                     </button>
                 </div>
             </div>
@@ -75,11 +84,12 @@
             <!-- Sidebar Footer Stats -->
             <div class="p-4 border-t border-white/5 bg-black/20" *ngIf="storageStats$ | async as stats">
                 <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
-                    <span>Storage</span>
+                    <span>{{ 'ADMIN.MEDIA_LIBRARY.STATS.STORAGE' | translate }}</span>
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] text-slate-500">{{ (stats.totalBytes / stats.maxCapacity * 100) |
                             number:'1.0-1' }}%</span>
-                        <button (click)="recalculateStats()" title="Recalculate Usage"
+                        <button (click)="recalculateStats()"
+                            [title]="'ADMIN.MEDIA_LIBRARY.STATS.RECALCULATE' | translate"
                             class="hover:text-white transition-colors">
                             <app-icon name="refresh_cw" [size]="12"></app-icon>
                         </button>
@@ -112,8 +122,8 @@
             <div class="table-toolbar">
                 <div class="search-box">
                     <span class="search-icon"><app-icon name="search" [size]="16"></app-icon></span>
-                    <input type="text" placeholder="Search assets..." [ngModel]="searchQuery()"
-                        (ngModelChange)="onSearch($event)">
+                    <input type="text" [placeholder]="'ADMIN.MEDIA_LIBRARY.SEARCH_PLACEHOLDER' | translate"
+                        [ngModel]="searchQuery()" (ngModelChange)="onSearch($event)">
                 </div>
 
                 <div class="toolbar-stats hidden xl:flex">
@@ -126,8 +136,9 @@
                             <app-icon *ngIf="selectedAssets().size > 0" name="check" [size]="12"
                                 class="text-white"></app-icon>
                         </div>
-                        <span>{{ selectedAssets().size > 0 ? selectedAssets().size + ' Selected' : 'Select All'
-                            }}</span>
+                        <span>{{ selectedAssets().size > 0 ? selectedAssets().size + ' ' +
+                            ('ADMIN.MEDIA_LIBRARY.ACTIONS.SELECTED' | translate) :
+                            ('ADMIN.MEDIA_LIBRARY.ACTIONS.SELECT_ALL' | translate) }}</span>
                     </button>
                 </div>
 
@@ -144,32 +155,36 @@
 
                 <button *ngIf="selectedType() !== 'all' || searchQuery()" (click)="clearFilters()"
                     class="text-red-400 hover:text-red-300 text-sm font-medium px-3">
-                    Clear
+                    {{ 'ADMIN.MEDIA_LIBRARY.ACTIONS.CLEAR' | translate }}
                 </button>
             </div>
 
             <!-- Bulk Actions Bar (Floating) -->
             <div *ngIf="isBulkMode()"
                 class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-indigo-500/30 shadow-2xl shadow-indigo-500/20 rounded-full px-6 py-3 flex items-center gap-6 animate-in slide-in-from-bottom-4 zoom-in-95 duration-200">
-                <span class="text-white font-semibold text-sm">{{ selectedAssets().size }} Selected</span>
+                <span class="text-white font-semibold text-sm">{{ selectedAssets().size }} {{
+                    'ADMIN.MEDIA_LIBRARY.ACTIONS.SELECTED' | translate }}</span>
                 <div class="h-4 w-px bg-white/10"></div>
                 <button (click)="launchBulkEdit()"
                     class="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium">
-                    <app-icon name="edit" [size]="16"></app-icon> Edit
+                    <app-icon name="edit" [size]="16"></app-icon> {{ 'ADMIN.MEDIA_LIBRARY.ACTIONS.BULK_EDIT' | translate
+                    }}
                 </button>
                 <div class="h-4 w-px bg-white/10"></div>
                 <button (click)="moveSelected()"
                     class="flex items-center gap-2 text-slate-300 hover:text-white transition-colors text-sm font-medium">
-                    <app-icon name="folder_move" [size]="16"></app-icon> Move
+                    <app-icon name="folder_move" [size]="16"></app-icon> {{ 'ADMIN.MEDIA_LIBRARY.ACTIONS.MOVE' |
+                    translate }}
                 </button>
                 <div class="h-4 w-px bg-white/10"></div>
                 <button (click)="deleteSelected()"
                     class="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors text-sm font-medium">
-                    <app-icon name="trash" [size]="16"></app-icon> Delete
+                    <app-icon name="trash" [size]="16"></app-icon> {{ 'ADMIN.MEDIA_LIBRARY.ACTIONS.DELETE' | translate
+                    }}
                 </button>
                 <div class="h-4 w-px bg-white/10"></div>
-                <button (click)="selectAll(assets())"
-                    class="text-slate-500 hover:text-slate-300 text-xs">Cancel</button>
+                <button (click)="selectAll(assets())" class="text-slate-500 hover:text-slate-300 text-xs">{{
+                    'ADMIN.MEDIA_LIBRARY.ACTIONS.CANCEL' | translate }}</button>
             </div>
 
 
@@ -205,32 +220,32 @@
                                 <div class="grid grid-cols-3 gap-3" (click)="$event.stopPropagation()">
                                     <button (click)="copyUrl(asset.publicUrl)"
                                         class="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                                        title="Copy URL">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.COPY_LINK' | translate">
                                         <app-icon name="copy" [size]="16"></app-icon>
                                     </button>
                                     <button (click)="shareAsset(asset)"
                                         class="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                                        title="Share">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.SHARE' | translate">
                                         <app-icon name="share" [size]="16"></app-icon>
                                     </button>
                                     <button (click)="editAsset(asset)"
                                         class="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                                        title="Edit">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.EDIT' | translate">
                                         <app-icon name="edit" [size]="16"></app-icon>
                                     </button>
                                     <button (click)="launchMoveDialog([asset])"
                                         class="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                                        title="Move">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.MOVE' | translate">
                                         <app-icon name="folder_move" [size]="16"></app-icon>
                                     </button>
                                     <button *ngIf="isImage(asset)" (click)="launchImageEditor(asset)"
                                         class="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-pink-400 transition-colors"
-                                        title="Crop">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.CROP' | translate">
                                         <app-icon name="crop" [size]="16"></app-icon>
                                     </button>
                                     <button (click)="deleteAsset(asset)"
                                         class="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg text-red-400 transition-colors col-start-2"
-                                        title="Delete">
+                                        [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.DELETE' | translate">
                                         <app-icon name="trash" [size]="16"></app-icon>
                                     </button>
                                 </div>
@@ -266,41 +281,41 @@
                                             class="text-white"></app-icon>
                                     </div>
                                 </th>
-                                <th class="p-4 w-16">Preview</th>
+                                <th class="p-4 w-16">{{ 'ADMIN.MEDIA_LIBRARY.TABLE.PREVIEW' | translate }}</th>
                                 <th class="p-4 cursor-pointer hover:text-white transition-colors group"
                                     (click)="onSortChange('filename')">
                                     <div class="flex items-center gap-2" [class.text-white]="sortField() === 'filename'"
                                         [class.text-indigo-400]="sortField() === 'filename'">
-                                        Name
+                                        {{ 'ADMIN.MEDIA_LIBRARY.TABLE.NAME' | translate }}
                                         <app-icon *ngIf="sortField() === 'filename'"
                                             [name]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
                                             [size]="14" class="text-indigo-400"></app-icon>
                                     </div>
                                 </th>
-                                <th class="p-4">Dimensions</th>
+                                <th class="p-4">{{ 'ADMIN.MEDIA_LIBRARY.TABLE.DIMENSIONS' | translate }}</th>
                                 <th class="p-4 cursor-pointer hover:text-white transition-colors group"
                                     (click)="onSortChange('size')">
                                     <div class="flex items-center gap-2" [class.text-white]="sortField() === 'size'"
                                         [class.text-indigo-400]="sortField() === 'size'">
-                                        Size
+                                        {{ 'ADMIN.MEDIA_LIBRARY.TABLE.SIZE' | translate }}
                                         <app-icon *ngIf="sortField() === 'size'"
                                             [name]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
                                             [size]="14" class="text-indigo-400"></app-icon>
                                     </div>
                                 </th>
-                                <th class="p-4">Type</th>
+                                <th class="p-4">{{ 'ADMIN.MEDIA_LIBRARY.TABLE.TYPE' | translate }}</th>
                                 <th class="p-4 cursor-pointer hover:text-white transition-colors group"
                                     (click)="onSortChange('createdAt')">
                                     <div class="flex items-center gap-2"
                                         [class.text-white]="sortField() === 'createdAt'"
                                         [class.text-indigo-400]="sortField() === 'createdAt'">
-                                        Date
+                                        {{ 'ADMIN.MEDIA_LIBRARY.TABLE.DATE' | translate }}
                                         <app-icon *ngIf="sortField() === 'createdAt'"
                                             [name]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
                                             [size]="14" class="text-indigo-400"></app-icon>
                                     </div>
                                 </th>
-                                <th class="p-4 text-right">Actions</th>
+                                <th class="p-4 text-right">{{ 'ADMIN.MEDIA_LIBRARY.TABLE.ACTIONS' | translate }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
@@ -375,22 +390,22 @@
                                         (click)="$event.stopPropagation()">
                                         <button (click)="copyUrl(asset.publicUrl)"
                                             class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded transition-colors"
-                                            title="Copy URL">
+                                            [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.COPY_LINK' | translate">
                                             <app-icon name="copy" [size]="14"></app-icon>
                                         </button>
                                         <button (click)="editAsset(asset)"
                                             class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded transition-colors"
-                                            title="Edit">
+                                            [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.EDIT' | translate">
                                             <app-icon name="edit" [size]="14"></app-icon>
                                         </button>
                                         <button (click)="launchMoveDialog([asset])"
                                             class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded transition-colors"
-                                            title="Move">
+                                            [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.MOVE' | translate">
                                             <app-icon name="folder_move" [size]="14"></app-icon>
                                         </button>
                                         <button (click)="deleteAsset(asset)"
                                             class="p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded transition-colors"
-                                            title="Delete">
+                                            [title]="'ADMIN.MEDIA_LIBRARY.ACTIONS.DELETE' | translate">
                                             <app-icon name="trash" [size]="14"></app-icon>
                                         </button>
                                     </div>
@@ -408,7 +423,8 @@
                     class="px-6 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-full text-sm font-medium transition-colors border border-white/10 flex items-center gap-2">
                     <span *ngIf="isLoading()"
                         class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                    <span>{{ isLoading() ? 'Loading...' : 'Load More Assets' }}</span>
+                    <span>{{ isLoading() ? ('ADMIN.COMMON.LOADING' | translate) : ('ADMIN.MEDIA_LIBRARY.LOAD_MORE' |
+                        translate) }}</span>
                 </button>
             </div>
 
@@ -418,10 +434,11 @@
                     <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4">
                         <app-icon name="image" [size]="32" class="opacity-50"></app-icon>
                     </div>
-                    <h3 class="text-xl font-semibold text-slate-300 mb-2">No assets found</h3>
-                    <p class="mb-6 max-w-sm text-center">Upload files or check your search criteria.</p>
+                    <h3 class="text-xl font-semibold text-slate-300 mb-2">{{ 'ADMIN.MEDIA_LIBRARY.EMPTY.TITLE' |
+                        translate }}</h3>
+                    <p class="mb-6 max-w-sm text-center">{{ 'ADMIN.MEDIA_LIBRARY.EMPTY.DESC' | translate }}</p>
                     <button class="btn-primary-action" (click)="toggleUpload()">
-                        Upload New Media
+                        {{ 'ADMIN.MEDIA_LIBRARY.EMPTY.BTN' | translate }}
                     </button>
                 </div>
             </ng-template>

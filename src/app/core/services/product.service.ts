@@ -307,14 +307,21 @@ export class ProductService {
     /**
      * Create a new product
      */
-    async createProduct(product: Omit<Product, 'id'>, mainImage: File, galleryImages?: File[]): Promise<string> {
+    async createProduct(product: Omit<Product, 'id'>, mainImage?: File, galleryImages?: File[]): Promise<string> {
         try {
-            // Upload main image
-            const mainImageResult = await this.uploadProductImage(mainImage, 'main');
+            let mainImageUrl = product.images?.main || '';
+            let mainImagePath = product.images?.mainPath || '';
+            let galleryUrls: string[] = product.images?.gallery || [];
+            let galleryPaths: string[] = product.images?.galleryPaths || [];
 
-            // Upload gallery images
-            let galleryUrls: string[] = [];
-            let galleryPaths: string[] = [];
+            // Upload main image if provided
+            if (mainImage) {
+                const mainImageResult = await this.uploadProductImage(mainImage, 'main');
+                mainImageUrl = mainImageResult.url;
+                mainImagePath = mainImageResult.path;
+            }
+
+            // Upload gallery images if provided
             if (galleryImages && galleryImages.length > 0) {
                 const galleryResults = await Promise.all(
                     galleryImages.map((file, index) => this.uploadProductImage(file, `gallery_${index}`))
@@ -323,11 +330,11 @@ export class ProductService {
                 galleryPaths = galleryResults.map(r => r.path);
             }
 
-            const productData = {
+            let productData = {
                 ...product,
                 images: {
-                    main: mainImageResult.url,
-                    mainPath: mainImageResult.path,
+                    main: mainImageUrl,
+                    mainPath: mainImagePath,
                     gallery: galleryUrls,
                     galleryPaths: galleryPaths
                 },
@@ -335,13 +342,31 @@ export class ProductService {
                 updatedAt: Timestamp.now()
             };
 
+            // Deep cleanup: Remove undefined and null values recursively
+            const cleanData = (obj: any): any => {
+                if (obj === undefined) return undefined; // Keep null, remove undefined
+                if (Array.isArray(obj)) return obj.map(item => cleanData(item)).filter(item => item !== undefined);
+                if (typeof obj === 'object' && obj !== null && obj.constructor === Object) {
+                    const cleaned: any = {};
+                    Object.keys(obj).forEach(key => {
+                        const cleanedValue = cleanData(obj[key]);
+                        if (cleanedValue !== undefined) {
+                            cleaned[key] = cleanedValue;
+                        }
+                    });
+                    return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+                }
+                return obj;
+            };
+
+            productData = cleanData(productData);
+
             const docRef = await addDoc(this.productsCollection, productData);
             return docRef.id;
         } catch (error) {
             console.error('Error creating product:', error);
             throw error;
         }
-
     }
 
     /**

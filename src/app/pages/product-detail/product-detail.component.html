@@ -36,7 +36,7 @@
             <div class="price-container">
                 <div class="main-price-row">
                     <span class="current-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
-                    <span class="currency">MXN</span>
+                    <span class="currency">{{ 'COMMON.CURRENCY' | translate }}</span>
                     <span class="tax-note">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
                 </div>
                 <div class="secondary-price-row"
@@ -110,11 +110,11 @@
                 <!-- <div class="trust-divider"></div> -->
                 <div class="trust-capsule">
                     <span class="trust-icon">💳</span>
-                    <span class="trust-text">Meses sin intereses</span>
+                    <span class="trust-text">{{ 'COMMON.TRUST.MSI' | translate }}</span>
                 </div>
                 <div class="trust-capsule">
                     <span class="trust-icon">🔒</span>
-                    <span class="trust-text">Compra Protegida</span>
+                    <span class="trust-text">{{ 'COMMON.TRUST.PROTECTED' | translate }}</span>
                 </div>
             </div>
 

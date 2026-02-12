@@ -1,33 +1,35 @@
-import { Component, inject, OnInit, signal, ViewChild, ViewEncapsulation } from '@angular/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { MediaAsset } from '../../../core/models/media.model';
+import { SharedLink } from '../../../core/models/shared-link.model';
+import { Component, OnInit, inject, ViewEncapsulation, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { FolderTreeComponent } from './components/folder-tree/folder-tree.component';
-import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { MediaService } from '../../../core/services/media.service';
+import { DocumentSharingService } from '../../../core/services/document-sharing.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { MediaFilter, MediaFolder } from '../../../core/models/media.model';
+import { MediaUploadComponent } from './components/media-upload/media-upload.component';
 import { EditMediaDialogComponent } from './components/edit-media-dialog/edit-media-dialog.component';
 import { ImageEditorDialogComponent } from './components/image-editor-dialog/image-editor-dialog.component';
-import { MoveAssetsDialogComponent } from './components/move-assets-dialog/move-assets-dialog.component'; // Added
-import { MediaUploadComponent } from './components/media-upload/media-upload.component';
+import { MoveAssetsDialogComponent } from './components/move-assets-dialog/move-assets-dialog.component';
 import { CreateLinkDialogComponent } from './components/create-link-dialog/create-link-dialog.component';
 import { LinkStatsDialogComponent } from './components/link-stats-dialog/link-stats-dialog.component';
 import { BulkEditDialogComponent } from './components/bulk-edit-dialog/bulk-edit-dialog.component';
-import { MediaAsset, MediaFilter, MediaFolder } from '../../../core/models/media.model';
-import { MediaService } from '../../../core/services/media.service';
-import { SharedLink } from '../../../core/models/shared-link.model';
-import { DocumentSharingService } from '../../../core/services/document-sharing.service';
-import { ToastService } from '../../../core/services/toast.service';
-
+import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { FolderTreeComponent } from './components/folder-tree/folder-tree.component';
 @Component({
   selector: 'app-media-library',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule,
+    TranslateModule, // Added
     MediaUploadComponent,
     EditMediaDialogComponent,
     ImageEditorDialogComponent,
-    MoveAssetsDialogComponent, // Added
+    MoveAssetsDialogComponent,
     CreateLinkDialogComponent,
     LinkStatsDialogComponent,
     BulkEditDialogComponent,
@@ -42,11 +44,9 @@ export class MediaLibraryComponent implements OnInit {
   private mediaService = inject(MediaService);
   private sharingService = inject(DocumentSharingService);
   private toast = inject(ToastService);
-
-
+  private translate = inject(TranslateService);
 
   // ... (rest of class)
-
 
   filter$ = new BehaviorSubject<MediaFilter>({ limit: 50 });
   assets = signal<MediaAsset[]>([]);
@@ -54,7 +54,7 @@ export class MediaLibraryComponent implements OnInit {
   editingAsset = signal<MediaAsset | null>(null);
   editingImage = signal<MediaAsset | null>(null);
   sharingAsset = signal<MediaAsset | null>(null);
-  movingAssets = signal<MediaAsset[]>([]); // Added
+  movingAssets = signal<MediaAsset[]>([]);
   sharedLinks = signal<SharedLink[]>([]);
   viewingStats = signal<SharedLink | null>(null);
 
@@ -64,11 +64,11 @@ export class MediaLibraryComponent implements OnInit {
   bulkTags = '';
 
   readonly FILE_TYPES = [
-    { id: 'all', label: 'All Files', icon: 'grid' },
-    { id: 'image', label: 'Images', icon: 'image' },
-    { id: 'vector', label: 'Vectors', icon: 'tool' }, // Using 'tool' (pen-like) for vectors
-    { id: 'video', label: 'Videos', icon: 'film' }, // Assuming film icon exists or using default
-    { id: 'document', label: 'Documents', icon: 'file_text' }
+    { id: 'all', label: 'ADMIN.MEDIA_LIBRARY.FILTERS.ALL', icon: 'grid' },
+    { id: 'image', label: 'ADMIN.MEDIA_LIBRARY.FILTERS.IMAGES', icon: 'image' },
+    { id: 'vector', label: 'ADMIN.MEDIA_LIBRARY.FILTERS.VECTORS', icon: 'tool' },
+    { id: 'video', label: 'ADMIN.MEDIA_LIBRARY.FILTERS.VIDEOS', icon: 'film' },
+    { id: 'document', label: 'ADMIN.MEDIA_LIBRARY.FILTERS.DOCUMENTS', icon: 'file_text' }
   ];
 
   isLoading = signal(false);
@@ -85,12 +85,15 @@ export class MediaLibraryComponent implements OnInit {
   // Folder State
   currentFolderId = signal<string | null>(null);
   breadcrumbs = signal<MediaFolder[]>([]);
+  isFoldersCollapsed = signal(true);
+
 
   // Stats
   storageStats$ = this.mediaService.getStorageStats();
 
   constructor() {
     // Initial Load
+    console.log('MediaLibraryComponent initialized - Sidebar Refactor Active');
     // We subscribe to filter changes to reset and reload
     this.filter$.pipe(
       debounceTime(300),
@@ -132,11 +135,157 @@ export class MediaLibraryComponent implements OnInit {
   }
 
   async createFolder() {
-    const name = prompt('Folder Name:');
+    const name = prompt(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.FOLDER_NAME_PROMPT'));
     if (name) {
       await this.mediaService.createFolder(name, this.currentFolderId(), this.getCurrentPath());
       // Refresh tree? The tree component handles its own loading. 
       // We might need a signal to trigger refresh if we want it instant.
+    }
+  }
+
+  // ...
+
+  copyUrl(url: string) {
+    navigator.clipboard.writeText(url);
+    this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.LINK_COPIED'));
+  }
+
+  // ...
+
+  async applyBulkTags() {
+    if (!this.bulkTags.trim()) return;
+    const ids = Array.from(this.selectedAssets());
+    const tags = this.bulkTags.split(',').map(t => t.trim()).filter(Boolean);
+
+    if (confirm(`Update tags for ${ids.length} assets?`)) { // Keep dynamic for now or use complex param
+      await this.mediaService.bulkUpdateMetadata(ids, { tags });
+      this.selectedAssets.set(new Set());
+      this.isBulkMode.set(false);
+      this.bulkTags = '';
+      this.updateFilter(); // Refresh
+      this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.UPDATE_SUCCESS'));
+    }
+  }
+
+  async deleteSelected() {
+    const ids = Array.from(this.selectedAssets());
+    if (confirm(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.DELETE_BULK_CONFIRM', { count: ids.length }))) {
+      this.isLoading.set(true);
+      try {
+        const assetsToDelete = this.assets().filter(a => ids.includes(a.id!));
+
+        // Sequential delete to avoid overwhelming (or use Promise.all for speed if safe)
+        // Promise.all is better for UX here
+        await Promise.all(assetsToDelete.map(asset => this.mediaService.deleteAsset(asset)));
+
+        this.selectedAssets.set(new Set());
+        this.isBulkMode.set(false);
+        this.updateFilter(); // Reload
+        this.toast.success(`Deleted ${ids.length} assets`); // Keep simple or translate
+      } catch (e) {
+        console.error('Bulk delete failed', e);
+        this.toast.error('Some assets failed to delete');
+      } finally {
+        this.isLoading.set(false);
+      }
+    }
+  }
+
+  // ...
+
+  async onBulkEditComplete(changes: { tags?: string[], category?: string }) {
+    this.isBulkEditOpen.set(false);
+    if (!changes.tags && !changes.category) return;
+
+    const ids = Array.from(this.selectedAssets());
+    this.isLoading.set(true);
+    try {
+      await this.mediaService.bulkUpdateMetadata(ids, changes);
+      this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.UPDATE_SUCCESS'));
+      this.selectedAssets.set(new Set());
+      this.isBulkMode.set(false);
+      this.loadAssets(true);
+    } catch (e) {
+      console.error('Bulk edit failed', e);
+      this.toast.error('Failed to update assets');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  deleteAsset(asset: MediaAsset) {
+    if (confirm(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.DELETE_CONFIRM'))) {
+      this.mediaService.deleteAsset(asset).then(() => {
+        this.updateFilter();
+      });
+    }
+  }
+
+  // ...
+
+  launchImageEditor(asset: MediaAsset) {
+    if (asset.contentType.startsWith('image/') || asset.contentType === 'image/svg+xml') {
+      this.editingImage.set(asset);
+    } else {
+      this.toast.warning(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.ONLY_IMAGES_EDIT'));
+    }
+  }
+
+  // ...
+
+  onFolderDrop(event: { folder: MediaFolder, assetIds: string[] }) {
+    if (!event.folder.id) return;
+
+    this.mediaService.moveAssets(event.assetIds, event.folder.id).then(() => {
+      this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.MOVED_SUCCESS', { count: event.assetIds.length, folder: event.folder.name }));
+      this.loadAssets(); // Refresh grid
+      this.selectedAssets.set(new Set()); // Clear selection
+      this.draggedAssets.set([]); // Clear dragged state
+    });
+  }
+
+  // ...
+
+  async duplicateAsset(asset: MediaAsset) {
+    this.isLoading.set(true);
+    try {
+      await this.mediaService.duplicateAsset(asset.id!);
+      // Refresh list
+      // We could also just push to local state but full reload is safer for consistency
+      this.loadAssets(true);
+      this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.DUPLICATE_SUCCESS'));
+    } catch (e) {
+      console.error('Duplicate failed', e);
+      this.toast.error('Failed to duplicate asset');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  async recalculateStats() {
+    if (confirm(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.RECALCULATE_CONFIRM'))) {
+      try {
+        await this.mediaService.recalculateStorageStats();
+        this.toast.success('Storage stats updated');
+      } catch (e) {
+        this.toast.error('Failed to update stats');
+      }
+    }
+  }
+
+  async scanStorage() {
+    if (confirm(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.SYNC_START'))) {
+      this.isLoading.set(true);
+      try {
+        const stats = await this.mediaService.syncStorageToFirestore();
+        this.toast.success(this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.SYNC_SUCCESS', { scanned: stats.scanned, recovered: stats.recovered, errors: stats.errors }));
+        this.loadAssets(true);
+      } catch (e) {
+        console.error(e);
+        this.toast.error('Sync failed');
+      } finally {
+        this.isLoading.set(false);
+      }
     }
   }
 
@@ -240,10 +389,7 @@ export class MediaLibraryComponent implements OnInit {
     this.isUploadOpen.update(v => !v);
   }
 
-  copyUrl(url: string) {
-    navigator.clipboard.writeText(url);
-    this.toast.success('Link copied to clipboard');
-  }
+
 
   // Selection State
   selectedAssets = signal<Set<string>>(new Set());
@@ -255,21 +401,7 @@ export class MediaLibraryComponent implements OnInit {
     this.updateFilter();
   }
 
-  async duplicateAsset(asset: MediaAsset) {
-    this.isLoading.set(true);
-    try {
-      await this.mediaService.duplicateAsset(asset.id!);
-      // Refresh list
-      // We could also just push to local state but full reload is safer for consistency
-      this.loadAssets(true);
-      this.toast.success('Asset duplicated');
-    } catch (e) {
-      console.error('Duplicate failed', e);
-      this.toast.error('Failed to duplicate asset');
-    } finally {
-      this.isLoading.set(false);
-    }
-  }
+
 
   // Helpers
   toggleSelection(asset: MediaAsset) {
@@ -299,75 +431,17 @@ export class MediaLibraryComponent implements OnInit {
     this.launchMoveDialog(assets);
   }
 
-  async applyBulkTags() {
-    if (!this.bulkTags.trim()) return;
-    const ids = Array.from(this.selectedAssets());
-    const tags = this.bulkTags.split(',').map(t => t.trim()).filter(Boolean);
 
-    if (confirm(`Update tags for ${ids.length} assets?`)) {
-      await this.mediaService.bulkUpdateMetadata(ids, { tags });
-      this.selectedAssets.set(new Set());
-      this.isBulkMode.set(false);
-      this.bulkTags = '';
-      this.updateFilter(); // Refresh
-    }
-  }
 
-  async deleteSelected() {
-    const ids = Array.from(this.selectedAssets());
-    if (confirm(`Delete ${ids.length} assets? This cannot be undone.`)) {
-      this.isLoading.set(true);
-      try {
-        const assetsToDelete = this.assets().filter(a => ids.includes(a.id!));
 
-        // Sequential delete to avoid overwhelming (or use Promise.all for speed if safe)
-        // Promise.all is better for UX here
-        await Promise.all(assetsToDelete.map(asset => this.mediaService.deleteAsset(asset)));
-
-        this.selectedAssets.set(new Set());
-        this.isBulkMode.set(false);
-        this.updateFilter(); // Reload
-        this.toast.success(`Deleted ${ids.length} assets`);
-      } catch (e) {
-        console.error('Bulk delete failed', e);
-        this.toast.error('Some assets failed to delete');
-      } finally {
-        this.isLoading.set(false);
-      }
-    }
-  }
 
   launchBulkEdit() {
     this.isBulkEditOpen.set(true);
   }
 
-  async onBulkEditComplete(changes: { tags?: string[], category?: string }) {
-    this.isBulkEditOpen.set(false);
-    if (!changes.tags && !changes.category) return;
 
-    const ids = Array.from(this.selectedAssets());
-    this.isLoading.set(true);
-    try {
-      await this.mediaService.bulkUpdateMetadata(ids, changes);
-      this.toast.success(`Updated ${ids.length} assets`);
-      this.selectedAssets.set(new Set());
-      this.isBulkMode.set(false);
-      this.loadAssets(true);
-    } catch (e) {
-      console.error('Bulk edit failed', e);
-      this.toast.error('Failed to update assets');
-    } finally {
-      this.isLoading.set(false);
-    }
-  }
 
-  deleteAsset(asset: MediaAsset) {
-    if (confirm('Are you sure you want to delete this asset?')) {
-      this.mediaService.deleteAsset(asset).then(() => {
-        this.updateFilter();
-      });
-    }
-  }
+
 
   editAsset(asset: MediaAsset) {
     this.editingAsset.set(asset);
@@ -499,17 +573,7 @@ export class MediaLibraryComponent implements OnInit {
     this.draggedAssets.set([]);
   }
 
-  // Handle drop from FolderTree
-  onFolderDrop(event: { folder: MediaFolder, assetIds: string[] }) {
-    if (!event.folder.id) return;
 
-    this.mediaService.moveAssets(event.assetIds, event.folder.id).then(() => {
-      this.toast.success(`Moved ${event.assetIds.length} items to ${event.folder.name}`);
-      this.loadAssets(); // Refresh grid
-      this.selectedAssets.set(new Set()); // Clear selection
-      this.draggedAssets.set([]); // Clear dragged state
-    });
-  }
 
 
   shareAsset(asset: MediaAsset) {
@@ -520,18 +584,10 @@ export class MediaLibraryComponent implements OnInit {
     this.sharingAsset.set(null);
     // If it's a string, we might just reload or ignore updating the local list if we don't have the full object
     if (typeof linkOrString !== 'string') {
-      this.sharedLinks.update(links => [linkOrString, ...links]);
+      this.sharedLinks.update((links: SharedLink[]) => [linkOrString, ...links]);
     }
     // Show stats?
     // this.viewingStats.set(link);
-  }
-
-  launchImageEditor(asset: MediaAsset) {
-    if (asset.contentType.startsWith('image/') || asset.contentType === 'image/svg+xml') {
-      this.editingImage.set(asset);
-    } else {
-      this.toast.warning('Only images can be edited');
-    }
   }
 
   onImageEditComplete(saved: boolean) {
@@ -571,33 +627,6 @@ export class MediaLibraryComponent implements OnInit {
 
   getFileExtension(asset: MediaAsset): string {
     return asset.filename.split('.').pop()?.toUpperCase() || 'FILE';
-  }
-
-  async recalculateStats() {
-    if (confirm('Recalculate Storage Stats? This scans all assets.')) {
-      try {
-        await this.mediaService.recalculateStorageStats();
-        this.toast.success('Storage stats updated');
-      } catch (e) {
-        this.toast.error('Failed to update stats');
-      }
-    }
-  }
-
-  async scanStorage() {
-    if (confirm('Scan Firebase Storage for missing files? This may take a while.')) {
-      this.isLoading.set(true);
-      try {
-        const stats = await this.mediaService.syncStorageToFirestore();
-        this.toast.success(`Sync Complete: Scanned ${stats.scanned}, Recovered ${stats.recovered}, Errors ${stats.errors}`);
-        this.loadAssets(true);
-      } catch (e) {
-        console.error(e);
-        this.toast.error('Sync failed');
-      } finally {
-        this.isLoading.set(false);
-      }
-    }
   }
 
   formatDate(date: any): Date | null {

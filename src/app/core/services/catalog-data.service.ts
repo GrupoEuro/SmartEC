@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { combineLatest, Observable, of } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { map, catchError, shareReplay } from 'rxjs/operators';
 import { BrandService } from './brand.service';
 import { CategoryService } from './category.service';
@@ -30,14 +31,22 @@ export class CatalogDataService {
     private productTypeService = inject(ProductTypeConfigService);
     private languageService = inject(LanguageService);
 
+
+
+    private lang$ = toObservable(this.languageService.currentLang);
+
     getUnifiedCatalog(): Observable<VisualizerNode[]> {
         return combineLatest([
             this.brandService.getBrands(),
             this.categoryService.getCategories(),
             this.productService.getProducts(),
-            this.productTypeService.templates$
+            this.productTypeService.templates$,
+            this.lang$
         ]).pipe(
-            map(([brands, categories, products, productTypes]) => {
+            map(([brands, categories, products, productTypes, lang]) => {
+                // Ensure lang is typed correctly if needed, or just usage in buildTree
+                // Since buildTree fetches lang from service, strictly we just need the trigger.
+                // But it's better to pass it.
                 return this.buildTree(brands, categories, products, productTypes);
             }),
             catchError(err => {
@@ -69,7 +78,8 @@ export class CatalogDataService {
 
             return {
                 id: `type-${typeDef.id}`,
-                name: typeDef.name[currentLang] || typeDef.name['en'],
+                // Use translation key for product type name if available, otherwise fallback to object
+                name: (typeDef.name as any)[currentLang] || typeDef.name['en'],
                 type: 'type',
                 iconName: 'layers', // Lucide icon
                 count: typeProducts.length,
@@ -88,7 +98,7 @@ export class CatalogDataService {
         if (ghostBrands.length > 0) {
             anomalyNodes.push({
                 id: 'ghost-brands',
-                name: 'Unused Brands',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.UNUSED_BRANDS',
                 type: 'brand',
                 iconName: 'ghost',
                 count: ghostBrands.length,
@@ -111,7 +121,7 @@ export class CatalogDataService {
         if (ghostCategories.length > 0) {
             anomalyNodes.push({
                 id: 'ghost-categories',
-                name: 'Unused Categories',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.UNUSED_CATEGORIES',
                 type: 'category',
                 iconName: 'folder-minus',
                 count: ghostCategories.length,
@@ -134,7 +144,7 @@ export class CatalogDataService {
         if (trueOrphans.length > 0) {
             anomalyNodes.push({
                 id: 'orphan-products',
-                name: 'Unknown Product Type',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.UNKNOWN_TYPE',
                 type: 'product',
                 iconName: 'file-warning',
                 count: trueOrphans.length,
@@ -149,7 +159,7 @@ export class CatalogDataService {
         if (noBrandProducts.length > 0) {
             anomalyNodes.push({
                 id: 'issue-no-brand',
-                name: 'Products without Brand',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.NO_BRAND',
                 type: 'product',
                 iconName: 'tag',
                 count: noBrandProducts.length,
@@ -163,7 +173,7 @@ export class CatalogDataService {
         if (noCategoryProducts.length > 0) {
             anomalyNodes.push({
                 id: 'issue-no-cat',
-                name: 'Products without Category',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.NO_CATEGORY',
                 type: 'product',
                 iconName: 'folder-minus',
                 count: noCategoryProducts.length,
@@ -176,7 +186,7 @@ export class CatalogDataService {
         if (anomalyNodes.length > 0) {
             typeNodes.push({
                 id: 'anomalies-root',
-                name: 'System Anomalies',
+                name: 'ADMIN.CATALOG_OVERVIEW.NODES.SYSTEM_ANOMALIES',
                 type: 'root',
                 iconName: 'alert-triangle',
                 count: ghostBrands.length + ghostCategories.length + trueOrphans.length + noBrandProducts.length + noCategoryProducts.length,
@@ -211,7 +221,7 @@ export class CatalogDataService {
             if (orphans.length > 0) {
                 catNodes.push({
                     id: `orphan-${brandName}`,
-                    name: 'Uncategorized',
+                    name: 'ADMIN.CATALOG_OVERVIEW.NODES.UNCATEGORIZED',
                     type: 'category',
                     iconName: 'alert-circle',
                     count: orphans.length,

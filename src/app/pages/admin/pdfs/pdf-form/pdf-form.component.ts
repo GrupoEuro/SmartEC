@@ -15,7 +15,7 @@ import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.
     standalone: true,
     imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
     templateUrl: './pdf-form.component.html',
-    styleUrl: './pdf-form.component.css'
+    styleUrls: ['./pdf-form.component.css', '../../shared/admin-forms.css']
 })
 export class PdfFormComponent implements OnInit {
     fb = inject(FormBuilder);

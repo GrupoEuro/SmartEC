@@ -3,8 +3,8 @@
     <header class="command-header">
         <div class="header-left">
             <div class="header-title-group">
-                <h1>{{ 'ADMIN.DASHBOARD.WELCOME' | translate }}</h1>
-                <div class="breadcrumbs">Overview / System Status</div>
+                <h1>{{ 'COMMAND_CENTER.TITLE' | translate }}</h1>
+                <div class="breadcrumbs">{{ 'COMMAND_CENTER.BREADCRUMB' | translate }}</div>
             </div>
         </div>
         <div class="header-right">
@@ -20,7 +20,7 @@
         @if (isLoading) {
         <div class="glass-loader">
             <div class="spinner"></div>
-            <p>Initializing Dashboard...</p>
+            <p>{{ 'COMMAND_CENTER.LOADING' | translate }}</p>
         </div>
         } @else {
 
@@ -33,37 +33,37 @@
                 <div class="hero-stats-row">
                     <!-- Users -->
                     <div class="stat-card-hero">
-                        <div class="stat-label">Total Users</div>
+                        <div class="stat-label">{{ 'COMMAND_CENTER.KPI.CUSTOMERS' | translate }}</div>
                         <div class="stat-value-large">{{ stats.users }}</div>
                         <div class="stat-trend positive">
-                            <span>↗</span> 12% vs last month
+                            <span>↗</span> {{ 'COMMAND_CENTER.TRENDS.VS_LAST_MONTH' | translate }}
                         </div>
                     </div>
 
                     <!-- Products -->
                     <div class="stat-card-hero">
-                        <div class="stat-label">Products</div>
+                        <div class="stat-label">{{ 'COMMAND_CENTER.KPI.PRODUCTS' | translate }}</div>
                         <div class="stat-value-large">{{ stats.products }}</div>
                         <div class="stat-trend neutral">
-                            <span>•</span> {{ stats.productsActive }} Active
+                            <span>•</span> {{ stats.productsActive }} {{ 'COMMAND_CENTER.STATUS.ACTIVE' | translate }}
                         </div>
                     </div>
 
-                    <!-- Orders/Leads -->
+                    <!-- Distributors -->
                     <div class="stat-card-hero">
-                        <div class="stat-label">Distributors</div>
+                        <div class="stat-label">{{ 'COMMAND_CENTER.KPI.DISTRIBUTORS' | translate }}</div>
                         <div class="stat-value-large">{{ stats.distributors }}</div>
                         <div class="stat-trend positive">
-                            <span>+2</span> this week
+                            <span>+2</span> {{ 'COMMAND_CENTER.TRENDS.THIS_WEEK' | translate }}
                         </div>
                     </div>
 
                     <!-- Total Orders (Site Pulse) -->
                     <div class="stat-card-hero">
-                        <div class="stat-label">Total Orders</div>
+                        <div class="stat-label">{{ 'COMMAND_CENTER.KPI.ORDERS' | translate }}</div>
                         <div class="stat-value-large">{{ stats.orders }}</div>
                         <div class="stat-trend positive">
-                            <span>❤️</span> Site Pulse
+                            <span>❤️</span> {{ 'COMMAND_CENTER.KPI.SITE_PULSE' | translate }}
                         </div>
                     </div>
                 </div>
@@ -89,8 +89,8 @@
                             </svg>
                         </div>
                         <div class="cmd-content">
-                            <h3>Product Catalog</h3>
-                            <p>Manage inventory, prices, and stock levels.</p>
+                            <h3>{{ 'ADMIN.SIDEBAR.SECTION_CATALOG' | translate }}</h3>
+                            <p>{{ 'COMMAND_CENTER.DESCRIPTIONS.CATALOG' | translate }}</p>
                         </div>
                     </a>
 
@@ -112,8 +112,8 @@
                             </svg>
                         </div>
                         <div class="cmd-content">
-                            <h3>Blog Posts</h3>
-                            <p>Publish news & updates.</p>
+                            <h3>{{ 'ADMIN.SIDEBAR.BLOG' | translate }}</h3>
+                            <p>{{ 'COMMAND_CENTER.DESCRIPTIONS.BLOG' | translate }}</p>
                         </div>
                     </a>
 
@@ -135,8 +135,8 @@
                             </svg>
                         </div>
                         <div class="cmd-content">
-                            <h3>Banners</h3>
-                            <p>Update homepage sliders.</p>
+                            <h3>{{ 'COMMAND_CENTER.LABELS.BANNERS' | translate }}</h3>
+                            <p>{{ 'COMMAND_CENTER.DESCRIPTIONS.BANNERS' | translate }}</p>
                         </div>
                     </a>
 
@@ -158,8 +158,8 @@
                             </svg>
                         </div>
                         <div class="cmd-content">
-                            <h3>Users</h3>
-                            <p>Manage customer accounts.</p>
+                            <h3>{{ 'ADMIN.SIDEBAR.USERS' | translate }}</h3>
+                            <p>{{ 'COMMAND_CENTER.DESCRIPTIONS.USERS' | translate }}</p>
                         </div>
                     </a>
 
@@ -181,8 +181,8 @@
                             </svg>
                         </div>
                         <div class="cmd-content">
-                            <h3>Media Library</h3>
-                            <p>Manage uploaded assets.</p>
+                            <h3>{{ 'ADMIN.SIDEBAR.MEDIA_LIBRARY' | translate }}</h3>
+                            <p>{{ 'COMMAND_CENTER.DESCRIPTIONS.MEDIA' | translate }}</p>
                         </div>
                     </a>
                 </div>
@@ -193,28 +193,34 @@
                     <!-- Col 1: Inventory Health -->
                     <div class="panel-card"
                         [ngClass]="{'glow-warning': stats.productsLowStock > 0 || stats.productsOutStock > 0}">
-                        <div class="panel-title">Inventory Health</div>
+                        <div class="panel-title">{{ 'COMMAND_CENTER.PANELS.INVENTORY_HEALTH' | translate }}</div>
                         <div class="status-list">
                             <div class="status-item warning" *ngIf="stats.productsLowStock > 0">
                                 <div class="status-dot"></div>
                                 <div class="status-info">
-                                    <span class="status-label">Low Stock</span>
-                                    <span class="status-count">{{ stats.productsLowStock }} items</span>
+                                    <span class="status-label">{{ 'COMMAND_CENTER.STATUS.LOW_STOCK' | translate
+                                        }}</span>
+                                    <span class="status-count">{{ stats.productsLowStock }} {{
+                                        'COMMAND_CENTER.LABELS.ITEMS' | translate }}</span>
                                 </div>
                             </div>
                             <div class="status-item critical" *ngIf="stats.productsOutStock > 0">
                                 <div class="status-dot"></div>
                                 <div class="status-info">
-                                    <span class="status-label">Out of Stock</span>
-                                    <span class="status-count">{{ stats.productsOutStock }} items</span>
+                                    <span class="status-label">{{ 'COMMAND_CENTER.STATUS.OUT_OF_STOCK' | translate
+                                        }}</span>
+                                    <span class="status-count">{{ stats.productsOutStock }} {{
+                                        'COMMAND_CENTER.LABELS.ITEMS' | translate }}</span>
                                 </div>
                             </div>
                             <div class="status-item good"
                                 *ngIf="stats.productsLowStock === 0 && stats.productsOutStock === 0">
                                 <div class="status-dot"></div>
                                 <div class="status-info">
-                                    <span class="status-label">Stock Status</span>
-                                    <span class="status-count">In Good Standing</span>
+                                    <span class="status-label">{{ 'COMMAND_CENTER.STATUS.STOCK_STATUS' | translate
+                                        }}</span>
+                                    <span class="status-count">{{ 'COMMAND_CENTER.STATUS.GOOD_STANDING' | translate
+                                        }}</span>
                                 </div>
                             </div>
                         </div>
@@ -222,7 +228,7 @@
 
                     <!-- Col 2: Quick Actions -->
                     <div class="panel-card actions">
-                        <div class="panel-title">Quick Actions</div>
+                        <div class="panel-title">{{ 'COMMAND_CENTER.PANELS.QUICK_ACTIONS' | translate }}</div>
                         <div class="action-list">
                             <a routerLink="/admin/products/new" class="action-item">
                                 <span class="action-icon-sm">
@@ -232,7 +238,7 @@
                                             d="M12 4.5v15m7.5-7.5h-15" />
                                     </svg>
                                 </span>
-                                <span>Add Product</span>
+                                <span>{{ 'COMMAND_CENTER.ACTIONS.ADD_PRODUCT' | translate }}</span>
                                 <span class="kbd-shortcut">N</span>
                             </a>
                             <a routerLink="/admin/blog/new" class="action-item">
@@ -243,7 +249,7 @@
                                             d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                     </svg>
                                 </span>
-                                <span>Write Post</span>
+                                <span>{{ 'COMMAND_CENTER.ACTIONS.WRITE_POST' | translate }}</span>
                             </a>
                             <a routerLink="/admin/banners/new" class="action-item">
                                 <span class="action-icon-sm">
@@ -253,27 +259,31 @@
                                             d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                                     </svg>
                                 </span>
-                                <span>New Banner</span>
+                                <span>{{ 'COMMAND_CENTER.ACTIONS.NEW_BANNER' | translate }}</span>
                             </a>
                         </div>
                     </div>
 
                     <!-- Col 3: Pending Tasks (NEW) -->
                     <div class="panel-card" [ngClass]="{'glow-warning': stats.pendingOrders > 0}">
-                        <div class="panel-title">Pending Tasks</div>
+                        <div class="panel-title">{{ 'COMMAND_CENTER.PANELS.PENDING_TASKS' | translate }}</div>
                         <div class="status-list">
                             <div class="status-item warning" *ngIf="stats.pendingOrders > 0">
                                 <div class="status-dot"></div>
                                 <div class="status-info">
-                                    <span class="status-label">Pending Orders</span>
-                                    <span class="status-count">{{ stats.pendingOrders }} orders to ship</span>
+                                    <span class="status-label">{{ 'COMMAND_CENTER.LABELS.PENDING_ORDERS' | translate
+                                        }}</span>
+                                    <span class="status-count">{{ stats.pendingOrders }} {{
+                                        'COMMAND_CENTER.LABELS.ORDERS_TO_SHIP' | translate }}</span>
                                 </div>
                             </div>
                             <div class="status-item good" *ngIf="stats.pendingOrders === 0">
                                 <div class="status-dot"></div>
                                 <div class="status-info">
-                                    <span class="status-label">Orders Queue</span>
-                                    <span class="status-count">All Caught Up!</span>
+                                    <span class="status-label">{{ 'COMMAND_CENTER.LABELS.ORDERS_QUEUE' | translate
+                                        }}</span>
+                                    <span class="status-count">{{ 'COMMAND_CENTER.MESSAGES.ALL_CAUGHT_UP' | translate
+                                        }}</span>
                                 </div>
                             </div>
                         </div>
@@ -288,11 +298,11 @@
 
                 <!-- 1. Recent Activity (Oversight Stream) -->
                 <div class="panel-card activity-monitor">
-                    <div class="panel-title">Recent Activity</div>
+                    <div class="panel-title">{{ 'COMMAND_CENTER.PANELS.RECENT_ACTIVITY' | translate }}</div>
 
                     @if (activities.length === 0) {
                     <div class="empty-state">
-                        <p>No recent activity found.</p>
+                        <p>{{ 'COMMAND_CENTER.MESSAGES.NO_ACTIVITY' | translate }}</p>
                     </div>
                     } @else {
                     <ul class="activity-feed">

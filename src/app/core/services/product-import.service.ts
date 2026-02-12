@@ -265,8 +265,14 @@ export class ProductImportService {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    // Try to find 'Products' sheet, otherwise fallback to first sheet
+                    let sheetName = 'Products';
+                    if (!workbook.SheetNames.includes(sheetName)) {
+                        sheetName = workbook.SheetNames[0];
+                    }
+
+                    const worksheet = workbook.Sheets[sheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
                     resolve(json);
                 } catch (err) {
@@ -287,17 +293,28 @@ export class ProductImportService {
             if (cat) categoryId = cat.id;
         }
 
+        const nameEn = row['Name En'] || row['Name'] || existingProduct?.name.en || '';
+        const nameEs = row['Name Es'] || existingProduct?.name.es || row['Name En'] || '';
+        const brand = row.Brand || existingProduct?.brand || 'Generic';
+
+        // Generate Slug if missing
+        let slug = existingProduct?.slug || '';
+        if (!slug && (nameEn || nameEs)) {
+            slug = this.generateSlug(nameEn || nameEs, brand);
+        }
+
         // Map fields
         const product: Partial<Product> = {
             sku: row.SKU.toString(),
             name: {
-                en: row['Name En'] || row['Name'] || existingProduct?.name.en || '',
-                es: row['Name Es'] || existingProduct?.name.es || row['Name En'] || ''
+                en: nameEn,
+                es: nameEs
             },
+            slug: slug,
             price: Number(row.Price),
             stockQuantity: Number(row.Stock),
             inStock: Number(row.Stock) > 0,
-            brand: row.Brand || existingProduct?.brand || 'Generic',
+            brand: brand,
             categoryId: categoryId,
             description: {
                 en: row['Description En'] || existingProduct?.description.en || '',
@@ -323,5 +340,18 @@ export class ProductImportService {
         }
 
         return product;
+    }
+
+    /**
+     * Generate SEO-friendly slug
+     */
+    private generateSlug(name: string, brand: string): string {
+        const text = `${brand} ${name}`;
+        return text
+            .toLowerCase()
+            .normalize('NFD') // Split accented characters
+            .replace(/[\u0300-\u036f]/g, '') // Remove accents
+            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+            .replace(/^-+|-+$/g, ''); // Trim leading/trailing hyphens
     }
 }

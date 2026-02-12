@@ -119,14 +119,686 @@
         "OPERATIONS": {
             "TITLE": "Operations Hub",
             "DESC": "Inventory management, pricing strategies, and logistics."
+        },
+        "ADMIN_PANEL_CARD": {
+            "TITLE": "Admin Panel",
+            "DESC": "User management, security settings, and system configuration."
+        },
+        "HELP": {
+            "TITLE": "Help & Support",
+            "DESC": "Resources, guides, and system documentation."
+        },
+        "DEV_TOOLS": {
+            "TITLE": "Developer Tools",
+            "DESC": "Technical utilities and debugging."
+        }
+    },
+    "COMMAND_CENTER": {
+        "TITLE": "Command Center",
+        "BREADCRUMB": "Overview / System Status",
+        "LOADING": "Initializing Dashboard...",
+        "DASHBOARD": "Executive Dashboard",
+        "DASHBOARD_SUBTITLE": "Real-time business intelligence and analytics",
+        "KPI": {
+            "REVENUE": "Revenue",
+            "ORDERS": "Total Orders",
+            "CUSTOMERS": "Total Users",
+            "PRODUCTS": "Products",
+            "DISTRIBUTORS": "Distributors",
+            "SITE_PULSE": "Site Pulse",
+            "AOV": "Average Order Value",
+            "CONVERSION": "Conversion Rate",
+            "SLA": "SLA Compliance",
+            "INVENTORY_VALUE": "Inventory Value",
+            "MARGIN": "Gross Margin",
+            "DATE": "Date",
+            "STATUS": "Status",
+            "COUNT": "Count",
+            "PRODUCT": "Product",
+            "SEGMENT": "Segment"
+        },
+        "TRENDS": {
+            "VS_LAST_MONTH": "vs last month",
+            "THIS_WEEK": "this week"
+        },
+        "STATUS": {
+            "ACTIVE": "Active",
+            "LOW_STOCK": "Low Stock",
+            "OUT_OF_STOCK": "Out of Stock",
+            "STOCK_STATUS": "Stock Status",
+            "GOOD_STANDING": "In Good Standing"
+        },
+        "LABELS": {
+            "BANNERS": "Banners",
+            "ITEMS": "items",
+            "PENDING_ORDERS": "Pending Orders",
+            "ORDERS_TO_SHIP": "orders to ship",
+            "ORDERS_QUEUE": "Orders Queue",
+            "TOTAL": "Total",
+            "NEW": "New",
+            "NEW_CUSTOMERS": "New Customers",
+            "RETURNING": "Returning",
+            "RETURNING_CUSTOMERS": "Returning Customers",
+            "NO_DATA": "No data available",
+            "LOADING": "Loading metrics...",
+            "LOADING_SYSTEM": "System loading...",
+            "LOADING_DATA_FOR": "Loading data for"
+        },
+        "DESCRIPTIONS": {
+            "CATALOG": "Manage inventory, prices, and stock levels.",
+            "BLOG": "Publish news & updates.",
+            "BANNERS": "Update homepage sliders.",
+            "USERS": "Manage customer accounts.",
+            "MEDIA": "Manage uploaded assets."
+        },
+        "PANELS": {
+            "INVENTORY_HEALTH": "Inventory Health",
+            "QUICK_ACTIONS": "Quick Actions",
+            "PENDING_TASKS": "Pending Tasks",
+            "RECENT_ACTIVITY": "Recent Activity"
+        },
+        "ACTIONS": {
+            "ADD_PRODUCT": "Add Product",
+            "WRITE_POST": "Write Post",
+            "NEW_BANNER": "New Banner",
+            "REFRESH": "Refresh",
+            "EXPORT": "Export CSV",
+            "VIEW_DATA": "View Data",
+            "HIDE_DATA": "Hide Data"
+        },
+        "MESSAGES": {
+            "ALL_CAUGHT_UP": "All Caught Up!",
+            "NO_ACTIVITY": "No recent activity found."
+        },
+        "CHARTS": {
+            "REVENUE_TREND": "Revenue Trend",
+            "LAST_7_DAYS": "Last 7 days",
+            "LAST_30_DAYS": "Last 30 Days",
+            "ORDER_DISTRIBUTION": "Order Distribution",
+            "TOP_PRODUCTS": "Top Products",
+            "TOP_3_BY_REVENUE": "Top 3 by Revenue",
+            "CUSTOMER_COMPOSITION": "Customer Composition"
+        },
+        "MISSION_CONTROL": {
+            "TITLE": "Mission Control",
+            "SUBTITLE": "Strategic Orchestration & Omnichannel Intelligence"
+        },
+        "CHANNELS": {
+            "ALL": "All",
+            "WEB": "Web Store",
+            "POS": "Point of Sale",
+            "AMAZON_MFN": "Amazon MFN",
+            "AMAZON_FBA": "Amazon FBA",
+            "MELI_CLASSIC": "MercadoLibre (Classic)",
+            "MELI_FULL": "MercadoLibre Full",
+            "ON_BEHALF": "On Behalf (B2B)"
+        },
+        "APPROVALS": {
+            "TITLE": "Approvals",
+            "PENDING": "Pending",
+            "APPROVED": "Approved",
+            "REJECTED": "Rejected",
+            "CANCELLED": "Cancelled",
+            "ALL": "All",
+            "TYPES": {
+                "COUPON_CREATION": "Coupon Creation",
+                "PROMOTION_CREATION": "Promotion Creation",
+                "PRICE_CHANGE": "Price Change",
+                "BULK_DISCOUNT": "Bulk Discount",
+                "FLASH_SALE": "Flash Sale"
+            },
+            "PRIORITY": {
+                "LOW": "Low",
+                "NORMAL": "Normal",
+                "HIGH": "High",
+                "URGENT": "Urgent"
+            },
+            "ACTIONS": {
+                "APPROVE": "Approve",
+                "REJECT": "Reject",
+                "CANCEL": "Cancel",
+                "VIEW_DETAILS": "View Details"
+            },
+            "REQUESTED_BY": "Requested by",
+            "REQUESTED_AT": "Requested",
+            "REVIEWED_BY": "Reviewed by",
+            "REVIEWED_AT": "Reviewed",
+            "REJECTION_REASON": "Rejection Reason",
+            "NOTES": "Notes",
+            "NO_PENDING": "No pending approvals",
+            "APPROVE_CONFIRM": "Approve this request?",
+            "REJECT_CONFIRM": "Reject this request?",
+            "CANCEL_CONFIRM": "Cancel this request?",
+            "AUTO_APPROVED": "Auto-approved",
+            "EXPIRES_IN": "Expires in",
+            "BACK": "Back",
+            "REQUEST_DETAILS": "Request Details",
+            "REVIEW_DETAILS": "Review Details",
+            "TIMELINE": "Timeline",
+            "REQUESTER_INFO": "Requester Information",
+            "NAME": "Name",
+            "EMAIL": "Email",
+            "ROLE": "Role",
+            "REQUEST_CREATED": "Request Created",
+            "REQUEST_APPROVED": "Request Approved",
+            "REQUEST_REJECTED": "Request Rejected",
+            "APPROVE_REQUEST": "Approve Request",
+            "REJECT_REQUEST": "Reject Request",
+            "APPROVE_CONFIRM_MESSAGE": "Are you sure you want to approve this request? This action cannot be undone.",
+            "REJECT_CONFIRM_MESSAGE": "Please provide a reason for rejecting this request.",
+            "REVIEWER_NOTES": "Reviewer Notes",
+            "NOTES_PLACEHOLDER": "Add any notes about this approval...",
+            "REJECTION_PLACEHOLDER": "Explain why this request is being rejected...",
+            "COUPON_CODE": "Coupon Code",
+            "DISCOUNT_TYPE": "Discount Type",
+            "DISCOUNT_VALUE": "Discount Value",
+            "MIN_PURCHASE": "Minimum Purchase",
+            "USAGE_LIMIT": "Usage Limit",
+            "PRODUCT": "Product",
+            "CURRENT_PRICE": "Current Price",
+            "NEW_PRICE": "New Price",
+            "CHANGE_PERCENT": "Change Percentage",
+            "REASON": "Reason",
+            "STATS_SUBTITLE": "Approval workflow metrics",
+            "VIEW_ALL": "View All",
+            "AVG_APPROVAL_TIME": "Average Approval Time"
+        },
+        "FINANCIALS": {
+            "TITLE": "Financials",
+            "SUBTITLE": "Financial Intelligence and Profitability Analysis",
+            "PREVIOUS_PERIOD": "previous period",
+            "TOP_PERFORMERS": "Top Performing Products",
+            "KPI": {
+                "REVENUE": "Revenue",
+                "PROFIT": "Gross Profit",
+                "MARGIN": "Gross Margin",
+                "AOV": "Average Order Value"
+            },
+            "CHARTS": {
+                "REVENUE_TREND": "Revenue Trend",
+                "MARGIN_TREND": "Margin Trend",
+                "TOP_PRODUCTS": "Top Products by Profit",
+                "CATEGORY_PERFORMANCE": "Category Performance",
+                "PRODUCT_STRATEGY": "Product Strategy Matrix"
+            },
+            "MATRIX": {
+                "AXIS_X": "Relative Market Share",
+                "AXIS_Y": "Market Growth Rate",
+                "STARS": "Stars",
+                "STARS_DESC": "High Growth, High Share",
+                "STARS_ACTION": "Invest to maintain growth.",
+                "COWS": "Cash Cows",
+                "COWS_DESC": "Low Growth, High Share",
+                "COWS_ACTION": "Milk to fund other segments.",
+                "QUESTIONS": "Question Marks",
+                "QUESTIONS_DESC": "High Growth, Low Share",
+                "QUESTIONS_ACTION": "Decide to upgrade or divest.",
+                "DOGS": "Dogs",
+                "DOGS_DESC": "Low Growth, Low Share",
+                "DOGS_ACTION": "Liquidate or reposition."
+            },
+            "PERIODS": {
+                "QUICK_PERIODS": "Quick Periods",
+                "TODAY": "Today",
+                "YESTERDAY": "Yesterday",
+                "LAST_7_DAYS": "Last 7 Days",
+                "LAST_30_DAYS": "Last 30 Days",
+                "MTD": "Month to Date",
+                "LAST_MONTH": "Last Month",
+                "YTD": "Year to Date",
+                "LAST_YEAR": "Last Year",
+                "CUSTOM": "Custom",
+                "SELECT_PERIOD": "Select Period"
+            },
+            "TABLE": {
+                "PRODUCT": "Product",
+                "QUADRANT": "Quadrant",
+                "CATEGORY": "Category",
+                "REVENUE": "Revenue",
+                "GROWTH": "Growth",
+                "SHARE": "Relative Share",
+                "UNITS_SOLD": "Units",
+                "PROFIT": "Profit",
+                "MARGIN": "Margin"
+            },
+            "PROFIT": "Profit",
+            "MARGIN": "Margin",
+            "COST": "Cost"
+        },
+        "INCOME_STATEMENT": {
+            "TITLE": "Income Statement",
+            "SUBTITLE": "Financial Performance Report",
+            "REVENUE": "Revenue",
+            "NET_SALES": "Net Sales",
+            "GROSS_SALES": "Gross Sales",
+            "LESS_RETURNS": "Less: Returns",
+            "LESS_DISCOUNTS": "Less: Discounts",
+            "COGS": "Cost of Goods Sold",
+            "PRODUCT_COSTS": "Product Costs",
+            "GROSS_PROFIT": "Gross Profit",
+            "OPERATING_EXPENSES": "Operating Expenses",
+            "NO_EXPENSES": "No operating expenses recorded",
+            "TOTAL_OPERATING_EXPENSES": "Total Operating Expenses",
+            "OPERATING_INCOME": "Operating Income",
+            "NET_INCOME": "Net Income",
+            "GROSS_MARGIN": "Gross Margin",
+            "OPERATING_MARGIN": "Operating Margin",
+            "NET_MARGIN": "Net Margin",
+            "TOTAL_REVENUE": "Total Revenue",
+            "PERIOD_COMPARISON": "Period Comparison",
+            "SHOW_COMPARISON": "Show Comparison",
+            "HIDE_COMPARISON": "Hide Comparison",
+            "EXPORT_PDF": "Export PDF",
+            "HEALTH_SCORE": {
+                "LABEL": "Financial Health",
+                "SCORE_BREAKDOWN": "Score Breakdown",
+                "UNDERSTANDING": "Understanding your {{score}}/100 score",
+                "STATUS": {
+                    "EXCELLENT": "Excellent",
+                    "GOOD": "Good",
+                    "FAIR": "Fair",
+                    "NEEDS_ATTENTION": "Needs Attention"
+                },
+                "COMPONENTS": {
+                    "GROSS_MARGIN": "Gross Margin",
+                    "NET_MARGIN": "Net Margin",
+                    "OPERATING_EFFICIENCY": "Operating Efficiency"
+                },
+                "INSIGHTS": {
+                    "GROSS_EXCELLENT": "Excellent product pricing and cost control",
+                    "GROSS_GOOD": "Good margins, consider optimizing supplier costs",
+                    "GROSS_FAIR": "Margins are acceptable but could be improved",
+                    "GROSS_LOW": "Low margins - review pricing strategy and supplier costs",
+                    "NET_EXCELLENT": "Strong profitability after all expenses",
+                    "NET_GOOD": "Healthy profit, monitor operating expenses",
+                    "NET_FAIR": "Thin margins - focus on cost reduction",
+                    "NET_LOW": "Negative or very low profit - immediate action needed",
+                    "EFFICIENCY_EXCELLENT": "Operating expenses are well controlled",
+                    "EFFICIENCY_GOOD": "Moderate expense control, room for improvement",
+                    "EFFICIENCY_FAIR": "High operating expenses relative to revenue",
+                    "EFFICIENCY_LOW": "Operating expenses are too high - urgent optimization needed"
+                }
+            },
+            "RECOMMENDATIONS": {
+                "TITLE": "Recommendations",
+                "PRICING": "Review product pricing and negotiate better supplier terms",
+                "EXPENSES": "Reduce operating expenses or increase revenue",
+                "AUDIT": "Operating expenses exceed 50% of revenue - audit all expense categories",
+                "EFFICIENCY": "Good margins but high operating costs - focus on operational efficiency",
+                "STRONG": "Financial health is strong - maintain current practices"
+            },
+            "SCENARIOS": {
+                "PATH_TITLE": "Path to 100% Score",
+                "PATH_SUBTITLE": "Current: {{current}}/100 | Gap: {{gap}} points",
+                "REQUIREMENTS": "Requirements for 100/100:",
+                "CHOOSE_APPROACH": "Choose Your Approach:",
+                "NEW_SCORE": "New Score:",
+                "DIFFICULTY": "Difficulty:",
+                "TIMEFRAME": "Timeframe:",
+                "GAP_NEEDED": "(+{{val}} needed)",
+                "REDUCE_EXPENSES": {
+                    "NAME": "Reduce Expenses",
+                    "DESC": "Cut operating costs while maintaining revenue",
+                    "ACTION": "Reduce expenses by {{amount}}",
+                    "TARGET": "Target: {{amount}} total expenses"
+                },
+                "INCREASE_REVENUE": {
+                    "NAME": "Increase Revenue",
+                    "DESC": "Grow sales while maintaining current cost structure",
+                    "ACTION": "Increase revenue by {{amount}}",
+                    "TARGET": "Target: {{amount}} total revenue"
+                },
+                "BALANCED": {
+                    "NAME": "Balanced Approach",
+                    "DESC": "Combine moderate expense reduction with revenue growth"
+                },
+                "MAINTAIN": {
+                    "NAME": "Maintain Excellence",
+                    "DESC": "You're already performing exceptionally well!",
+                    "ACTION_CONTINUE": "Continue current practices",
+                    "ACTION_MONITOR": "Monitor metrics to maintain high performance"
+                },
+                "FINE_TUNE": {
+                    "NAME": "Fine-Tune Performance",
+                    "DESC": "Small optimizations for continuous improvement",
+                    "ACTION_DoingWell": "Current score: {{score}}/100 - You're doing well!",
+                    "ACTION_Maintain": "Focus on maintaining current margins",
+                    "ACTION_Gains": "Look for small efficiency gains"
+                },
+                "QUICK_WIN": {
+                    "DESC": "Quick Win Opportunity",
+                    "ACTION_REDUCE": "Reduce expenses by just 15% ({{amount}})",
+                    "ACTION_BOOST": "This would boost your score from {{old}} to {{new}}"
+                }
+            }
+        },
+        "INVENTORY_ANALYTICS": {
+            "TITLE": "Inventory Analytics",
+            "SUBTITLE": "Stock Level and Turnover Analysis",
+            "EXPORT": "Export Report",
+            "TOTAL_PRODUCTS": "Total Products",
+            "LOW_STOCK": "Low Stock",
+            "OUT_OF_STOCK": "Out of Stock",
+            "STOCK_VALUE": "Stock Value",
+            "EFFICIENCY_METRICS": "Efficiency Metrics",
+            "GMROI": "GMROI",
+            "GMROI_SUBTEXT": "Gross Margin Return on Inv.",
+            "SELL_THROUGH": "Sell-Through Rate",
+            "SELL_THROUGH_SUBTEXT": "% sold in period",
+            "DEAD_STOCK": "Dead Stock",
+            "DEAD_STOCK_SUBTEXT": "Items with no sales",
+            "TURNOVER_RATE": "Turnover Rate",
+            "TURNOVER_SUBTEXT": "Turns per period",
+            "OPPORTUNITY_COST": "Opportunity Cost",
+            "OPPORTUNITY_SUBTEXT": "Daily revenue loss risk",
+            "STOCK_DISTRIBUTION": "Stock Distribution",
+            "TOP_TURNOVER": "Top Turnover Products",
+            "EFFICIENCY_MATRIX": "Stock Efficiency Matrix",
+            "EFFICIENCY_MATRIX_DESC": "Speed vs. Profitability",
+            "LOW_STOCK_ALERTS": "Low Stock Alerts",
+            "PRODUCTS": "Products",
+            "UNITS": "units",
+            "SALES_VELOCITY": "Sales Velocity",
+            "DAY": "day",
+            "DAYS_UNTIL_STOCKOUT": "Days until stockout",
+            "DAYS": "days",
+            "REORDER_RECOMMENDATIONS": "Reorder Recommendations",
+            "PRODUCT": "Product",
+            "CURRENT_STOCK": "Current Stock",
+            "STOCKOUT_DATE": "Predicted Date",
+            "SUGGESTED_ORDER": "Suggested Rec.",
+            "POTENTIAL_LOSS": "Potential Loss",
+            "DEAD_STOCK_REPORT": "Dead Stock Report",
+            "STAGNANT_PRODUCTS": "stagnant products",
+            "STOCK": "Stock",
+            "VALUE_EST": "Est. Value",
+            "STATUS": "Status",
+            "ZERO_SALES": "0 Sales (90 days)",
+            "TOP_PERFORMERS": "Top Performers",
+            "NO_DATA": "No Data Available",
+            "NO_DATA_DESC": "Inventory data will appear here once products and orders are synchronized.",
+            "CHART": {
+                "IN_STOCK": "In Stock",
+                "LOW_STOCK": "Low Stock",
+                "OUT_OF_STOCK": "Out of Stock"
+            },
+            "REPORT": {
+                "TITLE": "Inventory Analytics Report",
+                "GENERATED": "Generated On",
+                "SECTION_METRICS": "Key Metrics",
+                "SECTION_LOW_STOCK": "Low Stock Alerts",
+                "SECTION_REORDER": "Reorder Recommendations",
+                "COL_PRODUCT": "Product",
+                "COL_STOCK": "Stock",
+                "COL_VELOCITY": "Velocity",
+                "COL_DAYS_STOCKOUT": "Days to Stockout",
+                "COL_STOCKOUT_DATE": "Stockout Date",
+                "COL_POTENTIAL_LOSS": "Potential Loss",
+                "COL_TURNOVER": "Turnover"
+            },
+            "COMMON": {
+                "NA": "N/A"
+            },
+            "CLASSIFICATION": {
+                "WINNER": "Winner",
+                "OPPORTUNITY": "Opportunity",
+                "VOLUME_MOVER": "Volume Mover",
+                "DEAD_STOCK": "Dead Stock"
+            }
+        },
+        "CUSTOMER_INSIGHTS": {
+            "TITLE": "Customer Insights",
+            "SUBTITLE": "Retention, Loyalty, and Lifetime Value Analysis"
+        }
+    },
+    "BRIEFING": {
+        "GREETING": "Daily Briefing",
+        "REVENUE_UP": "Revenue is up {{growth}}% compared to the previous period. Great work!",
+        "REVENUE_DOWN": "Revenue has dropped {{growth}}%. Check top-selling products performance.",
+        "REVENUE_LOSS_RISK": "Potential revenue loss of {{amount}} detected due to stockouts.",
+        "DEAD_STOCK_WARNING": "You have {{count}} items classified as Dead Stock. Consider a clearance sale.",
+        "PENDING_ORDERS_WARNING": "{{count}} orders are pending processing. Fulfillment might be delayed.",
+        "STABLE_ACTIVITY": "Activity is stable. Net Margin is currently sitting at {{margin}}%.",
+        "CONNECTION_ERROR": "Unable to generate full briefing due to a connection error.",
+        "ALL_CLEAR": "All systems running smoothly. No urgent alerts.",
+        "ACTION_VIEW_FINANCIALS": "View Financial Details",
+        "ACTION_ANALYZE_SALES": "Analyze Sales",
+        "ACTION_REVIEW_REORDERS": "Review Reorders",
+        "ACTION_CREATE_PROMOTION": "Create Promotion",
+        "ACTION_FULFILLMENT": "Go to Fulfillment",
+        "LOW_MARGIN_WARNING": "Warning: {{count}} products are selling below the target margin."
+    },
+    "AI_ANALYST": {
+        "HEADLINE": {
+            "NEUTRAL": "Business is performing within expectations.",
+            "POSITIVE": "Stellar performance across the board 🚀",
+            "NEGATIVE": "Attention required in Supply Chain and Sales ⚠️",
+            "MIXED_GROWTH_PAIN": "Growing pains: Sales are up, but Inventory is struggling.",
+            "MIXED_SOFT_REVENUE": "Revenue is soft, primarily driven by inventory gaps."
+        },
+        "INSIGHTS": {
+            "REVENUE_MISS": {
+                "TITLE": "Revenue Miss",
+                "MESSAGE": "Revenue is trending {{percent}}% below target."
+            },
+            "STRONG_SALES": {
+                "TITLE": "Strong Sales Performance",
+                "MESSAGE": "Revenue is beating targets by {{percent}}%."
+            },
+            "INVENTORY_DRAG": {
+                "TITLE": "Inventory Drag",
+                "MESSAGE": "High stockouts are likely suppressing revenue. {{count}} products are fully depleted."
+            },
+            "SUPPLY_CHAIN_RISK": {
+                "TITLE": "Supply Chain Risk",
+                "MESSAGE": "Critical stock levels detected. {{oos}} items OOS and {{low}} low."
+            },
+            "FULFILLMENT_BOTTLENECK": {
+                "TITLE": "Fulfillment Bottleneck",
+                "MESSAGE": "{{count}} orders are waiting to be processed. This may impact tomorrow's revenue recognition."
+            },
+            "SLA_BREACH": {
+                "TITLE": "Quality Alert (SLA)",
+                "MESSAGE": "{{count}} orders are overdue. Compliance rate dropped to {{rate}}%."
+            },
+            "HERO_PRODUCT_RISK": {
+                "TITLE": "Top Seller Risk",
+                "MESSAGE": "Your #1 best-seller '{{product}}' is running low on stock."
+            },
+            "DEAD_STOCK": {
+                "TITLE": "Stagnant Capital",
+                "MESSAGE": "{{count}} items have had zero sales in 90 days."
+            },
+            "CATEGORY_DOMINANCE": {
+                "TITLE": "Portfolio Concentration",
+                "MESSAGE": "'{{category}}' accounts for {{percent}}% of total revenue."
+            }
+        },
+        "IMPACT": {
+            "MISS": "Miss",
+            "LIFT": "Revenue Lift",
+            "HIGH_CORRELATION": "High Correlation",
+            "SLA_RISK": "SLA Risk",
+            "OPPORTUNITY_COST": "Opportunity Cost",
+            "CONCENTRATION": "Concentration"
+        },
+        "LOADING": "Analyzing latest business signals...",
+        "BADGE": "AI Analyst",
+        "HEALTH": "Health"
+    },
+    "SALES_ANALYTICS": {
+        "TITLE": "Sales Analytics",
+        "SUBTITLE": "Performance and Trend Analysis",
+        "TOTAL_REVENUE": "Total Revenue",
+        "TOTAL_ORDERS": "Total Orders",
+        "AVG_ORDER_VALUE": "Avg. Order Value",
+        "TOP_PRODUCT_REVENUE": "Top Product Revenue",
+        "MOM": "vs prev. month",
+        "YOY": "vs prev. year",
+        "CAGR": "CAGR",
+        "EXPORT_PDF": "Export as PDF",
+        "CSV_EXPORT": {
+            "REVENUE_TRENDS": "Revenue Trends",
+            "DATE": "Date",
+            "REVENUE": "Revenue",
+            "ORDERS": "Orders",
+            "SALES_BY_CATEGORY": "Sales by Category",
+            "CATEGORY": "Category",
+            "PERCENTAGE": "Percentage",
+            "RANK": "Rank",
+            "PRODUCT_NAME": "Product Name",
+            "SKU": "SKU",
+            "QUANTITY": "Quantity"
+        },
+        "CHARTS": {
+            "REVENUE_BY_BRAND": "Revenue by Brand"
+        },
+        "TRENDING_UP": "Increasing",
+        "TRENDING_DOWN": "Decreasing",
+        "TRENDING_STABLE": "Stable",
+        "SEGMENT_CHAMPIONS": "Champions",
+        "SEGMENT_LOYAL": "Loyal",
+        "SEGMENT_POTENTIAL": "Potential",
+        "SEGMENT_AT_RISK": "At Risk",
+        "SEGMENT_LOST": "Lost",
+        "CUSTOMERS": "Customers",
+        "CONVERSION_FUNNEL": "Conversion Funnel",
+        "CONVERSION_RATE": "Conversion Rate",
+        "GROWTH_METRICS": "Growth Metrics",
+        "REVENUE_GROWTH": "Revenue Growth",
+        "ORDER_GROWTH": "Order Growth",
+        "CUSTOMER_GROWTH": "Customer Growth",
+        "AOV_GROWTH": "AOV Growth",
+        "REVENUE_TREND": "Revenue Trend",
+        "SALES_BY_CATEGORY": "Sales by Category",
+        "SALES_BY_BRAND": "Sales by Brand",
+        "TOP_PRODUCTS": "Top Products",
+        "PRODUCT_NAME": "Product Name",
+        "REVENUE": "Revenue",
+        "QUANTITY": "Quantity",
+        "ORDERS": "Orders",
+        "NO_DATA": "No Data Available",
+        "TOP_PERFORMER": "Top Performer",
+        "SALES_VELOCITY": "Sales Velocity",
+        "VELOCITY_DAILY": "Daily Velocity",
+        "VELOCITY_WEEKLY": "Weekly Velocity",
+        "VELOCITY_MONTHLY": "Monthly Velocity",
+        "VELOCITY_SCORE": "Velocity Score",
+        "CUSTOMER_SEGMENTS": "Customer Segments",
+        "VS_LAST_PERIOD": "vs previous period"
+    },
+    "DEBUG": {
+        "SYSTEM_DIAGNOSTICS": "System Diagnostics",
+        "ACTIVITY_LOG": "Activity Log",
+        "BUILD": "Build",
+        "USER": "User",
+        "ROLE": "Role",
+        "NO_ERRORS": "No errors ... (waiting for data)"
+    },
+    "TRENDS": {
+        "TODAY": "Today",
+        "MTD": "Month to Date",
+        "YTD": "Year to Date",
+        "VS_YESTERDAY": "vs yesterday",
+        "VS_LAST_WEEK": "vs last week",
+        "VS_LAST_MONTH": "vs last month",
+        "VS_LAST_YEAR": "vs last year"
+    },
+    "SELECT_DATE_RANGE": "Select a Date Range",
+    "SELECT_DATE_RANGE_DESC": "Choose a date range from the selector above to view financial metrics",
+    "EMPTY_REVENUE_MESSAGE": "Revenue data will appear here once orders are processed",
+    "EMPTY_CATEGORY_MESSAGE": "Category sales data will appear here",
+    "EMPTY_BRAND_MESSAGE": "Brand sales data will appear here",
+    "EMPTY_PRODUCTS_MESSAGE": "Top products will appear here once sales are recorded",
+    "VS_LAST_PERIOD": "vs last period",
+    "PROCESSING": "Processing...",
+    "NOTIFICATIONS": {
+        "TITLE": "Notifications",
+        "MARK_ALL_READ": "Mark all as read",
+        "NO_NOTIFICATIONS": "No notifications"
+    },
+    "EXPENSES": {
+        "TITLE": "Operating Expenses",
+        "SUBTITLE": "Manage operating expenses and costs",
+        "ADD_EXPENSE": "Add Expense",
+        "EDIT_EXPENSE": "Edit Expense",
+        "ADD_FIRST": "Add First Expense",
+        "SEARCH": "Search",
+        "SEARCH_PLACEHOLDER": "Search by description, vendor, or category...",
+        "CATEGORY": "Category",
+        "ALL_CATEGORIES": "All Categories",
+        "TOTAL_EXPENSES": "Total Expenses",
+        "EXPENSES": "expenses",
+        "RECURRING": "Recurring",
+        "NO_EXPENSES": "No expenses recorded",
+        "NO_EXPENSES_DESC": "Start adding your operating expenses to see a complete income statement",
+        "FORM": {
+            "CATEGORY": "Category",
+            "AMOUNT": "Amount",
+            "DESCRIPTION": "Description",
+            "DATE": "Date",
+            "VENDOR": "Vendor",
+            "RECURRING": "Recurring Expense",
+            "FREQUENCY": "Frequency",
+            "MONTHLY": "Monthly",
+            "QUARTERLY": "Quarterly",
+            "YEARLY": "Yearly",
+            "NOTES": "Notes",
+            "SAVE": "Save",
+            "CANCEL": "Cancel"
+        }
+    },
+    "OPERATIONAL_METRICS": {
+        "TITLE": "Operational Metrics",
+        "SUBTITLE": "Real-time operational efficiency insights",
+        "REFRESH": "Refresh",
+        "LOADING": "Loading metrics...",
+        "PERIOD": {
+            "TODAY": "Today",
+            "WEEK": "Last 7 Days",
+            "MONTH": "Last 30 Days"
+        },
+        "KPI": {
+            "AVG_FULFILLMENT_TIME": "Avg Fulfillment Time",
+            "ORDERS_TODAY": "Orders Today",
+            "SLA_COMPLIANCE": "SLA Compliance",
+            "PENDING_ORDERS": "Pending Orders"
+        },
+        "CHARTS": {
+            "FULFILLMENT_TREND": "Fulfillment Trend",
+            "SLA_TREND": "SLA Trend",
+            "ORDER_STATUS": "Order Status Distribution",
+            "STAFF_PERFORMANCE": "Staff Performance (Top 5)"
+        },
+        "TABLE": {
+            "STAFF_LEADERBOARD": "Staff Leaderboard",
+            "RANK": "Rank",
+            "STAFF": "Staff",
+            "ORDERS_PROCESSED": "Orders Processed",
+            "AVG_TIME": "Avg Time",
+            "ACTIVE_ORDERS": "Active Orders"
+        },
+        "SLA": {
+            "AT_RISK": "At Risk",
+            "OVERDUE": "Overdue",
+            "AVG_RESPONSE_TIME": "Avg Response Time"
         }
     },
     "ADMIN": {
         "TITLE": "Admin Panel",
         "DESC": "User management, security settings, and system configuration.",
         "CATALOG_OVERVIEW": {
-            "TITLE": "Catalog Visualizer",
-            "SUBTITLE": "Interactive hierarchy of your product catalog",
+            "TITLE": "Catalog Overview",
+            "SUBTITLE": "Hierarchical visualization of all products",
+            "NODES": {
+                "SYSTEM_ANOMALIES": "System Anomalies",
+                "UNUSED_BRANDS": "Unused Brands",
+                "UNUSED_CATEGORIES": "Unused Categories",
+                "UNKNOWN_TYPE": "Unknown Product Type",
+                "NO_BRAND": "Products without Brand",
+                "NO_CATEGORY": "Products without Category",
+                "UNCATEGORIZED": "Uncategorized"
+            },
             "TOTAL_BRANDS": "Total Brands",
             "TOTAL_CATEGORIES": "Total Categories",
             "TOTAL_PRODUCTS": "Total Products",
@@ -142,6 +814,69 @@
                 "TYPE": "Product Type",
                 "CATEGORY": "Category",
                 "BRAND": "Brand"
+            }
+        },
+        "MEDIA_LIBRARY": {
+            "TITLE": "Media Library",
+            "SUBTITLE": "Centralized digital asset management",
+            "UPLOAD_BTN": "Upload Media",
+            "SYNC_BTN": "Sync Storage",
+            "CREATE_FOLDER": "New Folder",
+            "HOME": "Home",
+            "SEARCH_PLACEHOLDER": "Search assets...",
+            "STATS": {
+                "STORAGE": "Storage",
+                "RECALCULATE": "Recalcular Usage"
+            },
+            "FILTERS": {
+                "QUICK_FILTERS": "Quick Filters",
+                "FOLDERS": "Folders",
+                "ALL": "All Files",
+                "IMAGES": "Images",
+                "VECTORS": "Vectors",
+                "VIDEOS": "Videos",
+                "DOCUMENTS": "Documents"
+            },
+            "TABLE": {
+                "PREVIEW": "Preview",
+                "NAME": "Name",
+                "DIMENSIONS": "Dimensions",
+                "SIZE": "Size",
+                "TYPE": "Type",
+                "DATE": "Date",
+                "ACTIONS": "Actions"
+            },
+            "ACTIONS": {
+                "SELECT_ALL": "Select All",
+                "SELECTED": "Selected",
+                "EDIT": "Edit",
+                "MOVE": "Move",
+                "DELETE": "Delete",
+                "CANCEL": "Cancel",
+                "COPY_LINK": "Copy Link",
+                "SHARE": "Share",
+                "CROP": "Crop",
+                "BULK_EDIT": "Bulk Edit",
+                "CLEAR": "Clear"
+            },
+            "EMPTY": {
+                "TITLE": "No assets found",
+                "DESC": "Upload files or check your search criteria.",
+                "BTN": "Upload New Media"
+            },
+            "LOAD_MORE": "Load More Assets",
+            "MESSAGES": {
+                "LINK_COPIED": "Link copied to clipboard",
+                "DELETE_CONFIRM": "Are you sure you want to delete this asset?",
+                "DELETE_BULK_CONFIRM": "Delete {count} assets? This cannot be undone.",
+                "FOLDER_NAME_PROMPT": "Folder Name:",
+                "MOVED_SUCCESS": "Moved {count} items to {folder}",
+                "DUPLICATE_SUCCESS": "Asset duplicated successfully",
+                "UPDATE_SUCCESS": "Assets updated successfully",
+                "SYNC_START": "Scan Firebase Storage for missing files? This may take a while.",
+                "SYNC_SUCCESS": "Sync Complete: Scanned {scanned}, Recovered {recovered}, Errors {errors}",
+                "RECALCULATE_CONFIRM": "Recalculate Storage Stats? This scans all assets.",
+                "ONLY_IMAGES_EDIT": "Only images can be edited"
             }
         },
         "CATALOG": {
@@ -199,6 +934,7 @@
             "PRODUCTS": "Products",
             "CATEGORIES": "Categories",
             "BRANDS": "Brands",
+            "SECTION_CATALOG": "Catalog",
             "CATALOG_OVERVIEW": "Catalog Overview",
             "ORDERS": "Sales History",
             "SECTION_CONTENT": "Content",
@@ -206,7 +942,10 @@
             "BLOG": "Blog",
             "MEDIA_LIBRARY": "Media Library",
             "PDF_LIBRARY": "PDF Library",
+            "SECTION_MARKETING": "Marketing",
             "MARKETING_TOOLS": "Marketing Tools",
+            "COUPONS": "Coupons",
+            "CAMPAIGNS": "Campaigns",
             "PROMOTIONS": "Promotions",
             "SECTION_SYSTEM": "System",
             "THEMES": "Themes",
@@ -218,6 +957,33 @@
             "INTEGRATIONS": "API Integrations",
             "LOGS": "Activity Logs",
             "LOGOUT": "Logout"
+        },
+        "PDF_LIST": {
+            "TITLE": "PDF Library",
+            "BTN_ADD": "Upload PDF",
+            "EMPTY": "No PDFs found",
+            "TH_THUMBNAIL": "Preview",
+            "TH_INFO": "Document Info",
+            "TH_CATEGORY": "Category",
+            "TH_METRICS": "Size",
+            "TH_ACCESS": "Access",
+            "TH_STATUS": "Status",
+            "TH_ACTIONS": "Actions",
+            "STATUS_ACTIVE": "Active",
+            "STATUS_INACTIVE": "Inactive",
+            "ACCESS_PUBLIC": "Public",
+            "ACCESS_LOGIN": "Login Required",
+            "ACCESS_PRIVATE": "Private",
+            "CREATED": "Created on"
+        },
+        "SEO_PREVIEW": {
+            "TITLE": "Search Engine Preview",
+            "TITLE_TOO_LONG": "Title is too long",
+            "DESCRIPTION": "Description",
+            "DESCRIPTION_TOO_LONG": "Description is too long",
+            "LOOKS_GOOD": "Looks good!",
+            "PLACEHOLDER_TITLE": "Page Title",
+            "PLACEHOLDER_DESCRIPTION": "Page Description"
         },
         "COMMON": {
             "ACTIONS": "Actions",
@@ -244,7 +1010,104 @@
             "ACTIVE": "Active",
             "INACTIVE": "Inactive",
             "ALL_STATUSES": "All Statuses",
-            "CHANGES_DISCARDED": "Changes discarded"
+            "CHANGES_DISCARDED": "Changes discarded",
+            "FIELD_REQUIRED": "This field is required",
+            "UPDATE": "Update",
+            "CLEAR_FILTERS": "Clear Filters"
+        },
+        "BANNERS": {
+            "TITLE": "Banner Management",
+            "SUBTITLE": "Manage homepage sliders and promotional banners",
+            "NEW_TITLE": "New Banner",
+            "EDIT_TITLE": "Edit Banner",
+            "BTN_ADD": "Add Banner",
+            "EMPTY": "No banners found",
+            "TH_IMAGE": "Image",
+            "TH_TITLE": "Title",
+            "TH_ORDER": "Order",
+            "TH_STATUS": "Status",
+            "TH_ACTIONS": "Actions",
+            "STATUS_ACTIVE": "Active",
+            "STATUS_INACTIVE": "Inactive",
+            "FORM": {
+                "TITLE": "Title",
+                "TITLE_PLACEHOLDER": "Enter banner title",
+                "SUBTITLE": "Subtitle",
+                "SUBTITLE_PLACEHOLDER": "Enter banner subtitle",
+                "IMAGE": "Banner Image",
+                "LINK": "Link URL",
+                "ORDER": "Display Order",
+                "ACTIVE": "Active"
+            }
+        },
+        "BLOG": {
+            "TITLE": "Blog Management",
+            "SUBTITLE": "Create and edit your articles",
+            "SEARCH_PLACEHOLDER": "Search articles...",
+            "NEW_TITLE": "New Post",
+            "EDIT_TITLE": "Edit Post",
+            "BTN_ADD": "Add Post",
+            "EMPTY": "No posts found",
+            "TH_COVER": "Cover",
+            "TH_TITLE": "Title",
+            "TH_CATEGORY": "Category",
+            "TH_DATE": "Date",
+            "TH_ACTIONS": "Actions",
+            "CATEGORIES": {
+                "NEWS": "News",
+                "TIPS": "Tips & Tricks",
+                "MAINTENANCE": "Maintenance",
+                "TECH": "Technology"
+            },
+            "FORM": {
+                "TITLE": "Title",
+                "SLUG": "Slug",
+                "CATEGORY": "Category",
+                "EXCERPT": "Excerpt",
+                "CONTENT": "Content",
+                "COVER_IMAGE": "Cover Image",
+                "TAGS": "Tags",
+                "READ_TIME": "Read Time",
+                "HTML_HINT": "HTML content supported"
+            }
+        },
+        "COUPONS": {
+            "TITLE": "Coupons",
+            "ADD_NEW": "Add New Coupon",
+            "SEARCH_PLACEHOLDER": "Search coupons...",
+            "EMPTY_MSG": "No coupons found",
+            "TABLE": {
+                "CODE": "Code",
+                "DISCOUNT": "Discount",
+                "USAGE": "Usage",
+                "VALIDITY": "Validity",
+                "STATUS": "Status"
+            },
+            "FORM": {
+                "SECTION_BASIC": "Basic Information",
+                "SECTION_RULES": "Usage Rules",
+                "SECTION_SCHEDULE": "Schedule",
+                "CODE": "Coupon Code",
+                "CODE_PLACEHOLDER": "e.g. SUMMER2024",
+                "CODE_HINT": "Unique code for checkout",
+                "CODE_REQUIRED": "Code is required",
+                "CODE_EXISTS": "Code already exists",
+                "DESCRIPTION": "Description",
+                "DESCRIPTION_PLACEHOLDER": "Internal note about this coupon",
+                "TYPE": "Discount Type",
+                "TYPE_PERCENTAGE": "Percentage (%)",
+                "TYPE_FIXED": "Fixed Amount ($)",
+                "VALUE": "Discount Value",
+                "MIN_PURCHASE": "Minimum Purchase",
+                "MIN_PURCHASE_HINT": "Leave 0 for no minimum",
+                "USAGE_LIMIT": "Usage Limit",
+                "USAGE_LIMIT_HINT": "Total times this coupon can be used",
+                "START_DATE": "Start Date",
+                "END_DATE": "End Date",
+                "END_DATE_HINT": "Leave empty for no expiry",
+                "DATE_ERROR": "End date must be after start date",
+                "GENERATE": "Generate Random Code"
+            }
         },
         "CATEGORIES": {
             "TITLE": "Categories",
@@ -338,7 +1201,111 @@
                 "ACTIVE": "Brand Active"
             }
         },
+        "KITS": {
+            "TITLE": "Product Kits",
+            "SUBTITLE": "Manage product bundles and combos",
+            "BTN_NEW": "Create Kit",
+            "SEARCH_PLACEHOLDER": "Search kits by name or SKU...",
+            "TABLE": {
+                "IMAGE": "Image",
+                "NAME": "Kit Name",
+                "SKU": "SKU",
+                "COMPONENTS": "Components",
+                "PRICE": "Price",
+                "SAVINGS": "Savings",
+                "STATUS": "Status",
+                "ACTIONS": "Actions"
+            },
+            "FORM": {
+                "TITLE_NEW": "Create New Kit",
+                "TITLE_EDIT": "Edit Kit",
+                "SUBTITLE_NEW": "Create a new product bundle",
+                "SUBTITLE_EDIT": "Edit product bundle",
+                "TAB_BASIC": "Basic Information",
+                "TAB_COMPONENTS": "Components",
+                "TAB_PRICING": "Pricing",
+                "TAB_SEO": "SEO",
+                "NAME_ES": "Name (Spanish)",
+                "NAME_EN": "Name (English)",
+                "NAME_ES_PLACEHOLDER": "Kit de 4 Llantas + Balanceo",
+                "NAME_EN_PLACEHOLDER": "4 Tires + Balancing Kit",
+                "SKU": "Kit SKU",
+                "SKU_HINT": "Unique code (e.g., KIT-4TIRES)",
+                "SKU_PLACEHOLDER": "KIT-4TIRES",
+                "DESC_ES": "Description (Spanish)",
+                "DESC_EN": "Description (English)",
+                "DESC_ES_PLACEHOLDER": "Descripción del kit en español",
+                "DESC_EN_PLACEHOLDER": "Kit description in English",
+                "IMAGE": "Main Image",
+                "IMAGE_PLACEHOLDER": "https://example.com/kit-image.jpg",
+                "IMAGE_HINT": "URL of the main kit image",
+                "GALLERY": "Gallery",
+                "ADD_COMPONENT": "Add Product",
+                "COMPONENT_PRODUCT": "Product",
+                "COMPONENT_QTY": "Quantity",
+                "COMPONENT_PRICE": "Unit Price",
+                "REMOVE_COMPONENT": "Remove",
+                "TOTAL_COMPONENTS": "Total Components",
+                "NO_COMPONENTS": "No components added",
+                "NO_COMPONENTS_HINT": "Click 'Add Product' to start building your kit",
+                "COMPONENTS_TOTAL": "Components Total",
+                "KIT_PRICE": "Kit Price",
+                "KIT_PRICE_HINT": "Special kit price (lower than components total)",
+                "COMPARE_PRICE": "Compare at Price",
+                "COMPARE_PRICE_HINT": "Optional: Comparison price to show discount",
+                "SAVINGS_AUTO": "Savings (Auto-calculated)",
+                "SAVINGS_ALERT_TITLE": "Excellent savings!",
+                "SAVINGS_ALERT_TEXT": "Customers will save {{amount}} ({{percentage}}%) buying this kit",
+                "FEATURED": "Featured",
+                "FEATURED_HINT": "Show on homepage",
+                "ACTIVE": "Active",
+                "STATUS_SECTION": "Status & Visibility",
+                "ACTIVE_HINT": "Available for sale",
+                "VISIBILITY_SETTINGS": "Visibility Settings",
+                "PUBLISH_STATUS": "Publish Status",
+                "DRAFT": "Draft",
+                "PUBLISHED": "Published",
+                "ARCHIVED": "Archived",
+                "META_TITLE": "Meta Title Template",
+                "META_TITLE_HELP": "Title for search engines (SEO)",
+                "META_TITLE_PLACEHOLDER": "{{page_title}} | {{site_name}}",
+                "META_TITLE_HINT": "Use {{page_title}} and {{site_name}} as dynamic variables",
+                "META_DESCRIPTION": "Default Meta Description",
+                "META_DESC_HELP": "Description for search results (SEO)",
+                "META_DESC_PLACEHOLDER": "Save by buying our complete kit of 4 tires with balancing service included",
+                "META_DESC_HINT": "Recommended: 150-160 characters",
+                "SEARCH_PRODUCTS": "Search products by name or SKU...",
+                "NO_PRODUCTS_FOUND": "No products found",
+                "BTN_SAVE": "Save Kit",
+                "BTN_CANCEL": "Cancel"
+            },
+            "AVAILABILITY": {
+                "IN_STOCK": "{{count}} kits available",
+                "OUT_OF_STOCK": "Out of stock",
+                "LIMITED": "Limited by: {{product}}"
+            },
+            "DELETE_CONFIRM": "Delete this kit?",
+            "DELETE_WARNING": "This action cannot be undone.",
+            "SUCCESS_CREATE": "Kit created successfully",
+            "SUCCESS_UPDATE": "Kit updated",
+            "SUCCESS_DELETE": "Kit deleted",
+            "ERROR_LOAD": "Error loading kits",
+            "ERROR_SAVE": "Error saving kit",
+            "COMPONENT_UNIT": "unit",
+            "COMPONENT_UNITS": "units",
+            "ITEMS_PER_PAGE": "Items per page",
+            "SHOWING_ITEMS": "Showing {{start}} to {{end}} of {{total}} kits",
+            "STATUS": {
+                "ALL": "All"
+            }
+        },
         "PRODUCTS": {
+            "NEW_TITLE": "Add Product",
+            "NEW_SUBTITLE": "Create a new product in the catalog",
+            "EDIT_TITLE": "Edit Product",
+            "EDIT_SUBTITLE": "Update product details and inventory",
+            "EXPORT_CSV": "Export CSV",
+            "CLEAR_FILTERS": "Clear Filters",
             "TITLE": "Products",
             "SUBTITLE": "Manage your product catalog",
             "CREATE": "New Product",
@@ -418,6 +1385,7 @@
                 "REJECTED": "Rejected"
             },
             "TABLE": {
+                "VOLUME": "Volume",
                 "DATE": "Date",
                 "BUSINESS": "Business",
                 "CONTACT": "Contact",
@@ -442,37 +1410,6 @@
                 "PHONE": "Phone",
                 "STATE": "State",
                 "VOLUME": "Volume"
-            }
-        },
-        "BLOG": {
-            "TITLE": "Blog Management",
-            "SUBTITLE": "Create and edit your articles",
-            "CREATE_NEW": "New Article",
-            "SEARCH_PLACEHOLDER": "Search articles...",
-            "FILTERS": {
-                "ALL": "All",
-                "PUBLISHED": "Published",
-                "DRAFT": "Draft"
-            },
-            "TABLE": {
-                "TITLE": "Title",
-                "AUTHOR": "Author",
-                "CATEGORY": "Category",
-                "STATUS": "Status",
-                "DATE": "Date",
-                "ACTIONS": "Actions"
-            }
-        },
-        "BANNERS": {
-            "TITLE": "Banner Management",
-            "SUBTITLE": "Manage homepage sliders and promotional banners",
-            "CREATE_NEW": "Add Banner",
-            "TABLE": {
-                "IMAGE": "Image",
-                "TITLE": "Title",
-                "ORDER": "Order",
-                "STATUS": "Status",
-                "ACTIONS": "Actions"
             }
         },
         "PDF_LIBRARY": {
@@ -607,6 +1544,7 @@
                 "ACTIONS": "Actions"
             },
             "DETAIL": {
+                "BACK": "Back to Orders",
                 "INVOICE": "INVOICE",
                 "PRINT": "Print",
                 "CUSTOMER": "Customer Information",
@@ -807,15 +1745,16 @@
         "LEGAL": "Legal",
         "COPYRIGHT": "© 2024 Importadora Euro - Part of Grupo Euro. All rights reserved.",
         "LINKS": {
-            "PRAXIS": "Praxis Tires",
-            "CATALOG": "Digital Catalog",
+            "PRAXIS": "Praxis Store",
+            "BLOG": "Blog",
+            "CATALOG": "Catalog",
             "ABOUT": "About Us",
             "GROUP": "Grupo Euro",
             "DISTRIBUTION": "Distribution",
             "FAQ": "FAQ",
             "WARRANTY": "Warranty",
-            "TERMS": "Terms",
-            "PRIVACY": "Privacy",
+            "TERMS": "Terms & Conditions",
+            "PRIVACY": "Privacy Policy",
             "BILLING": "Billing"
         }
     },
@@ -1082,26 +2021,6 @@
             "COPYRIGHT": "© 2024 Importadora Euro. All rights reserved. | Privacy Notice"
         }
     },
-    "BLOG": {
-        "HERO_TITLE": "News & Tips",
-        "HERO_DESC": "Stay up to date with the latest in the world of motorcycling, maintenance, and tire technology.",
-        "FILTERS": {
-            "ALL": "All",
-            "MAINTENANCE": "Maintenance",
-            "TECH": "Technology",
-            "TIPS": "Tips"
-        },
-        "READ_TIME": "min read",
-        "READ_MORE": "Read more →",
-        "SHARE": "Share",
-        "SUBSCRIBE": {
-            "TITLE": "Subscribe",
-            "DESC": "Receive the best offers and tips in your inbox.",
-            "PLACEHOLDER": "Your email address",
-            "BTN": "Subscribe"
-        },
-        "LOADING": "Loading article..."
-    },
     "LEGAL": {
         "TERMS": {
             "TITLE": "Terms and Conditions",
@@ -1172,7 +2091,7 @@
             "RECENT_ORDERS": "Recent Orders",
             "LOADING": "Loading dashboard data..."
         },
-        "ORDERS": {
+        "ORDERS_REMOVED": {
             "TITLE": "Orders",
             "QUEUE": "Order Queue",
             "ORDERS": "Orders",
@@ -1484,627 +2403,42 @@
             "SHOWING_ITEMS": "[EN] Mostrando {start}-{end} de {total} promociones"
         }
     },
-    "COMMAND_CENTER": {
-        "TITLE": "Command Center",
-        "DASHBOARD": "Executive Dashboard",
-        "DASHBOARD_SUBTITLE": "Real-time business intelligence and analytics",
-        "KPI": {
-            "REVENUE": "Revenue",
-            "ORDERS": "Orders",
-            "CUSTOMERS": "Customers",
-            "AOV": "Average Order Value",
-            "CONVERSION": "Conversion Rate",
-            "SLA": "SLA Compliance",
-            "INVENTORY_VALUE": "Inventory Value",
-            "MARGIN": "Gross Margin",
-            "DATE": "Date",
-            "STATUS": "Status",
-            "COUNT": "Count",
-            "PRODUCT": "Product",
-            "SEGMENT": "Segment"
-        },
-        "CHARTS": {
-            "REVENUE_TREND": "Revenue Trend",
-            "LAST_7_DAYS": "Last 7 days",
-            "LAST_30_DAYS": "Last 30 Days",
-            "ORDER_DISTRIBUTION": "Order Distribution",
-            "TOP_PRODUCTS": "Top Products",
-            "TOP_3_BY_REVENUE": "Top 3 by Revenue",
-            "CUSTOMER_COMPOSITION": "Customer Composition"
-        },
-        "LABELS": {
-            "TOTAL": "Total",
-            "NEW": "New",
-            "NEW_CUSTOMERS": "New Customers",
-            "RETURNING": "Returning",
-            "RETURNING_CUSTOMERS": "Returning Customers",
-            "NO_DATA": "No data available",
-            "LOADING": "Loading metrics...",
-            "LOADING_SYSTEM": "System loading...",
-            "LOADING_DATA_FOR": "Loading data for"
-        },
-        "ACTIONS": {
-            "VIEW_DATA": "View Data",
-            "HIDE_DATA": "Hide Data",
-            "EXPORT": "Export CSV"
-        },
-        "BRIEFING": {
-            "GREETING": "Daily Briefing",
-            "REVENUE_UP": "Revenue is up {{growth}}% compared to the previous period. Great work!",
-            "REVENUE_DOWN": "Revenue has dropped {{growth}}%. Check top-selling products performance.",
-            "REVENUE_LOSS_RISK": "Potential revenue loss of {{amount}} detected due to stockouts.",
-            "DEAD_STOCK_WARNING": "You have {{count}} items classified as Dead Stock. Consider a clearance sale.",
-            "PENDING_ORDERS_WARNING": "{{count}} orders are pending processing. Fulfillment might be delayed.",
-            "STABLE_ACTIVITY": "Activity is stable. Net Margin is currently sitting at {{margin}}%.",
-            "CONNECTION_ERROR": "Unable to generate full briefing due to a connection error.",
-            "ALL_CLEAR": "All systems running smoothly. No urgent alerts.",
-            "ACTION_VIEW_FINANCIALS": "View Financial Details",
-            "ACTION_ANALYZE_SALES": "Analyze Sales",
-            "ACTION_REVIEW_REORDERS": "Review Reorders",
-            "ACTION_CREATE_PROMOTION": "Create Promotion",
-            "ACTION_FULFILLMENT": "Go to Fulfillment"
-        },
-        "AI_ANALYST": {
-            "HEADLINE": {
-                "NEUTRAL": "Business is performing within expectations.",
-                "POSITIVE": "Stellar performance across the board 🚀",
-                "NEGATIVE": "Attention required in Supply Chain and Sales ⚠️",
-                "MIXED_GROWTH_PAIN": "Growing pains: Sales are up, but Inventory is struggling.",
-                "MIXED_SOFT_REVENUE": "Revenue is soft, primarily driven by inventory gaps."
-            },
-            "INSIGHTS": {
-                "REVENUE_MISS": {
-                    "TITLE": "Revenue Miss",
-                    "MESSAGE": "Revenue is trending {{percent}}% below target."
-                },
-                "STRONG_SALES": {
-                    "TITLE": "Strong Sales Performance",
-                    "MESSAGE": "Revenue is beating targets by {{percent}}%."
-                },
-                "INVENTORY_DRAG": {
-                    "TITLE": "Inventory Drag",
-                    "MESSAGE": "High stockouts are likely suppressing revenue. {{count}} products are fully depleted."
-                },
-                "SUPPLY_CHAIN_RISK": {
-                    "TITLE": "Supply Chain Risk",
-                    "MESSAGE": "Critical stock levels detected. {{oos}} items OOS and {{low}} low."
-                },
-                "FULFILLMENT_BOTTLENECK": {
-                    "TITLE": "Fulfillment Bottleneck",
-                    "MESSAGE": "{{count}} orders are waiting to be processed. This may impact tomorrow's revenue recognition."
-                },
-                "SLA_BREACH": {
-                    "TITLE": "Quality Alert (SLA)",
-                    "MESSAGE": "{{count}} orders are overdue. Compliance rate dropped to {{rate}}%."
-                },
-                "HERO_PRODUCT_RISK": {
-                    "TITLE": "Top Seller Risk",
-                    "MESSAGE": "Your #1 best-seller '{{product}}' is running low on stock."
-                },
-                "DEAD_STOCK": {
-                    "TITLE": "Stagnant Capital",
-                    "MESSAGE": "{{count}} items have had zero sales in 90 days."
-                },
-                "CATEGORY_DOMINANCE": {
-                    "TITLE": "Portfolio Concentration",
-                    "MESSAGE": "'{{category}}' accounts for {{percent}}% of total revenue."
-                }
-            },
-            "IMPACT": {
-                "MISS": "Miss",
-                "LIFT": "Revenue Lift",
-                "HIGH_CORRELATION": "High Correlation",
-                "SLA_RISK": "SLA Risk",
-                "OPPORTUNITY_COST": "Opportunity Cost",
-                "CONCENTRATION": "Concentration"
-            },
-            "LOADING": "Analyzing latest business signals...",
-            "BADGE": "AI Analyst",
-            "HEALTH": "Health"
-        },
-        "SALES_ANALYTICS": {
-            "TITLE": "Sales Analytics",
-            "SUBTITLE": "Performance and Trend Analysis",
-            "TOTAL_REVENUE": "Total Revenue",
-            "TOTAL_ORDERS": "Total Orders",
-            "AVG_ORDER_VALUE": "Avg. Order Value",
-            "TOP_PRODUCT_REVENUE": "Top Product Revenue",
-            "MOM": "vs prev. month",
-            "YOY": "vs prev. year",
-            "CAGR": "CAGR",
-            "EXPORT_PDF": "Export as PDF",
-            "CSV_EXPORT": {
-                "REVENUE_TRENDS": "Revenue Trends",
-                "DATE": "Date",
-                "REVENUE": "Revenue",
-                "ORDERS": "Orders",
-                "SALES_BY_CATEGORY": "Sales by Category",
-                "CATEGORY": "Category",
-                "PERCENTAGE": "Percentage",
-                "RANK": "Rank",
-                "PRODUCT_NAME": "Product Name",
-                "SKU": "SKU",
-                "QUANTITY": "Quantity"
-            },
-            "CHARTS": {
-                "REVENUE_BY_BRAND": "Revenue by Brand"
-            },
-            "TRENDING_UP": "Increasing",
-            "TRENDING_DOWN": "Decreasing",
-            "TRENDING_STABLE": "Stable",
-            "SEGMENT_CHAMPIONS": "Champions",
-            "SEGMENT_LOYAL": "Loyal",
-            "SEGMENT_POTENTIAL": "Potential",
-            "SEGMENT_AT_RISK": "At Risk",
-            "SEGMENT_LOST": "Lost",
-            "CUSTOMERS": "Customers",
-            "CONVERSION_FUNNEL": "Conversion Funnel",
-            "CONVERSION_RATE": "Conversion Rate",
-            "GROWTH_METRICS": "Growth Metrics",
-            "REVENUE_GROWTH": "Revenue Growth",
-            "ORDER_GROWTH": "Order Growth",
-            "CUSTOMER_GROWTH": "Customer Growth",
-            "AOV_GROWTH": "AOV Growth",
-            "REVENUE_TREND": "Revenue Trend",
-            "SALES_BY_CATEGORY": "Sales by Category",
-            "SALES_BY_BRAND": "Sales by Brand",
-            "TOP_PRODUCTS": "Top Products",
-            "PRODUCT_NAME": "Product Name",
-            "REVENUE": "Revenue",
-            "QUANTITY": "Quantity",
-            "ORDERS": "Orders",
-            "NO_DATA": "No Data Available",
-            "TOP_PERFORMER": "Top Performer",
-            "SALES_VELOCITY": "Sales Velocity",
-            "VELOCITY_DAILY": "Daily Velocity",
-            "VELOCITY_WEEKLY": "Weekly Velocity",
-            "VELOCITY_MONTHLY": "Monthly Velocity",
-            "VELOCITY_SCORE": "Velocity Score",
-            "CUSTOMER_SEGMENTS": "Customer Segments",
-            "VS_LAST_PERIOD": "vs previous period"
-        },
-        "INVENTORY_ANALYTICS": {
-            "TITLE": "Inventory Analytics",
-            "SUBTITLE": "Stock Level and Turnover Analysis",
-            "EXPORT": "Export Report",
-            "TOTAL_PRODUCTS": "Total Products",
-            "LOW_STOCK": "Low Stock",
-            "OUT_OF_STOCK": "Out of Stock",
-            "STOCK_VALUE": "Stock Value",
-            "EFFICIENCY_METRICS": "Efficiency Metrics",
-            "GMROI": "GMROI",
-            "GMROI_SUBTEXT": "Gross Margin Return on Inv.",
-            "SELL_THROUGH": "Sell-Through Rate",
-            "SELL_THROUGH_SUBTEXT": "% sold in period",
-            "DEAD_STOCK": "Dead Stock",
-            "DEAD_STOCK_SUBTEXT": "Items with no sales",
-            "TURNOVER_RATE": "Turnover Rate",
-            "TURNOVER_SUBTEXT": "Turns per period",
-            "OPPORTUNITY_COST": "Opportunity Cost",
-            "OPPORTUNITY_SUBTEXT": "Daily revenue loss risk",
-            "STOCK_DISTRIBUTION": "Stock Distribution",
-            "TOP_TURNOVER": "Top Turnover Products",
-            "EFFICIENCY_MATRIX": "Stock Efficiency Matrix",
-            "EFFICIENCY_MATRIX_DESC": "Speed vs. Profitability",
-            "LOW_STOCK_ALERTS": "Low Stock Alerts",
-            "PRODUCTS": "Products",
-            "UNITS": "units",
-            "SALES_VELOCITY": "Sales Velocity",
-            "DAY": "day",
-            "DAYS_UNTIL_STOCKOUT": "Days until stockout",
-            "DAYS": "days",
-            "REORDER_RECOMMENDATIONS": "Reorder Recommendations",
-            "PRODUCT": "Product",
-            "CURRENT_STOCK": "Current Stock",
-            "STOCKOUT_DATE": "Predicted Date",
-            "SUGGESTED_ORDER": "Suggested Rec.",
-            "POTENTIAL_LOSS": "Potential Loss",
-            "DEAD_STOCK_REPORT": "Dead Stock Report",
-            "STAGNANT_PRODUCTS": "stagnant products",
-            "STOCK": "Stock",
-            "VALUE_EST": "Est. Value",
-            "STATUS": "Status",
-            "ZERO_SALES": "0 Sales (90 days)",
-            "TOP_PERFORMERS": "Top Performers",
-            "NO_DATA": "No Data Available",
-            "NO_DATA_DESC": "Inventory data will appear here once products and orders are synchronized.",
-            "CHART": {
-                "IN_STOCK": "In Stock",
-                "LOW_STOCK": "Low Stock",
-                "OUT_OF_STOCK": "Out of Stock"
-            },
-            "REPORT": {
-                "TITLE": "Inventory Analytics Report",
-                "GENERATED": "Generated On",
-                "SECTION_METRICS": "Key Metrics",
-                "SECTION_LOW_STOCK": "Low Stock Alerts",
-                "SECTION_REORDER": "Reorder Recommendations",
-                "COL_PRODUCT": "Product",
-                "COL_STOCK": "Stock",
-                "COL_VELOCITY": "Velocity",
-                "COL_DAYS_STOCKOUT": "Days to Stockout",
-                "COL_STOCKOUT_DATE": "Stockout Date",
-                "COL_POTENTIAL_LOSS": "Potential Loss",
-                "COL_TURNOVER": "Turnover"
-            },
-            "COMMON": {
-                "NA": "N/A"
-            },
-            "CLASSIFICATION": {
-                "WINNER": "Winner",
-                "OPPORTUNITY": "Opportunity",
-                "VOLUME_MOVER": "Volume Mover",
-                "DEAD_STOCK": "Dead Stock"
-            }
-        },
-        "INCOME_STATEMENT": {
-            "TITLE": "Income Statement",
-            "SUBTITLE": "Financial Performance Report",
-            "REVENUE": "Revenue",
-            "NET_SALES": "Net Sales",
-            "GROSS_SALES": "Gross Sales",
-            "LESS_RETURNS": "Less: Returns",
-            "LESS_DISCOUNTS": "Less: Discounts",
-            "COGS": "Cost of Goods Sold",
-            "PRODUCT_COSTS": "Product Costs",
-            "GROSS_PROFIT": "Gross Profit",
-            "OPERATING_EXPENSES": "Operating Expenses",
-            "NO_EXPENSES": "No operating expenses recorded",
-            "TOTAL_OPERATING_EXPENSES": "Total Operating Expenses",
-            "OPERATING_INCOME": "Operating Income",
-            "NET_INCOME": "Net Income",
-            "GROSS_MARGIN": "Gross Margin",
-            "OPERATING_MARGIN": "Operating Margin",
-            "NET_MARGIN": "Net Margin",
-            "TOTAL_REVENUE": "Total Revenue",
-            "PERIOD_COMPARISON": "Period Comparison",
-            "SHOW_COMPARISON": "Show Comparison",
-            "HIDE_COMPARISON": "Hide Comparison",
-            "EXPORT_PDF": "Export PDF",
-            "HEALTH_SCORE": {
-                "LABEL": "Financial Health",
-                "SCORE_BREAKDOWN": "Score Breakdown",
-                "UNDERSTANDING": "Understanding your {{score}}/100 score",
-                "STATUS": {
-                    "EXCELLENT": "Excellent",
-                    "GOOD": "Good",
-                    "FAIR": "Fair",
-                    "NEEDS_ATTENTION": "Needs Attention"
-                },
-                "COMPONENTS": {
-                    "GROSS_MARGIN": "Gross Margin",
-                    "NET_MARGIN": "Net Margin",
-                    "OPERATING_EFFICIENCY": "Operating Efficiency"
-                },
-                "INSIGHTS": {
-                    "GROSS_EXCELLENT": "Excellent product pricing and cost control",
-                    "GROSS_GOOD": "Good margins, consider optimizing supplier costs",
-                    "GROSS_FAIR": "Margins are acceptable but could be improved",
-                    "GROSS_LOW": "Low margins - review pricing strategy and supplier costs",
-                    "NET_EXCELLENT": "Strong profitability after all expenses",
-                    "NET_GOOD": "Healthy profit, monitor operating expenses",
-                    "NET_FAIR": "Thin margins - focus on cost reduction",
-                    "NET_LOW": "Negative or very low profit - immediate action needed",
-                    "EFFICIENCY_EXCELLENT": "Operating expenses are well controlled",
-                    "EFFICIENCY_GOOD": "Moderate expense control, room for improvement",
-                    "EFFICIENCY_FAIR": "High operating expenses relative to revenue",
-                    "EFFICIENCY_LOW": "Operating expenses are too high - urgent optimization needed"
-                }
-            },
-            "RECOMMENDATIONS": {
-                "TITLE": "Recommendations",
-                "PRICING": "Review product pricing and negotiate better supplier terms",
-                "EXPENSES": "Reduce operating expenses or increase revenue",
-                "AUDIT": "Operating expenses exceed 50% of revenue - audit all expense categories",
-                "EFFICIENCY": "Good margins but high operating costs - focus on operational efficiency",
-                "STRONG": "Financial health is strong - maintain current practices"
-            },
-            "SCENARIOS": {
-                "PATH_TITLE": "Path to 100% Score",
-                "PATH_SUBTITLE": "Current: {{current}}/100 | Gap: {{gap}} points",
-                "REQUIREMENTS": "Requirements for 100/100:",
-                "CHOOSE_APPROACH": "Choose Your Approach:",
-                "NEW_SCORE": "New Score:",
-                "DIFFICULTY": "Difficulty:",
-                "TIMEFRAME": "Timeframe:",
-                "GAP_NEEDED": "(+{{val}} needed)",
-                "REDUCE_EXPENSES": {
-                    "NAME": "Reduce Expenses",
-                    "DESC": "Cut operating costs while maintaining revenue",
-                    "ACTION": "Reduce expenses by {{amount}}",
-                    "TARGET": "Target: {{amount}} total expenses"
-                },
-                "INCREASE_REVENUE": {
-                    "NAME": "Increase Revenue",
-                    "DESC": "Grow sales while maintaining current cost structure",
-                    "ACTION": "Increase revenue by {{amount}}",
-                    "TARGET": "Target: {{amount}} total revenue"
-                },
-                "BALANCED": {
-                    "NAME": "Balanced Approach",
-                    "DESC": "Combine moderate expense reduction with revenue growth"
-                },
-                "MAINTAIN": {
-                    "NAME": "Maintain Excellence",
-                    "DESC": "You're already performing exceptionally well!",
-                    "ACTION_CONTINUE": "Continue current practices",
-                    "ACTION_MONITOR": "Monitor metrics to maintain high performance"
-                },
-                "FINE_TUNE": {
-                    "NAME": "Fine-Tune Performance",
-                    "DESC": "Small optimizations for continuous improvement",
-                    "ACTION_DoingWell": "Current score: {{score}}/100 - You're doing well!",
-                    "ACTION_Maintain": "Focus on maintaining current margins",
-                    "ACTION_Gains": "Look for small efficiency gains"
-                },
-                "QUICK_WIN": {
-                    "DESC": "Quick Win Opportunity",
-                    "ACTION_REDUCE": "Reduce expenses by just 15% ({{amount}})",
-                    "ACTION_BOOST": "This would boost your score from {{old}} to {{new}}"
-                }
-            }
-        },
-        "DEBUG": {
-            "SYSTEM_DIAGNOSTICS": "System Diagnostics",
-            "ACTIVITY_LOG": "Activity Log",
-            "BUILD": "Build",
-            "USER": "User",
-            "ROLE": "Role",
-            "NO_ERRORS": "No errors ... (waiting for data)"
-        },
-        "ACTIONS": {
-            "REFRESH": "Refresh",
-            "EXPORT": "Export CSV"
-        },
-        "TRENDS": {
-            "TODAY": "Today",
-            "MTD": "Month to Date",
-            "YTD": "Year to Date",
-            "VS_YESTERDAY": "vs yesterday",
-            "VS_LAST_WEEK": "vs last week",
-            "VS_LAST_MONTH": "vs last month",
-            "VS_LAST_YEAR": "vs last year"
-        },
-        "SELECT_DATE_RANGE": "Select a Date Range",
-        "SELECT_DATE_RANGE_DESC": "Choose a date range from the selector above to view financial metrics",
-        "EMPTY_REVENUE_MESSAGE": "Revenue data will appear here once orders are processed",
-        "EMPTY_CATEGORY_MESSAGE": "Category sales data will appear here",
-        "EMPTY_BRAND_MESSAGE": "Brand sales data will appear here",
-        "EMPTY_PRODUCTS_MESSAGE": "Top products will appear here once sales are recorded",
-        "VS_LAST_PERIOD": "vs last period",
-        "PROCESSING": "Processing...",
-        "APPROVALS": {
-            "TITLE": "Approvals",
-            "PENDING": "Pending",
-            "APPROVED": "Approved",
-            "REJECTED": "Rejected",
-            "CANCELLED": "Cancelled",
-            "ALL": "All",
-            "TYPES": {
-                "COUPON_CREATION": "Coupon Creation",
-                "PROMOTION_CREATION": "Promotion Creation",
-                "PRICE_CHANGE": "Price Change",
-                "BULK_DISCOUNT": "Bulk Discount",
-                "FLASH_SALE": "Flash Sale"
-            },
-            "PRIORITY": {
-                "LOW": "Low",
-                "NORMAL": "Normal",
-                "HIGH": "High",
-                "URGENT": "Urgent"
-            },
-            "ACTIONS": {
-                "APPROVE": "Approve",
-                "REJECT": "Reject",
-                "CANCEL": "Cancel",
-                "VIEW_DETAILS": "View Details"
-            },
-            "REQUESTED_BY": "Requested by",
-            "REQUESTED_AT": "Requested",
-            "REVIEWED_BY": "Reviewed by",
-            "REVIEWED_AT": "Reviewed",
-            "REJECTION_REASON": "Rejection Reason",
-            "NOTES": "Notes",
-            "NO_PENDING": "No pending approvals",
-            "APPROVE_CONFIRM": "Approve this request?",
-            "REJECT_CONFIRM": "Reject this request?",
-            "CANCEL_CONFIRM": "Cancel this request?",
-            "AUTO_APPROVED": "Auto-approved",
-            "EXPIRES_IN": "Expires in",
-            "BACK": "Back",
-            "REQUEST_DETAILS": "Request Details",
-            "REVIEW_DETAILS": "Review Details",
-            "TIMELINE": "Timeline",
-            "REQUESTER_INFO": "Requester Information",
-            "NAME": "Name",
-            "EMAIL": "Email",
-            "ROLE": "Role",
-            "REQUEST_CREATED": "Request Created",
-            "REQUEST_APPROVED": "Request Approved",
-            "REQUEST_REJECTED": "Request Rejected",
-            "APPROVE_REQUEST": "Approve Request",
-            "REJECT_REQUEST": "Reject Request",
-            "APPROVE_CONFIRM_MESSAGE": "Are you sure you want to approve this request? This action cannot be undone.",
-            "REJECT_CONFIRM_MESSAGE": "Please provide a reason for rejecting this request.",
-            "REVIEWER_NOTES": "Reviewer Notes",
-            "NOTES_PLACEHOLDER": "Add any notes about this approval...",
-            "REJECTION_PLACEHOLDER": "Explain why this request is being rejected...",
-            "COUPON_CODE": "Coupon Code",
-            "DISCOUNT_TYPE": "Discount Type",
-            "DISCOUNT_VALUE": "Discount Value",
-            "MIN_PURCHASE": "Minimum Purchase",
-            "USAGE_LIMIT": "Usage Limit",
-            "PRODUCT": "Product",
-            "CURRENT_PRICE": "Current Price",
-            "NEW_PRICE": "New Price",
-            "CHANGE_PERCENT": "Change Percentage",
-            "REASON": "Reason",
-            "STATS_SUBTITLE": "Approval workflow metrics",
-            "VIEW_ALL": "View All",
-            "AVG_APPROVAL_TIME": "Average Approval Time"
-        },
-        "NOTIFICATIONS": {
-            "TITLE": "Notifications",
-            "MARK_ALL_READ": "Mark all as read",
-            "NO_NOTIFICATIONS": "No notifications"
-        },
-        "CUSTOMER_INSIGHTS": {
-            "TITLE": "Customer Insights",
-            "SUBTITLE": "Retention, Loyalty, and Lifetime Value Analysis"
-        },
-        "FINANCIALS": {
-            "TITLE": "Financials",
-            "SUBTITLE": "Financial Intelligence and Profitability Analysis",
-            "PREVIOUS_PERIOD": "previous period",
-            "TOP_PERFORMERS": "Top Performing Products",
-            "KPI": {
-                "REVENUE": "Revenue",
-                "PROFIT": "Gross Profit",
-                "MARGIN": "Gross Margin",
-                "AOV": "Average Order Value"
-            },
-            "CHARTS": {
-                "REVENUE_TREND": "Revenue Trend",
-                "MARGIN_TREND": "Margin Trend",
-                "TOP_PRODUCTS": "Top Products by Profit",
-                "CATEGORY_PERFORMANCE": "Category Performance",
-                "PRODUCT_STRATEGY": "Product Strategy Matrix"
-            },
-            "MATRIX": {
-                "AXIS_X": "Relative Market Share",
-                "AXIS_Y": "Market Growth Rate",
-                "STARS": "Stars",
-                "STARS_DESC": "High Growth, High Share",
-                "STARS_ACTION": "Invest to maintain growth.",
-                "COWS": "Cash Cows",
-                "COWS_DESC": "Low Growth, High Share",
-                "COWS_ACTION": "Milk to fund other segments.",
-                "QUESTIONS": "Question Marks",
-                "QUESTIONS_DESC": "High Growth, Low Share",
-                "QUESTIONS_ACTION": "Decide to upgrade or divest.",
-                "DOGS": "Dogs",
-                "DOGS_DESC": "Low Growth, Low Share",
-                "DOGS_ACTION": "Liquidate or reposition."
-            },
-            "PERIODS": {
-                "QUICK_PERIODS": "Quick Periods",
-                "TODAY": "Today",
-                "YESTERDAY": "Yesterday",
-                "LAST_7_DAYS": "Last 7 Days",
-                "LAST_30_DAYS": "Last 30 Days",
-                "MTD": "Month to Date",
-                "LAST_MONTH": "Last Month",
-                "YTD": "Year to Date",
-                "LAST_YEAR": "Last Year",
-                "CUSTOM": "Custom",
-                "SELECT_PERIOD": "Select Period"
-            },
-            "TABLE": {
-                "PRODUCT": "Product",
-                "QUADRANT": "Quadrant",
-                "CATEGORY": "Category",
-                "REVENUE": "Revenue",
-                "GROWTH": "Growth",
-                "SHARE": "Relative Share",
-                "UNITS_SOLD": "Units",
-                "PROFIT": "Profit",
-                "MARGIN": "Margin"
-            },
-            "PROFIT": "Profit",
-            "MARGIN": "Margin",
-            "COST": "Cost"
-        },
-        "EXPENSES": {
-            "TITLE": "Operating Expenses",
-            "SUBTITLE": "Manage operating expenses and costs",
-            "ADD_EXPENSE": "Add Expense",
-            "EDIT_EXPENSE": "Edit Expense",
-            "ADD_FIRST": "Add First Expense",
-            "SEARCH": "Search",
-            "SEARCH_PLACEHOLDER": "Search by description, vendor, or category...",
-            "CATEGORY": "Category",
-            "ALL_CATEGORIES": "All Categories",
-            "TOTAL_EXPENSES": "Total Expenses",
-            "EXPENSES": "expenses",
-            "RECURRING": "Recurring",
-            "NO_EXPENSES": "No expenses recorded",
-            "NO_EXPENSES_DESC": "Start adding your operating expenses to see a complete income statement",
-            "FORM": {
-                "CATEGORY": "Category",
-                "AMOUNT": "Amount",
-                "DESCRIPTION": "Description",
-                "DATE": "Date",
-                "VENDOR": "Vendor",
-                "RECURRING": "Recurring Expense",
-                "FREQUENCY": "Frequency",
-                "MONTHLY": "Monthly",
-                "QUARTERLY": "Quarterly",
-                "YEARLY": "Yearly",
-                "NOTES": "Notes",
-                "SAVE": "Save",
-                "CANCEL": "Cancel"
-            }
-        },
-        "OPERATIONAL_METRICS": {
-            "TITLE": "Operational Metrics",
-            "SUBTITLE": "Real-time operational efficiency insights",
-            "REFRESH": "Refresh",
-            "LOADING": "Loading metrics...",
-            "PERIOD": {
-                "TODAY": "Today",
-                "WEEK": "Last 7 Days",
-                "MONTH": "Last 30 Days"
-            },
-            "KPI": {
-                "AVG_FULFILLMENT_TIME": "Avg Fulfillment Time",
-                "ORDERS_TODAY": "Orders Today",
-                "SLA_COMPLIANCE": "SLA Compliance",
-                "PENDING_ORDERS": "Pending Orders"
-            },
-            "CHARTS": {
-                "FULFILLMENT_TREND": "Fulfillment Trend",
-                "SLA_TREND": "SLA Trend",
-                "ORDER_STATUS": "Order Status Distribution",
-                "STAFF_PERFORMANCE": "Staff Performance (Top 5)"
-            },
-            "TABLE": {
-                "STAFF_LEADERBOARD": "Staff Leaderboard",
-                "RANK": "Rank",
-                "STAFF": "Staff",
-                "ORDERS_PROCESSED": "Orders Processed",
-                "AVG_TIME": "Avg Time",
-                "ACTIVE_ORDERS": "Active Orders"
-            },
-            "SLA": {
-                "AT_RISK": "At Risk",
-                "OVERDUE": "Overdue",
-                "AVG_RESPONSE_TIME": "Avg Response Time"
-            }
-        }
-    },
     "CATALOG": {
-        "ACTION_QUICK_VIEW_NOW": "Quick View",
-        "ADD_TO_CART": "Add to Cart",
-        "VIEW_DETAILS": "View Details",
-        "NO_PRODUCTS": "No products found",
-        "TRY_ADJUSTING_FILTERS": "Try adjusting your search filters",
-        "CLEAR_FILTERS": "Clear Filters",
+        "TITLE": "Product Catalog",
         "FILTERS": "Filters",
+        "SEARCH": "Search",
         "SEARCH_PLACEHOLDER": "Search products...",
         "CATEGORIES": "Categories",
         "ALL_CATEGORIES": "All Categories",
-        "PRICE_RANGE": "Price Range",
         "BRANDS": "Brands",
-        "TIRE_SIZE": "Size",
+        "PRICE_RANGE": "Price Range",
+        "TIRE_SIZE": "Tire Size",
         "WIDTH": "Width",
-        "ASPECT_RATIO": "Profile",
-        "DIAMETER": "Rim",
-        "PRODUCTS_FOUND": "Products Found",
+        "ASPECT_RATIO": "Aspect Ratio",
+        "DIAMETER": "Diameter",
+        "FEATURES": "Features",
+        "TUBELESS": "Tubeless",
+        "FEATURED": "Featured",
+        "NEW_ARRIVALS": "New Arrivals",
+        "BEST_SELLERS": "Best Sellers",
+        "IN_STOCK_ONLY": "In Stock Only",
+        "CLEAR_FILTERS": "Clear All Filters",
+        "PRODUCTS_FOUND": "products found",
+        "LOADING": "Loading products...",
+        "NO_PRODUCTS": "No products found",
+        "TRY_DIFFERENT_FILTERS": "Try adjusting your filters or search terms",
+        "VIEW_DETAILS": "View Details",
+        "IN_STOCK": "In Stock",
+        "OUT_OF_STOCK": "Out of Stock",
+        "ADD_TO_CART": "Add to Cart",
+        "NEW": "New",
+        "BESTSELLER": "Bestseller",
         "SORT": {
             "FEATURED": "Featured",
             "PRICE_LOW": "Price: Low to High",
             "PRICE_HIGH": "Price: High to Low",
-            "NEWEST": "Newest"
+            "NAME_AZ": "Name: A-Z",
+            "NEWEST": "Newest First"
         }
     },
     "WAREHOUSES": {
@@ -2133,15 +2467,6 @@
         "CUSTOMERS": "Customers",
         "SECTION_ECOMMERCE": "E-Commerce",
         "PRODUCT_TYPES": "Product Types",
-        "CATEGORIES": "Categories",
-        "BRANDS": "Brands",
-        "CATALOG_OVERVIEW": "Catalog Overview",
-        "ORDERS": "Sales History",
-        "SECTION_CONTENT": "Content",
-        "BANNERS": "Banners",
-        "BLOG": "Blog",
-        "MEDIA_LIBRARY": "Media Library",
-        "PDF_LIBRARY": "PDF Library",
         "SECTION_SYSTEM": "System",
         "THEMES": "Themes",
         "STAFF": "Staff Members",
@@ -2149,7 +2474,18 @@
         "SETTINGS": "Website Settings",
         "INTEGRATIONS": "API Integrations",
         "LOGS": "Activity Logs",
-        "LOGOUT": "Logout"
+        "LOGOUT": "Logout",
+        "COMMON": {
+            "BACK": "Back",
+            "LOADING": "Loading..."
+        }
+    },
+    "SETTINGS": {
+        "ALL_SAVED": "All changes saved",
+        "AUTO_SAVING": "Saving changes...",
+        "SAVE_ERROR": "Error saving changes",
+        "UNDO": "Undo",
+        "REDO": "Redo"
     },
     "DASHBOARD": {
         "WELCOME": "Welcome to Importadora Euro Dashboard",
@@ -2236,6 +2572,27 @@
         "NEW_TITLE": "New Blog Post",
         "EDIT_TITLE": "Edit Blog Post",
         "BTN_ADD": "New Post",
+        "HERO_TITLE": "News & Tips",
+        "HERO_DESC": "Stay up to date with the latest in the world of motorcycling, maintenance, and tire technology.",
+        "READ_TIME": "min read",
+        "READ_MORE": "Read more →",
+        "SHARE": "Share",
+        "LOADING": "Loading article...",
+        "EMPTY": "No blog posts found",
+        "SUBSCRIBE": {
+            "TITLE": "Subscribe",
+            "DESC": "Receive the best offers and tips in your inbox.",
+            "PLACEHOLDER": "Your email address",
+            "BTN": "Subscribe"
+        },
+        "FILTERS": {
+            "ALL": "All",
+            "MAINTENANCE": "Maintenance",
+            "TECH": "Technology",
+            "TIPS": "Tips",
+            "PUBLISHED": "Published",
+            "DRAFT": "Draft"
+        },
         "TH_COVER": "Cover",
         "TH_TITLE": "Title",
         "TH_CATEGORY": "Category",
@@ -2264,8 +2621,7 @@
             "TIPS": "Tips",
             "TECH": "Technology",
             "SECURITY": "Security"
-        },
-        "EMPTY": "No blog posts found"
+        }
     },
     "BANNERS": {
         "TITLE": "Homepage Banners",
@@ -2292,44 +2648,6 @@
             "IMAGE": "Banner Image"
         },
         "EMPTY": "No banners found"
-    },
-    "CATALOG": {
-        "TITLE": "Product Catalog",
-        "FILTERS": "Filters",
-        "SEARCH": "Search",
-        "SEARCH_PLACEHOLDER": "Search products...",
-        "CATEGORIES": "Categories",
-        "ALL_CATEGORIES": "All Categories",
-        "BRANDS": "Brands",
-        "PRICE_RANGE": "Price Range",
-        "TIRE_SIZE": "Tire Size",
-        "WIDTH": "Width",
-        "ASPECT_RATIO": "Aspect Ratio",
-        "DIAMETER": "Diameter",
-        "FEATURES": "Features",
-        "TUBELESS": "Tubeless",
-        "FEATURED": "Featured",
-        "NEW_ARRIVALS": "New Arrivals",
-        "BEST_SELLERS": "Best Sellers",
-        "IN_STOCK_ONLY": "In Stock Only",
-        "CLEAR_FILTERS": "Clear All Filters",
-        "PRODUCTS_FOUND": "products found",
-        "LOADING": "Loading products...",
-        "NO_PRODUCTS": "No products found",
-        "TRY_DIFFERENT_FILTERS": "Try adjusting your filters or search terms",
-        "VIEW_DETAILS": "View Details",
-        "IN_STOCK": "In Stock",
-        "OUT_OF_STOCK": "Out of Stock",
-        "ADD_TO_CART": "Add to Cart",
-        "NEW": "New",
-        "BESTSELLER": "Bestseller",
-        "SORT": {
-            "FEATURED": "Featured",
-            "PRICE_LOW": "Price: Low to High",
-            "PRICE_HIGH": "Price: High to Low",
-            "NAME_AZ": "Name: A-Z",
-            "NEWEST": "Newest First"
-        }
     },
     "COUPONS": {
         "TITLE": "Discount Coupons",
@@ -2385,104 +2703,6 @@
         "DESCRIPTION_TOO_LONG": "⚠️ Description may be truncated in search results",
         "PLACEHOLDER_TITLE": "Product Title - Importadora Euro",
         "PLACEHOLDER_DESCRIPTION": "Product description will appear here. Make it compelling to encourage clicks from search results."
-    },
-    "KITS": {
-        "TITLE": "Product Kits",
-        "SUBTITLE": "Manage product bundles and combos",
-        "BTN_NEW": "Create Kit",
-        "SEARCH_PLACEHOLDER": "Search kits by name or SKU...",
-        "TABLE": {
-            "IMAGE": "Image",
-            "NAME": "Kit Name",
-            "SKU": "SKU",
-            "COMPONENTS": "Components",
-            "PRICE": "Price",
-            "SAVINGS": "Savings",
-            "STATUS": "Status",
-            "ACTIONS": "Actions"
-        },
-        "FORM": {
-            "TITLE_NEW": "Create New Kit",
-            "TITLE_EDIT": "Edit Kit",
-            "SUBTITLE_NEW": "Create a new product bundle",
-            "SUBTITLE_EDIT": "Edit product bundle",
-            "TAB_BASIC": "Basic Information",
-            "TAB_COMPONENTS": "Components",
-            "TAB_PRICING": "Pricing",
-            "TAB_SEO": "SEO",
-            "NAME_ES": "Name (Spanish)",
-            "NAME_EN": "Name (English)",
-            "NAME_ES_PLACEHOLDER": "Kit de 4 Llantas + Balanceo",
-            "NAME_EN_PLACEHOLDER": "4 Tires + Balancing Kit",
-            "SKU": "Kit SKU",
-            "SKU_HINT": "Unique code (e.g., KIT-4TIRES)",
-            "SKU_PLACEHOLDER": "KIT-4TIRES",
-            "DESC_ES": "Description (Spanish)",
-            "DESC_EN": "Description (English)",
-            "DESC_ES_PLACEHOLDER": "Descripción del kit en español",
-            "DESC_EN_PLACEHOLDER": "Kit description in English",
-            "IMAGE": "Main Image",
-            "IMAGE_PLACEHOLDER": "https://example.com/kit-image.jpg",
-            "IMAGE_HINT": "URL of the main kit image",
-            "GALLERY": "Gallery",
-            "ADD_COMPONENT": "Add Product",
-            "COMPONENT_PRODUCT": "Product",
-            "COMPONENT_QTY": "Quantity",
-            "COMPONENT_PRICE": "Unit Price",
-            "REMOVE_COMPONENT": "Remove",
-            "TOTAL_COMPONENTS": "Total Components",
-            "NO_COMPONENTS": "No components added",
-            "NO_COMPONENTS_HINT": "Click 'Add Product' to start building your kit",
-            "COMPONENTS_TOTAL": "Components Total",
-            "KIT_PRICE": "Kit Price",
-            "KIT_PRICE_HINT": "Special kit price (lower than components total)",
-            "COMPARE_PRICE": "Compare at Price",
-            "COMPARE_PRICE_HINT": "Optional: Comparison price to show discount",
-            "SAVINGS_AUTO": "Savings (Auto-calculated)",
-            "SAVINGS_ALERT_TITLE": "Excellent savings!",
-            "SAVINGS_ALERT_TEXT": "Customers will save {{amount}} ({{percentage}}%) buying this kit",
-            "FEATURED": "Featured",
-            "FEATURED_HINT": "Show on homepage",
-            "ACTIVE": "Active",
-            "STATUS_SECTION": "Status & Visibility",
-            "ACTIVE_HINT": "Available for sale",
-            "VISIBILITY_SETTINGS": "Visibility Settings",
-            "PUBLISH_STATUS": "Publish Status",
-            "DRAFT": "Draft",
-            "PUBLISHED": "Published",
-            "ARCHIVED": "Archived",
-            "META_TITLE": "Meta Title Template",
-            "META_TITLE_HELP": "Title for search engines (SEO)",
-            "META_TITLE_PLACEHOLDER": "{{page_title}} | {{site_name}}",
-            "META_TITLE_HINT": "Use {{page_title}} and {{site_name}} as dynamic variables",
-            "META_DESCRIPTION": "Default Meta Description",
-            "META_DESC_HELP": "Description for search results (SEO)",
-            "META_DESC_PLACEHOLDER": "Save by buying our complete kit of 4 tires with balancing service included",
-            "META_DESC_HINT": "Recommended: 150-160 characters",
-            "SEARCH_PRODUCTS": "Search products by name or SKU...",
-            "NO_PRODUCTS_FOUND": "No products found",
-            "BTN_SAVE": "Save Kit",
-            "BTN_CANCEL": "Cancel"
-        },
-        "AVAILABILITY": {
-            "IN_STOCK": "{{count}} kits available",
-            "OUT_OF_STOCK": "Out of stock",
-            "LIMITED": "Limited by: {{product}}"
-        },
-        "DELETE_CONFIRM": "Delete this kit?",
-        "DELETE_WARNING": "This action cannot be undone.",
-        "SUCCESS_CREATE": "Kit created successfully",
-        "SUCCESS_UPDATE": "Kit updated",
-        "SUCCESS_DELETE": "Kit deleted",
-        "ERROR_LOAD": "Error loading kits",
-        "ERROR_SAVE": "Error saving kit",
-        "COMPONENT_UNIT": "unit",
-        "COMPONENT_UNITS": "units",
-        "ITEMS_PER_PAGE": "[EN] Elementos por página",
-        "SHOWING_ITEMS": "[EN] Mostrando {{start}} a {{end}} de {{total}} kits",
-        "STATUS": {
-            "ALL": "All"
-        }
     },
     "PRODUCTS": {
         "TITLE": "Product Management",
@@ -2709,7 +2929,19 @@
         "EMPTY": "No logs found"
     },
     "COMMON": {
+        "BACK": "Back",
         "LOADING": "Loading...",
+        "IVA_INCLUDED": "VAT Included",
+        "CURRENCY": "MXN",
+        "BADGES": {
+            "NEW": "New",
+            "HOT": "Hot",
+            "BESTSELLER": "Bestseller"
+        },
+        "TRUST": {
+            "MSI": "Months Without Interest",
+            "PROTECTED": "Protected Purchase"
+        },
         "ERROR": "Error",
         "NO_DATA": "No data found",
         "EDIT": "Edit",
@@ -2739,24 +2971,6 @@
         "INACTIVE": "Inactive",
         "EXPORT": "Export",
         "VIEW": "View"
-    },
-    "PDF_LIST": {
-        "TITLE": "PDF Library Management",
-        "BTN_ADD": "Add New PDF",
-        "TH_THUMBNAIL": "Thumbnail",
-        "TH_INFO": "Title & Description",
-        "TH_CATEGORY": "Category",
-        "TH_METRICS": "Size/Downloads",
-        "TH_ACCESS": "Access",
-        "TH_STATUS": "Status",
-        "TH_ACTIONS": "Actions",
-        "STATUS_ACTIVE": "Active",
-        "STATUS_INACTIVE": "Inactive",
-        "ACCESS_PUBLIC": "Public",
-        "ACCESS_LOGIN": "Login Required",
-        "ACCESS_PRIVATE": "Private",
-        "CREATED": "Created",
-        "EMPTY": "No PDFs found"
     },
     "PRODUCT_DETAIL": {
         "BREADCRUMB_HOME": "Home",

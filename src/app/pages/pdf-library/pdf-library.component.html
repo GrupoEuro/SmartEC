@@ -9,6 +9,22 @@
             </p>
         </div>
 
+        <!-- Toolbar -->
+        <div class="library-toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [value]="searchQuery" (input)="onSearch($event)"
+                    placeholder="Buscar manuales, fichas técnicas..." class="search-input">
+            </div>
+
+            <div class="category-filters">
+                <button *ngFor="let cat of categories" class="filter-pill"
+                    [class.active]="selectedCategory === cat.value" (click)="setCategory(cat.value)">
+                    {{ cat.label }}
+                </button>
+            </div>
+        </div>
+
         <!-- PDF Grid -->
         <div class="pdfs-grid">
             <div *ngFor="let pdf of pdfs$ | async" class="pdf-card">

@@ -38,12 +38,24 @@
                 </aside>
 
                 <!-- Grid -->
-                <main class="flex-1 p-4 overflow-y-auto modal-content">
+                <main class="flex-1 p-4 overflow-y-auto modal-content bg-zinc-900/50">
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         <div *ngFor="let asset of assets$ | async" (click)="selectAsset(asset)"
-                            class="asset-card group cursor-pointer relative aspect-square rounded-lg overflow-hidden border transition-all">
+                            [class.ring-2]="selectedAsset()?.storagePath === asset.storagePath"
+                            [class.ring-blue-500]="selectedAsset()?.storagePath === asset.storagePath"
+                            class="asset-card group cursor-pointer relative aspect-square rounded-lg overflow-hidden border border-zinc-700 hover:border-zinc-500 transition-all bg-zinc-800">
+
                             <img [src]="asset.publicUrl" [alt]="asset.metadata.altText"
                                 class="w-full h-full object-cover">
+
+                            <!-- Selection Checkmark Overlay -->
+                            <div *ngIf="selectedAsset()?.storagePath === asset.storagePath"
+                                class="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                <div class="bg-blue-500 rounded-full p-1">
+                                    <app-icon name="check" [size]="16" class="text-white"></app-icon>
+                                </div>
+                            </div>
+
                             <div
                                 class="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
                                 {{ asset.filename }}
@@ -55,6 +67,18 @@
                     </div>
                 </main>
             </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="modal-footer p-4 border-t border-zinc-700 flex justify-end gap-3 bg-zinc-900">
+            <button (click)="close.emit()" class="px-4 py-2 text-sm text-zinc-300 hover:text-white transition-colors">
+                Cancel
+            </button>
+            <button (click)="confirmSelection()" [disabled]="!selectedAsset()" [class.opacity-50]="!selectedAsset()"
+                class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2">
+                <span>Select Image</span>
+                <app-icon name="check" [size]="16"></app-icon>
+            </button>
         </div>
     </div>
 </div>

@@ -54,11 +54,11 @@ export class PortalLauncherComponent implements OnInit {
         },
         {
             id: 'admin',
-            title: 'PORTAL.ADMIN.TITLE',
+            title: 'PORTAL.ADMIN_PANEL_CARD.TITLE',
             route: '/admin/dashboard',
             roles: ['SUPER_ADMIN', 'ADMIN'],
             icon: 'admin_panel_settings',
-            description: 'PORTAL.ADMIN.DESC'
+            description: 'PORTAL.ADMIN_PANEL_CARD.DESC'
         },
         {
             id: 'help',

@@ -1,0 +1,23 @@
+{
+  "operations": {
+    "sectionName": "operations",
+    "totalFiles": 33,
+    "totalKeys": 202,
+    "missingInEn": [],
+    "missingInEs": []
+  },
+  "commandCenter": {
+    "sectionName": "commandCenter",
+    "totalFiles": 12,
+    "totalKeys": 332,
+    "missingInEn": [],
+    "missingInEs": []
+  },
+  "admin": {
+    "sectionName": "admin",
+    "totalFiles": 43,
+    "totalKeys": 581,
+    "missingInEn": [],
+    "missingInEs": []
+  }
+}

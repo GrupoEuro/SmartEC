@@ -23,9 +23,11 @@
                     <app-icon name="user-plus" [size]="24"></app-icon>
                 </div>
                 <div class="metric-content">
-                    <span class="metric-label">New Customers (Period)</span>
+                    <span class="metric-label">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.NEW_CUSTOMERS' | translate
+                        }}</span>
                     <span class="metric-value">{{ newCustomersInPeriod() }}</span>
-                    <span class="metric-trend positive" *ngIf="newCustomersInPeriod() > 0">Active Growth</span>
+                    <span class="metric-trend positive" *ngIf="newCustomersInPeriod() > 0">{{
+                        'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.ACTIVE_GROWTH' | translate }}</span>
                 </div>
             </div>
 
@@ -34,9 +36,10 @@
                     <app-icon name="dollar-sign" [size]="24"></app-icon>
                 </div>
                 <div class="metric-content">
-                    <span class="metric-label">Average CLV</span>
+                    <span class="metric-label">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.AVG_CLV' | translate }}</span>
                     <span class="metric-value">{{ data.avgCLV | currency }}</span>
-                    <span class="metric-trend neutral">Lifetime Value</span>
+                    <span class="metric-trend neutral">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.LTV_DESC' | translate
+                        }}</span>
                 </div>
             </div>
 
@@ -45,9 +48,11 @@
                     <app-icon name="user-minus" [size]="24"></app-icon>
                 </div>
                 <div class="metric-content">
-                    <span class="metric-label">Churn Rate</span>
+                    <span class="metric-label">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.CHURN_RATE' | translate
+                        }}</span>
                     <span class="metric-value">{{ data.churnRate | number:'1.1-1' }}%</span>
-                    <span class="metric-trend" [class.negative]="data.churnRate > 5">Based on Inactivity</span>
+                    <span class="metric-trend" [class.negative]="data.churnRate > 5">{{
+                        'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.CHURN_DESC' | translate }}</span>
                 </div>
             </div>
 
@@ -56,21 +61,25 @@
                     <app-icon name="alert-triangle" [size]="24"></app-icon>
                 </div>
                 <div class="metric-content">
-                    <span class="metric-label">At-Risk Value</span>
+                    <span class="metric-label">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.AT_RISK_VALUE' | translate
+                        }}</span>
                     <span class="metric-value">{{ data.atRiskValue | currency }}</span>
-                    <span class="metric-trend negative">Potential Revenue Loss</span>
+                    <span class="metric-trend negative">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.KPI.POTENTIAL_LOSS' |
+                        translate }}</span>
                 </div>
             </div>
         </div>
 
         <!-- Charts Row -->
         <div class="charts-grid">
-            <app-chart-card [title]="'Acquisition Trend'" [subtitle]="'New Customers over last 12 months'"
-                [type]="'bar'" [data]="acquisitionChartData()" [height]="300">
+            <app-chart-card [title]="'COMMAND_CENTER.CUSTOMER_INSIGHTS.CHARTS.ACQUISITION' | translate"
+                [subtitle]="'COMMAND_CENTER.CUSTOMER_INSIGHTS.CHARTS.ACQUISITION_DESC' | translate" [type]="'bar'"
+                [data]="acquisitionChartData()" [height]="300">
             </app-chart-card>
 
-            <app-chart-card [title]="'Customer Segmentation'" [type]="'doughnut'" [data]="segmentChartData()"
-                [height]="300" [tableData]="segmentTableData()" [tableColumns]="segmentTableColumns">
+            <app-chart-card [title]="'COMMAND_CENTER.CUSTOMER_INSIGHTS.CHARTS.SEGMENTATION' | translate"
+                [type]="'doughnut'" [data]="segmentChartData()" [height]="300" [tableData]="segmentTableData()"
+                [tableColumns]="segmentTableColumns">
             </app-chart-card>
         </div>
 
@@ -80,9 +89,9 @@
                 <div class="card-header" id="ci-rfm-analysis"
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1.5rem 1.5rem 0;">
                     <div>
-                        <h3>RFM Analysis</h3>
-                        <p class="subtitle" style="color: #64748b; font-size: 0.875rem; margin: 0;">Recency vs Frequency
-                            vs Monetary Value</p>
+                        <h3>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TITLE' | translate }}</h3>
+                        <p class="subtitle" style="color: #64748b; font-size: 0.875rem; margin: 0;">{{
+                            'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.SUBTITLE' | translate }}</p>
                     </div>
                     <div style="display: flex; gap: 0.5rem;" id="ci-rfm-actions">
                         <button class="btn-icon-subtle" (click)="toggleRFMTable()" [class.active]="showRFMTable()"
@@ -130,11 +139,11 @@
                     <table class="risk-table">
                         <thead>
                             <tr>
-                                <th>Customer</th>
-                                <th>Segment</th>
-                                <th>Days Since</th>
-                                <th>Orders</th>
-                                <th>LTV</th>
+                                <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.CUSTOMER' | translate }}</th>
+                                <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.SEGMENT' | translate }}</th>
+                                <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.DAYS_SINCE' | translate }}</th>
+                                <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.ORDERS' | translate }}</th>
+                                <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.LTV' | translate }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -172,7 +181,7 @@
                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3>
                     <app-icon name="grid" [size]="20" class="text-indigo-400"></app-icon>
-                    Retention Heatmap (Cohorts)
+                    {{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.TITLE' | translate }}
                 </h3>
                 <button class="btn-icon-subtle" (click)="toggleCohortInfo()" [class.active]="showCohortInfo()"
                     title="Info">
@@ -184,10 +193,11 @@
             <div class="info-panel glass-panel" *ngIf="showCohortInfo()"
                 style="margin-bottom: 1.5rem; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.1); padding: 1rem; border-radius: 0.5rem;">
                 <p style="color: #cbd5e1; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                    <strong>Understanding Cohorts:</strong> This heatmap tracks user retention over time.
+                    <strong>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.INFO_TITLE' | translate }}</strong> {{
+                    'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.INFO_DESC' | translate }}
                 </p>
                 <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; color: #94a3b8;">
-                    <span>Color Intensity = Retention Rate</span>
+                    <span>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.LEGEND' | translate }}</span>
                     <div style="display: flex; align-items: center; gap: 0.25rem;">
                         <span>0%</span>
                         <div
@@ -201,9 +211,12 @@
                 <table class="cohort-table">
                     <thead>
                         <tr>
-                            <th class="sticky-col">Cohort</th>
-                            <th class="sticky-col-2">Users</th>
-                            <th *ngFor="let m of [0,1,2,3,4,5,6,7,8,9,10,11]">Month {{m}}</th>
+                            <th class="sticky-col">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.TABLE.COHORT' |
+                                translate }}</th>
+                            <th class="sticky-col-2">{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.TABLE.USERS' |
+                                translate }}</th>
+                            <th *ngFor="let m of [0,1,2,3,4,5,6,7,8,9,10,11]">{{
+                                'COMMAND_CENTER.CUSTOMER_INSIGHTS.COHORTS.TABLE.MONTH' | translate }} {{m}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -232,16 +245,16 @@
         <div class="section-card glass-panel wide" *ngIf="atRiskCustomers().length > 0">
             <h3>
                 <app-icon name="alert-triangle" [size]="20" class="text-red-500"></app-icon>
-                High Value Customers At Risk
+                {{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.AT_RISK.TITLE' | translate }}
             </h3>
             <table class="risk-table">
                 <thead>
                     <tr>
-                        <th>Customer</th>
-                        <th>Total Spent</th>
-                        <th>Last Order</th>
-                        <th>Risk Score</th>
-                        <th>Action</th>
+                        <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.RFM.TABLE.CUSTOMER' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.AT_RISK.TABLE.TOTAL_SPENT' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.AT_RISK.TABLE.LAST_ORDER' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.AT_RISK.TABLE.RISK_SCORE' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.CUSTOMER_INSIGHTS.AT_RISK.TABLE.ACTION' | translate }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -258,7 +271,7 @@
                             </div>
                         </td>
                         <td>
-                            <button class="btn-action">Contact</button>
+                            <button class="btn-action">{{ 'COMMAND_CENTER.ACTIONS.CONTACT' | translate }}</button>
                         </td>
                     </tr>
                 </tbody>
@@ -268,7 +281,7 @@
         <app-dashboard-diagnostics [logs]="[]" [buildVersion]="'v2.0-Reactive'"></app-dashboard-diagnostics>
 
         <!-- Tour Trigger -->
-        <button (click)="startTour()" class="help-float-btn" title="Start Tour">
+        <button (click)="startTour()" class="help-float-btn" [title]="'COMMAND_CENTER.TOUR.START' | translate">
             ?
         </button>
     </div>

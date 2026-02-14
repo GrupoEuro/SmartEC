@@ -4,7 +4,7 @@
         <nav class="breadcrumbs">
             <ng-container *ngFor="let crumb of breadcrumbs(); let last = last">
                 <a [routerLink]="crumb.url" class="crumb-link" [class.active]="last">
-                    {{ crumb.label }}
+                    {{ crumb.label | translate }}
                 </a>
                 <span class="crumb-separator" *ngIf="!last">
                     <app-icon name="chevron-right" [size]="14"></app-icon>
@@ -31,8 +31,8 @@
                 [class.active]="isPeriodSelectorOpen()">
                 <app-icon name="calendar" [size]="16" class="text-indigo-400"></app-icon>
                 <span class="period-label">
-                    {{ contextService.selectedPeriod() ? (contextService.selectedPeriod()! | titlecase) : 'Select
-                    Period' }}
+                    {{ contextService.selectedPeriod() ? (contextService.selectedPeriod()! | titlecase) :
+                    ('COMMAND_CENTER.FINANCIALS.PERIODS.SELECT_PERIOD' | translate) }}
                 </span>
                 <app-icon name="chevron-down" [size]="14" class="arrow-icon"></app-icon>
             </button>
@@ -72,12 +72,12 @@
                 <!-- Custom Range Inputs -->
                 <div class="dropdown-section custom-range-inputs" *ngIf="contextService.selectedPeriod() === 'custom'">
                     <div class="date-input-group">
-                        <label>Start</label>
+                        <label>{{ 'COMMAND_CENTER.HEADER.START_DATE' | translate }}</label>
                         <input type="date" [ngModel]="customStart" (ngModelChange)="onCustomDateChange($event, 'start')"
                             class="glass-date-input">
                     </div>
                     <div class="date-input-group">
-                        <label>End</label>
+                        <label>{{ 'COMMAND_CENTER.HEADER.END_DATE' | translate }}</label>
                         <input type="date" [ngModel]="customEnd" (ngModelChange)="onCustomDateChange($event, 'end')"
                             class="glass-date-input">
                     </div>
@@ -135,7 +135,8 @@
             <div class="custom-dropdown user-dropdown-pos" *ngIf="isUserMenuOpen()">
                 <ng-container *ngIf="user$ | async as user">
                     <div class="dropdown-header">
-                        <span class="u-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'User'
+                        <span class="u-name">{{ (userProfile$ | async)?.displayName || user.displayName ||
+                            ('COMMAND_CENTER.HEADER.USER_FALLBACK' | translate)
                             }}</span>
                         <span class="u-email">{{ user.email }}</span>
                     </div>

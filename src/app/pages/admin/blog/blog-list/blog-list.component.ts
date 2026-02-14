@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { BlogService } from '../../../../core/services/blog.service';
 import { BlogPost } from '../../../../core/models/blog.model';
 import { Observable, BehaviorSubject, combineLatest, of } from 'rxjs';
-import { take, map, tap, catchError } from 'rxjs/operators';
+import { take, map, tap, catchError, shareReplay } from 'rxjs/operators';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
@@ -35,6 +35,10 @@ export class BlogListComponent implements OnInit {
   paginatedPosts$!: Observable<BlogPost[]>;
   uniqueCategories: string[] = [];
 
+  // Loading and error states
+  isLoading = true;
+  error: string | null = null;
+
   // Search and filters
   searchTerm = '';
   selectedCategory = '';
@@ -60,6 +64,7 @@ export class BlogListComponent implements OnInit {
 
   loadData() {
     this.posts$ = this.blogService.getPosts().pipe(
+      tap(() => this.isLoading = false),
       tap(posts => {
         // Extract unique categories
         const categories = new Set(posts.map(p => p.category).filter(c => !!c));
@@ -67,17 +72,21 @@ export class BlogListComponent implements OnInit {
       }),
       catchError(error => {
         console.error('Error loading posts:', error);
+        this.error = 'Failed to load blog posts. Please try again.';
+        this.isLoading = false;
+        this.toast.error('Failed to load blog posts');
         return of([]);
-      })
+      }),
+      shareReplay(1) // Cache the result
     );
   }
 
   setupFiltering() {
     this.paginatedPosts$ = combineLatest([
       this.posts$,
-      this.filterSubject
+      this.filterSubject.asObservable()
     ]).pipe(
-      map(([posts]) => {
+      map(([posts, _]) => {
         // Apply filters
         let filtered = this.applyFilters(posts);
 

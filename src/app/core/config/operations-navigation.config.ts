@@ -55,7 +55,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
             },
             {
                 id: 'replenishment',
-                title: 'Replenishment Planner',
+                title: 'OPERATIONS.SIDEBAR.REPLENISHMENT_PLANNER',
                 icon: 'trending-up',
                 route: '/operations/replenishment-planner',
                 badge: {
@@ -67,7 +67,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
     },
     {
         id: 'warehouse',
-        title: 'Warehouse Operations',
+        title: 'OPERATIONS.SIDEBAR.WAREHOUSE_OPERATIONS',
         icon: 'warehouse',
         children: [
             {
@@ -78,7 +78,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
             },
             {
                 id: 'receiving',
-                title: 'Receiving',
+                title: 'OPERATIONS.SIDEBAR.RECEIVING',
                 icon: 'download',
                 route: '/operations/receiving',
                 badge: {
@@ -90,7 +90,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
     },
     {
         id: 'supply_chain',
-        title: 'Supply Chain',
+        title: 'OPERATIONS.SIDEBAR.SUPPLY_CHAIN',
         icon: 'truck',
         children: [
             {
@@ -103,18 +103,18 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
     },
     {
         id: 'pricing_mgmt',
-        title: 'Pricing Management',
+        title: 'OPERATIONS.SIDEBAR.PRICING_MANAGEMENT',
         icon: 'price_check',
         children: [
             {
                 id: 'dashboard',
-                title: 'OPERATIONS.DASHBOARD.TITLE', // Or custom: Pricing Dashboard
+                title: 'OPERATIONS.SIDEBAR.PRICING_DASHBOARD',
                 icon: 'layout-dashboard',
                 route: '/operations/pricing/dashboard'
             },
             {
                 id: 'smart_builder',
-                title: 'Smart Builder',
+                title: 'OPERATIONS.SIDEBAR.SMART_BUILDER',
                 icon: 'psychology',
                 route: '/operations/pricing/constructor',
                 badge: {
@@ -124,13 +124,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
             },
             {
                 id: 'calendar',
-                title: 'Campaign Calendar',
+                title: 'OPERATIONS.SIDEBAR.CAMPAIGN_CALENDAR',
                 icon: 'calendar_month',
                 route: '/operations/pricing/calendar'
             },
             {
                 id: 'grid',
-                title: 'Smart Price Grid',
+                title: 'OPERATIONS.SIDEBAR.SMART_PRICE_GRID',
                 icon: 'table_view',
                 route: '/operations/pricing/grid',
                 badge: {

@@ -1,8 +1,26 @@
 <div class="product-dashboard-layout">
-    <!-- Admin Header -->
-    <app-admin-page-header iconName="file-text" [title]="'ADMIN.BLOG.TITLE' | translate" ctaText="ADMIN.BLOG.BTN_ADD"
-        ctaLink="/admin/blog/new">
-    </app-admin-page-header>
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.BLOG.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="paginationConfig.totalItems > 0">
+                    {{ paginationConfig.totalItems }}
+                </span>
+            </div>
+        </div>
+
+        <div class="header-right" style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn-ghost" (click)="exportToCSV()" [title]="'ADMIN.COMMON.EXPORT' | translate">
+                <span class="icon">📤</span>
+                <span class="text">Export</span>
+            </button>
+
+            <button class="btn-primary-action" routerLink="/admin/blog/new">
+                <span class="icon">➕</span>
+                <span class="text">{{ 'ADMIN.BLOG.BTN_ADD' | translate }}</span>
+            </button>
+        </div>
+    </header>
 
     <div class="dashboard-content">
         <!-- Main Grid Area -->
@@ -11,9 +29,7 @@
             <!-- Toolbar -->
             <div class="table-toolbar">
                 <div class="search-box">
-                    <span class="search-icon">
-                        <app-icon name="search" [size]="18"></app-icon>
-                    </span>
+                    <span class="search-icon">🔍</span>
                     <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
                         [placeholder]="'ADMIN.BLOG.SEARCH_PLACEHOLDER' | translate">
                 </div>
@@ -22,10 +38,6 @@
                     <option value="">All Categories</option>
                     <option *ngFor="let cat of uniqueCategories" [value]="cat">{{ cat }}</option>
                 </select>
-
-                <button class="btn-icon-ghost" (click)="exportToCSV()" [title]="'ADMIN.COMMON.EXPORT' | translate">
-                    <app-icon name="download" [size]="20"></app-icon>
-                </button>
             </div>
 
             <!-- Table -->
@@ -33,28 +45,49 @@
                 <table class="rich-table">
                     <thead>
                         <tr>
-                            <th style="width: 80px;">{{ 'ADMIN.BLOG.TH_COVER' | translate }}</th>
+                            <th class="w-20">{{ 'ADMIN.BLOG.TH_COVER' | translate }}</th>
                             <th class="sortable" (click)="onSortChange('title')">
-                                {{ 'ADMIN.BLOG.TH_TITLE' | translate }}
-                                <app-icon *ngIf="sortField === 'title'"
-                                    [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="14"
-                                    class="inline-icon"></app-icon>
+                                {{ 'ADMIN.BLOG.TH_TITLE' | translate }} <span *ngIf="sortField === 'title'">{{
+                                    sortDirection === 'asc' ? '▲' : '▼' }}</span>
                             </th>
                             <th>{{ 'ADMIN.BLOG.TH_CATEGORY' | translate }}</th>
                             <th class="sortable" (click)="onSortChange('date')">
-                                {{ 'ADMIN.BLOG.TH_DATE' | translate }}
-                                <app-icon *ngIf="sortField === 'date'"
-                                    [name]="sortDirection === 'asc' ? 'chevron-up' : 'chevron-down'" [size]="14"
-                                    class="inline-icon"></app-icon>
+                                {{ 'ADMIN.BLOG.TH_DATE' | translate }} <span *ngIf="sortField === 'date'">{{
+                                    sortDirection === 'asc' ? '▲' : '▼' }}</span>
                             </th>
-                            <th class="text-right">{{ 'ADMIN.BLOG.TH_ACTIONS' | translate }}</th>
+                            <th>{{ 'ADMIN.BLOG.TH_ACTIONS' | translate }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let post of paginatedPosts$ | async">
+                        <!-- Loading State -->
+                        <tr *ngIf="isLoading">
+                            <td colspan="5" class="loading-state">
+                                <div class="empty-state-content">
+                                    <app-icon name="loader" [size]="48" class="text-muted spinning"></app-icon>
+                                    <p>Loading blog posts...</p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Error State -->
+                        <tr *ngIf="error && !isLoading">
+                            <td colspan="5" class="no-data">
+                                <div class="empty-state-content">
+                                    <app-icon name="alert-circle" [size]="48" class="text-danger"></app-icon>
+                                    <p>{{ error }}</p>
+                                    <button class="btn-retry" (click)="loadData(); setupFiltering()">
+                                        <app-icon name="refresh-cw" [size]="16"></app-icon>
+                                        Retry
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Data Rows -->
+                        <tr *ngFor="let post of paginatedPosts$ | async" [hidden]="isLoading || error">
                             <td>
-                                <div class="blog-thumb-wrapper">
-                                    <img [src]="post.coverImage" [alt]="post.title" class="blog-thumb">
+                                <div class="img-thumbnail">
+                                    <img [src]="post.coverImage" [alt]="post.title">
                                 </div>
                             </td>
                             <td>
@@ -67,6 +100,7 @@
                             </td>
                             <td>
                                 <span class="category-pill" *ngIf="post.category">{{ post.category }}</span>
+                                <span class="text-muted" *ngIf="!post.category">No category</span>
                             </td>
                             <td>
                                 <div class="date-info">
@@ -78,21 +112,26 @@
                                 <div class="row-actions">
                                     <button class="btn-icon-ghost" [routerLink]="['/admin/blog/edit', post.id]"
                                         [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        <app-icon name="edit" [size]="18"></app-icon>
+                                        ✏️
                                     </button>
                                     <button class="btn-icon-ghost danger" (click)="deletePost(post)"
                                         [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        <app-icon name="trash-2" [size]="18"></app-icon>
+                                        🗑️
                                     </button>
                                 </div>
                             </td>
                         </tr>
 
-                        <tr *ngIf="(paginatedPosts$ | async)?.length === 0">
+                        <!-- Empty State -->
+                        <tr *ngIf="(paginatedPosts$ | async)?.length === 0 && !isLoading && !error">
                             <td colspan="5" class="no-data">
                                 <div class="empty-state-content">
                                     <app-icon name="file-text" [size]="48" class="text-muted"></app-icon>
                                     <p>{{ 'ADMIN.BLOG.EMPTY' | translate }}</p>
+                                    <a [routerLink]="['/admin/blog/new']" class="btn-primary-action">
+                                        <app-icon name="plus" [size]="18"></app-icon>
+                                        Create your first blog post
+                                    </a>
                                 </div>
                             </td>
                         </tr>

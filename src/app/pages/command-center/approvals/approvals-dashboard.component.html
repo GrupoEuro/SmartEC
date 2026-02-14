@@ -49,7 +49,7 @@
     <!-- Filters -->
     <div class="filters-bar">
         <div class="filter-group">
-            <label>Tipo</label>
+            <label>{{ 'COMMAND_CENTER.APPROVALS.FILTERS.TYPE' | translate }}</label>
             <select [(ngModel)]="selectedType" (change)="onFilterChange()">
                 <option value="ALL">{{ 'COMMAND_CENTER.APPROVALS.ALL' | translate }}</option>
                 <option value="COUPON_CREATION">{{ 'COMMAND_CENTER.APPROVALS.TYPES.COUPON_CREATION' | translate }}
@@ -63,7 +63,7 @@
         </div>
 
         <div class="filter-group">
-            <label>Prioridad</label>
+            <label>{{ 'COMMAND_CENTER.APPROVALS.FILTERS.PRIORITY' | translate }}</label>
             <select [(ngModel)]="selectedPriority" (change)="onFilterChange()">
                 <option value="ALL">{{ 'COMMAND_CENTER.APPROVALS.ALL' | translate }}</option>
                 <option value="URGENT">{{ 'COMMAND_CENTER.APPROVALS.PRIORITY.URGENT' | translate }}</option>
@@ -74,9 +74,9 @@
         </div>
 
         <div class="filter-group search-group">
-            <label>Buscar</label>
+            <label>{{ 'COMMAND_CENTER.APPROVALS.FILTERS.SEARCH' | translate }}</label>
             <input type="text" [(ngModel)]="searchTerm" (input)="onFilterChange()"
-                placeholder="Buscar por nombre, email..." />
+                [placeholder]="'COMMAND_CENTER.APPROVALS.FILTERS.SEARCH_PLACEHOLDER' | translate" />
         </div>
     </div>
 
@@ -93,7 +93,7 @@
                 <app-icon name="document" [size]="48" class="text-gray-400"></app-icon>
             </div>
             <h3>{{ 'COMMAND_CENTER.APPROVALS.NO_PENDING' | translate }}</h3>
-            <p>No hay solicitudes que coincidan con los filtros seleccionados</p>
+            <p>{{ 'COMMAND_CENTER.APPROVALS.NO_MATCHING_REQUESTS' | translate }}</p>
         </div>
 
         <app-approval-card *ngFor="let request of filteredRequests()" [request]="request"

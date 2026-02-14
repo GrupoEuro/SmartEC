@@ -2,15 +2,17 @@
     <!-- Sticky Command Header -->
     <header class="command-header">
         <div class="header-left">
-            <h1 class="page-title">{{ 'ADMIN.PDF_LIST.TITLE' | translate }}</h1>
-            <span class="product-count" *ngIf="(pdfs$ | async)?.length as count">
-                {{ count }} Items
-            </span>
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.PDF_LIST.TITLE' | translate }}</h1>
+                <span class="product-badge" *ngIf="(pdfs$ | async)?.length as count">
+                    {{ count }}
+                </span>
+            </div>
         </div>
 
         <div class="header-right">
             <button class="btn-primary-action" routerLink="/admin/pdfs/new">
-                <span class="icon"><app-icon name="plus" [size]="20"></app-icon></span>
+                <span class="icon">➕</span>
                 <span class="text">{{ 'ADMIN.PDF_LIST.BTN_ADD' | translate }}</span>
             </button>
         </div>
@@ -23,7 +25,7 @@
                 <table class="rich-table">
                     <thead>
                         <tr>
-                            <th style="width: 100px;">{{ 'ADMIN.PDF_LIST.TH_THUMBNAIL' | translate }}</th>
+                            <th class="w-20">{{ 'ADMIN.PDF_LIST.TH_THUMBNAIL' | translate }}</th>
                             <th>{{ 'ADMIN.PDF_LIST.TH_INFO' | translate }}</th>
                             <th>{{ 'ADMIN.PDF_LIST.TH_CATEGORY' | translate }}</th>
                             <th>{{ 'ADMIN.PDF_LIST.TH_METRICS' | translate }}</th>
@@ -35,12 +37,11 @@
                     <tbody>
                         <tr *ngFor="let pdf of pdfs$ | async">
                             <td>
-                                <div class="pdf-preview-wrapper">
+                                <div class="img-thumbnail">
                                     @if (pdf.thumbnailUrl) {
-                                    <img [src]="pdf.thumbnailUrl" alt="Thumbnail" class="pdf-thumb">
+                                    <img [src]="pdf.thumbnailUrl" alt="Thumbnail">
                                     } @else {
-                                    <span class="pdf-thumb-placeholder"><app-icon name="file-text" [size]="24"
-                                            class="text-gray-400"></app-icon></span>
+                                    <span class="pdf-thumb-placeholder">📄</span>
                                     }
                                 </div>
                             </td>
@@ -55,7 +56,7 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="category-badge">{{ getCategoryLabel(pdf.category) }}</span>
+                                <span class="category-pill">{{ getCategoryLabel(pdf.category) }}</span>
                             </td>
                             <td>
                                 <div class="metric-row">
@@ -93,15 +94,15 @@
                                 <div class="row-actions">
                                     <button class="btn-icon-ghost" (click)="openPreview(pdf)"
                                         [title]="'ADMIN.COMMON.PREVIEW' | translate">
-                                        <app-icon name="eye" [size]="18"></app-icon>
+                                        👁
                                     </button>
                                     <button class="btn-icon-ghost" [routerLink]="['/admin/pdfs/edit', pdf.id]"
                                         [title]="'ADMIN.COMMON.EDIT' | translate">
-                                        <app-icon name="edit" [size]="18"></app-icon>
+                                        ✏️
                                     </button>
                                     <button class="btn-icon-ghost danger" (click)="deletePDF(pdf)"
                                         [title]="'ADMIN.COMMON.DELETE' | translate">
-                                        <app-icon name="trash-2" [size]="18"></app-icon>
+                                        🗑️
                                     </button>
                                 </div>
                             </td>

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
 import { BlogPost } from '../models/blog.model';
 import {
     Firestore,
@@ -38,12 +38,26 @@ export class BlogService {
         return from(getDocs(q)).pipe(
             map(snapshot => snapshot.docs.map(doc => {
                 const data = doc.data();
+                // Improved date conversion with fallback
+                let postDate: Date;
+                if (data['date']?.toDate) {
+                    postDate = data['date'].toDate();
+                } else if (data['date']) {
+                    postDate = new Date(data['date']);
+                } else {
+                    postDate = new Date(); // Fallback to current date
+                }
+
                 return {
                     id: doc.id,
                     ...data,
-                    date: data['date']?.toDate ? data['date'].toDate() : data['date']
+                    date: postDate
                 } as BlogPost;
-            }))
+            })),
+            catchError(error => {
+                console.error('Firestore error in getPosts:', error);
+                throw error; // Re-throw to let component handle it
+            })
         );
     }
 

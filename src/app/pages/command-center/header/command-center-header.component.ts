@@ -60,19 +60,19 @@ export class CommandCenterHeaderComponent implements OnInit {
         const url = this.router.url;
         const segments = url.split('/').filter(s => s);
 
-        const crumbs = [{ label: 'Command Center', url: '/command-center/dashboard' }];
+        const crumbs = [{ label: 'COMMAND_CENTER.TITLE', url: '/command-center/dashboard' }];
 
         // Map common paths to readable names
         const pathMap: { [key: string]: string } = {
-            'dashboard': 'Dashboard',
-            'financials': 'Financial Overview',
-            'income-statement': 'Income Statement',
-            'expenses': 'Expense Management',
-            'customer-insights': 'Customer Insights',
-            'sales-analytics': 'Sales Analytics',
-            'inventory-analytics': 'Inventory Analytics',
-            'operational-metrics': 'Operations',
-            'approvals': 'Approvals'
+            'dashboard': 'COMMAND_CENTER.DASHBOARD',
+            'financials': 'COMMAND_CENTER.FINANCIALS.TITLE',
+            'income-statement': 'COMMAND_CENTER.INCOME_STATEMENT.TITLE',
+            'expenses': 'COMMAND_CENTER.EXPENSES.TITLE',
+            'customer-insights': 'COMMAND_CENTER.CUSTOMER_INSIGHTS.TITLE',
+            'sales-analytics': 'COMMAND_CENTER.SALES_ANALYTICS.TITLE',
+            'inventory-analytics': 'COMMAND_CENTER.INVENTORY_ANALYTICS.TITLE',
+            'operational-metrics': 'COMMAND_CENTER.OPERATIONAL_METRICS.TITLE',
+            'approvals': 'COMMAND_CENTER.APPROVALS.TITLE'
         };
 
         // Build breadcrumbs (skip first 'command-center' segment usually)

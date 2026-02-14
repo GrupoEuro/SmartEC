@@ -133,7 +133,7 @@
     <app-dashboard-diagnostics [logs]="errorLog()" [buildVersion]="buildVersion"></app-dashboard-diagnostics>
 
     <!-- Help Trigger (Temporary Location for Testing) -->
-    <button (click)="startTour()" class="help-float-btn" title="Start Tour">
+    <button (click)="startTour()" class="help-float-btn" [title]="'COMMAND_CENTER.TOUR.START' | translate">
         ?
     </button>
 </div>

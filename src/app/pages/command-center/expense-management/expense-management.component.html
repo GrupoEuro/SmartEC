@@ -13,26 +13,29 @@
             <div class="expense-header-actions">
                 <!-- View Toggle -->
                 <div class="view-toggle">
-                    <button [class.active]="viewMode === 'cards'" (click)="toggleView('cards')" title="Card View">
+                    <button [class.active]="viewMode === 'cards'" (click)="toggleView('cards')"
+                        [title]="'COMMAND_CENTER.EXPENSES.VIEW_CARDS' | translate">
                         <app-icon name="grid" [size]="20"></app-icon>
-                        <span class="view-label">Cards</span>
+                        <span class="view-label">{{ 'COMMAND_CENTER.EXPENSES.VIEW_CARDS' | translate }}</span>
                     </button>
-                    <button [class.active]="viewMode === 'table'" (click)="toggleView('table')" title="Table View">
+                    <button [class.active]="viewMode === 'table'" (click)="toggleView('table')"
+                        [title]="'COMMAND_CENTER.EXPENSES.VIEW_TABLE' | translate">
                         <app-icon name="list" [size]="20"></app-icon>
-                        <span class="view-label">Table</span>
+                        <span class="view-label">{{ 'COMMAND_CENTER.EXPENSES.VIEW_TABLE' | translate }}</span>
                     </button>
                 </div>
 
                 <!-- Export Dropdown -->
                 <div class="export-dropdown">
                     <button class="btn-secondary">
-                        <app-icon name="download" [size]="16"></app-icon> Export ▼
+                        <app-icon name="download" [size]="16"></app-icon> {{ 'COMMAND_CENTER.EXPENSES.ACTIONS.EXPORT' |
+                        translate }} ▼
                     </button>
                     <div class="dropdown-menu">
-                        <button (click)="exportToCSV(false)"><app-icon name="document" [size]="16"></app-icon> Export to
-                            CSV</button>
-                        <button (click)="exportToExcel(false)"><app-icon name="chart-bar" [size]="16"></app-icon> Export
-                            to Excel</button>
+                        <button (click)="exportToCSV(false)"><app-icon name="document" [size]="16"></app-icon> {{
+                            'COMMAND_CENTER.EXPENSES.ACTIONS.EXPORT_CSV' | translate }}</button>
+                        <button (click)="exportToExcel(false)"><app-icon name="chart-bar" [size]="16"></app-icon> {{
+                            'COMMAND_CENTER.EXPENSES.ACTIONS.EXPORT_EXCEL' | translate }}</button>
                     </div>
                 </div>
 
@@ -127,10 +130,12 @@
     <div *ngIf="!isLoading() && viewMode === 'table' && filteredExpenses().length > 0" class="table-view">
         <!-- Bulk Actions Bar -->
         <div *ngIf="selectedExpenses.size > 0" class="bulk-actions-bar">
-            <span class="selection-count">{{selectedExpenses.size}} selected</span>
+            <span class="selection-count">{{selectedExpenses.size}} {{ 'COMMAND_CENTER.EXPENSES.SELECTED' | translate
+                }}</span>
             <div class="bulk-actions">
                 <button class="btn-danger" (click)="deleteSelected()">
-                    <app-icon name="trash" [size]="16"></app-icon> Delete
+                    <app-icon name="trash" [size]="16"></app-icon> {{ 'COMMAND_CENTER.EXPENSES.ACTIONS.DELETE' |
+                    translate }}
                 </button>
                 <button class="btn-secondary" (click)="exportToCSV(true)">
                     <app-icon name="document" [size]="16"></app-icon> CSV
@@ -138,7 +143,8 @@
                 <button class="btn-secondary" (click)="exportToExcel(true)">
                     <app-icon name="chart-bar" [size]="16"></app-icon> Excel
                 </button>
-                <button class="btn-secondary" (click)="deselectAll()">✕ Clear</button>
+                <button class="btn-secondary" (click)="deselectAll()">✕ {{ 'COMMAND_CENTER.EXPENSES.ACTIONS.CLEAR' |
+                    translate }}</button>
             </div>
         </div>
 
@@ -151,27 +157,27 @@
                             <input type="checkbox" [checked]="allSelected" (change)="toggleSelectAll($event)">
                         </th>
                         <th class="sortable" (click)="sortExpenses('date')">
-                            Date
+                            {{ 'COMMAND_CENTER.EXPENSES.TABLE.DATE' | translate }}
                             <span class="sort-indicator" *ngIf="sortBy === 'date'">
                                 {{ sortDirection === 'asc' ? '↑' : '↓' }}
                             </span>
                         </th>
                         <th class="sortable" (click)="sortExpenses('category')">
-                            Category
+                            {{ 'COMMAND_CENTER.EXPENSES.TABLE.CATEGORY' | translate }}
                             <span class="sort-indicator" *ngIf="sortBy === 'category'">
                                 {{ sortDirection === 'asc' ? '↑' : '↓' }}
                             </span>
                         </th>
-                        <th>Description</th>
-                        <th>Vendor</th>
+                        <th>{{ 'COMMAND_CENTER.EXPENSES.TABLE.DESCRIPTION' | translate }}</th>
+                        <th>{{ 'COMMAND_CENTER.EXPENSES.TABLE.VENDOR' | translate }}</th>
                         <th class="sortable amount-col" (click)="sortExpenses('amount')">
-                            Amount
+                            {{ 'COMMAND_CENTER.EXPENSES.TABLE.AMOUNT' | translate }}
                             <span class="sort-indicator" *ngIf="sortBy === 'amount'">
                                 {{ sortDirection === 'asc' ? '↑' : '↓' }}
                             </span>
                         </th>
-                        <th class="recurring-col">Recurring</th>
-                        <th class="actions-col">Actions</th>
+                        <th class="recurring-col">{{ 'COMMAND_CENTER.EXPENSES.TABLE.RECURRING' | translate }}</th>
+                        <th class="actions-col">{{ 'COMMAND_CENTER.EXPENSES.TABLE.ACTIONS' | translate }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,25 +218,29 @@
     <!-- Pagination (for both views) -->
     <div *ngIf="!isLoading() && filteredExpenses().length > 0" class="pagination">
         <div class="pagination-info">
-            Showing {{ (currentPage - 1) * pageSize + 1 }}-{{ getEndIndex() }}
-            of {{ filteredExpenses().length }} expenses
+            {{ 'COMMAND_CENTER.EXPENSES.PAGINATION.SHOWING' | translate: {start: (currentPage - 1) * pageSize + 1, end:
+            getEndIndex(), total: filteredExpenses().length} }}
         </div>
         <div class="pagination-controls">
             <button [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
-                ← Previous
+                ← {{ 'COMMAND_CENTER.EXPENSES.PAGINATION.PREVIOUS' | translate }}
             </button>
             <span class="page-numbers">
-                Page {{ currentPage }} of {{ totalPages }}
+                {{ 'COMMAND_CENTER.EXPENSES.PAGINATION.PAGE_OF' | translate: {current: currentPage, total: totalPages}
+                }}
             </span>
             <button [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
-                Next →
+                {{ 'COMMAND_CENTER.EXPENSES.PAGINATION.NEXT' | translate }} →
             </button>
         </div>
         <div class="page-size-selector">
             <select [(ngModel)]="pageSize" (change)="changePageSize(pageSize)">
-                <option [value]="10">10 per page</option>
-                <option [value]="20">20 per page</option>
-                <option [value]="50">50 per page</option>
+                <option [value]="10">{{ 'COMMAND_CENTER.EXPENSES.PAGINATION.PER_PAGE' | translate: {count: 10} }}
+                </option>
+                <option [value]="20">{{ 'COMMAND_CENTER.EXPENSES.PAGINATION.PER_PAGE' | translate: {count: 20} }}
+                </option>
+                <option [value]="50">{{ 'COMMAND_CENTER.EXPENSES.PAGINATION.PER_PAGE' | translate: {count: 50} }}
+                </option>
             </select>
         </div>
     </div>

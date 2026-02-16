@@ -1,0 +1,14 @@
+# This file is used by the build system to adjust CSS and JS output to support the specified browsers below.
+# For additional information regarding the format and rule options, please see:
+# https://github.com/browserslist/browserslist#queries
+
+# Aggressive Modern Baseline (2024+)
+# Targets native support for View Transitions, Web Push, and ES2022 features.
+
+Chrome >= 111
+Safari >= 16.4
+iOS >= 16.4
+Firefox >= 115
+Edge >= 111
+not dead
+not IE 11

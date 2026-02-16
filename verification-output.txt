@@ -1,0 +1,182 @@
+
+🔍 Scanning 142 HTML files for translation keys...
+
+📊 Found 1563 unique translation keys
+
+
+================================================================================
+VERIFICATION RESULTS
+================================================================================
+
+✅ Total keys found: 1563
+❌ Missing in EN: 16
+❌ Missing in ES: 0
+⚠️  Bad Spanish (placeholders): 62
+
+
+🚨 MISSING IN ENGLISH (en.json):
+
+  - PRODUCT_DETAIL.VIEW_DETAILS
+    Used in: src/app/shared/components/quick-view-modal/quick-view-modal.component.html
+  - PORTAL.ADMIN.TITLE
+    Used in: src/app/components/navbar/navbar.component.html
+  - FOOTER.PAYMENT_METHODS
+    Used in: src/app/components/footer/footer.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.DOT.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.DOT.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ECE.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ECE.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ISO.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ISO.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.INMETRO.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.INMETRO.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.CCC.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.CCC.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.GSO.TITLE
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.GSO.DESC
+    Used in: src/app/pages/praxis/praxis.component.html
+  - COMMON.REQUIRED
+    Used in: src/app/pages/account/profile/profile.component.html
+
+⚠️  BAD SPANISH TRANSLATIONS (placeholders):
+
+  - PORTAL.ADMIN.TITLE = "Title"
+    Used in: src/app/components/navbar/navbar.component.html
+  - ADMIN.CUSTOMERS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/customers/customer-list/customer-list.component.html
+  - WEBSITE_SETTINGS.SEO.META_TITLE_PLACEHOLDER = "Meta Title Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.GENERAL.COMPANY_PLACEHOLDER = "Company Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.GENERAL.PHONE_PLACEHOLDER = "Phone Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.GENERAL.WHATSAPP_PLACEHOLDER = "Whatsapp Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.GENERAL.EMAIL_PLACEHOLDER = "Email Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.GENERAL.ADDRESS_PLACEHOLDER = "Address Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.FACEBOOK_PLACEHOLDER = "Facebook Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.INSTAGRAM_PLACEHOLDER = "Instagram Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.LINKEDIN_PLACEHOLDER = "Linkedin Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.TWITTER_PLACEHOLDER = "Twitter Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.YOUTUBE_PLACEHOLDER = "Youtube Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SOCIAL.TIKTOK_PLACEHOLDER = "Tiktok Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.FEATURES.PROMO_TEXT_PLACEHOLDER = "Promo Text Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SEO.META_DESC_PLACEHOLDER = "Meta Desc Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - WEBSITE_SETTINGS.SEO.OG_IMAGE_PLACEHOLDER = "Og Image Placeholder"
+    Used in: src/app/pages/admin/settings/settings.component.html
+  - ADMIN.KITS.FORM.NAME_ES_PLACEHOLDER = "Name Es Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.NAME_EN_PLACEHOLDER = "Name En Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.SKU_PLACEHOLDER = "Sku Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.DESC_ES_PLACEHOLDER = "Desc Es Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.DESC_EN_PLACEHOLDER = "Desc En Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.IMAGE_PLACEHOLDER = "Image Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.META_TITLE_PLACEHOLDER = "Meta Title Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.FORM.META_DESC_PLACEHOLDER = "Meta Desc Placeholder"
+    Used in: src/app/pages/admin/kits/kit-form/kit-form.component.html
+  - ADMIN.KITS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/kits/kit-list/kit-list.component.html
+  - ADMIN.BRANDS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/brands/brand-list/brand-list.component.html
+  - ADMIN.BRANDS.FORM.NAME_PLACEHOLDER = "Name Placeholder"
+    Used in: src/app/pages/admin/brands/brand-form/brand-form.component.html
+  - ADMIN.BRANDS.FORM.COUNTRY_PLACEHOLDER = "Country Placeholder"
+    Used in: src/app/pages/admin/brands/brand-form/brand-form.component.html
+  - ADMIN.BRANDS.FORM.SLUG_PLACEHOLDER = "Slug Placeholder"
+    Used in: src/app/pages/admin/brands/brand-form/brand-form.component.html
+  - ADMIN.BRANDS.FORM.DESCRIPTION_PLACEHOLDER = "Description Placeholder"
+    Used in: src/app/pages/admin/brands/brand-form/brand-form.component.html
+  - ADMIN.DISTRIBUTORS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/distributors/distributor-list/distributor-list.component.html
+  - ADMIN.DISTRIBUTORS.DETAIL.NOTE_PLACEHOLDER = "Note Placeholder"
+    Used in: src/app/pages/admin/distributors/distributor-list/distributor-list.component.html
+  - ADMIN.BANNERS.FORM.TITLE_PLACEHOLDER = "Title Placeholder"
+    Used in: src/app/pages/admin/banners/banner-form/banner-form.component.html
+  - ADMIN.BANNERS.FORM.SUBTITLE_PLACEHOLDER = "Subtitle Placeholder"
+    Used in: src/app/pages/admin/banners/banner-form/banner-form.component.html
+  - ADMIN.BLOG.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/blog/blog-list/blog-list.component.html
+  - ADMIN.COUPONS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/coupons/coupon-list/coupon-list.component.html
+  - ADMIN.COUPONS.FORM.CODE_PLACEHOLDER = "Code Placeholder"
+    Used in: src/app/pages/admin/coupons/coupon-form/coupon-form.component.html
+  - ADMIN.COUPONS.FORM.DESCRIPTION_PLACEHOLDER = "Description Placeholder"
+    Used in: src/app/pages/admin/coupons/coupon-form/coupon-form.component.html
+  - ADMIN.LOGS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/logs/admin-log-list/admin-log-list.component.html
+  - ADMIN.MEDIA_LIBRARY.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/media-library/media-library.component.html
+  - ADMIN.USERS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/users/user-list/user-list.component.html
+  - PRODUCT_TYPES.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/product-types/product-type-list/product-type-list.component.html
+  - ADMIN.ORDERS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/orders/order-list/order-list.component.html
+  - ADMIN.ORDERS.DETAIL.NOTE_PLACEHOLDER = "Note Placeholder"
+    Used in: src/app/pages/admin/orders/order-detail/order-detail.component.html
+  - ADMIN.WAREHOUSES.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/warehouse/warehouse-list/warehouse-list.component.html
+  - ADMIN.CATEGORIES.FORM.NAME_EN_PLACEHOLDER = "Name En Placeholder"
+    Used in: src/app/pages/admin/categories/category-form/category-form.component.html
+  - ADMIN.CATEGORIES.FORM.NAME_ES_PLACEHOLDER = "Name Es Placeholder"
+    Used in: src/app/pages/admin/categories/category-form/category-form.component.html
+  - ADMIN.CATEGORIES.FORM.SLUG_PLACEHOLDER = "Slug Placeholder"
+    Used in: src/app/pages/admin/categories/category-form/category-form.component.html
+  - ADMIN.CATEGORIES.FORM.DESCRIPTION_PLACEHOLDER = "Description Placeholder"
+    Used in: src/app/pages/admin/categories/category-form/category-form.component.html
+  - ADMIN.CATEGORIES.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/admin/categories/category-list/category-list.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.DOT.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ECE.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.ISO.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.INMETRO.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.CCC.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - PRAXIS_PAGE.CERTIFICATIONS.CERT_CARDS.GSO.TITLE = "Title"
+    Used in: src/app/pages/praxis/praxis.component.html
+  - OPERATIONS.PROMOTIONS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/operations/promotions/promotions-reference.component.html
+  - ADMIN.PRODUCTS.SEARCH_PLACEHOLDER = "Search Placeholder"
+    Used in: src/app/pages/operations/inventory/inventory-lookup.component.html
+  - OPERATIONS.ORDERS.CARRIER_PLACEHOLDER = "Carrier Placeholder"
+    Used in: src/app/pages/operations/orders/order-fulfillment.component.html
+  - OPERATIONS.ORDERS.TRACKING_PLACEHOLDER = "Tracking Placeholder"
+    Used in: src/app/pages/operations/orders/order-fulfillment.component.html
+  - OPERATIONS.ORDERS.NOTES_PLACEHOLDER = "Notes Placeholder"
+    Used in: src/app/pages/operations/orders/order-fulfillment.component.html
+
+📝 Detailed report saved to: translation-verification-report.json
+
+❌ TRANSLATIONS NEED FIXING!
+

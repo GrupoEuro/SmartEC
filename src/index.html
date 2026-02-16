@@ -12,38 +12,65 @@
   <!-- Google Search Console Verification -->
   <meta name="google-site-verification" content="hwUM95Y8k-dbZhGC99qJzVAZMRTkuKf1UAeH6yzRBdU">
 
+  <!-- Content Security Policy (CSP) -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://sdk.mercadopago.com https://www.googletagmanager.com https://scripts.clarity.ms https://www.clarity.ms https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com; font-src 'self' https://fonts.gstatic.com https://fonts.cdnfonts.com; img-src 'self' data: https:; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://secure.googleapis.com https://o.clarity.ms https://*.google-analytics.com https://maps.googleapis.com https://securetoken.googleapis.com;">
+
   <!-- Performance: Preconnect to Font Origins -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+  <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@300;400;500;700;900&display=swap"
     rel="stylesheet">
-  <link href="https://fonts.cdnfonts.com/css/aero-matics" rel="stylesheet">
+
+  <!-- Non-blocking Font Load -->
+  <link href="https://fonts.cdnfonts.com/css/aero-matics" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.cdnfonts.com/css/aero-matics" rel="stylesheet">
+  </noscript>
+
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
   <!-- TODO: Replace YOUR_API_KEY with a valid Google Maps API Key -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXekYyZCDzs6p0tIrSR_sc-r2ywsbEm0o"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXekYyZCDzs6p0tIrSR_sc-r2ywsbEm0o&loading=async"
+    defer></script>
 
-  <!-- MercadoPago SDK (V2) -->
-  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <!-- MercadoPago SDK (V2) - Deferred -->
+  <script src="https://sdk.mercadopago.com/js/v2" defer></script>
 
-  <!-- Microsoft Clarity (Heatmaps & Session Recordings) -->
-  <script type="text/javascript">
-    (function (c, l, a, r, i, t, y) {
-      c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-      t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-      y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-    })(window, document, "clarity", "script", "ur5ya510na");
-  </script>
-
-  <!-- Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DS1P5LCE99"></script>
+  <!-- Defer Analytics & Heatmaps -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-DS1P5LCE99', {
-      send_page_view: false // Angular will handle page views
-    });
+    function loadThirdPartyScripts() {
+      // Microsoft Clarity
+      (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
+        t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+        y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+      })(window, document, "clarity", "script", "ur5ya510na");
+
+      // Google Analytics 4
+      const gtmScript = document.createElement('script');
+      gtmScript.async = true;
+      gtmScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-DS1P5LCE99';
+      document.head.appendChild(gtmScript);
+
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'G-DS1P5LCE99', {
+        send_page_view: false
+      });
+    }
+
+    // Load after critical rendering (3s delay or idle)
+    if (window.requestIdleCallback) {
+      requestIdleCallback(() => setTimeout(loadThirdPartyScripts, 3000));
+    } else {
+      setTimeout(loadThirdPartyScripts, 4000);
+    }
   </script>
 </head>
 

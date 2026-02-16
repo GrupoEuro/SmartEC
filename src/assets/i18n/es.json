@@ -176,7 +176,7 @@
       "DESC": "Utilidades técnicas y depuración."
     },
     "ADMIN": {
-      "TITLE": "Title"
+      "TITLE": "Portal de Administración"
     }
   },
   "COMMAND_CENTER": {
@@ -1342,16 +1342,16 @@
         "BTN_ADD": "Agregar Banner",
         "EMPTY": "No se encontraron banners",
         "TH_IMAGE": "Imagen",
-        "TH_TITLE": "Título",
+        "TH_TITLE": "Centro de Comando",
         "TH_ORDER": "Orden",
         "TH_STATUS": "Estado",
         "TH_ACTIONS": "Acciones",
         "STATUS_ACTIVE": "Activo",
         "STATUS_INACTIVE": "Inactivo",
         "FORM": {
-          "TITLE": "Título",
+          "TITLE": "Centro de Comando",
           "TITLE_PLACEHOLDER": "Ingresa el título del banner",
-          "SUBTITLE": "Subtítulo",
+          "SUBTITLE": "Descripción",
           "SUBTITLE_PLACEHOLDER": "Ingresa el subtítulo del banner",
           "IMAGE": "Imagen del Banner",
           "LINK": "Enlace URL",
@@ -1368,7 +1368,7 @@
         "BTN_ADD": "Agregar Publicación",
         "EMPTY": "No se encontraron publicaciones",
         "TH_COVER": "Portada",
-        "TH_TITLE": "Título",
+        "TH_TITLE": "Centro de Comando",
         "TH_CATEGORY": "Categoría",
         "TH_DATE": "Fecha",
         "TH_ACTIONS": "Acciones",
@@ -1379,7 +1379,7 @@
           "TECH": "Tecnología"
         },
         "FORM": {
-          "TITLE": "Título",
+          "TITLE": "Centro de Comando",
           "SLUG": "Slug",
           "CATEGORY": "Categoría",
           "EXCERPT": "Extracto",
@@ -3043,7 +3043,7 @@
         "DRAFT": "Borrador"
       },
       "TH_COVER": "Portada",
-      "TH_TITLE": "Título",
+      "TH_TITLE": "Centro de Comando",
       "TH_CATEGORY": "Categoría",
       "TH_DATE": "Fecha",
       "TH_ACTIONS": "Acciones",
@@ -3054,7 +3054,7 @@
         "ACTIONS": "Acciones"
       },
       "FORM": {
-        "TITLE": "Título",
+        "TITLE": "Centro de Comando",
         "SLUG": "Slug (URL)",
         "CATEGORY": "Categoría",
         "READ_TIME": "Tiempo de Lectura (min)",
@@ -3078,15 +3078,15 @@
       "EDIT_TITLE": "Editar Banner",
       "BTN_ADD": "Nuevo Banner",
       "TH_IMAGE": "Imagen",
-      "TH_TITLE": "Título",
-      "TH_SUBTITLE": "Subtítulo",
+      "TH_TITLE": "Centro de Comando",
+      "TH_SUBTITLE": "Descripción",
       "TH_ORDER": "Orden",
       "TH_STATUS": "Estado",
       "TH_ACTIONS": "Acciones",
       "STATUS_ACTIVE": "Activo",
       "STATUS_INACTIVE": "Inactivo",
       "FORM": {
-        "TITLE": "Título",
+        "TITLE": "Centro de Comando",
         "TITLE_PLACEHOLDER": "ej. LLANTAS PARA",
         "SUBTITLE": "Subtítulo / Línea 2",
         "SUBTITLE_PLACEHOLDER": "ej. MOTOCICLETA",
@@ -3888,8 +3888,8 @@
       "REDO": "Rehacer"
     },
     "CUSTOMER_INSIGHTS": {
-      "TITLE": "Título",
-      "SUBTITLE": "Subtítulo",
+      "TITLE": "Análisis de Clientes",
+      "SUBTITLE": "Análisis de comportamiento y valor de clientes",
       "KPI": {
         "NEW_CUSTOMERS": "New Customers",
         "ACTIVE_GROWTH": "Active Growth",
@@ -3901,8 +3901,8 @@
         "POTENTIAL_LOSS": "Potential Loss"
       },
       "RFM": {
-        "TITLE": "Título",
-        "SUBTITLE": "Subtítulo",
+        "TITLE": "Análisis RFM",
+        "SUBTITLE": "Recencia vs Frecuencia vs Valor Monetario",
         "TABLE": {
           "CUSTOMER": "Cliente",
           "SEGMENT": "Segment",
@@ -3912,7 +3912,7 @@
         }
       },
       "COHORTS": {
-        "TITLE": "Título",
+        "TITLE": "Mapa de Retención (Cohortes)",
         "INFO_TITLE": "Info Title",
         "INFO_DESC": "Info Desc",
         "LEGEND": "Legend",
@@ -3923,7 +3923,7 @@
         }
       },
       "AT_RISK": {
-        "TITLE": "Título",
+        "TITLE": "Clientes de Alto Valor en Riesgo",
         "TABLE": {
           "TOTAL_SPENT": "Total Spent",
           "LAST_ORDER": "Last Order",
@@ -4000,9 +4000,9 @@
       "DISCOUNT": "Discount",
       "SHIPPING": "Shipping",
       "TAX": "Tax",
-      "CARRIER_PLACEHOLDER": "Carrier Placeholder",
-      "TRACKING_PLACEHOLDER": "Tracking Placeholder",
-      "NOTES_PLACEHOLDER": "Notes Placeholder",
+      "CARRIER_PLACEHOLDER": "Nombre de la paquetería",
+      "TRACKING_PLACEHOLDER": "Número de rastreo",
+      "NOTES_PLACEHOLDER": "Notas adicionales...",
       "DATE_RANGE": "Rango de Fechas",
       "TODAY": "Today",
       "THIS_WEEK": "This Week",
@@ -4105,13 +4105,13 @@
       "RECENT_ORDERS": "Recent Orders",
       "LOADING": "Cargando",
       "TITLE": "Tablero de Operaciones",
-      "SUBTITLE": "Subtítulo"
+      "SUBTITLE": "Resumen de actividades y acciones rápidas"
     },
     "INVENTORY": {
       "LOOKUP": "Lookup",
       "CLEAR_FILTERS": "Clear Filters",
       "EXPORT_CSV": "Export Csv",
-      "SUBTITLE": "Subtítulo",
+      "SUBTITLE": "Gestión de inventario",
       "KARDEX": {
         "RUNNING_BAL": "Running Bal",
         "NO_HISTORY": "No History",
@@ -4131,14 +4131,17 @@
       "STATUS": "Estado",
       "NO_EXPIRY": "No Expiry",
       "NO_DATA": "No Data",
-      "TITLE": "Título",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "TITLE": "Promociones y Cupones",
+      "SEARCH_PLACEHOLDER": "Buscar promociones...",
+      "COUNT_LABEL": "promociones",
+      "ITEMS_PER_PAGE": "Elementos por página",
+      "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos"
     },
     "TITLE": "Operaciones",
     "LOGOUT": "Cerrar Sesión",
     "GO_HOME": "Ir al Inicio",
     "PROCUREMENT": {
-      "SUBTITLE": "Subtítulo",
+      "SUBTITLE": "Gestión de órdenes de compra e inventario entrante",
       "NEW_PO": "New Po",
       "PO_NUMBER": "Po Number",
       "SUPPLIER": "Supplier",
@@ -4148,7 +4151,7 @@
       "ITEMS": "Items",
       "ACTIONS": "Acciones",
       "NO_POS": "No Pos",
-      "TITLE": "Título",
+      "TITLE": "Adquisiciones",
       "VIEW_DETAILS": "View Details"
     },
     "SIDEBAR": {
@@ -4207,10 +4210,10 @@
       "TH_PRICE": "Th Price",
       "BADGE_FEATURED": "Badge Featured",
       "LOADING": "Cargando",
-      "SEARCH_PLACEHOLDER": "Search Placeholder",
+      "SEARCH_PLACEHOLDER": "Buscar productos...",
       "CLEAR_FILTERS": "Clear Filters",
       "EXPORT_CSV": "Export Csv",
-      "TITLE": "Título",
+      "TITLE": "Productos",
       "BTN_ADD": "Btn Add",
       "ITEMS_PER_PAGE": "Elementos por página",
       "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos"
@@ -4250,16 +4253,16 @@
     },
     "BANNERS": {
       "FORM": {
-        "TITLE": "Título",
-        "SUBTITLE": "Subtítulo",
+        "TITLE": "Administración",
+        "SUBTITLE": "Descripción",
         "LINK": "Link",
         "ORDER": "Pedido",
         "IMAGE": "Image",
-        "TITLE_PLACEHOLDER": "Title Placeholder",
-        "SUBTITLE_PLACEHOLDER": "Subtitle Placeholder",
+        "TITLE_PLACEHOLDER": "Título del banner",
+        "SUBTITLE_PLACEHOLDER": "Subtítulo del banner",
         "ACTIVE": "Activo"
       },
-      "TITLE": "Título",
+      "TITLE": "Gestión de Banners",
       "BTN_ADD": "Btn Add",
       "TH_IMAGE": "Th Image",
       "TH_TITLE": "Th Title",
@@ -4290,7 +4293,7 @@
     "BLOG": {
       "FORM": {
         "SECTION_GENERAL": "Section General",
-        "TITLE": "Título",
+        "TITLE": "Administración",
         "SLUG": "Slug",
         "CATEGORY": "Category",
         "READ_TIME": "Read Time",
@@ -4306,7 +4309,7 @@
         "TIPS": "Tips",
         "TECH": "Tech"
       },
-      "TITLE": "Título",
+      "TITLE": "Gestión de Blog",
       "BTN_ADD": "Btn Add",
       "TH_COVER": "Th Cover",
       "TH_TITLE": "Th Title",
@@ -4314,7 +4317,7 @@
       "TH_DATE": "Th Date",
       "TH_ACTIONS": "Th Actions",
       "EMPTY": "Empty",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar artículos..."
     },
     "BRANDS": {
       "SECTION_BASIC": "Section Basic",
@@ -4329,18 +4332,18 @@
         "ORDER": "Pedido",
         "DESCRIPTION_ES": "Description Es",
         "DESCRIPTION_EN": "Description En",
-        "NAME_PLACEHOLDER": "Name Placeholder",
-        "COUNTRY_PLACEHOLDER": "Country Placeholder",
-        "SLUG_PLACEHOLDER": "Slug Placeholder",
+        "NAME_PLACEHOLDER": "Nombre de la marca",
+        "COUNTRY_PLACEHOLDER": "País de origen",
+        "SLUG_PLACEHOLDER": "URL amigable",
         "FEATURED": "Featured",
         "FEATURED_HINT": "Featured Hint",
-        "DESCRIPTION_PLACEHOLDER": "Description Placeholder",
+        "DESCRIPTION_PLACEHOLDER": "Descripción de la marca",
         "ACTIVE": "Activo"
       },
       "SECTION_VISUAL": "Section Visual",
       "SECTION_DESCRIPTION": "Section Description",
       "SECTION_STATUS": "Section Status",
-      "TITLE": "Título",
+      "TITLE": "Marcas",
       "BTN_ADD": "Btn Add",
       "TH_FEATURED": "Th Featured",
       "TH_LOGO": "Th Logo",
@@ -4349,7 +4352,7 @@
       "TH_WEBSITE": "Th Website",
       "TH_STATUS": "Th Status",
       "EMPTY": "Empty",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar marcas..."
     },
     "STATUS": {
       "ALL": "Todos",
@@ -4357,8 +4360,8 @@
       "INACTIVE": "Inactivo"
     },
     "CATALOG_OVERVIEW": {
-      "TITLE": "Título",
-      "SUBTITLE": "Subtítulo"
+      "TITLE": "Resumen del Catálogo",
+      "SUBTITLE": "Visualización jerárquica de todos los productos"
     },
     "CATEGORIES": {
       "SECTION_BASIC": "Section Basic",
@@ -4376,18 +4379,18 @@
         "DESCRIPTION_EN": "Description En",
         "DESCRIPTION_ES": "Description Es",
         "ACTIVE_HINT": "Active Hint",
-        "NAME_EN_PLACEHOLDER": "Name En Placeholder",
-        "NAME_ES_PLACEHOLDER": "Name Es Placeholder",
-        "SLUG_PLACEHOLDER": "Slug Placeholder",
+        "NAME_EN_PLACEHOLDER": "Nombre en inglés",
+        "NAME_ES_PLACEHOLDER": "Nombre en español",
+        "SLUG_PLACEHOLDER": "URL amigable",
         "PARENT_HINT": "Parent Hint",
         "ICON_HINT": "Icon Hint",
-        "DESCRIPTION_PLACEHOLDER": "Description Placeholder",
+        "DESCRIPTION_PLACEHOLDER": "Descripción de la categoría",
         "ACTIVE": "Activo"
       },
       "SECTION_VISUAL": "Section Visual",
       "SECTION_DESCRIPTION": "Section Description",
       "SECTION_STATUS": "Section Status",
-      "TITLE": "Título",
+      "TITLE": "Categorías",
       "BTN_ADD": "Btn Add",
       "TH_IMAGE": "Th Image",
       "TH_NAME": "Th Name",
@@ -4395,7 +4398,7 @@
       "TH_ORDER": "Th Order",
       "TH_STATUS": "Th Status",
       "EMPTY": "Empty",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar categorías..."
     },
     "COUPONS": {
       "FORM": {
@@ -4419,11 +4422,11 @@
         "END_DATE": "End Date",
         "END_DATE_HINT": "End Date Hint",
         "DATE_ERROR": "Date Error",
-        "CODE_PLACEHOLDER": "Code Placeholder",
+        "CODE_PLACEHOLDER": "Código del cupón",
         "GENERATE": "Generate",
-        "DESCRIPTION_PLACEHOLDER": "Description Placeholder"
+        "DESCRIPTION_PLACEHOLDER": "Descripción del cupón"
       },
-      "TITLE": "Título",
+      "TITLE": "Cupones",
       "ADD_NEW": "Add New",
       "TABLE": {
         "CODE": "Code",
@@ -4433,7 +4436,7 @@
         "VALIDITY": "Validity"
       },
       "EMPTY_MSG": "Empty Msg",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar cupones..."
     },
     "CUSTOMERS": {
       "BACK_TO_LIST": "Back To List",
@@ -4449,11 +4452,11 @@
         "STATS": "Stats",
         "ORDER_HISTORY": "Order History",
         "NO_ORDERS": "No Orders",
-        "SUBTITLE": "Subtítulo"
+        "SUBTITLE": "Información detallada del cliente"
       },
-      "TITLE": "Título",
+      "TITLE": "Gestión de Clientes",
       "NO_RESULTS": "No Results",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar clientes..."
     },
     "ORDERS": {
       "TABLE": {
@@ -4493,17 +4496,17 @@
         "SUBTOTAL": "Subtotal",
         "SHIPPING": "Shipping",
         "DISCOUNT": "Discount",
-        "NOTE_PLACEHOLDER": "Note Placeholder"
+        "NOTE_PLACEHOLDER": "Agregar nota al pedido..."
       },
-      "TITLE": "Título",
+      "TITLE": "Pedidos",
       "STATUS": {
         "ALL": "Todos"
       },
       "NO_RESULTS": "No Results",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar pedidos..."
     },
     "DISTRIBUTORS": {
-      "TITLE": "Título",
+      "TITLE": "Prospectos de Distribuidores",
       "EXPORT": "Export",
       "FILTERS": {
         "ALL": "Todos",
@@ -4534,7 +4537,7 @@
         "INTERNAL_NOTES": "Internal Notes",
         "CONTACT_HISTORY": "Contact History",
         "UPDATED_BY": "Updated By",
-        "NOTE_PLACEHOLDER": "Note Placeholder"
+        "NOTE_PLACEHOLDER": "Agregar nota..."
       },
       "MODAL": {
         "EDIT_TITLE": "Edit Title",
@@ -4545,7 +4548,7 @@
         "STATE": "State",
         "VOLUME": "Volume"
       },
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar distribuidores..."
     },
     "KITS": {
       "FORM": {
@@ -4582,20 +4585,20 @@
         "META_DESCRIPTION": "Meta Description",
         "META_DESC_HINT": "Meta Desc Hint",
         "NO_PRODUCTS_FOUND": "No Products Found",
-        "NAME_ES_PLACEHOLDER": "Name Es Placeholder",
-        "NAME_EN_PLACEHOLDER": "Name En Placeholder",
-        "SKU_PLACEHOLDER": "Sku Placeholder",
-        "DESC_ES_PLACEHOLDER": "Desc Es Placeholder",
-        "DESC_EN_PLACEHOLDER": "Desc En Placeholder",
-        "IMAGE_PLACEHOLDER": "Image Placeholder",
+        "NAME_ES_PLACEHOLDER": "Nombre en español",
+        "NAME_EN_PLACEHOLDER": "Nombre en inglés",
+        "SKU_PLACEHOLDER": "Código SKU",
+        "DESC_ES_PLACEHOLDER": "Descripción en español",
+        "DESC_EN_PLACEHOLDER": "Descripción en inglés",
+        "IMAGE_PLACEHOLDER": "URL de imagen",
         "FEATURED": "Featured",
         "FEATURED_HINT": "Featured Hint",
         "ACTIVE": "Activo",
         "ACTIVE_HINT": "Active Hint",
         "META_TITLE_HELP": "Meta Title Help",
-        "META_TITLE_PLACEHOLDER": "Meta Title Placeholder",
+        "META_TITLE_PLACEHOLDER": "Título meta",
         "META_DESC_HELP": "Meta Desc Help",
-        "META_DESC_PLACEHOLDER": "Meta Desc Placeholder",
+        "META_DESC_PLACEHOLDER": "Descripción meta",
         "SEARCH_PRODUCTS": "Search Products",
         "SAVINGS_ALERT_TEXT": "Savings Alert Text"
       },
@@ -4611,12 +4614,12 @@
         "ACTIONS": "Acciones"
       },
       "ERROR_LOAD": "Error Load",
-      "SUBTITLE": "Subtítulo",
-      "TITLE": "Título",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SUBTITLE": "Gestión de paquetes y combos de productos",
+      "TITLE": "Kits de Productos",
+      "SEARCH_PLACEHOLDER": "Buscar kits..."
     },
     "LOGS": {
-      "TITLE": "Título",
+      "TITLE": "Registros de Actividad",
       "FILTERS": {
         "ALL_MODULES": "All Modules",
         "ALL_ACTIONS": "All Actions"
@@ -4628,10 +4631,10 @@
       "TH_ACTION": "Th Action",
       "TH_DETAILS": "Th Details",
       "EMPTY": "Empty",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar registros..."
     },
     "MEDIA_LIBRARY": {
-      "TITLE": "Título",
+      "TITLE": "Biblioteca de Medios",
       "HOME": "Home",
       "SYNC_BTN": "Sync Btn",
       "UPLOAD_BTN": "Upload Btn",
@@ -4666,14 +4669,14 @@
         "ACTIONS": "Acciones"
       },
       "EMPTY": {
-        "TITLE": "Título",
+        "TITLE": "No se encontraron recursos",
         "DESC": "Desc",
         "BTN": "Btn"
       },
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar archivos..."
     },
     "PDF_LIST": {
-      "TITLE": "Título",
+      "TITLE": "Biblioteca de PDFs",
       "BTN_ADD": "Btn Add",
       "TH_THUMBNAIL": "Th Thumbnail",
       "TH_INFO": "Th Info",
@@ -4689,7 +4692,7 @@
       "EMPTY": "Empty"
     },
     "USERS": {
-      "TITLE": "Título",
+      "TITLE": "Gestión de Usuarios",
       "INVITE": "Invite",
       "FILTERS": {
         "ALL_ROLES": "All Roles",
@@ -4710,16 +4713,16 @@
       "INVITE_TITLE": "Invite Title",
       "EMAIL": "Correo Electrónico",
       "ROLE": "Role",
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Buscar usuarios..."
     },
     "WAREHOUSES": {
-      "TITLE": "Título",
+      "TITLE": "Almacenes",
       "CREATE_NEW": "Create New",
       "NO_DATA": "No Data",
-      "SEARCH_PLACEHOLDER": "Search Placeholder",
+      "SEARCH_PLACEHOLDER": "Buscar almacenes...",
       "WIZARD": {
-        "TITLE": "Título",
-        "SUBTITLE": "Subtítulo"
+        "TITLE": "Crear Almacén",
+        "SUBTITLE": "Configurar detalles de ubicación de almacenamiento"
       }
     },
     "CATALOG": {
@@ -4749,8 +4752,8 @@
   },
   "PRICING_STRATEGY": {
     "DASHBOARD": {
-      "TITLE": "Título",
-      "SUBTITLE": "Subtítulo"
+      "TITLE": "Tablero Ejecutivo",
+      "SUBTITLE": "Resumen de salud de precios y márgenes"
     },
     "DASHBOARD_V2": {
       "BUTTONS": {
@@ -4777,13 +4780,13 @@
         }
       },
       "ATTENTION": {
-        "TITLE": "Título",
+        "TITLE": "Requiere Atención",
         "MARGIN_LABEL": "Margin Label",
         "VIEW_ALL": "View All",
         "ALL_GOOD": "All Good"
       },
       "ACTIVITY": {
-        "TITLE": "Título"
+        "TITLE": "Actividad Reciente"
       }
     }
   },
@@ -4829,7 +4832,7 @@
         "FILTERABLE": "Filterable"
       },
       "EMPTY_STATE": {
-        "TITLE": "Título",
+        "TITLE": "Construyamos el esquema de tu producto",
         "DESCRIPTION": "Description",
         "ADD_FIRST": "Add First",
         "EXAMPLES": "Examples",
@@ -4855,8 +4858,8 @@
       },
       "DUPLICATE_WARNING": "Duplicate Warning"
     },
-    "TITLE": "Título",
-    "SUBTITLE": "Subtítulo",
+    "TITLE": "Tipos de Producto",
+    "SUBTITLE": "Gestión de plantillas de tipos de producto y sus especificaciones",
     "NEW_TYPE": "New Type",
     "SYSTEM_TYPES": "System Types",
     "PROTECTED_BADGE": "Protected Badge",
@@ -4871,7 +4874,7 @@
     "CUSTOM_DESCRIPTION": "Custom Description",
     "NO_CUSTOM_YET": "No Custom Yet",
     "CREATE_FIRST": "Create First",
-    "SEARCH_PLACEHOLDER": "Search Placeholder",
+    "SEARCH_PLACEHOLDER": "Buscar tipos de producto...",
     "NO_SYSTEM_FOUND": "No System Found",
     "NO_CUSTOM_FOUND": "No Custom Found"
   },
@@ -4884,7 +4887,7 @@
       "SEO": "Seo"
     },
     "GENERAL": {
-      "TITLE": "Título",
+      "TITLE": "Información General",
       "COMPANY": "Company",
       "COMPANY_HELP": "Company Help",
       "BRAND_ASSETS": "Brand Assets",
@@ -4898,14 +4901,14 @@
       "EMAIL": "Correo Electrónico",
       "EMAIL_SUGGESTION": "Email Suggestion",
       "ADDRESS": "Dirección",
-      "COMPANY_PLACEHOLDER": "Company Placeholder",
-      "PHONE_PLACEHOLDER": "Phone Placeholder",
-      "WHATSAPP_PLACEHOLDER": "Whatsapp Placeholder",
-      "EMAIL_PLACEHOLDER": "Email Placeholder",
-      "ADDRESS_PLACEHOLDER": "Address Placeholder"
+      "COMPANY_PLACEHOLDER": "Nombre de la empresa",
+      "PHONE_PLACEHOLDER": "Número de teléfono",
+      "WHATSAPP_PLACEHOLDER": "Número de WhatsApp",
+      "EMAIL_PLACEHOLDER": "Correo electrónico",
+      "ADDRESS_PLACEHOLDER": "Dirección completa"
     },
     "SOCIAL": {
-      "TITLE": "Título",
+      "TITLE": "Redes Sociales",
       "BULK_TOGGLE": "Bulk Toggle",
       "SHOW_ALL": "Show All",
       "HIDE_ALL": "Hide All",
@@ -4917,16 +4920,16 @@
         "YOUTUBE": "Youtube",
         "TIKTOK": "Tiktok"
       },
-      "FACEBOOK_PLACEHOLDER": "Facebook Placeholder",
-      "INSTAGRAM_PLACEHOLDER": "Instagram Placeholder",
-      "LINKEDIN_PLACEHOLDER": "Linkedin Placeholder",
-      "TWITTER_PLACEHOLDER": "Twitter Placeholder",
-      "YOUTUBE_PLACEHOLDER": "Youtube Placeholder",
-      "TIKTOK_PLACEHOLDER": "Tiktok Placeholder"
+      "FACEBOOK_PLACEHOLDER": "URL de Facebook",
+      "INSTAGRAM_PLACEHOLDER": "URL de Instagram",
+      "LINKEDIN_PLACEHOLDER": "URL de LinkedIn",
+      "TWITTER_PLACEHOLDER": "URL de Twitter",
+      "YOUTUBE_PLACEHOLDER": "URL de YouTube",
+      "TIKTOK_PLACEHOLDER": "URL de TikTok"
     },
     "HOURS": {
-      "TITLE": "Título",
-      "SUBTITLE": "Subtítulo",
+      "TITLE": "Horario de Atención",
+      "SUBTITLE": "Define cuándo estás disponible para tus clientes",
       "PRESET_LABEL": "Preset Label",
       "SELECT_PRESET": "Select Preset",
       "PRESET_STANDARD": "Preset Standard",
@@ -4942,27 +4945,27 @@
       "CLOSED": "Closed"
     },
     "FEATURES": {
-      "TITLE": "Título",
+      "TITLE": "Características y Extras",
       "MAINTENANCE_HINT": "Maintenance Hint",
       "CHAT_HINT": "Chat Hint",
       "PROMO_TEXT": "Promo Text",
       "MAINTENANCE": "Maintenance",
       "CHAT": "Chat",
       "PROMO": "Promo",
-      "PROMO_TEXT_PLACEHOLDER": "Promo Text Placeholder"
+      "PROMO_TEXT_PLACEHOLDER": "Texto promocional"
     },
     "SEO": {
-      "TITLE": "Título",
+      "TITLE": "SEO y Metadatos",
       "META_TITLE": "Meta Title",
-      "META_TITLE_PLACEHOLDER": "Meta Title Placeholder",
+      "META_TITLE_PLACEHOLDER": "Título meta para SEO",
       "META_TITLE_HINT": "Meta Title Hint",
       "META_DESC": "Meta Desc",
       "OG_IMAGE": "Og Image",
-      "META_DESC_PLACEHOLDER": "Meta Desc Placeholder",
-      "OG_IMAGE_PLACEHOLDER": "Og Image Placeholder"
+      "META_DESC_PLACEHOLDER": "Descripción meta para SEO",
+      "OG_IMAGE_PLACEHOLDER": "URL de imagen Open Graph"
     },
-    "TITLE": "Título",
-    "SUBTITLE": "Subtítulo"
+    "TITLE": "Configuración del Sitio Web",
+    "SUBTITLE": "Configurar opciones generales e información de contacto"
   },
   "SETTINGS": {
     "AUTO_SAVING": "Auto Saving",
@@ -4983,7 +4986,7 @@
       "NEW": "New",
       "BESTSELLER": "Bestseller"
     },
-    "REQUIRED": "Required"
+    "REQUIRED": "Requerido"
   },
   "CLIENTS": {
     "OVERLINE": "Our Clients",
@@ -5036,7 +5039,7 @@
     },
     "COMPANY": "Company",
     "SUPPORT": "Support",
-    "PAYMENT_METHODS": "Payment Methods",
+    "PAYMENT_METHODS": "Métodos de Pago",
     "LEGAL": "Legal",
     "COPYRIGHT": "© 2024 Importadora Euro - Part of Grupo Euro. All rights reserved.",
     "HOURS_TEXT": "Mon-Fri: 9:00am - 7:00pm<br>Saturday: 9:00am - 2:00pm<br>Sunday: Closed"
@@ -5217,28 +5220,28 @@
       "DESCRIPTION": "Quality backed by the most demanding industry certifications",
       "CERT_CARDS": {
         "DOT": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "DOT",
+          "DESC": "Departamento de Transporte de EE.UU."
         },
         "ECE": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "ECE",
+          "DESC": "Comisión Económica Europea"
         },
         "ISO": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "ISO",
+          "DESC": "Organización Internacional de Normalización"
         },
         "INMETRO": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "INMETRO",
+          "DESC": "Instituto Nacional de Metrología de Brasil"
         },
         "CCC": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "CCC",
+          "DESC": "Certificado Obligatorio de China"
         },
         "GSO": {
-          "TITLE": "Title",
-          "DESC": "Desc"
+          "TITLE": "GSO",
+          "DESC": "Organización de Normalización del Golfo"
         }
       }
     },

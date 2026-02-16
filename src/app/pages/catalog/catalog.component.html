@@ -168,7 +168,7 @@
 
                         <div class="product-image">
                             <img [ngSrc]="product.images.main || 'assets/images/euro-logo-new.png'"
-                                [alt]="product.name.en || ('COMMON.NO_IMAGE' | translate)" fill [priority]="i < 4"
+                                [alt]="product.name.en || 'Product Image'" width="300" height="300" [priority]="i < 4"
                                 (error)="product.images.main = 'assets/images/euro-logo-new.png'">
 
                             <!-- Quick View Overlay Button -->

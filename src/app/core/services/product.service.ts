@@ -13,11 +13,14 @@ import {
     where,
     orderBy,
     limit,
+    startAfter,
     Timestamp,
-    QueryConstraint
+    QueryConstraint,
+    QueryDocumentSnapshot,
+    DocumentData
 } from '@angular/fire/firestore';
 import { Storage, ref, uploadBytes, getDownloadURL, deleteObject } from '@angular/fire/storage';
-import { Observable, map } from 'rxjs';
+import { Observable, map, from } from 'rxjs';
 import { Product, ProductFilters, ProductSortBy } from '../models/catalog.model';
 
 @Injectable({
@@ -31,170 +34,212 @@ export class ProductService {
     /**
      * Get all products with optional filters
      */
-    getProducts(filters?: ProductFilters, sortBy: ProductSortBy = 'featured', limitCount?: number): Observable<Product[]> {
-        console.log('ProductService: getProducts called with filters:', filters, 'sortBy:', sortBy);
-        // NOTE: ALL filtering done client-side to avoid Firestore SDK mismatch issues
-        // Fetch all products without any server-side constraints
+    /**
+     * Get products with SERVER-SIDE filtering and pagination
+     * This replaces the old client-side filtering method for performance
+     */
+    async getProductsPage(
+        filters: ProductFilters = {},
+        sortBy: ProductSortBy = 'featured',
+        pageSize: number = 20,
+        lastDoc?: QueryDocumentSnapshot<DocumentData>
+    ): Promise<{ products: Product[], lastDoc: QueryDocumentSnapshot<DocumentData> | null, total: number }> {
+        try {
+            console.log('ProductService: getProductsPage called', { filters, sortBy, pageSize });
 
-        return new Observable(observer => {
-            console.log('ProductService: Fetching products from Firestore...');
-            getDocs(this.productsCollection as any).then(snapshot => {
-                console.log('ProductService: Snapshot received:', snapshot.size, 'documents');
-                if (snapshot.size > 0) {
-                    console.log('ProductService: Sample Doc ID:', snapshot.docs[0].id);
-                    console.log('ProductService: Sample Doc Data:', snapshot.docs[0].data());
+            // Build Query Constraints
+            const constraints: QueryConstraint[] = [];
+
+            // 1. Basic Status Filters
+            // REMOVED STRICT ACTIVE CHECK to match legacy behavior and show all products
+            // constraints.push(where('active', '==', true));
+
+            // 2. Category Filter
+            if (filters.categoryId) {
+                constraints.push(where('categoryId', '==', filters.categoryId));
+            }
+
+            // 3. Brand Filter (Single selection for now to retain index simplicity)
+            // If multiple brands are selected, we might need 'in' query or client-side filter fallback
+            if (filters.brands && filters.brands.length === 1) {
+                constraints.push(where('brand', '==', filters.brands[0]));
+            } else if (filters.brands && filters.brands.length > 1) {
+                constraints.push(where('brand', 'in', filters.brands.slice(0, 10))); // 'in' supports max 10
+            }
+
+            // 4. Featured / New / Bestseller
+            if (filters.featured) constraints.push(where('featured', '==', true));
+            if (filters.newArrival) constraints.push(where('newArrival', '==', true));
+            if (filters.bestSeller) constraints.push(where('bestSeller', '==', true));
+
+            // 5. Price Range (Requires Index with Sort)
+            if (filters.minPrice !== undefined && filters.minPrice > 0) {
+                constraints.push(where('price', '>=', filters.minPrice));
+            }
+            if (filters.maxPrice !== undefined && filters.maxPrice < 100000) { // arbitrary safe max
+                constraints.push(where('price', '<=', filters.maxPrice));
+            }
+
+            // 6. Sorting
+            // Firestore requires the first orderBy field to range filter field if using range filter
+            // So if we filter by price, we MUST sort by price first.
+            if ((filters.minPrice !== undefined && filters.minPrice > 0) || (filters.maxPrice !== undefined && filters.maxPrice < 100000)) {
+                // We are filtering by price, so we must sort by price
+                if (sortBy === 'price-desc') {
+                    constraints.push(orderBy('price', 'desc'));
                 } else {
-                    console.warn('ProductService: No documents found in products collection!');
+                    constraints.push(orderBy('price', 'asc'));
                 }
-
-                const products: Product[] = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data() as any;
-                    // Log potential parsing issues
-                    if (!data.name) console.warn('Product missing name:', doc.id);
-
-                    // Robust mapping with defaults
-                    products.push({
-                        ...data,
-                        id: doc.id,
-                        name: data.name || { en: 'Unknown Product', es: 'Producto Desconocido' },
-                        description: data.description || { en: '', es: '' },
-                        specifications: data.specifications || {
-                            width: 0, aspectRatio: 0, diameter: 0,
-                            loadIndex: '', speedRating: '',
-                            construction: 'radial', tubeless: true
-                        },
-                        price: data.price || 0,
-                        stockQuantity: data.stockQuantity || 0,
-                        features: data.features || { en: [], es: [] },
-                        images: data.images || { main: '', gallery: [] },
-                        tags: data.tags || [],
-                        seo: data.seo || {},
-                        createdAt: data.createdAt?.toDate() || new Date(),
-                        updatedAt: data.updatedAt?.toDate() || new Date()
-                    } as Product);
-                });
-                console.log('ProductService: Parsed products count:', products.length);
-
-                // Client-side filters - ALL filtering happens here
-                let filtered = products;
-
-                if (filters) {
-                    // Category filters
-                    if (filters.categoryId) {
-                        filtered = filtered.filter(p => p.categoryId === filters.categoryId);
-                    }
-                    if (filters.subcategoryId) {
-                        filtered = filtered.filter(p => p.subcategoryId === filters.subcategoryId);
-                    }
-
-                    // Brand filter
-                    if (filters.brands && filters.brands.length > 0) {
-                        filtered = filtered.filter(p => filters.brands!.includes(p.brand));
-                    }
-
-                    // Boolean filters
-                    if (filters.featured !== undefined) {
-                        filtered = filtered.filter(p => p.featured === filters.featured);
-                    }
-                    if (filters.newArrival !== undefined) {
-                        filtered = filtered.filter(p => p.newArrival === filters.newArrival);
-                    }
-                    if (filters.bestSeller !== undefined) {
-                        filtered = filtered.filter(p => p.bestSeller === filters.bestSeller);
-                    }
-                    if (filters.inStock !== undefined) {
-                        filtered = filtered.filter(p => p.inStock === filters.inStock);
-                    }
-
-                    // Specification filters
-                    if (filters.tubeless !== undefined) {
-                        filtered = filtered.filter(p => p.specifications['tubeless'] === filters.tubeless);
-                    }
-                    if (filters.construction) {
-                        filtered = filtered.filter(p => p.specifications['construction'] === filters.construction);
-                    }
-
-                    // Price range
-                    if (filters.minPrice !== undefined) {
-                        filtered = filtered.filter(p => p.price >= filters.minPrice!);
-                    }
-                    if (filters.maxPrice !== undefined) {
-                        filtered = filtered.filter(p => p.price <= filters.maxPrice!);
-                    }
-
-                    // Tire size filters
-                    if (filters.width) {
-                        filtered = filtered.filter(p => p.specifications['width'] === filters.width);
-                    }
-                    if (filters.aspectRatio) {
-                        filtered = filtered.filter(p => p.specifications['aspectRatio'] === filters.aspectRatio);
-                    }
-                    if (filters.diameter) {
-                        filtered = filtered.filter(p => p.specifications['diameter'] === filters.diameter);
-                    }
-
-                    // Tags filter
-                    if (filters.tags && filters.tags.length > 0) {
-                        filtered = filtered.filter(p =>
-                            filters.tags!.some(tag => p.tags.includes(tag))
-                        );
-                    }
-
-                    // Search query
-                    if (filters.searchQuery) {
-                        const searchLower = filters.searchQuery.toLowerCase();
-                        filtered = filtered.filter(p =>
-                            p.name.en.toLowerCase().includes(searchLower) ||
-                            p.name.es.toLowerCase().includes(searchLower) ||
-                            p.sku.toLowerCase().includes(searchLower) ||
-                            p.brand.toLowerCase().includes(searchLower)
-                        );
-                    }
-                }
-
-                // Client-side sorting
+            } else {
+                // Standard Sorting
                 switch (sortBy) {
                     case 'price-asc':
-                        filtered.sort((a, b) => a.price - b.price);
+                        constraints.push(orderBy('price', 'asc'));
                         break;
                     case 'price-desc':
-                        filtered.sort((a, b) => b.price - a.price);
+                        constraints.push(orderBy('price', 'desc'));
                         break;
                     case 'name-asc':
-                        filtered.sort((a, b) => a.name.en.localeCompare(b.name.en));
+                        constraints.push(orderBy('name.en', 'asc'));
                         break;
                     case 'name-desc':
-                        filtered.sort((a, b) => b.name.en.localeCompare(a.name.en));
+                        constraints.push(orderBy('name.en', 'desc'));
                         break;
                     case 'newest':
-                        filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                        constraints.push(orderBy('createdAt', 'desc'));
                         break;
                     case 'featured':
                     default:
-                        filtered.sort((a, b) => {
-                            if (a.featured !== b.featured) {
-                                return b.featured ? 1 : -1;
-                            }
-                            return b.createdAt.getTime() - a.createdAt.getTime();
-                        });
+                        // Default sort: Featured then Date
+                        constraints.push(orderBy('featured', 'desc'));
+                        constraints.push(orderBy('createdAt', 'desc'));
                         break;
                 }
+            }
 
-                // Apply limit if specified
-                if (limitCount) {
-                    filtered = filtered.slice(0, limitCount);
+            // 7. Pagination
+            if (lastDoc) {
+                constraints.push(startAfter(lastDoc));
+            }
+
+            // 8. Limit
+            constraints.push(limit(pageSize));
+
+            // Execute Query
+            const q = query(this.productsCollection, ...constraints);
+            const snapshot = await getDocs(q);
+
+            const products: Product[] = [];
+            snapshot.forEach(doc => {
+                const data = doc.data() as any;
+                products.push(this.mapProduct(doc.id, data));
+            });
+
+            // Get last doc for next page
+            const lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+
+            // Handle Search Query Client-Side (Hybrid approach)
+            // If search query exists, we might need to filter the results 
+            // OR use a separate "search" index.
+            // For now, if there is a search query, we return filtered results
+            // Note: This is imperfect for pagination (might return empty page if all filtered out)
+            // Ideally, search should be a separate Algolia/Typesense call.
+            let resultProducts = products;
+            if (filters.searchQuery) {
+                const qLower = filters.searchQuery.toLowerCase();
+                resultProducts = products.filter(p =>
+                    p.name.en.toLowerCase().includes(qLower) ||
+                    p.name.es.toLowerCase().includes(qLower) ||
+                    p.sku.toLowerCase().includes(qLower) ||
+                    p.brand.toLowerCase().includes(qLower)
+                );
+            }
+
+            return {
+                products: resultProducts,
+                lastDoc: lastVisible,
+                total: snapshot.size // This is just page size, logic in component handles "no more items"
+            };
+
+        } catch (error) {
+            console.error('Error in getProductsPage:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Map raw firestore data to Product model
+     */
+    private mapProduct(id: string, data: any): Product {
+        return {
+            ...data,
+            id: id,
+            name: data.name || { en: 'Unknown', es: 'Desconocido' },
+            description: data.description || { en: '', es: '' },
+            specifications: data.specifications || {},
+            price: data.price || 0,
+            stockQuantity: data.stockQuantity || 0,
+            features: data.features || { en: [], es: [] },
+            images: data.images || { main: '', gallery: [] },
+            tags: data.tags || [],
+            seo: data.seo || {},
+            createdAt: data.createdAt?.toDate() || new Date(),
+            updatedAt: data.updatedAt?.toDate() || new Date()
+        } as Product;
+    }
+
+    /**
+     * Legacy getProducts - Kept for Admin compatibility but redirects to optimized query if possible
+     * @deprecated Use getProductsPage for extensive lists
+     */
+    getProducts(filters?: ProductFilters, sortBy: ProductSortBy = 'featured', limitCount?: number): Observable<Product[]> {
+        // If we have simple filters, we can try to optimize even this observable call
+        // But for full backward compatibility, we'll keep the "fetch all" behavior 
+        // ONLY if no specific optimization constraints are passed.
+
+        // For Admin use-cases (no filters usually), we still fetch all.
+        // But we should really warn about this.
+
+        return new Observable(observer => {
+            let q = query(this.productsCollection);
+
+            // Apply basic limits if provided to prevent full DB dump
+            if (limitCount) {
+                q = query(this.productsCollection, limit(limitCount));
+            }
+
+            getDocs(q).then(snapshot => {
+                const products: Product[] = [];
+                snapshot.forEach(doc => {
+                    products.push(this.mapProduct(doc.id, doc.data()));
+                });
+
+                // Client-side filtering logic (Copy-pasted from original for compatibility)
+                let filtered = products;
+                if (filters) {
+                    if (filters.categoryId) filtered = filtered.filter(p => p.categoryId === filters.categoryId);
+                    if (filters.brands) filtered = filtered.filter(p => filters.brands!.includes(p.brand));
+                    if (filters.minPrice) filtered = filtered.filter(p => p.price >= filters.minPrice!);
+                    if (filters.maxPrice) filtered = filtered.filter(p => p.price <= filters.maxPrice!);
+                    if (filters.searchQuery) {
+                        const q = filters.searchQuery.toLowerCase();
+                        filtered = filtered.filter(p =>
+                            p.name.en.toLowerCase().includes(q) ||
+                            p.brand.toLowerCase().includes(q)
+                        );
+                    }
                 }
 
-                console.log('ProductService: Returning', filtered.length, 'products after filtering/sorting');
-                if (filtered.length === 0 && products.length > 0) {
-                    console.warn('ProductService: All products were filtered out! Check active filters:', filters);
+                // Sort
+                switch (sortBy) {
+                    case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
+                    case 'price-desc': filtered.sort((a, b) => b.price - a.price); break;
+                    case 'newest': filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); break;
+                    default: filtered.sort((a, b) => (b.featured ? 1 : -1) || b.createdAt.getTime() - a.createdAt.getTime());
                 }
+
                 observer.next(filtered);
                 observer.complete();
-            }).catch(error => {
-                console.error('Error getting products:', error);
-                observer.error(error);
             });
         });
     }

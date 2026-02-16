@@ -131,6 +131,9 @@
     "DEV_TOOLS": {
       "TITLE": "Developer Tools",
       "DESC": "Technical utilities and debugging."
+    },
+    "ADMIN": {
+      "TITLE": "Admin Portal"
     }
   },
   "COMMAND_CENTER": {
@@ -2031,7 +2034,8 @@
       "TERMS": "Terms & Conditions",
       "PRIVACY": "Privacy Policy",
       "BILLING": "Billing"
-    }
+    },
+    "PAYMENT_METHODS": "Payment Methods"
   },
   "STATS": {
     "STAT_1_NUMBER": "Main",
@@ -2273,7 +2277,33 @@
     },
     "CERTIFICATIONS": {
       "TITLE": "INTERNATIONAL CERTIFICATIONS AND STANDARDS",
-      "DESCRIPTION": "Quality backed by the most demanding industry certifications"
+      "DESCRIPTION": "Quality backed by the most demanding industry certifications",
+      "CERT_CARDS": {
+        "DOT": {
+          "TITLE": "DOT",
+          "DESC": "US Department of Transportation"
+        },
+        "ECE": {
+          "TITLE": "ECE",
+          "DESC": "European Economic Commission"
+        },
+        "ISO": {
+          "TITLE": "ISO",
+          "DESC": "International Organization for Standardization"
+        },
+        "INMETRO": {
+          "TITLE": "INMETRO",
+          "DESC": "Brazilian National Institute of Metrology"
+        },
+        "CCC": {
+          "TITLE": "CCC",
+          "DESC": "China Compulsory Certificate"
+        },
+        "GSO": {
+          "TITLE": "GSO",
+          "DESC": "Gulf Standardization Organization"
+        }
+      }
     },
     "CTA": {
       "TITLE": "GET YOUR PRAXIS TIRES TODAY",
@@ -2687,10 +2717,10 @@
       "ACTIVE_STATUS": "Active",
       "CLEAR_FILTERS": "[EN] Limpiar Filtros",
       "INACTIVE_STATUS": "[EN] Inactiva",
-      "ITEMS_PER_PAGE": "[EN] Promociones por página",
+      "ITEMS_PER_PAGE": "Items per page",
       "NEXT": "Next",
       "PREVIOUS": "Previous",
-      "SHOWING_ITEMS": "[EN] Mostrando {start}-{end} de {total} promociones"
+      "SHOWING_ITEMS": "Showing {{start}} to {{end}} of {{total}} items"
     },
     "ORDERS": {
       "CREATE_ORDER": "Create Order",
@@ -3380,7 +3410,8 @@
     "ACTIVE": "Active",
     "INACTIVE": "Inactive",
     "EXPORT": "Export",
-    "VIEW": "View"
+    "VIEW": "View",
+    "REQUIRED": "Required"
   },
   "PRODUCT_DETAIL": {
     "BREADCRUMB_HOME": "Home",
@@ -3420,7 +3451,8 @@
     "RELATED_PRODUCTS": "You Might Also Like",
     "LOADING": "Loading product...",
     "SECURE_PAYMENT": "100% Secure Payment",
-    "SHIPPING_THRESHOLD": "> $5,000"
+    "SHIPPING_THRESHOLD": "> $5,000",
+    "VIEW_DETAILS": "View Details"
   },
   "VALIDATION": {
     "SUMMARY_TITLE": "Please fix the following errors:",

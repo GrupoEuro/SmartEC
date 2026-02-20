@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Clear All Caches - Eurollantas Blog</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #D02C2F;
+        }
+
+        button {
+            background: #D02C2F;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+
+        button:hover {
+            background: #a01013;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧹 Clear All Caches</h1>
+
+        <div class="info">
+            <strong>Purpose:</strong> This page will clear all possible caches that might be showing old blog data with
+            UI-Avatars URLs.
+        </div>
+
+        <h3>Step 1: Unregister Service Workers</h3>
+        <button onclick="clearServiceWorkers()">Clear Service Workers</button>
+        <div id="sw-status" class="status"></div>
+
+        <h3>Step 2: Clear Cache Storage</h3>
+        <button onclick="clearCacheStorage()">Clear Cache Storage</button>
+        <div id="cache-status" class="status"></div>
+
+        <h3>Step 3: Clear IndexedDB</h3>
+        <button onclick="clearIndexedDB()">Clear IndexedDB</button>
+        <div id="idb-status" class="status"></div>
+
+        <h3>Step 4: Clear Local Storage</h3>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
+        <div id="ls-status" class="status"></div>
+
+        <h3>Step 5: Clear All & Reload</h3>
+        <button onclick="clearAllAndReload()" style="background: #00ACD8; font-weight: bold;">🚀 CLEAR EVERYTHING &
+            RELOAD</button>
+        <div id="all-status" class="status"></div>
+
+        <div class="info" style="margin-top: 30px;">
+            <strong>After clearing:</strong><br>
+            1. Click "CLEAR EVERYTHING & RELOAD"<br>
+            2. Wait for the page to reload<br>
+            3. Navigate to <code>/blog</code><br>
+            4. The avatar should now show just "E" in a gradient circle
+        </div>
+    </div>
+
+    <script>
+        async function clearServiceWorkers() {
+            const status = document.getElementById('sw-status');
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                if (registrations.length === 0) {
+                    status.className = 'status success';
+                    status.textContent = '✅ No service workers found';
+                    return;
+                }
+
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+                status.className = 'status success';
+                status.textContent = `✅ Unregistered ${registrations.length} service worker(s)`;
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function clearCacheStorage() {
+            const status = document.getElementById('cache-status');
+            try {
+                const cacheNames = await caches.keys();
+                if (cacheNames.length === 0) {
+                    status.className = 'status success';
+                    status.textContent = '✅ No caches found';
+                    return;
+                }
+
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                }
+                status.className = 'status success';
+                status.textContent = `✅ Deleted ${cacheNames.length} cache(s)`;
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function clearIndexedDB() {
+            const status = document.getElementById('idb-status');
+            try {
+                const databases = await indexedDB.databases();
+                if (databases.length === 0) {
+                    status.className = 'status success';
+                    status.textContent = '✅ No IndexedDB databases found';
+                    return;
+                }
+
+                for (let db of databases) {
+                    indexedDB.deleteDatabase(db.name);
+                }
+                status.className = 'status success';
+                status.textContent = `✅ Deleted ${databases.length} database(s)`;
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        function clearLocalStorage() {
+            const status = document.getElementById('ls-status');
+            try {
+                const itemCount = localStorage.length;
+                localStorage.clear();
+                sessionStorage.clear();
+                status.className = 'status success';
+                status.textContent = `✅ Cleared ${itemCount} localStorage item(s) and sessionStorage`;
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function clearAllAndReload() {
+            const status = document.getElementById('all-status');
+            status.className = 'status success';
+            status.textContent = '🔄 Clearing all caches...';
+
+            try {
+                await clearServiceWorkers();
+                await clearCacheStorage();
+                await clearIndexedDB();
+                clearLocalStorage();
+
+                status.textContent = '✅ All caches cleared! Reloading in 2 seconds...';
+
+                setTimeout(() => {
+                    window.location.href = '/blog';
+                }, 2000);
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+
+</html>

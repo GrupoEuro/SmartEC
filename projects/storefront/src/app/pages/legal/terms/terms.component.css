@@ -1,0 +1,46 @@
+.legal-page {
+    padding: 120px 20px 80px;
+    background: var(--bg-dark);
+    min-height: 100vh;
+}
+
+.legal-container {
+    max-width: 800px;
+    margin: 0 auto;
+    color: var(--text-gray);
+}
+
+h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--white);
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+}
+
+.legal-content section {
+    margin-bottom: 40px;
+}
+
+h2 {
+    color: var(--white);
+    font-size: 24px;
+    margin-bottom: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 1px;
+}
+
+p {
+    line-height: 1.8;
+    margin-bottom: 16px;
+}
+
+ul {
+    margin-bottom: 16px;
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}

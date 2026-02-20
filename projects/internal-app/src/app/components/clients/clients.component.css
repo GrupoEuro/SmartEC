@@ -1,0 +1,142 @@
+.clients-section {
+    padding: 120px 0;
+    background: var(--bg-dark);
+    overflow: hidden;
+}
+
+.clients-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 40px;
+}
+
+.header-content {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.section-overline {
+    color: var(--primary-red);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.section-overline::before {
+    content: '';
+    width: 40px;
+    height: 2px;
+    background: var(--primary-red);
+}
+
+.section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    color: var(--white);
+    margin-bottom: 24px;
+    line-height: 1;
+}
+
+.section-description {
+    color: var(--text-gray);
+    font-size: 18px;
+    line-height: 1.6;
+    margin: 0 auto;
+    max-width: 700px;
+}
+
+.carousel-display {
+    position: relative;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    overflow: hidden;
+}
+
+.carousel-display::before,
+.carousel-display::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 200px;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.carousel-display::before {
+    left: 0;
+    background: linear-gradient(to right, var(--bg-dark), transparent);
+}
+
+.carousel-display::after {
+    right: 0;
+    background: linear-gradient(to left, var(--bg-dark), transparent);
+}
+
+.carousel-track {
+    display: flex;
+    gap: 32px;
+    width: max-content;
+    animation: scroll 40s linear infinite;
+    padding: 20px 0;
+}
+
+.client-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 32px;
+    border-radius: 20px;
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.client-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+    border-color: var(--cyan);
+}
+
+.client-logo {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 20px;
+}
+
+.client-card h3 {
+    color: var(--white);
+    font-size: 18px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.client-card p {
+    color: var(--text-gray-dim);
+    font-size: 14px;
+    margin: 0;
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(calc(-280px * 6 - 32px * 6));
+    }
+}
+
+@media (max-width: 768px) {
+    .section-title {
+        font-size: 48px;
+    }
+}

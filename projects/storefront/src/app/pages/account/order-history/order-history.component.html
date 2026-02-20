@@ -1,0 +1,64 @@
+<div class="order-history-container">
+    <div class="header">
+        <h1>{{ 'ACCOUNT.ORDERS.TITLE' | translate }}</h1>
+        <p class="subtitle">{{ 'ACCOUNT.ORDERS.DESCRIPTION' | translate }}</p>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="!loading && orders.length === 0" class="empty-state">
+        <mat-icon>shopping_bag</mat-icon>
+        <p>{{ 'ACCOUNT.ORDERS.EMPTY_TITLE' | translate }}</p>
+        <a mat-flat-button color="primary" routerLink="/catalog">{{ 'ACCOUNT.ORDERS.START_SHOPPING' | translate }}</a>
+    </div>
+
+    <table mat-table [dataSource]="orders" *ngIf="!loading && orders.length > 0" class="mat-elevation-z0">
+        <!-- Order Number Column -->
+        <ng-container matColumnDef="orderNumber">
+            <th mat-header-cell *matHeaderCellDef> {{ 'ACCOUNT.ORDERS.ORDER_NUMBER' | translate }} </th>
+            <td mat-cell *matCellDef="let order"> {{ order.orderNumber || order.id.substring(0,8) | uppercase }} </td>
+        </ng-container>
+
+        <!-- Date Column -->
+        <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef> {{ 'ACCOUNT.ORDERS.DATE' | translate }} </th>
+            <td mat-cell *matCellDef="let order">
+                {{ ($any(order.date).toDate ? $any(order.date).toDate() : order.date) | date:'mediumDate' }}
+            </td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef> {{ 'ACCOUNT.ORDERS.STATUS' | translate }} </th>
+            <td mat-cell *matCellDef="let order">
+                <mat-chip-set>
+                    <mat-chip [highlighted]="true"
+                        [color]="order.status === 'delivered' ? 'accent' : (order.status === 'cancelled' ? 'warn' : 'primary')">
+                        {{ ('ACCOUNT.ORDERS.STATUS_LABELS.' + (order.status | uppercase)) | translate }}
+                    </mat-chip>
+                </mat-chip-set>
+            </td>
+        </ng-container>
+
+        <!-- Total Column -->
+        <ng-container matColumnDef="total">
+            <th mat-header-cell *matHeaderCellDef> {{ 'ACCOUNT.ORDERS.TOTAL' | translate }} </th>
+            <td mat-cell *matCellDef="let order"> {{ order.total | currency }} </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef> </th>
+            <td mat-cell *matCellDef="let order">
+                <a mat-button color="primary" [routerLink]="['details', order.id]">
+                    {{ 'ACCOUNT.ORDERS.VIEW_DETAILS' | translate }}
+                </a>
+            </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+</div>

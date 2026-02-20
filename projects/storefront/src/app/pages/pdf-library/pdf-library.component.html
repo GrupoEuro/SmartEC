@@ -1,0 +1,97 @@
+<section class="pdf-library-section">
+    <div class="library-container">
+        <!-- Header -->
+        <div class="header-content">
+            <div class="section-overline">RECURSOS DIGITALES</div>
+            <h1 class="section-title">Biblioteca de PDFs</h1>
+            <p class="section-description">
+                Descarga catálogos, fichas técnicas y material promocional
+            </p>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="library-toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [value]="searchQuery" (input)="onSearch($event)"
+                    placeholder="Buscar manuales, fichas técnicas..." class="search-input">
+            </div>
+
+            <div class="category-filters">
+                <button *ngFor="let cat of categories" class="filter-pill"
+                    [class.active]="selectedCategory === cat.value" (click)="setCategory(cat.value)">
+                    {{ cat.label }}
+                </button>
+            </div>
+        </div>
+
+        <!-- PDF Grid -->
+        <div class="pdfs-grid">
+            <div *ngFor="let pdf of pdfs$ | async" class="pdf-card">
+                <!-- Thumbnail -->
+                <div class="pdf-thumbnail">
+                    @if (pdf.thumbnailUrl) {
+                    <img [src]="pdf.thumbnailUrl" [alt]="getTitle(pdf)">
+                    } @else {
+                    <div class="thumbnail-placeholder">
+                        <span class="file-icon">📄</span>
+                    </div>
+                    }
+                    <!-- Access Badge -->
+                    @if (pdf.requiresAuth) {
+                    <div class="access-badge">🔒 Login Required</div>
+                    } @else if (pdf.isPublic) {
+                    <div class="access-badge free">🌐 Free</div>
+                    }
+                </div>
+
+                <!-- Content -->
+                <div class="pdf-content">
+                    <h3 class="pdf-title">{{ getTitle(pdf) }}</h3>
+                    <p class="pdf-description">{{ getDescription(pdf) }}</p>
+
+                    <!-- Meta Info -->
+                    <div class="pdf-meta">
+                        <span class="meta-item">
+                            <span class="icon">📦</span>
+                            {{ formatFileSize(pdf.fileSize) }}
+                        </span>
+                        <span class="meta-item">
+                            <span class="icon">⬇️</span>
+                            {{ pdf.downloadCount }} downloads
+                        </span>
+                    </div>
+
+                    <!-- Tags -->
+                    @if (pdf.tags && pdf.tags.length > 0) {
+                    <div class="pdf-tags">
+                        <span *ngFor="let tag of pdf.tags" class="tag">{{ tag }}</span>
+                    </div>
+                    }
+
+                    <!-- Download Button -->
+                    @if (pdf.isPublic) {
+                    <button (click)="downloadPDF(pdf)" class="download-btn">
+                        <span>Descargar PDF</span>
+                        <span class="btn-icon">↓</span>
+                    </button>
+                    } @else if (pdf.requiresAuth) {
+                    <button (click)="requestAccess(pdf)" class="download-btn restricted">
+                        <span>Iniciar Sesión</span>
+                        <span class="btn-icon">🔒</span>
+                    </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        @if ((pdfs$ | async)?.length === 0) {
+        <div class="empty-state">
+            <div class="empty-icon">📚</div>
+            <h3>No hay PDFs disponibles</h3>
+            <p>Vuelve pronto para ver nuevos recursos</p>
+        </div>
+        }
+    </div>
+</section>

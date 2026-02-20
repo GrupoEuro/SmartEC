@@ -1,0 +1,67 @@
+<header class="global-header">
+    <div class="header-left">
+        <!-- Placeholder for potential breadcrumbs or page title override -->
+    </div>
+
+    <div class="header-center">
+        <!-- Global Search -->
+        <div class="global-search glass-input-wrapper">
+            <app-icon name="search" [size]="16" class="search-icon"></app-icon>
+            <input type="text" placeholder="Search (⌘K)..." class="search-input">
+            <div class="kbd-shortcut">
+                <span>⌘</span><span>K</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <!-- Language Switcher -->
+        <button (click)="toggleLanguage()" class="lang-btn glass-btn" [title]="'Switch Language'">
+            <div class="lang-content" *ngIf="languageService.currentLang() === 'es'">
+                <span class="flag-icon">🇲🇽</span>
+                <span class="lang-code">ES</span>
+            </div>
+            <div class="lang-content" *ngIf="languageService.currentLang() === 'en'">
+                <span class="flag-icon">🇺🇸</span>
+                <span class="lang-code">EN</span>
+            </div>
+        </button>
+
+        <!-- Notification Bell -->
+        <app-notification-bell></app-notification-bell>
+
+        <!-- User Menu -->
+        <div class="user-menu-wrapper">
+            <button class="user-avatar-btn" (click)="toggleUserMenu()">
+                <ng-container *ngIf="user">
+                    <img *ngIf="user.photoURL" [src]="user.photoURL" alt="User" class="avatar-img">
+                    <div *ngIf="!user.photoURL" class="avatar-placeholder">
+                        {{ getUserInitials(user.displayName) }}
+                    </div>
+                </ng-container>
+                <ng-container *ngIf="!user">
+                    <div class="avatar-placeholder">?</div>
+                </ng-container>
+            </button>
+
+            <!-- User Dropdown -->
+            <div class="custom-dropdown user-dropdown-pos" *ngIf="isUserMenuOpen()">
+                <ng-container *ngIf="user">
+                    <div class="dropdown-header">
+                        <span class="u-name">{{ user.displayName || 'Admin' }}</span>
+                        <span class="u-email">{{ user.email }}</span>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a routerLink="/" class="dropdown-option">
+                        <app-icon name="home" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.GO_HOME' | translate }}
+                    </a>
+                    <button (click)="logout()" class="dropdown-option text-red-400">
+                        <app-icon name="log-out" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}
+                    </button>
+                </ng-container>
+            </div>
+        </div>
+    </div>
+</header>

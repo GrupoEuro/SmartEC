@@ -1,0 +1,65 @@
+<div class="page-header-sticky" [ngClass]="'header-' + variant">
+    <!-- Title Section -->
+    <div class="header-title-section">
+        <div class="title-content">
+            <span class="header-icon" *ngIf="icon || iconName">
+                <app-icon *ngIf="iconName" [name]="iconName" [size]="32" class="text-blue-900"></app-icon>
+                <ng-container *ngIf="!iconName">{{ icon }}</ng-container>
+            </span>
+            <div class="title-text">
+                <h1 class="page-title">{{ title }}</h1>
+                <p class="page-subtitle" *ngIf="subtitle">{{ subtitle }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-status-compact" *ngIf="showStatus" [ngClass]="'status-' + saveStatus">
+        <span *ngIf="saveStatus === 'saving'" class="status-icon"><app-icon name="loader" [size]="16"
+                class="animate-spin"></app-icon></span>
+        <span *ngIf="saveStatus === 'saved'" class="status-icon"><app-icon name="check" [size]="16"></app-icon></span>
+        <span *ngIf="saveStatus === 'error'" class="status-icon"><app-icon name="alert-triangle"
+                [size]="16"></app-icon></span>
+        <span class="status-text">
+            <span *ngIf="saveStatus === 'saving'">{{ 'SETTINGS.AUTO_SAVING' | translate }}</span>
+            <span *ngIf="saveStatus === 'saved'">{{ 'SETTINGS.ALL_SAVED' | translate }}</span>
+            <span *ngIf="saveStatus === 'error'">{{ 'SETTINGS.SAVE_ERROR' | translate }}</span>
+            <span *ngIf="saveStatus === 'idle' && lastSaved">{{ lastSaved | date:'short' }}</span>
+        </span>
+    </div>
+
+    <!-- Undo/Redo (if enabled) -->
+    <div class="undo-redo-compact" *ngIf="showUndoRedo">
+        <button type="button" class="icon-btn-compact" (click)="handleUndo()" [disabled]="!canUndo"
+            [title]="'SETTINGS.UNDO' | translate"><app-icon name="rotate-ccw" [size]="18"></app-icon></button>
+        <button type="button" class="icon-btn-compact" (click)="handleRedo()" [disabled]="!canRedo"
+            [title]="'SETTINGS.REDO' | translate"><app-icon name="rotate-cw" [size]="18"></app-icon></button>
+    </div>
+
+    <!-- Progress (if enabled) -->
+    <div class="progress-compact" *ngIf="showProgress">
+        <svg width="36" height="36">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#e9ecef" stroke-width="2.5" />
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#4CAF50" stroke-width="2.5"
+                [attr.stroke-dasharray]="87.96" [attr.stroke-dashoffset]="87.96 - (87.96 * progress / 100)"
+                transform="rotate(-90 18 18)" />
+        </svg>
+        <span class="progress-value">{{progress}}%</span>
+    </div>
+
+    <!-- Custom Actions (Content Projection) -->
+    <div class="custom-actions">
+        <ng-content></ng-content>
+    </div>
+
+    <!-- Save/Cancel Buttons (if enabled) -->
+    <div class="action-buttons" *ngIf="showSaveCancel">
+        <button type="button" class="btn-cancel" (click)="handleCancel()">
+            {{ 'ADMIN.COMMON.CANCEL' | translate }}
+        </button>
+        <button type="button" class="btn-save" (click)="handleSave()" [disabled]="isFormInvalid || isSaving">
+            <span *ngIf="!isSaving" class="flex items-center gap-1"><app-icon name="save" [size]="16"></app-icon> {{
+                'ADMIN.COMMON.SAVE' | translate }}</span>
+            <span *ngIf="isSaving">{{ 'ADMIN.COMMON.SAVING' | translate }}...</span>
+        </button>
+    </div>
+</div>

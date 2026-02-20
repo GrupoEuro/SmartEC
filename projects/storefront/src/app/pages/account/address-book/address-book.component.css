@@ -1,0 +1,157 @@
+/* Glass Container */
+.address-container {
+    padding: 32px;
+    max-width: 1000px;
+    margin: 0 auto;
+    min-height: 80vh;
+}
+
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 32px;
+    margin: 0;
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #aaa);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.add-btn {
+    background: linear-gradient(135deg, #00ACD8, #0088cc) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 24px !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(0, 172, 216, 0.4);
+    transition: all 0.2s;
+}
+
+.add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 172, 216, 0.5);
+}
+
+/* Address Grid */
+.address-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.address-card {
+    background: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.address-card:hover {
+    border-color: rgba(0, 172, 216, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.address-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.address-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.address-label mat-icon {
+    color: #00ACD8;
+}
+
+.default-badge {
+    background: rgba(147, 213, 0, 0.15);
+    color: #93D500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.address-details {
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    flex-grow: 1;
+}
+
+.address-details p {
+    margin: 0;
+}
+
+.address-actions {
+    display: flex;
+    gap: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 16px;
+}
+
+.address-actions button {
+    flex: 1;
+}
+
+.edit-btn {
+    color: #00ACD8 !important;
+    border-color: rgba(0, 172, 216, 0.3) !important;
+}
+
+.delete-btn {
+    color: #ff4444 !important;
+    border-color: rgba(255, 68, 68, 0.3) !important;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px;
+    background: rgba(30, 30, 30, 0.4);
+    border-radius: 24px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.empty-state mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #444;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #fff;
+}
+
+.empty-state p {
+    color: #888;
+    margin-bottom: 24px;
+}

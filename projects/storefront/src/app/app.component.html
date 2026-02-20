@@ -1,0 +1,25 @@
+@defer (on idle) {
+<app-toast></app-toast>
+}
+@defer (on idle) {
+<app-cart-drawer></app-cart-drawer>
+}
+@defer (on idle) {
+<app-exit-intent></app-exit-intent>
+}
+@defer (on idle) {
+<app-confirm-dialog></app-confirm-dialog>
+}
+
+<app-navbar></app-navbar>
+
+<main style="padding-top: 140px; min-height: 100vh;">
+  <router-outlet></router-outlet>
+</main>
+
+@defer (on idle) {
+<app-chat-widget></app-chat-widget>
+}
+@defer (on idle) {
+<app-footer></app-footer>
+}

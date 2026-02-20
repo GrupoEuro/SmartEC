@@ -1,0 +1,116 @@
+<div class="order-notes-card">
+    <div class="card-header">
+        <div class="header-content">
+            <h3 class="card-title">
+                <i class="fas fa-sticky-note"></i>
+                Internal Notes
+                <span class="notes-count" *ngIf="notes().length > 0">{{ notes().length }}</span>
+                <span class="issues-badge" *ngIf="getUnresolvedIssuesCount() > 0">
+                    {{ getUnresolvedIssuesCount() }} unresolved
+                </span>
+            </h3>
+            <button class="btn btn-sm btn-light" (click)="toggleAddForm()">
+                <i class="fas" [ngClass]="showAddForm() ? 'fa-times' : 'fa-plus'"></i>
+                {{ showAddForm() ? 'Cancel' : 'Add Note' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <!-- Add Note Form -->
+        <div class="add-note-form" *ngIf="showAddForm()">
+            <div class="form-group">
+                <label for="noteType">Note Type</label>
+                <select id="noteType" class="form-control" [(ngModel)]="newNoteType">
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="issue">Issue</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="noteText">Note</label>
+                <textarea id="noteText" class="form-control" rows="3" placeholder="Enter your note here..."
+                    [(ngModel)]="newNoteText"></textarea>
+            </div>
+
+            <button class="btn btn-primary btn-block" (click)="addNote()"
+                [disabled]="!newNoteText().trim() || isAdding()">
+                <i class="fas" [ngClass]="isAdding() ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+                {{ isAdding() ? 'Adding...' : 'Add Note' }}
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            Loading notes...
+        </div>
+
+        <!-- Notes List -->
+        <div class="notes-list" *ngIf="!isLoading()">
+            <!-- Empty State -->
+            <div *ngIf="notes().length === 0" class="empty-state">
+                <i class="fas fa-sticky-note"></i>
+                <p>No notes yet</p>
+                <small>Add a note to track important information about this order</small>
+            </div>
+
+            <!-- Notes -->
+            <div *ngFor="let note of notes()" class="note-item" [ngClass]="getNoteTypeClass(note.type)">
+                <div class="note-header">
+                    <div class="note-meta">
+                        <i class="fas" [ngClass]="getNoteTypeIcon(note.type)"></i>
+                        <span class="note-type">{{ note.type | titlecase }}</span>
+                        <span class="note-author">{{ note.createdByName }}</span>
+                        <span class="note-date">{{ formatDate(note.createdAt) }}</span>
+                    </div>
+                    <div class="note-actions">
+                        <button *ngIf="note.type === 'issue' && !note.isResolved" class="btn-icon btn-success"
+                            (click)="resolveIssue(note.id!)" title="Mark as resolved">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn-icon btn-edit" (click)="startEdit(note)" title="Edit note"
+                            *ngIf="editingNoteId() !== note.id">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon btn-delete" (click)="deleteNote(note.id!)" title="Delete note">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Note Content (View Mode) -->
+                <div class="note-content" *ngIf="editingNoteId() !== note.id">
+                    <p>{{ note.text }}</p>
+                    <span class="resolved-badge" *ngIf="note.type === 'issue' && note.isResolved">
+                        <i class="fas fa-check-circle"></i>
+                        Resolved
+                    </span>
+                </div>
+
+                <!-- Note Content (Edit Mode) -->
+                <div class="note-edit" *ngIf="editingNoteId() === note.id">
+                    <textarea class="form-control" rows="3" [(ngModel)]="editNoteText"></textarea>
+                    <div class="edit-actions">
+                        <button class="btn btn-sm btn-primary" (click)="saveEdit(note.id!)">
+                            <i class="fas fa-save"></i>
+                            Save
+                        </button>
+                        <button class="btn btn-sm btn-secondary" (click)="cancelEdit()">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="note-footer" *ngIf="note.updatedAt">
+                    <small class="text-muted">
+                        <i class="fas fa-edit"></i>
+                        Edited {{ formatDate(note.updatedAt) }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

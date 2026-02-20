@@ -2,6 +2,20 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "paths": {
+      "@lib/core": [
+        "./projects/core/src/public-api.ts"
+      ],
+      "@lib/ui-kit": [
+        "./projects/ui-kit/src/public-api.ts"
+      ],
+      "core": [
+        "./dist/core"
+      ],
+      "ui-kit": [
+        "./dist/ui-kit"
+      ]
+    },
     "outDir": "./dist/out-tsc",
     "strict": true,
     "noImplicitOverride": true,

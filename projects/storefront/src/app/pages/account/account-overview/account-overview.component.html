@@ -1,0 +1,95 @@
+<div class="dashboard-container">
+    <div class="welcome-section">
+        <h1>{{ 'ACCOUNT.OVERVIEW.WELCOME' | translate: { name: userName } }}</h1>
+        <p>{{ 'ACCOUNT.OVERVIEW.SUBTITLE' | translate }}</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Quick Links -->
+        <div class="quick-links">
+            <div class="link-card" routerLink="orders">
+                <div class="card-content-wrapper">
+                    <div class="icon-box">
+                        <mat-icon>shopping_bag</mat-icon>
+                    </div>
+                    <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ORDERS_TITLE' | translate }}</h3>
+                    <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ORDERS_DESC' | translate }}</p>
+                </div>
+            </div>
+            <div class="link-card" routerLink="addresses">
+                <div class="card-content-wrapper">
+                    <div class="icon-box">
+                        <mat-icon>location_on</mat-icon>
+                    </div>
+                    <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ADDRESSES_TITLE' | translate }}</h3>
+                    <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ADDRESSES_DESC' | translate }}</p>
+                </div>
+            </div>
+            <div class="link-card" routerLink="profile">
+                <div class="card-content-wrapper">
+                    <div class="icon-box">
+                        <mat-icon>person</mat-icon>
+                    </div>
+                    <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.PROFILE_TITLE' | translate }}</h3>
+                    <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.PROFILE_DESC' | translate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders Widget -->
+        <div class="recent-orders-section">
+            <div class="section-header">
+                <h2>{{ 'ACCOUNT.OVERVIEW.RECENT_ORDERS.TITLE' | translate }}</h2>
+                <a mat-button class="view-all-btn" routerLink="orders">{{ 'ACCOUNT.OVERVIEW.RECENT_ORDERS.VIEW_ALL' |
+                    translate }}</a>
+            </div>
+
+            <div *ngIf="recentOrders.length > 0; else noOrders">
+                <mat-list>
+                    <div *ngFor="let order of recentOrders; let last = last">
+                        <mat-list-item>
+                            <span matListItemIcon>
+                                <div class="order-icon-box">
+                                    <mat-icon>local_shipping</mat-icon>
+                                </div>
+                            </span>
+                            <div matListItemTitle>
+                                <span style="color: #fff; font-weight: 600;">{{ 'ACCOUNT.ORDERS.ORDER_NUMBER' |
+                                    translate }}{{ order.orderNumber ||
+                                    order.id.substring(0,8) | uppercase }}</span>
+                            </div>
+                            <div matListItemLine>
+                                <span class="order-date">
+                                    {{ ($any(order.date).toDate ? $any(order.date).toDate() : order.date) |
+                                    date:'mediumDate' }}
+                                </span>
+                                <span style="margin: 0 8px; color: #555;">|</span>
+                                <span class="order-total">{{ order.total | currency }}</span>
+                            </div>
+                            <!-- Meta: Status Badge & Chevron -->
+                            <div matListItemMeta style="display: flex; align-items: center; gap: 16px;">
+                                <span class="status-badge" [ngClass]="'status-' + (order.status | lowercase)">
+                                    {{ ('ACCOUNT.ORDERS.STATUS_LABELS.' + (order.status | uppercase)) | translate }}
+                                </span>
+                                <a mat-icon-button [routerLink]="['orders/details', order.id]" style="color: #666;">
+                                    <mat-icon>chevron_right</mat-icon>
+                                </a>
+                            </div>
+                        </mat-list-item>
+                        <mat-divider *ngIf="!last" style="border-color: rgba(255,255,255,0.05);"></mat-divider>
+                    </div>
+                </mat-list>
+            </div>
+
+            <ng-template #noOrders>
+                <div class="empty-widget">
+                    <mat-icon
+                        style="font-size: 48px; width: 48px; height: 48px; color: #333;">shopping_cart_off</mat-icon>
+                    <p>{{ 'ACCOUNT.OVERVIEW.RECENT_ORDERS.NO_ORDERS' | translate }}</p>
+                    <a mat-stroked-button class="empty-btn" routerLink="/catalog">{{
+                        'ACCOUNT.OVERVIEW.RECENT_ORDERS.START_SHOPPING' | translate }}</a>
+                </div>
+            </ng-template>
+        </div>
+    </div>
+</div>

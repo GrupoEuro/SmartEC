@@ -1,0 +1,222 @@
+<div class="product-detail-container" *ngIf="product$ | async as product; else loading">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a routerLink="/">{{ 'PRODUCT_DETAIL.BREADCRUMB_HOME' | translate }}</a>
+        <span class="separator">›</span>
+        <a routerLink="/catalog">{{ 'PRODUCT_DETAIL.BREADCRUMB_CATALOG' | translate }}</a>
+        <span class="separator">›</span>
+        <span class="current">{{ product.name.es }}</span>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="product-hero">
+        <!-- Image Gallery -->
+        <div class="hero-left">
+            <app-image-gallery [images]="getProductImages(product)" [productName]="product.name.es">
+            </app-image-gallery>
+        </div>
+
+        <!-- Product Info -->
+        <div class="hero-right">
+            <div class="product-header">
+                <div>
+                    <span class="product-brand-badge">{{ product.brand }}</span>
+                    <h1 class="product-title">{{ product.name.es }}</h1>
+                </div>
+                <div class="stock-status-pill" [class.in-stock]="product.inStock" [class.out-stock]="!product.inStock">
+                    <div class="status-dot"></div>
+                    <span *ngIf="product.inStock">{{ 'PRODUCT_DETAIL.IN_STOCK' | translate }}</span>
+                    <span *ngIf="!product.inStock">{{ 'PRODUCT_DETAIL.OUT_OF_STOCK' | translate }}</span>
+                </div>
+            </div>
+
+            <p class="product-sku">SKU: {{ product.sku }}</p>
+
+            <!-- Price -->
+            <div class="price-container">
+                <div class="main-price-row">
+                    <span class="current-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                    <span class="currency">{{ 'COMMON.CURRENCY' | translate }}</span>
+                    <span class="tax-note">{{ 'COMMON.IVA_INCLUDED' | translate }}</span>
+                </div>
+                <div class="secondary-price-row"
+                    *ngIf="product.compareAtPrice && product.compareAtPrice > product.price">
+                    <span class="original-price">{{ product.compareAtPrice | currency:'MXN':'symbol-narrow':'1.2-2'
+                        }}</span>
+                    <span class="discount-pill">
+                        -{{ ((product.compareAtPrice - product.price) / product.compareAtPrice * 100).toFixed(0) }}%
+                    </span>
+                </div>
+            </div>
+
+            <!-- Tech Specs Bar (Compact) -->
+            <div class="tech-specs-bar">
+                <div class="tech-spec-item">
+                    <span class="tech-label">{{ 'PRODUCT_DETAIL.TIRE_SIZE' | translate }}</span>
+                    <span class="tech-value">{{ product.specifications['width'] }}/{{
+                        product.specifications['aspectRatio'] }}R{{ product.specifications['diameter'] }}</span>
+                </div>
+                <div class="tech-divider"></div>
+                <div class="tech-spec-item">
+                    <span class="tech-label">{{ 'PRODUCT_DETAIL.LOAD_INDEX' | translate }}</span>
+                    <span class="tech-value">{{ product.specifications['loadIndex'] }}</span>
+                </div>
+                <div class="tech-divider"></div>
+                <div class="tech-spec-item">
+                    <span class="tech-label">{{ 'PRODUCT_DETAIL.SPEED_RATING' | translate }}</span>
+                    <span class="tech-value">{{ product.specifications['speedRating'] }}</span>
+                </div>
+            </div>
+
+            <div class="divider-line"></div>
+
+            <!-- Actions Row -->
+            <div class="actions-row">
+                <!-- Quantity Selector (Pill Styled) -->
+                <div class="quantity-selector-pill">
+                    <button class="qty-btn" (click)="decrementQuantity()" [disabled]="quantity <= 1">−</button>
+                    <input type="number" [(ngModel)]="quantity" min="1" class="qty-input" readonly />
+                    <button class="qty-btn" (click)="incrementQuantity()">+</button>
+                </div>
+
+                <!-- Add to Cart (Gradient) -->
+                <button class="btn-add-cart-large" (click)="addToCart(product)" [disabled]="!product.inStock">
+                    <span class="btn-icon">🛒</span>
+                    <span class="btn-text">{{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}</span>
+                </button>
+
+                <!-- Wishlist/Share (Icon Buttons) -->
+                <div class="secondary-actions">
+                    <button class="btn-icon-square" (click)="addToWishlist(product)"
+                        title="{{ 'PRODUCT_DETAIL.ADD_TO_WISHLIST' | translate }}">
+                        ♡
+                    </button>
+                    <button class="btn-icon-square" (click)="shareProduct()"
+                        title="{{ 'PRODUCT_DETAIL.SHARE' | translate }}">
+                        ⤴
+                    </button>
+                </div>
+            </div>
+
+            <!-- Trust Signals (MercadoPago) -->
+            <div class="trust-signals-row mercadopago-theme">
+                <div class="trust-capsule mp-capsule">
+                    <span class="trust-icon">🛡️</span>
+                    <div class="trust-content">
+                        <span class="trust-title">Mercado Pago</span>
+                        <span class="trust-subtitle">{{ 'PRODUCT_DETAIL.SECURE_PAYMENT' | translate }}</span>
+                    </div>
+                </div>
+                <!-- <div class="trust-divider"></div> -->
+                <div class="trust-capsule">
+                    <span class="trust-icon">💳</span>
+                    <span class="trust-text">{{ 'COMMON.TRUST.MSI' | translate }}</span>
+                </div>
+                <div class="trust-capsule">
+                    <span class="trust-icon">🔒</span>
+                    <span class="trust-text">{{ 'COMMON.TRUST.PROTECTED' | translate }}</span>
+                </div>
+            </div>
+
+            <!-- Badges -->
+            <div class="badges-row" *ngIf="product.newArrival || product.bestSeller || product.featured">
+                <span *ngIf="product.newArrival" class="mini-badge new">{{ 'PRODUCT_DETAIL.BADGES.NEW' | translate
+                    }}</span>
+                <span *ngIf="product.bestSeller" class="mini-badge hot">{{ 'PRODUCT_DETAIL.BADGES.BESTSELLER' |
+                    translate }}</span>
+                <span *ngIf="product.featured" class="mini-badge featured">{{ 'PRODUCT_DETAIL.BADGES.FEATURED' |
+                    translate }}</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Frequently Bought Together (Bundles) -->
+    <app-product-bundles [mainProduct]="product"></app-product-bundles>
+
+    <!-- Specifications Table -->
+    <div class="specifications-section">
+        <h2 class="section-title">{{ 'PRODUCT_DETAIL.SPECIFICATIONS' | translate }}</h2>
+        <div class="specs-grid">
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_WIDTH' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['width'] }} mm</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_ASPECT_RATIO' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['aspectRatio'] }}%</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_DIAMETER' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['diameter'] }}"</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_LOAD_INDEX' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['loadIndex'] }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_SPEED_RATING' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['speedRating'] }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_CONSTRUCTION' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['construction'] }}</span>
+            </div>
+            <div class="spec-row">
+                <span class="spec-label">{{ 'PRODUCT_DETAIL.SPEC_TUBELESS' | translate }}</span>
+                <span class="spec-value">{{ product.specifications['tubeless'] ? ('PRODUCT_DETAIL.SPEC_TUBELESS_YES' |
+                    translate) : ('PRODUCT_DETAIL.SPEC_TUBELESS_NO' | translate) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabbed Content -->
+    <div class="tabs-section">
+        <div class="tabs-header">
+            <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="setActiveTab('overview')">
+                {{ 'PRODUCT_DETAIL.TABS.OVERVIEW' | translate }}
+            </button>
+            <button class="tab-btn" [class.active]="activeTab === 'features'" (click)="setActiveTab('features')">
+                {{ 'PRODUCT_DETAIL.TABS.FEATURES' | translate }}
+            </button>
+        </div>
+
+        <div class="tabs-content">
+            <!-- Overview Tab -->
+            <div class="tab-panel" *ngIf="activeTab === 'overview'">
+                <h3>{{ 'PRODUCT_DETAIL.DESCRIPTION' | translate }}</h3>
+                <p class="description-text">{{ product.description.es }}</p>
+            </div>
+
+            <!-- Features Tab -->
+            <div class="tab-panel" *ngIf="activeTab === 'features'">
+                <h3>{{ 'PRODUCT_DETAIL.KEY_FEATURES' | translate }}</h3>
+                <ul class="features-list">
+                    <li *ngFor="let feature of product.features.es">{{ feature }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Sticky Buy Bar -->
+    <div class="sticky-buy-bar" *ngIf="product$ | async as product">
+        <div class="sticky-info">
+            <span class="sticky-title">{{ product.name.es }}</span>
+            <span class="sticky-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <button class="btn-sticky-add" (click)="addToCart(product)" [disabled]="!product.inStock">
+            {{ 'PRODUCT_DETAIL.ADD_TO_CART' | translate }}
+        </button>
+    </div>
+
+    <!-- Related Products -->
+    <app-related-products *ngIf="relatedProducts$ | async as relatedProducts"
+        [products]="relatedProducts"></app-related-products>
+</div>
+
+<!-- Loading State -->
+<ng-template #loading>
+    <div class="loading-state">
+        <p>{{ 'PRODUCT_DETAIL.LOADING' | translate }}</p>
+    </div>
+</ng-template>

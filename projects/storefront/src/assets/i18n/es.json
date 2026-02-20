@@ -1,0 +1,828 @@
+{
+  "PAGINATION": {
+    "FIRST": "Primera Página",
+    "PREVIOUS": "Página Anterior",
+    "NEXT": "Página Siguiente",
+    "LAST": "Última Página"
+  },
+  "NAVBAR": {
+    "HOME": "Inicio",
+    "CATALOG": "Catálogo",
+    "PRAXIS": "Llantas Praxis",
+    "ABOUT": "Nosotros",
+    "CONTACT": "Contacto",
+    "CHECKOUT": "Finalizar Compra",
+    "DISTRIBUTOR_CTA": "¿Quieres ser Distribuidor?",
+    "SEARCH_PLACEHOLDER": "Buscar por marca, medida o modelo...",
+    "NO_RESULTS": "No encontramos resultados para",
+    "TRY_SEARCH": "Intenta con \"Michelin\", \"205/55\" o \"Deportiva\""
+  },
+  "AUTH": {
+    "WELCOME_BACK": "Bienvenido de nuevo",
+    "CREATE_ACCOUNT": "Crear Cuenta",
+    "SUBTITLE_LOGIN": "Inicia sesión para acceder a tus pedidos y perfil",
+    "SUBTITLE_REGISTER": "Únete a nuestra comunidad para ofertas exclusivas",
+    "GOOGLE_SIGN_IN": "Iniciar con Google",
+    "GOOGLE_SIGN_UP": "Regístrate con Google",
+    "OR_EMAIL": "o continúa con email",
+    "EMAIL": "Correo Electrónico",
+    "EMAIL_PLACEHOLDER": "nombre@ejemplo.com",
+    "PASSWORD": "Contraseña",
+    "PASSWORD_PLACEHOLDER": "••••••••",
+    "PASSWORD_MIN_PLACEHOLDER": "Mín. 6 caracteres",
+    "FULL_NAME": "Nombre Completo",
+    "FULL_NAME_PLACEHOLDER": "Juan Pérez",
+    "CONFIRM_PASSWORD": "Confirmar Contraseña",
+    "FORGOT_PASSWORD": "¿Olvidaste tu contraseña?",
+    "SIGN_IN": "Iniciar Sesión",
+    "SIGNING_IN": "Iniciando...",
+    "CREATE_BTN": "Crear Cuenta",
+    "CREATING_BTN": "Creando Cuenta...",
+    "NO_ACCOUNT": "¿No tienes cuenta?",
+    "HAVE_ACCOUNT": "¿Ya tienes cuenta?",
+    "SIGN_UP_LINK": "Regístrate",
+    "SIGN_IN_LINK": "Inicia sesión",
+    "VALIDATION": {
+      "EMAIL_REQUIRED": "Se requiere un correo válido",
+      "PASSWORD_REQUIRED": "Contraseña requerida",
+      "NAME_REQUIRED": "Nombre requerido",
+      "PASSWORD_MATCH": "Las contraseñas no coinciden"
+    }
+  },
+  "CART": {
+    "TITLE": "Tu Carrito",
+    "ADD_MORE_SHIPPING": "¡Agrega {{amount}} más para Envío Gratis! 🚚",
+    "FREE_SHIPPING_UNLOCKED": "🎉 ¡Envío Gratis desbloqueado!",
+    "EMPTY_MSG": "Tu carrito está vacío",
+    "START_SHOPPING": "Empezar a Comprar",
+    "SUBTOTAL": "Subtotal",
+    "TAX_NOTE": "Impuestos y envío calculados al finalizar compra",
+    "CHECKOUT_SECURELY": "Pagar de forma Segura 🔒",
+    "CONFIRM_REMOVE": "¿Eliminar este producto del carrito?"
+  },
+  "PRODUCT_DETAIL": {
+    "BREADCRUMB_HOME": "Inicio",
+    "BREADCRUMB_CATALOG": "Catálogo",
+    "SKU": "SKU",
+    "IN_STOCK": "Disponible",
+    "OUT_OF_STOCK": "Agotado",
+    "UNITS_AVAILABLE": "unidades disponibles",
+    "TIRE_SIZE": "Medida",
+    "LOAD_INDEX": "Índice de Carga",
+    "SPEED_RATING": "Rango de Velocidad",
+    "QUANTITY": "Cantidad",
+    "ADD_TO_CART": "Agregar al Carrito",
+    "VIEW_DETAILS": "Ver Detalles",
+    "BADGES": {
+      "NEW": "Nuevo",
+      "BESTSELLER": "Más Vendido",
+      "FEATURED": "Destacado"
+    },
+    "SPECIFICATIONS": "Especificaciones Técnicas",
+    "SPEC_WIDTH": "Ancho",
+    "SPEC_ASPECT_RATIO": "Perfil",
+    "SPEC_DIAMETER": "Rin",
+    "SPEC_LOAD_INDEX": "Carga",
+    "SPEC_SPEED_RATING": "Velocidad",
+    "SPEC_CONSTRUCTION": "Construcción",
+    "SPEC_TUBELESS": "Tipo de Montaje",
+    "SPEC_TUBELESS_YES": "Tubeless (Sin Cámara)",
+    "SPEC_TUBELESS_NO": "Tube Type (Con Cámara)",
+    "TABS": {
+      "OVERVIEW": "Descripción General",
+      "FEATURES": "Características Clave",
+      "APPLICATIONS": "Aplicaciones",
+      "TECHNICAL": "Ficha Técnica"
+    },
+    "DESCRIPTION": "Descripción del Producto",
+    "KEY_FEATURES": "Características Principales",
+    "LOADING": "Cargando información del producto...",
+    "SECURE_PAYMENT": "Pago 100% Seguro",
+    "SHIPPING_THRESHOLD": "> $5,000",
+    "ADD_TO_WISHLIST": "Agregar a Favoritos",
+    "SHARE": "Compartir",
+    "RELATED_PRODUCTS": "También te podría interesar"
+  },
+  "CHECKOUT": {
+    "IDENTITY": "Identidad",
+    "SHIPPING": "Envío",
+    "PAYMENT": "Pago",
+    "FIRST_NAME": "Nombre",
+    "LAST_NAME": "Apellidos",
+    "STREET": "Calle",
+    "STREET_PLACEHOLDER": "Av. Reforma",
+    "EXT_NUM": "Num. Ext",
+    "INT_NUM": "Num. Int",
+    "COLONIA": "Colonia",
+    "ZIP": "Código Postal",
+    "CITY": "Ciudad / Municipio",
+    "STATE": "Estado",
+    "PHONE": "Teléfono",
+    "CONTINUE_SHIPPING": "Continuar a Envíos",
+    "CONTINUE_PAYMENT": "Continuar a Pago",
+    "PAY_NOW": "Pagar Ahora",
+    "GUEST_LOGIN_HINT": "Continúa como invitado o inicia sesión para agilizar tu compra.",
+    "EMAIL": "Correo Electrónico",
+    "VALID_EMAIL_REQUIRED": "Se requiere un correo válido.",
+    "OR": "o",
+    "SIGN_IN_GOOGLE": "Iniciar sesión con Google",
+    "INT_NUM_PLACEHOLDER": "Int. 4B",
+    "CARD_NUMBER": "Número de Tarjeta",
+    "EXPIRATION": "Vencimiento",
+    "CVV": "Código de Seguridad (CVV)",
+    "CARD_HOLDER": "Titular de la Tarjeta",
+    "CARD_HOLDER_PLACEHOLDER": "Como aparece en la tarjeta",
+    "DNI_INE": "DNI / INE / RFC",
+    "DNI_INE_PLACEHOLDER": "Número de Identificación",
+    "SECURE_PAYMENT_NOTE": "Las transacciones son procesadas de forma segura por MercadoPago.",
+    "TERMS_AGREEMENT": "Al hacer clic en Pagar, aceptas nuestros Términos y Condiciones.",
+    "PAY_BUTTON": "Pagar {{amount}}",
+    "ORDER_SUMMARY": "Resumen del Pedido",
+    "SUBTOTAL": "Subtotal",
+    "SHIPPING_COST": "Envío",
+    "FREE": "Gratis",
+    "CALCULATED_NEXT": "Calculado en el siguiente paso",
+    "TOTAL": "Total",
+    "TRACK": "Rastrear",
+    "RETURN": "Devolver",
+    "BUY_AGAIN": "Comprar de nuevo",
+    "MANAGE_LOCATIONS": "Administrar direcciones",
+    "EDIT_PROFILE": "Editar perfil",
+    "SECURE_SSL": "Pago Seguro SSL"
+  },
+  "CATALOG_QUICK_VIEW_BTN": "Vista Rápida",
+  "COMMON": {
+    "BACK": "Atrás",
+    "LOADING": "Cargando...",
+    "IVA_INCLUDED": "IVA Incluido",
+    "CURRENCY": "MXN",
+    "TRUST": {
+      "MSI": "Meses Sin Intereses",
+      "PROTECTED": "Compra Protegida"
+    },
+    "BADGES": {
+      "NEW": "Nuevo",
+      "HOT": "Popular",
+      "BESTSELLER": "Más Vendido"
+    },
+    "REQUIRED": "Requerido",
+    "ERROR": "Error",
+    "NO_DATA": "Sin datos encontrados",
+    "EDIT": "Editar",
+    "DELETE": "Eliminar",
+    "SAVE": "Guardar",
+    "SAVING": "Guardando...",
+    "PUBLISH": "Publicar",
+    "PUBLISHING": "Publicando...",
+    "CANCEL": "Cancelar",
+    "CREATE": "Crear",
+    "UPDATE": "Actualizar",
+    "FIELD_REQUIRED": "Campo Requerido",
+    "ACTIONS": "Acciones",
+    "STATUS": "Estado",
+    "CREATED_AT": "Creado",
+    "UPDATED_AT": "Actualizado",
+    "BACK_LIST": "Volver a la Lista",
+    "PREVIOUS": "Anterior",
+    "NEXT": "Siguiente",
+    "CONFIRM_DELETE": "¿Estás seguro de que deseas eliminar este elemento?",
+    "DELETE_SUCCESS": "Elemento eliminado exitosamente",
+    "DELETE_ERROR": "Error al eliminar elemento",
+    "CONFIRM_CANCEL": "Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?",
+    "CONFIRM_CANCEL_TITLE": "Cambios sin Guardar",
+    "VIEW_ALL": "Ver Todo",
+    "ACTIVE": "Activo",
+    "INACTIVE": "Inactivo",
+    "EXPORT": "Exportar",
+    "VIEW": "Ver"
+  },
+  "CLIENTS": {
+    "OVERLINE": "Nuestros Clientes",
+    "TITLE": "ELLOS CONFÍAN EN NOSOTROS",
+    "DESCRIPTION": "Distribuidores, talleres y negocios en toda la República Mexicana que han crecido con nosotros"
+  },
+  "WHY": {
+    "OVERLINE": "Ventajas Competitivas",
+    "TITLE": "¿POR QUÉ IMPORTADORA EURO?",
+    "DESCRIPTION": "Nos diferenciamos en el mercado por ofrecer más que solo productos de calidad. Somos el socio estratégico que tu negocio necesita para crecer.",
+    "CARD_1_TITLE": "Importación Directa",
+    "CARD_1_DESC": "Sin intermediarios, trabajamos directamente con los fabricantes. Esto se traduce en mejores precios y mayor disponibilidad de inventario para ti.",
+    "CARD_2_TITLE": "Precios Competitivos",
+    "CARD_2_DESC": "Optimizamos costos para ofrecerte los mejores márgenes de ganancia del mercado nacional.",
+    "CARD_3_TITLE": "Stock Garantizado",
+    "CARD_3_DESC": "Gran inventario disponible para entrega inmediata. Olvídate del desabasto.",
+    "CARD_4_TITLE": "Logística Integral",
+    "CARD_4_DESC": "Envíos seguros y rápidos a cualquier parte de la República Mexicana.",
+    "CARD_5_TITLE": "Asesoría Experta",
+    "CARD_5_DESC": "Equipo especializado listo para guiarte en la selección ideal para tu mercado.",
+    "CARD_6_TITLE": "Garantía Total",
+    "CARD_6_DESC": "Respaldo directo en todos nuestros productos. Tu inversión está segura con nosotros.",
+    "PROCESS_TITLE": "Proceso de Pedido Simplificado",
+    "STEP_1_TITLE": "Contáctanos",
+    "STEP_1_DESC": "WhatsApp, teléfono o correo",
+    "STEP_2_TITLE": "Cotiza",
+    "STEP_2_DESC": "Recibe tu propuesta formal",
+    "STEP_3_TITLE": "Confirma",
+    "STEP_3_DESC": "Realiza tu pago seguro",
+    "STEP_4_TITLE": "Recibe",
+    "STEP_4_DESC": "Envío inmediato a tu puerta"
+  },
+  "FOOTER": {
+    "DESCRIPTION": "Importadores líderes de llantas para motocicleta en México y distribuidores exclusivos de Praxis.",
+    "LOCATION_TITLE": "Ubicación",
+    "LOCATION_TEXT": "Av. Salvador Nava No.704-1<br>Col. Nuevo Paseo<br>San Luis Potosí, S.L.P",
+    "HOURS_TITLE": "Horario",
+    "CONTACT_TITLE": "Contacto",
+    "PRODUCTS": "Productos",
+    "LINKS": {
+      "PRAXIS": "Tienda Praxis",
+      "BLOG": "Blog",
+      "CATALOG": "Catálogo",
+      "ABOUT": "Nosotros",
+      "GROUP": "Grupo Euro",
+      "DISTRIBUTION": "Distribución",
+      "FAQ": "Preguntas Frecuentes",
+      "WARRANTY": "Garantía",
+      "TERMS": "Términos y Condiciones",
+      "PRIVACY": "Política de Privacidad",
+      "BILLING": "Facturación"
+    },
+    "COMPANY": "Compañía",
+    "SUPPORT": "Soporte",
+    "PAYMENT_METHODS": "Métodos de Pago",
+    "LEGAL": "Legal",
+    "COPYRIGHT": "© 2024 Importadora Euro - Parte de Grupo Euro. Todos los derechos reservados.",
+    "HOURS_TEXT": "Lun-Vie: 9:00am - 7:00pm<br>Sábado: 9:00am - 2:00pm<br>Domingo: Cerrado"
+  },
+  "DISTRIBUTOR": {
+    "OVERLINE": "Únete a Nosotros",
+    "TITLE": "CONVIÉRTETE EN DISTRIBUIDOR",
+    "DESCRIPTION": "Inicia tu negocio con nosotros y accede a beneficios exclusivos desde el primer día",
+    "BENEFIT_1_TITLE": "Precios Especiales",
+    "BENEFIT_1_DESC": "Accede a precios de distribuidor desde tu primera compra",
+    "BENEFIT_2_TITLE": "Sin Cuota de Registro",
+    "BENEFIT_2_DESC": "Registro gratuito, comienza a pedir inmediatamente",
+    "BENEFIT_3_TITLE": "Capacitación Incluida",
+    "BENEFIT_3_DESC": "Asesoría técnica y comercial sin costo adicional",
+    "BENEFIT_4_TITLE": "Crecimiento Conjunto",
+    "BENEFIT_4_DESC": "Descuentos progresivos a medida que aumentas tu volumen",
+    "FORM": {
+      "TITLE": "Solicita tu Registro de Distribuidor",
+      "NAME": "Nombre Completo *",
+      "BUSINESS": "Nombre del Negocio *",
+      "EMAIL": "Correo Electrónico *",
+      "PHONE": "Teléfono / WhatsApp *",
+      "STATE": "Estado *",
+      "STATE_PLACEHOLDER": "Selecciona tu estado",
+      "VOLUME": "Volumen Mensual Estimado",
+      "VOLUME_PLACEHOLDER": "Selecciona una opción",
+      "COMMENTS": "Comentarios Adicionales",
+      "COMMENTS_PLACEHOLDER": "Cuéntanos sobre tu negocio, experiencia o dudas que tengas...",
+      "SUBMIT": "Enviar Solicitud"
+    }
+  },
+  "FAQ": {
+    "OVERLINE": "Preguntas Frecuentes",
+    "TITLE": "¿TIENES DUDAS?",
+    "DESCRIPTION": "Respuestas a las preguntas más comunes de nuestros distribuidores",
+    "Q1": "¿Cuál es el pedido mínimo?",
+    "A1": "No tenemos pedido mínimo. Puedes ordenar desde 1 llanta hasta el volumen que necesites. Sin embargo, ofrecemos descuentos progresivos por volumen que hacen más atractiva la compra en mayores cantidades.",
+    "Q2": "¿Qué formas de pago aceptan?",
+    "A2": "Aceptamos transferencias bancarias, depósitos en efectivo y pagos con tarjeta. Para clientes frecuentes, ofrecemos línea de crédito con condiciones preferenciales basadas en historial de compra.",
+    "Q3": "¿Los envíos tienen costo?",
+    "A3": "El envío es GRATIS en compras mayores a $3,000 MXN. Para pedidos menores, el costo de envío varía por zona de entrega (desde $150 hasta $350 MXN).",
+    "Q4": "¿Cuánto tarda la entrega?",
+    "A4": "Zona centro: 24-48 horas. Resto del país: 2-6 días hábiles según ubicación. Todos los envíos incluyen número de guía para rastreo en tiempo real.",
+    "Q5": "¿Ofrecen descuentos por volumen?",
+    "A5": "Sí, tenemos una estructura de precios escalonada. Mientras mayor sea tu volumen de compra, mejores precios obtienes. Contáctanos para ver la tabla de descuentos vigente.",
+    "Q6": "¿Cómo me convierto en distribuidor?",
+    "A6": "Es muy sencillo: solo contáctanos y nuestro equipo comercial te registrará en el sistema. Sin cuotas de inscripción ni requisitos complicados. ¡Empieza a comprar desde tu primer pedido!",
+    "Q7": "¿Las llantas tienen garantía?",
+    "A7": "Por supuesto. Todas nuestras llantas cuentan con garantía de fábrica de 5 años contra defectos de manufactura a partir de la fecha de producción.",
+    "Q8": "¿Manejan otras marcas?",
+    "A8": "Nos especializamos como distribuidores exclusivos de Praxis, pero podemos conseguir otras marcas bajo pedido especial.",
+    "Q9": "¿Envían a zonas extendidas?",
+    "A9": "Sí, cubrimos todo el territorio nacional. Para zonas extendidas (localidades remotas) puede aplicar un costo extra o tiempo adicional de entrega, que se notifica antes de confirmar tu pedido.",
+    "Q10": "¿Puedo recoger mi pedido personalmente?",
+    "A10": "Sí, contamos con bodega en San Luis Potosí. Si estás en la zona, puedes recoger tu pedido directamente y ahorrar en tiempo de envío.",
+    "BTN_MORE": "Ver más preguntas",
+    "BTN_LESS": "Ver menos preguntas"
+  },
+  "BRANDS": {
+    "TITLE": "NUESTRAS MARCAS",
+    "PRAXIS_DESC": "Líderes en la importación de llantas para motocicleta",
+    "PRAXIS_FEAT_1": "Tecnología de punta",
+    "PRAXIS_FEAT_2": "Calidad certificada",
+    "PRAXIS_HERO": {
+      "SUBTITLE": "Llantas diseñadas con Tecnología Global para ofrecer máximo agarre y durabilidad en cada kilómetro.",
+      "STAT_1_VAL": "+10 Años",
+      "STAT_1_LABEL": "Experiencia",
+      "STAT_2_VAL": "Global",
+      "STAT_2_LABEL": "Tecnología",
+      "STAT_3_VAL": "Uso Rudo",
+      "STAT_3_LABEL": "Enfoque",
+      "TAGLINE": "Tecnología Global, Rendimiento Local",
+      "CTA_CATALOG": "Ver Catálogo",
+      "CTA_CONTACT": "Contáctanos"
+    }
+  },
+  "CTA": {
+    "TITLE": "¿LISTO PARA TRABAJAR CON NOSOTROS?",
+    "DESCRIPTION": "Solicita nuestro catálogo digital o contáctanos para una cotización personalizada",
+    "BTN_CATALOG": "📥 Descargar Catálogo",
+    "BTN_CALL": "📞 Llamar Ahora",
+    "BTN_WHATSAPP": "💬 WhatsApp"
+  },
+  "RESOURCES": {
+    "OVERLINE": "Recursos Descargables",
+    "TITLE": "MATERIAL PARA DISTRIBUIDORES",
+    "DESCRIPTION": "Descarga catálogos, fichas técnicas y material promocional para impulsar tus ventas",
+    "CATALOG_PRAXIS": "Catálogo Praxis",
+    "CATALOG_PRAXIS_DESC": "Línea completa Praxis con especificaciones técnicas, garantías y tabla de equivalencias",
+    "BTN_PDF": "Descargar PDF",
+    "SIZE_TABLE": "Tabla de Medidas",
+    "SIZE_TABLE_DESC": "Guía rápida de medidas por marca y modelo de moto para facilitar la venta",
+    "PROMO": "Material Promocional",
+    "PROMO_DESC": "Logos, banners digitales y material gráfico para redes sociales y publicidad",
+    "BTN_ACCESS": "Solicitar Acceso",
+    "TECH_SHEETS": "Fichas Técnicas",
+    "TECH_SHEETS_DESC": "Especificaciones detalladas de cada modelo para asesorar correctamente a tus clientes",
+    "PRICE_LIST": "Lista de Precios",
+    "PRICE_LIST_DESC": "Precios actualizados para distribuidores con descuentos por volumen incluidos. Acceso exclusivo para distribuidores registrados.",
+    "BTN_ZIP": "Descargar ZIP"
+  },
+  "ABOUT": {
+    "FEATURE_1_TITLE": "+10 Años",
+    "FEATURE_1_DESC": "De experiencia en el mercado mexicano",
+    "OVERLINE": "Nosotros",
+    "TITLE": "LÍDERES EN IMPORTACIÓN",
+    "DESCRIPTION": "Fundada en San Luis Potosí, Importadora Euro se ha consolidado como el referente nacional en la importación y distribución de llantas para motocicleta. Nuestra alianza estratégica con marcas líderes nos permite ofrecer productos de clase mundial.",
+    "FEATURE_2_TITLE": "Cobertura Nacional",
+    "FEATURE_2_DESC": "Logística eficiente a todo el país",
+    "BTN_MORE": "Conoce Más"
+  },
+  "HERO": {
+    "BADGE": "Importadores Líderes en México",
+    "TITLE_1": "LLANTAS PARA",
+    "TITLE_2": "MOTOCICLETA",
+    "TITLE_3": "ALTO DESEMPEÑO",
+    "SUBTITLE": "Importadores y distribuidores nacionales de las mejores marcas de llantas para moto. Garantizamos calidad premium, precios competitivos y servicio excepcional.",
+    "BTN_CATALOG": "Ver Catálogo",
+    "BTN_CONTACT": "Contáctanos",
+    "STORE_BADGE": "Nuevo",
+    "STORE_TITLE_PRAXIS": "Tienda Oficial Praxis",
+    "STORE_DESC": "Visita nuestras tiendas en línea y recibe en tu domicilio",
+    "FLOATING_SHIPPING": "Envío Gratis",
+    "STORE_TITLE": "Tienda Oficial"
+  },
+  "COVERAGE": {
+    "OVERLINE": "Cobertura Nacional",
+    "TITLE": "ENTREGAMOS EN TODO MÉXICO",
+    "DESCRIPTION": "Red de distribución que cubre toda la República Mexicana con tiempos de entrega garantizados",
+    "MAP_TITLE": "MÉXICO",
+    "MAP_SUBTITLE_1": "Cobertura Nacional Completa",
+    "MAP_SUBTITLE_2": "Entregas garantizadas en los 32 estados de la República",
+    "HUB_CITY": "San Luis Potosí",
+    "HUB_LABEL": "Centro de Distribución Central",
+    "ZONE_CENTER": "Zona Centro",
+    "ZONE_CENTER_STATES": "San Luis Potosí, Querétaro, Guanajuato, Aguascalientes, Zacatecas",
+    "ZONE_NORTH": "Zona Norte",
+    "ZONE_NORTH_STATES": "Monterrey, Saltillo, Torreón, Chihuahua, Durango",
+    "ZONE_PACIFIC": "Zona Pacífico",
+    "ZONE_PACIFIC_STATES": "Guadalajara, León, Morelia, Colima, Tepic",
+    "ZONE_SOUTH": "Zona Sur",
+    "ZONE_SOUTH_STATES": "CDMX, Puebla, Veracruz, Oaxaca, Chiapas, Mérida, Cancún"
+  },
+  "STATS": {
+    "STAT_1_NUMBER": "Principal",
+    "STAT_1_LABEL": "Importador",
+    "STAT_2_NUMBER": "Nacional",
+    "STAT_2_LABEL": "Distribución",
+    "STAT_3_NUMBER": "2021",
+    "STAT_3_LABEL": "Praxis en México",
+    "STAT_4_NUMBER": "100%",
+    "STAT_4_LABEL": "Calidad Garantizada"
+  },
+  "SERVICES": {
+    "OVERLINE": "Nuestros Servicios",
+    "TITLE": "MÁS QUE IMPORTACIÓN",
+    "DESCRIPTION": "Ofrecemos un servicio integral que va más allá de la simple venta de llantas. Somos tu socio estratégico en el negocio de motocicletas.",
+    "SERVICE_1_TITLE": "Distribución Nacional",
+    "SERVICE_1_DESC": "Cobertura completa en toda la República Mexicana con envíos rápidos y seguros. Red logística optimizada garantizando entregas puntuales a cualquier punto del país.",
+    "SERVICE_2_TITLE": "Precios Competitivos",
+    "SERVICE_2_DESC": "Importación directa que nos permite ofrecer los mejores precios del mercado sin intermediarios. Descuentos especiales para distribuidores y mayoristas.",
+    "SERVICE_3_TITLE": "Asesoría Técnica",
+    "SERVICE_3_DESC": "Equipo especializado ayudándote a seleccionar las llantas perfectas para cada tipo de moto y necesidad. Capacitación constante sobre productos.",
+    "SERVICE_4_TITLE": "Calidad Garantizada",
+    "SERVICE_4_DESC": "Todas nuestras llantas cuentan con garantía oficial de fabricante. Productos 100% originales con certificaciones internacionales de calidad."
+  },
+  "PRAXIS_PAGE": {
+    "HERO": {
+      "BADGE": "🏆 Marca Líder en México",
+      "SUBTITLE": "Experimenta máximo agarre, durabilidad y seguridad en cada kilómetro. Marca líder con casi 10 años de experiencia en productos automotrices de alta calidad.",
+      "BTN_BUY": "Comprar",
+      "BTN_CONTACT": "Contáctanos",
+      "TITLE": "LLANTAS PRAXIS<br>DESEMPEÑO<br>SUPERIOR",
+      "BADGE_1_VALUE": "+10",
+      "BADGE_1_LABEL": "Años de Experiencia",
+      "BADGE_2_VALUE": "Global",
+      "BADGE_2_LABEL": "Tecnología",
+      "BADGE_3_VALUE": "#1",
+      "BADGE_3_LABEL": "En México"
+    },
+    "STATS": {
+      "YEARS": "Años de Experiencia",
+      "CLIENTS": "Clientes Satisfechos",
+      "RECOMMENDATION": "Recomendación",
+      "SUPPORT": "Soporte Técnico"
+    },
+    "FEATURES": {
+      "TITLE": "¿POR QUÉ ELEGIR PRAXIS?",
+      "DESCRIPTION": "Tecnología alemana de vanguardia diseñada para ofrecer máximo rendimiento en todas las condiciones de manejo.",
+      "CARD_1_TITLE": "Garantía Superior",
+      "CARD_1_DESC": "Garantía extendida respaldando la calidad excepcional de cada llanta Praxis. Manejo seguro y confiable en todas las condiciones.",
+      "CARD_2_TITLE": "Alto Desempeño",
+      "CARD_2_DESC": "Diseño de banda de rodadura asimétrica optimizado para máxima estabilidad en curvas y respuesta instantánea a altas velocidades.",
+      "CARD_3_TITLE": "Mejor Kilometraje",
+      "CARD_3_DESC": "Construcción reforzada y compuesto de caucho de alta durabilidad maximizando la vida útil, ofreciendo el mejor kilometraje del mercado.",
+      "CARD_4_TITLE": "Manejo Silencioso",
+      "CARD_4_DESC": "Diseño optimizado minimizando vibraciones y ruido de rodadura, brindando un manejo ultra silencioso y cómodo.",
+      "CARD_5_TITLE": "Gran Eficiencia",
+      "CARD_5_DESC": "Baja resistencia a la rodadura reduciendo el consumo de combustible, ahorrando dinero y reduciendo emisiones de CO2.",
+      "CARD_6_TITLE": "Control en Mojado",
+      "CARD_6_DESC": "Grandes surcos circunferenciales evacuando eficientemente el agua durante mal tiempo, asegurando excelente agarre."
+    },
+    "TECH": {
+      "TITLE": "TECNOLOGÍA Y EXPERIENCIA PRAXIS",
+      "DESCRIPTION": "Cada llanta Praxis incorpora casi 10 años de experiencia y liderazgo en el suministro de productos automotrices. Nuestro equipo de profesionales altamente capacitados garantiza calidad y rendimiento excepcionales en cada producto.",
+      "LIST_1": "Compuesto de caucho avanzado para agarre superior en todas las condiciones",
+      "LIST_2": "Diseño de banda de rodadura optimizado para máximo rendimiento",
+      "LIST_3": "Pruebas rigurosas en ETDAC (Centro de Desarrollo y Análisis de Llantas)",
+      "LIST_4": "Sistema de evacuación de agua de alto rendimiento",
+      "LIST_5": "Pruebas de resistencia y durabilidad a alta velocidad",
+      "LIST_6": "Certificaciones internacionales de seguridad y calidad",
+      "BTN_MORE": "Conoce Más sobre Praxis"
+    },
+    "TESTIMONIALS": {
+      "TITLE": "LO QUE DICEN NUESTROS CLIENTES",
+      "TEXT_1": "\"Increíble diferencia en el manejo. Praxis superó mis expectativas en agarre y durabilidad. He conducido 60,000 km y siguen pareciendo nuevas.\"",
+      "AUTHOR_1": "Jorge Martínez",
+      "INFO_1": "Toyota Camry 2022",
+      "TEXT_2": "\"La mejor inversión para mi vehículo. Bajo consumo de combustible y excelente comportamiento en lluvia. El equipo de Importadora Euro fue muy profesional.\"",
+      "AUTHOR_2": "Ana López",
+      "INFO_2": "Honda CR-V 2023",
+      "TEXT_3": "\"Como conductor profesional, necesito llantas confiables. Praxis me ha dado esa confianza. Excelente relación calidad-precio y servicio impecable.\"",
+      "AUTHOR_3": "Roberto Castro",
+      "INFO_3": "Ford Transit 2021"
+    },
+    "CERTIFICATIONS": {
+      "TITLE": "CERTIFICACIONES Y ESTÁNDARES INTERNACIONALES",
+      "DESCRIPTION": "Calidad respaldada por las certificaciones más exigentes de la industria",
+      "CERT_CARDS": {
+        "DOT": {
+          "TITLE": "DOT",
+          "DESC": "Departamento de Transporte de EE.UU."
+        },
+        "ECE": {
+          "TITLE": "ECE",
+          "DESC": "Comisión Económica Europea"
+        },
+        "ISO": {
+          "TITLE": "ISO",
+          "DESC": "Organización Internacional de Normalización"
+        },
+        "INMETRO": {
+          "TITLE": "INMETRO",
+          "DESC": "Instituto Nacional de Metrología de Brasil"
+        },
+        "CCC": {
+          "TITLE": "CCC",
+          "DESC": "Certificado Obligatorio de China"
+        },
+        "GSO": {
+          "TITLE": "GSO",
+          "DESC": "Organización de Normalización del Golfo"
+        }
+      }
+    },
+    "CTA": {
+      "TITLE": "OBTÉN TUS LLANTAS PRAXIS HOY",
+      "DESCRIPTION": "Compra en línea o contáctanos para asesoría personalizada",
+      "BTN_BUY": "COMPRAR AHORA",
+      "BTN_WHATSAPP": "CONTACTAR POR WHATSAPP"
+    },
+    "FOOTER": {
+      "BRAND_DESC": "Distribuidor oficial de llantas Praxis en México. Más de 15 años ofreciendo calidad y confianza.",
+      "PRODUCTS_TITLE": "Productos",
+      "PROD_1": "Llantas de Motocicleta",
+      "PROD_2": "Off-Road / Enduro",
+      "PROD_3": "Calle",
+      "PROD_4": "Doble Propósito",
+      "CONTACT_TITLE": "Contacto",
+      "LOCATIONS": "Ubicaciones",
+      "WHATSAPP": "WhatsApp",
+      "EMAIL": "Correo",
+      "PHONE": "Teléfono",
+      "COPYRIGHT": "© 2024 Importadora Euro. Todos los derechos reservados. | Aviso de Privacidad"
+    }
+  },
+  "BLOG": {
+    "HERO_TITLE": "Noticias y Consejos",
+    "HERO_DESC": "Mantente al día con lo último en el mundo del motociclismo, mantenimiento y tecnología de llantas.",
+    "TITLE": "Blog",
+    "EMPTY": "No se encontraron artículos",
+    "BTN_ADD": "Nuevo Artículo",
+    "NEW_TITLE": "Nuevo Artículo",
+    "EDIT_TITLE": "Editar Artículo",
+    "TABLE": {
+      "POST": "Artículo",
+      "CATEGORY": "Categoría",
+      "DATE": "Fecha",
+      "ACTIONS": "Acciones"
+    },
+    "TH_COVER": "Portada",
+    "TH_TITLE": "Título",
+    "TH_CATEGORY": "Categoría",
+    "TH_DATE": "Fecha",
+    "TH_ACTIONS": "Acciones",
+    "FORM": {
+      "TITLE": "Título",
+      "SLUG": "URL amigable",
+      "EXCERPT": "Resumen",
+      "CONTENT": "Contenido",
+      "CATEGORY": "Categoría",
+      "COVER_IMAGE": "Imagen de Portada",
+      "TAGS": "Etiquetas",
+      "READ_TIME": "Tiempo de lectura (min)",
+      "HTML_HINT": "Puedes usar HTML básico para formato"
+    },
+    "CATEGORIES": {
+      "NEWS": "Noticias",
+      "TIPS": "Consejos",
+      "MAINTENANCE": "Mantenimiento",
+      "TECH": "Tecnología",
+      "SECURITY": "Seguridad"
+    },
+    "FILTERS": {
+      "ALL": "Todo",
+      "MAINTENANCE": "Mantenimiento",
+      "TECH": "Tecnología",
+      "TIPS": "Consejos",
+      "DRAFT": "Borrador",
+      "PUBLISHED": "Publicado"
+    },
+    "READ_TIME": "min de lectura",
+    "READ_MORE": "Leer más →",
+    "SHARE": "Compartir",
+    "SUBSCRIBE": {
+      "TITLE": "Suscríbete",
+      "DESC": "Recibe las mejores ofertas y consejos en tu bandeja de entrada.",
+      "PLACEHOLDER": "Tu dirección de correo",
+      "BTN": "Suscribirse"
+    },
+    "LOADING": "Cargando artículo..."
+  },
+  "ACCOUNT": {
+    "OVERVIEW": {
+      "WELCOME": "Bienvenido, {{name}}",
+      "SUBTITLE": "Gestiona tu cuenta, pedidos y direcciones.",
+      "QUICK_LINKS": {
+        "ORDERS_TITLE": "Pedidos",
+        "ORDERS_DESC": "Rastrear, devolver o comprar de nuevo",
+        "ADDRESSES_TITLE": "Direcciones",
+        "ADDRESSES_DESC": "Gestionar ubicaciones de envío",
+        "PROFILE_TITLE": "Perfil",
+        "PROFILE_DESC": "Editar inicio de sesión y nombre"
+      },
+      "RECENT_ORDERS": {
+        "TITLE": "Pedidos Recientes",
+        "VIEW_ALL": "Ver Todo",
+        "NO_ORDERS": "No se encontraron pedidos recientes.",
+        "START_SHOPPING": "Empezar a Comprar"
+      }
+    },
+    "ORDERS": {
+      "ORDER_NUMBER": "Pedido #",
+      "DETAIL": {
+        "BACK": "Volver a Pedidos",
+        "RETURN": "Volver a la Lista",
+        "PLACED_ON": "Realizado el",
+        "SHIPPING_ADDR": "Dirección de Envío",
+        "PAYMENT_METHOD": "Método de Pago",
+        "PAYMENT_STATUS": "Estado de Pago",
+        "ITEMS_TITLE": "Artículos",
+        "SKU": "SKU",
+        "QTY": "Cant",
+        "SUBTOTAL": "Subtotal",
+        "SHIPPING": "Envío",
+        "DISCOUNT": "Descuento",
+        "TOTAL": "Total",
+        "TRACK": "Rastrear Pedido"
+      },
+      "TITLE": "Mis Pedidos",
+      "DESCRIPTION": "Rastrear, devolver o comprar de nuevo.",
+      "EMPTY_TITLE": "Aún no has realizado pedidos.",
+      "START_SHOPPING": "Empezar a Comprar",
+      "DATE": "Fecha",
+      "STATUS": "Estado",
+      "TOTAL": "Total",
+      "VIEW_DETAILS": "Ver Detalles",
+      "ITEMS": "Artículos",
+      "STATUS_LABELS": {
+        "PENDING": "Pendiente",
+        "PROCESSING": "Procesando",
+        "SHIPPED": "Enviado",
+        "DELIVERED": "Entregado",
+        "CANCELLED": "Cancelado"
+      }
+    },
+    "PROFILE": {
+      "TITLE": "Perfil y Facturación",
+      "SUBTITLE": "Gestiona tus datos personales e información fiscal para facturación SAT.",
+      "SECTION_PERSONAL": "Información Personal",
+      "EMAIL": "Correo Electrónico",
+      "EMAIL_HINT": "El correo no se puede cambiar directamente.",
+      "DISPLAY_NAME": "Nombre Completo",
+      "PHONE": "Número de Teléfono",
+      "SECTION_FISCAL": "Datos Fiscales (Facturación)",
+      "FISCAL_HELP": "Requerido para generar facturas CFDI 4.0 válidas en México.",
+      "RFC": "RFC",
+      "RFC_HINT": "Personas Físicas (13 caracteres) o Morales (12 caracteres)",
+      "LEGAL_NAME": "Razón Social",
+      "LEGAL_NAME_HINT": "Nombre exacto como en Constancia de Situación Fiscal",
+      "FISCAL_REGIME": "Régimen Fiscal",
+      "CFDI_USE": "Uso de CFDI",
+      "FISCAL_ZIP": "Código Postal (C.P.) Fiscal",
+      "SECURITY_TITLE": "Seguridad",
+      "SECURITY_DESC": "¿Necesitas actualizar tu contraseña?",
+      "RESET_PASSWORD": "Restablecer Contraseña vía Email",
+      "PHONE_PLACEHOLDER": "+52 55 ...",
+      "RFC_PLACEHOLDER": "XAXX010101000",
+      "LEGAL_NAME_PLACEHOLDER": "Tu Empresa S.A. de C.V.",
+      "SAVE": "Guardar Cambios",
+      "SAVING": "Guardando..."
+    },
+    "ADDRESS_BOOK": {
+      "TITLE": "Libreta de Direcciones",
+      "ADD_NEW": "Agregar Dirección",
+      "DEFAULT_BADGE": "Predeterminado",
+      "EDIT": "Editar",
+      "DELETE": "Eliminar",
+      "EMPTY_TITLE": "No se encontraron direcciones",
+      "EMPTY_DESC": "Agrega una dirección de envío para agilizar la compra.",
+      "OFFICE": "Oficina",
+      "HOME": "Casa",
+      "ADDRESS": "Dirección",
+      "ADD_FIRST": "Agregar Nueva Dirección",
+      "MODAL": {
+        "ADD_TITLE": "Agregar Dirección",
+        "EDIT_TITLE": "Editar Dirección",
+        "LABEL": "Etiqueta (ej. Casa, Oficina)",
+        "STREET": "Calle",
+        "EXT_NUM": "Num Ext",
+        "INT_NUM": "Num Int",
+        "COLONIA": "Colonia",
+        "ZIP": "Código Postal",
+        "CITY": "Ciudad",
+        "STATE": "Estado",
+        "REF": "Referencia / Instrucciones",
+        "SET_DEFAULT": "Establecer como dirección predeterminada",
+        "CANCEL": "Cancelar",
+        "SAVE": "Guardar Dirección"
+      }
+    },
+    "COMMON": {
+      "LOADING": "Cargando...",
+      "ERROR": "Ocurrió un error",
+      "SUCCESS": "Guardado exitosamente",
+      "REQUIRED": "Requerido"
+    }
+  },
+  "VALIDATION": {
+    "SUMMARY_TITLE": "Por favor corrige los siguientes errores:",
+    "FIELD_REQUIRED": "{{field}} es requerido",
+    "FIELD_MIN": "{{field}} debe tener al menos {{min}}",
+    "FIELD_MAX": "{{field}} debe tener como máximo {{max}}",
+    "FIELD_EMAIL": "{{field}} debe ser un correo válido",
+    "FIELD_PATTERN": "{{field}} tiene un formato inválido"
+  },
+  "LEGAL": {
+    "PRIVACY": {
+      "TITLE": "Aviso de Privacidad",
+      "SECTION1_TITLE": "1. Responsable de sus Datos",
+      "SECTION1_TEXT": "Importadora Euro, con domicilio en San Luis Potosí, México, es responsable del tratamiento de sus datos personales de acuerdo con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.",
+      "SECTION2_TITLE": "2. Datos que Recabamos",
+      "SECTION2_TEXT": "Podemos recabar datos de identificación como: Nombre completo, teléfono, correo electrónico y datos fiscales para facturación. Estos datos son proporcionados voluntariamente por usted a través de nuestros formularios.",
+      "SECTION3_TITLE": "3. Finalidad del Tratamiento",
+      "SECTION3_TEXT": "Su información será utilizada para: Proveer los productos solicitados, informar sobre cambios en los mismos, evaluar la calidad del servicio y realizar gestiones de facturación y cobranza.",
+      "SECTION4_TITLE": "4. Sus Derechos ARCO",
+      "SECTION4_TEXT": "Usted tiene derecho a Acceder, Rectificar y Cancelar sus datos personales, así como a Oponerse al tratamiento de los mismos. Para ejercer estos derechos, contáctenos en contacto@importadoraeuro.com."
+    },
+    "TERMS": {
+      "TITLE": "Términos y Condiciones",
+      "SECTION1_TITLE": "1. Aceptación de los Términos",
+      "SECTION1_TEXT": "Bienvenido al sitio web de Importadora Euro. Al acceder y utilizar este sitio, usted acepta cumplir con estos términos y condiciones. Si no está de acuerdo con alguna parte de estos términos, por favor no utilice nuestros servicios.",
+      "SECTION2_TITLE": "2. Uso del Sitio",
+      "SECTION2_TEXT": "Este sitio está destinado para uso informativo y comercial relacionado con nuestros productos. Se prohíbe el uso indebido, la copia no autorizada de contenido o cualquier actividad que pueda dañar la infraestructura tecnológica.",
+      "SECTION3_TITLE": "3. Propiedad Intelectual",
+      "SECTION3_TEXT": "Todo el contenido, incluyendo logotipos (Praxis, Importadora Euro), textos, gráficos e imágenes, es propiedad de sus respectivos dueños y está protegido por las leyes de propiedad intelectual aplicables en México.",
+      "SECTION4_TITLE": "4. Modificaciones",
+      "SECTION4_TEXT": "Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios entrarán en vigor inmediatamente después de su publicación en el sitio web."
+    }
+  },
+  "DEV_TOOLS": {
+    "THEME": {
+      "TITLE": "Explorador de Temas",
+      "SUBTITLE": "Vista previa y auditoría de temas específicos de sección."
+    },
+    "LIBRARIES": {
+      "TITLE": "Explorador de Stack",
+      "SUBTITLE": "Un recorrido holográfico de las tecnologías que impulsan esta plataforma.",
+      "CAT": {
+        "CORE": "Framework Principal",
+        "UI": "Interfaz de Usuario",
+        "BACKEND": "Backend y Datos",
+        "UTILS": "Utilidades",
+        "VISUALIZATION": "Visualización de Datos"
+      }
+    }
+  },
+  "ADMIN": {
+    "CATALOG": {
+      "ADD_TO_CART": "Agregar al Carrito",
+      "ALL_CATEGORIES": "Todas las Categorías",
+      "ASPECT_RATIO": "Perfil",
+      "BRANDS": "Marcas",
+      "CATEGORIES": "Categorías",
+      "CLEAR_FILTERS": "Limpiar Filtros",
+      "DIAMETER": "Rin",
+      "FILTERS": "Filtros",
+      "NO_PRODUCTS": "No se encontraron productos",
+      "PRICE_RANGE": "Rango de Precio",
+      "PRODUCTS_FOUND": "productos encontrados",
+      "SEARCH_PLACEHOLDER": "Buscar por marca, medida o modelo...",
+      "SORT": {
+        "FEATURED": "Destacados",
+        "NEWEST": "Más Recientes",
+        "PRICE_HIGH": "Precio: Mayor a Menor",
+        "PRICE_LOW": "Precio: Menor a Mayor"
+      },
+      "TIRE_SIZE": "Medida",
+      "TRY_ADJUSTING_FILTERS": "Intenta ajustar los filtros",
+      "VIEW_DETAILS": "Ver Detalles",
+      "WIDTH": "Ancho"
+    }
+  },
+  "COMMAND_CENTER": {
+    "ACTIONS": {
+      "EXPORT": "Exportar CSV",
+      "VIEW_DATA": "Ver Datos"
+    },
+    "LABELS": {
+      "NO_DATA": "Sin datos",
+      "NEW": "Nuevo",
+      "TOTAL": "Total"
+    },
+    "KPI": {
+      "REVENUE": "Ingresos",
+      "ORDERS": "Pedidos Totales",
+      "CUSTOMERS": "Usuarios Totales",
+      "AOV": "Valor Promedio de Pedido",
+      "SLA": "Cumplimiento SLA",
+      "INVENTORY_VALUE": "Valor de Inventario",
+      "MARGIN": "Margen Bruto",
+      "CONVERSION": "Tasa de Conversión"
+    },
+    "TRENDS": {
+      "VS_LAST_MONTH": "vs mes pasado",
+      "VS_YESTERDAY": "vs ayer"
+    }
+  },
+  "OPERATIONS": {
+    "ORDERS": {
+      "STATUS": {
+        "PENDING": "Pendiente",
+        "PROCESSING": "Procesando",
+        "SHIPPED": "Enviado",
+        "DELIVERED": "Entregado",
+        "CANCELLED": "Cancelado"
+      }
+    },
+    "CUSTOMERS": {
+      "CUSTOMER_DETAILS": "Detalles del Cliente",
+      "LOADING": "Cargando...",
+      "NO_ORDERS": "Sin pedidos",
+      "RECENT_ORDERS": "Pedidos Recientes",
+      "RETRY": "Reintentar",
+      "TOTAL_ORDERS": "Pedidos Totales",
+      "TOTAL_SPEND": "Gasto Total",
+      "VIEW_FULL_DETAILS": "Ver Detalles Completos"
+    }
+  },
+  "PORTAL": {
+    "ADMIN": {
+      "TITLE": "Portal de Administración"
+    },
+    "LOGOUT": "Cerrar Sesión"
+  }
+}

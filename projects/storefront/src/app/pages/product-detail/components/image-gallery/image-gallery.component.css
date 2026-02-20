@@ -1,0 +1,219 @@
+/* ========================================
+   IMAGE GALLERY - PREMIUM STYLES
+   ======================================== */
+.gallery-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    /* Ensure z-index stack works */
+}
+
+.main-image-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    /* Square aspect ratio */
+    min-height: 400px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.main-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 2rem;
+    transition: transform 0.3s ease;
+}
+
+/* Hint Pill */
+.zoom-hint {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: white;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.main-image:hover .zoom-hint {
+    opacity: 1;
+}
+
+/* ZOOM FLYOUT (The "Lens" Result) */
+.zoom-flyout {
+    position: absolute;
+    top: 0;
+    left: 105%;
+    /* To the right of the image */
+    width: 100%;
+    /* Same size as original container usually, or fixed e.g., 500px */
+    height: 100%;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    /* Background size will be set dynamically via TS (e.g. 200%) */
+    background-size: 200%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    border-radius: 12px;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeIn 0.15s forwards ease-out;
+    display: block;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+/* THUMBNAILS */
+.thumbnails {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: #18181b;
+    border-radius: 8px;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.thumbnail:hover {
+    border-color: #666;
+}
+
+.thumbnail.active {
+    border-color: #00ACD8;
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.2);
+}
+
+/* LIGHTBOX */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+}
+
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-nav:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-prev {
+    left: -70px;
+}
+
+.lightbox-next {
+    right: -70px;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -50px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.lightbox-counter {
+    margin-top: 1rem;
+    color: #888;
+    font-family: monospace;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .zoom-flyout {
+        display: none !important;
+        /* Disable hover zoom on touch/small screens */
+    }
+
+    .main-image-wrapper {
+        min-height: auto;
+    }
+}

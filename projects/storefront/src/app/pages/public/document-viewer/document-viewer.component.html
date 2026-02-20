@@ -1,0 +1,93 @@
+<div class="min-h-screen bg-slate-100 flex flex-col">
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="flex-1 flex items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error()" class="flex-1 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <app-icon name="alert_triangle" [size]="32"></app-icon>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
+            <p class="text-slate-500">{{ error() }}</p>
+        </div>
+    </div>
+
+    <!-- Gatekeeper Form -->
+    <div *ngIf="!isLoading() && !error() && !accessGranted()" class="flex-1 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <!-- Header -->
+            <div class="bg-indigo-600 p-6 text-white text-center">
+                <div
+                    class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm">
+                    <app-icon name="lock" [size]="24"></app-icon>
+                </div>
+                <h2 class="text-xl font-bold">Secure Document</h2>
+                <p class="text-indigo-100 text-sm mt-1">This document is protected.</p>
+            </div>
+
+            <!-- Form -->
+            <div class="p-8 space-y-5">
+                <div *ngIf="link()?.requireEmail">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Email
+                        Address</label>
+                    <input type="email" [(ngModel)]="emailInput" placeholder="name@company.com"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                </div>
+
+                <div *ngIf="link()?.password">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Password</label>
+                    <input type="password" [(ngModel)]="passwordInput" placeholder="Enter password"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                </div>
+
+                <button (click)="submitGatekeeper()" [disabled]="isVerifying()"
+                    class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg shadow-indigo-500/20 transition-all flex justify-center items-center gap-2 mt-4">
+                    <span *ngIf="isVerifying()"
+                        class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    {{ isVerifying() ? 'Verifying...' : 'View Document' }}
+                </button>
+
+                <p class="text-xs text-center text-slate-400">
+                    By accessing this document, you agree to being tracked for analytical purposes.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Viewer -->
+    <div *ngIf="accessGranted()" class="flex-1 flex flex-col h-screen relative">
+        <!-- Minimal Toolbar -->
+        <div
+            class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded flex items-center justify-center">
+                    <app-icon name="file_text" [size]="18"></app-icon>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-800 text-sm md:text-base leading-tight">{{ link()?.assetName }}</h1>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Secure View</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Branding / Simple Actions -->
+                <span class="text-xs font-bold text-slate-300 hidden md:block">POWERED BY EURO</span>
+            </div>
+        </div>
+
+        <!-- PDF Viewer -->
+        <div class="flex-1 relative bg-slate-100 overflow-hidden">
+            <ngx-extended-pdf-viewer [src]="link()?.assetUrl" [showToolbar]="true" [showSidebarButton]="false"
+                [showFindButton]="true" [showPagingButtons]="true" [showZoomButtons]="true"
+                [showPresentationModeButton]="false" [showOpenFileButton]="false" [showPrintButton]="false"
+                [showDownloadButton]="false" [showSecondaryToolbarButton]="false" [showRotateButton]="false"
+                [showSpreadButton]="false" [showPropertiesButton]="false" [textLayer]="true"
+                (pageChange)="onPageChange($event)" theme="light" height="100%" zoom="auto">
+            </ngx-extended-pdf-viewer>
+        </div>
+    </div>
+</div>

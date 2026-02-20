@@ -1,0 +1,100 @@
+<div class="order-detail-container">
+    <a routerLink="/account/orders" class="back-link">
+        <mat-icon>arrow_back</mat-icon> {{ 'ACCOUNT.ORDERS.DETAIL.BACK' | translate }}
+    </a>
+
+    <div *ngIf="loading" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+    </div>
+
+    <div *ngIf="error" class="error-state">
+        <mat-icon color="warn">error</mat-icon>
+        <p>{{ error }}</p>
+        <a mat-button color="primary" routerLink="/account/orders">{{ 'ACCOUNT.ORDERS.DETAIL.RETURN' | translate }}</a>
+    </div>
+
+    <div *ngIf="!loading && order" class="order-content">
+        <div class="header">
+            <div>
+                <h1>{{ 'ACCOUNT.ORDERS.ORDER_NUMBER' | translate }}{{ order.orderNumber || order.id?.substring(0,8) |
+                    uppercase }}</h1>
+                <p class="subtitle">{{ 'ACCOUNT.ORDERS.DETAIL.PLACED_ON' | translate }} {{ ($any(order.createdAt).toDate
+                    ? $any(order.createdAt).toDate() :
+                    order.createdAt)
+                    | date:'medium' }}</p>
+            </div>
+            <mat-chip-set>
+                <mat-chip [highlighted]="true"
+                    [color]="order.status === 'delivered' ? 'accent' : (order.status === 'cancelled' ? 'warn' : 'primary')">
+                    {{ ('ACCOUNT.ORDERS.STATUS_LABELS.' + (order.status | uppercase)) | translate }}
+                </mat-chip>
+            </mat-chip-set>
+        </div>
+
+        <div class="info-grid">
+            <mat-card appearance="outlined">
+                <mat-card-header>
+                    <mat-card-title>{{ 'ACCOUNT.ORDERS.DETAIL.SHIPPING_ADDR' | translate }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content class="pt-3">
+                    <p>{{ order.shippingAddress.street }} {{ order.shippingAddress.exteriorNumber }}</p>
+                    <p>{{ order.shippingAddress.colonia }}</p>
+                    <p>{{ order.shippingAddress.city }}, {{ order.shippingAddress.state }}</p>
+                    <p>{{ order.shippingAddress.zipCode }}</p>
+                    <p>{{ order.shippingAddress.country }}</p>
+                </mat-card-content>
+            </mat-card>
+
+            <mat-card appearance="outlined">
+                <mat-card-header>
+                    <mat-card-title>{{ 'ACCOUNT.ORDERS.DETAIL.PAYMENT_METHOD' | translate }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content class="pt-3">
+                    <p>{{ order.paymentMethod | titlecase }}</p>
+                    <p>{{ 'ACCOUNT.ORDERS.DETAIL.PAYMENT_STATUS' | translate }}: {{ order.paymentStatus | titlecase }}
+                    </p>
+                </mat-card-content>
+            </mat-card>
+        </div>
+
+        <h2 class="section-title">{{ 'ACCOUNT.ORDERS.DETAIL.ITEMS_TITLE' | translate }}</h2>
+        <div class="items-list">
+            <div *ngFor="let item of order.items" class="item-row">
+                <img [src]="item.productImage || 'assets/placeholder-product.png'" class="item-image"
+                    alt="Product Image">
+                <div class="item-details">
+                    <div class="item-name">{{ item.productName }}</div>
+                    <p class="item-meta">{{ 'ACCOUNT.ORDERS.DETAIL.SKU' | translate }}: {{ item.sku }}</p>
+                    <p class="item-meta">{{ 'ACCOUNT.ORDERS.DETAIL.QTY' | translate }}: {{ item.quantity }}</p>
+                </div>
+                <div class="price-col">
+                    {{ item.price | currency }}
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-row">
+                <span>{{ 'ACCOUNT.ORDERS.DETAIL.SUBTOTAL' | translate }}</span>
+                <span>{{ order.subtotal | currency }}</span>
+            </div>
+            <div class="summary-row">
+                <span>{{ 'ACCOUNT.ORDERS.DETAIL.SHIPPING' | translate }}</span>
+                <span>{{ order.shippingCost | currency }}</span>
+            </div>
+            <div class="summary-row" *ngIf="order.discount > 0">
+                <span>{{ 'ACCOUNT.ORDERS.DETAIL.DISCOUNT' | translate }}</span>
+                <span>-{{ order.discount | currency }}</span>
+            </div>
+            <div class="summary-row total">
+                <span>{{ 'ACCOUNT.ORDERS.DETAIL.TOTAL' | translate }}</span>
+                <span>{{ order.total | currency }}</span>
+            </div>
+        </div>
+
+        <div class="mt-4 text-right">
+            <!-- Placeholder for future functionality -->
+            <button mat-stroked-button color="primary">{{ 'ACCOUNT.ORDERS.DETAIL.TRACK' | translate }}</button>
+        </div>
+    </div>
+</div>

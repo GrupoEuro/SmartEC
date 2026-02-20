@@ -44,18 +44,11 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.dateLangAttribute();
 
-    // Defer non-critical services to reduce TBT
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => {
-        this.analytics.init();
-        this.campaignService.init();
-      });
-    } else {
-      setTimeout(() => {
-        this.analytics.init();
-        this.campaignService.init();
-      }, 2000);
-    }
+    // Defer non-critical services to reduce TBT — hard 3s delay to avoid blocking critical path
+    setTimeout(() => {
+      this.analytics.init();
+      this.campaignService.init();
+    }, 3000);
 
     // Dynamic Title Logic
     this.router.events.pipe(

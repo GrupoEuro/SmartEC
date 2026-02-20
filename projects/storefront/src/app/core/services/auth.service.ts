@@ -91,14 +91,9 @@ export class AuthService {
 
     // DEFER subscription to avoid blocking initial page load with Firebase Auth + Firestore
     if (isPlatformBrowser(this.platformId)) {
-      const startSubscription = () => {
+      setTimeout(() => {
         this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
-      };
-      if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(() => startSubscription());
-      } else {
-        setTimeout(() => startSubscription(), 2000);
-      }
+      }, 3000);
     }
   }
 

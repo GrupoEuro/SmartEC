@@ -22,7 +22,7 @@ export class OrderAssignmentComponent implements OnInit {
     private assignmentService = inject(OrderAssignmentService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     // State
     currentAssignment = signal<OrderAssignment | null>(null);

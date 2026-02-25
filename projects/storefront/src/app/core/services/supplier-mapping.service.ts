@@ -6,7 +6,7 @@ import { SupplierProductMapping } from '../models/procurement.model';
     providedIn: 'root'
 })
 export class SupplierMappingService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     constructor() { }
 

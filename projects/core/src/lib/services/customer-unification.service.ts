@@ -10,7 +10,7 @@ import { UserProfile } from '../models/user.model';
     providedIn: 'root'
 })
 export class CustomerUnificationService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     /**
      * Performs "Identity Resolution" to merge customers across channels.

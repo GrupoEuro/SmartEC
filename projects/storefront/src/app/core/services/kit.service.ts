@@ -22,7 +22,7 @@ import { ProductService } from './product.service';
     providedIn: 'root'
 })
 export class KitService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private productService = inject(ProductService);
     private kitsCollection: CollectionReference;
 

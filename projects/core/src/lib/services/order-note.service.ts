@@ -7,7 +7,7 @@ import { OrderNote, NoteType } from '../models/order-note.model';
     providedIn: 'root'
 })
 export class OrderNoteService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private notesCollection = collection(this.firestore, 'orderNotes');
 
     /**

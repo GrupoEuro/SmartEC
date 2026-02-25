@@ -22,8 +22,8 @@ import { Category } from '../models/category.model';
     providedIn: 'root'
 })
 export class CategoryService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
     private categoriesCollection = collection(this.firestore, 'categories');
 
     /**

@@ -19,7 +19,7 @@ import { BacklogItem } from '../models/backlog.model';
     providedIn: 'root'
 })
 export class BacklogService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private readonly collectionName = 'project_backlog';
 
     private get collectionRef() {

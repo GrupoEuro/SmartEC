@@ -1,8 +1,5 @@
 <div class="dashboard-container">
-    <div class="welcome-section">
-        <h1>{{ 'ACCOUNT.OVERVIEW.WELCOME' | translate: { name: userName } }}</h1>
-        <p>{{ 'ACCOUNT.OVERVIEW.SUBTITLE' | translate }}</p>
-    </div>
+    <!-- Dashboard Grid -->
 
     <div class="dashboard-grid">
         <!-- Quick Links -->
@@ -10,7 +7,12 @@
             <div class="link-card" routerLink="orders">
                 <div class="card-content-wrapper">
                     <div class="icon-box">
-                        <mat-icon>shopping_bag</mat-icon>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                        </svg>
                     </div>
                     <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ORDERS_TITLE' | translate }}</h3>
                     <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ORDERS_DESC' | translate }}</p>
@@ -19,7 +21,11 @@
             <div class="link-card" routerLink="addresses">
                 <div class="card-content-wrapper">
                     <div class="icon-box">
-                        <mat-icon>location_on</mat-icon>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
                     </div>
                     <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ADDRESSES_TITLE' | translate }}</h3>
                     <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.ADDRESSES_DESC' | translate }}</p>
@@ -28,7 +34,11 @@
             <div class="link-card" routerLink="profile">
                 <div class="card-content-wrapper">
                     <div class="icon-box">
-                        <mat-icon>person</mat-icon>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
                     </div>
                     <h3>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.PROFILE_TITLE' | translate }}</h3>
                     <p>{{ 'ACCOUNT.OVERVIEW.QUICK_LINKS.PROFILE_DESC' | translate }}</p>
@@ -50,7 +60,13 @@
                         <mat-list-item>
                             <span matListItemIcon>
                                 <div class="order-icon-box">
-                                    <mat-icon>local_shipping</mat-icon>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="1" y="3" width="15" height="13"></rect>
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                                    </svg>
                                 </div>
                             </span>
                             <div matListItemTitle>
@@ -83,8 +99,13 @@
 
             <ng-template #noOrders>
                 <div class="empty-widget">
-                    <mat-icon
-                        style="font-size: 48px; width: 48px; height: 48px; color: #333;">shopping_cart_off</mat-icon>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" style="color: #333;">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        <line x1="3" y1="3" x2="21" y2="21"></line>
+                    </svg>
                     <p>{{ 'ACCOUNT.OVERVIEW.RECENT_ORDERS.NO_ORDERS' | translate }}</p>
                     <a mat-stroked-button class="empty-btn" routerLink="/catalog">{{
                         'ACCOUNT.OVERVIEW.RECENT_ORDERS.START_SHOPPING' | translate }}</a>

@@ -18,6 +18,12 @@
             <span>{{ 'AUTH.OR_EMAIL' | translate }}</span>
         </div>
 
+        <!-- Error Alert -->
+        <div *ngIf="authError()" class="auth-error-alert" [@fadeSlide]>
+            <app-icon name="error" class="alert-icon" viewBox="0 0 24 24"></app-icon>
+            <span>{{ authError() }}</span>
+        </div>
+
         <!-- LOGIN FORM -->
         <form *ngIf="!isRegister()" [formGroup]="loginForm" (ngSubmit)="onLogin()" class="auth-form">
             <div class="form-group">

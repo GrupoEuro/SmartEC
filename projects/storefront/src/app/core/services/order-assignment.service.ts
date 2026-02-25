@@ -7,7 +7,7 @@ import { OrderAssignment } from '../models/order-assignment.model';
     providedIn: 'root'
 })
 export class OrderAssignmentService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private assignmentsCollection = collection(this.firestore, 'orderAssignments');
 
     /**

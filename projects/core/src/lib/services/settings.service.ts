@@ -109,7 +109,7 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
     providedIn: 'root'
 })
 export class SettingsService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     // Use 'as any' only if strict types block doc() creation, but try to avoid if possible.
 
 

@@ -1,6 +1,4 @@
 import { Routes } from '@angular/router';
-import { devModeGuard } from './core/guards/dev-mode.guard';
-import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
     { path: '', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
@@ -26,6 +24,10 @@ export const routes: Routes = [
     {
         path: 'blog/:slug',
         loadComponent: () => import('./pages/blog/blog-detail/blog-detail.component').then(m => m.BlogDetailComponent)
+    },
+    {
+        path: 'praxis',
+        loadComponent: () => import('./pages/praxis/praxis.component').then(m => m.PraxisComponent)
     },
     {
         path: 'biblioteca',

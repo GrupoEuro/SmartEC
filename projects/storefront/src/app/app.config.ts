@@ -8,9 +8,10 @@ import { HttpClient, provideHttpClient, withFetch } from '@angular/common/http';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { getFirestore, provideFirestore, initializeFirestore, memoryLocalCache } from '@angular/fire/firestore';
-import { provideAuth, getAuth } from '@angular/fire/auth';
-import { getStorage, provideStorage } from '@angular/fire/storage';
+import { provideFirestore, initializeFirestore, memoryLocalCache, Firestore } from '@angular/fire/firestore';
+import { provideAuth, getAuth, Auth } from '@angular/fire/auth';
+import { provideStorage, getStorage, Storage } from '@angular/fire/storage';
+
 import { environment } from '../environments/environment';
 
 export function HttpLoaderFactory(http: HttpClient) {
@@ -33,21 +34,16 @@ export const appConfig: ApplicationConfig = {
       })
     ),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideFirestore(() => {
-      const app = getApp();
-      return initializeFirestore(app, {
-        localCache: memoryLocalCache()
-      });
-    }),
-    provideAuth(() => {
-      const app = getApp();
-      return getAuth(app);
-    }),
-    provideStorage(() => {
-      const app = getApp();
-      return getStorage(app);
-    }),
+    provideFirestore(() => initializeFirestore(getApp(), {
+      localCache: memoryLocalCache()
+    })),
+    provideAuth(() => getAuth()),
+    provideStorage(() => getStorage()),
+    { provide: 'FIRESTORE', useExisting: Firestore },
+    { provide: 'AUTH', useExisting: Auth },
+    { provide: 'STORAGE', useExisting: Storage },
     provideImageLoader(),
     provideAnimationsAsync()
   ]
 };
+

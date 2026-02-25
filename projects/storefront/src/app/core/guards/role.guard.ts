@@ -16,8 +16,8 @@ export const roleGuard: CanActivateFn = (route, state) => {
             // 1. Check if user exists
             if (!user) {
                 // Not logged in or no profile
-                if (state.url !== '/admin/login') {
-                    router.navigate(['/admin/login']);
+                if (state.url !== '/login') {
+                    router.navigate(['/login']);
                 }
                 return false;
             }
@@ -29,7 +29,7 @@ export const roleGuard: CanActivateFn = (route, state) => {
 
             // 3. Unauthorized Role
             toast.error('You do not have permission to access this page.');
-            router.navigate(['/admin/dashboard']);
+            router.navigate(['/account']);
             return false;
         })
     );

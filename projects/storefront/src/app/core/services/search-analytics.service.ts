@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { Firestore, collection, addDoc, Timestamp } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { SearchLog, SearchClick } from '../models/search-analytics.model';
@@ -7,8 +7,14 @@ import { SearchLog, SearchClick } from '../models/search-analytics.model';
     providedIn: 'root'
 })
 export class SearchAnalyticsService {
-    private firestore = inject(Firestore);
+    private injector = inject(Injector);
     private authService = inject(AuthService);
+    private _firestore?: Firestore;
+
+    private get firestore(): Firestore {
+        if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        return this._firestore!;
+    }
 
     // Collections
     private readonly LOGS_COLLECTION = 'search_logs';

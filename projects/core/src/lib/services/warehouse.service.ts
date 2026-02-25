@@ -7,7 +7,7 @@ import { Warehouse, WarehouseZone, StorageStructure, StorageLocation } from '../
     providedIn: 'root'
 })
 export class WarehouseService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     // Collections
     private warehousesColl = collection(this.firestore, 'warehouses');

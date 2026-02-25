@@ -587,6 +587,7 @@
       "WELCOME": "Bienvenido, {{name}}",
       "SUBTITLE": "Gestiona tu cuenta, pedidos y direcciones.",
       "QUICK_LINKS": {
+        "OVERVIEW_TITLE": "Resumen",
         "ORDERS_TITLE": "Pedidos",
         "ORDERS_DESC": "Rastrear, devolver o comprar de nuevo",
         "ADDRESSES_TITLE": "Direcciones",

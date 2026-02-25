@@ -75,28 +75,50 @@
 .divider {
     display: flex;
     align-items: center;
-    text-align: center;
-    margin-bottom: 1.5rem;
-    color: #666;
-    font-size: 0.85rem;
+    color: var(--text-gray-dark);
+    font-size: 14px;
+    margin: 32px 0;
 }
 
 .divider::before,
 .divider::after {
     content: '';
     flex: 1;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .divider span {
-    padding: 0 0.75rem;
+    padding: 0 16px;
+    font-weight: 500;
+}
+
+/* Error Alert */
+.auth-error-alert {
+    background: rgba(220, 38, 38, 0.15);
+    border: 1px solid rgba(220, 38, 38, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    color: #fca5a5;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.alert-icon {
+    color: #ef4444;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
 }
 
 /* Forms */
 .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 20px;
 }
 
 .form-group {

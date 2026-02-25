@@ -29,7 +29,7 @@ import { FINANCIAL_CONSTANTS } from '../constants/financial.constants';
     providedIn: 'root'
 })
 export class PricingCalculatorService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     /**
      * Calculate optimal selling price for a specific channel

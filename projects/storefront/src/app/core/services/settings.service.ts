@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 import { Observable, from, of } from 'rxjs';
 import { map, shareReplay, catchError } from 'rxjs/operators';
@@ -109,7 +109,13 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
     providedIn: 'root'
 })
 export class SettingsService {
-    private firestore = inject(Firestore);
+    private injector = inject(Injector);
+    private _firestore?: Firestore;
+
+    private get firestore(): Firestore {
+        if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        return this._firestore!;
+    }
     // Use 'as any' only if strict types block doc() creation, but try to avoid if possible.
 
 

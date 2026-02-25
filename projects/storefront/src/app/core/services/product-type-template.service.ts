@@ -24,7 +24,7 @@ import { ProductTypeTemplate } from '../models/catalog.model';
     providedIn: 'root'
 })
 export class ProductTypeTemplateService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private readonly COLLECTION = 'productTypeTemplates';
 
     /**

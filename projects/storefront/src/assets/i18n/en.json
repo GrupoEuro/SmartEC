@@ -619,6 +619,7 @@
       "WELCOME": "Welcome, {{name}}",
       "SUBTITLE": "Manage your account, orders, and addresses.",
       "QUICK_LINKS": {
+        "OVERVIEW_TITLE": "Overview",
         "ORDERS_TITLE": "Orders",
         "ORDERS_DESC": "Track, return, or buy again",
         "ADDRESSES_TITLE": "Addresses",

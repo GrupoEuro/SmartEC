@@ -21,8 +21,8 @@ export interface Banner {
   providedIn: 'root'
 })
 export class BannerService {
-  private firestore: Firestore = inject(Firestore);
-  private storage = inject(Storage);
+  private firestore: Firestore = inject('FIRESTORE' as any) as Firestore;
+  private storage = inject('STORAGE' as any) as Storage;
   private logService = inject(AdminLogService);
   private collectionName = 'banners';
 

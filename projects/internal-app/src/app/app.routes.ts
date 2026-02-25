@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home.component';
-import { PraxisComponent } from './pages/praxis/praxis.component';
 import { devModeGuard } from './core/guards/dev-mode.guard';
 import { roleGuard } from './core/guards/role.guard';
 
@@ -21,7 +20,6 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/order-confirmation/order-confirmation.component').then(m => m.OrderConfirmationComponent),
         title: 'Order Confirmation'
     },
-    { path: 'praxis', component: PraxisComponent },
     {
         path: 'blog',
         loadComponent: () => import('./pages/blog/blog-list/blog-list.component').then(m => m.BlogListComponent)

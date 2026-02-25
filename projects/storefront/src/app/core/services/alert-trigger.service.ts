@@ -8,7 +8,7 @@ import { Order } from '../models/order.model';
     providedIn: 'root'
 })
 export class AlertTriggerService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private notificationService = inject(NotificationService);
 
     /**

@@ -12,7 +12,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class MeliSyncService {
     private http = inject(HttpClient);
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private secrets = inject(SecretsService);
     private productService = inject(ProductService);
 

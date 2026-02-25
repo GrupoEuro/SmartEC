@@ -16,7 +16,7 @@ export const operationsGuard: CanActivateFn = (route, state) => {
         take(1),
         map(profile => {
             if (!profile) {
-                router.navigate(['/admin/login'], {
+                router.navigate(['/login'], {
                     queryParams: { returnUrl: state.url }
                 });
                 return false;

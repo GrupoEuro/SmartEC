@@ -157,8 +157,8 @@ export interface GrowthMetrics {
     providedIn: 'root'
 })
 export class BusinessAnalyticsService {
-    private firestore = inject(Firestore);
-    private auth = inject(Auth);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private auth = inject('AUTH' as any) as Auth;
     private cache: Map<string, { data: any, timestamp: number }> = new Map();
     private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 

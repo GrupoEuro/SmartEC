@@ -8,7 +8,7 @@ import { Product } from '@lib/core';
     providedIn: 'root'
 })
 export class PricingRulesService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private rulesCollection = collection(this.firestore, 'pricing_rules');
 
     async getRules(): Promise<PricingRule[]> {

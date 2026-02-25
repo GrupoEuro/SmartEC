@@ -1,0 +1,145 @@
+.account-shell {
+    min-height: 100vh;
+    padding-top: 80px;
+    /* Offset for main navbar */
+    background: #000;
+}
+
+/* Hero Banner */
+.account-hero {
+    background: linear-gradient(135deg, rgba(0, 172, 216, 0.1), rgba(10, 10, 10, 0.9));
+    border-bottom: 1px solid rgba(0, 172, 216, 0.2);
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.hero-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    max-width: 1200px;
+    width: 100%;
+}
+
+.avatar-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--cyan);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--white);
+    box-shadow: 0 0 20px rgba(0, 172, 216, 0.3);
+}
+
+.avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-text h1 {
+    font-size: 28px;
+    margin: 0 0 8px 0;
+    font-weight: 700;
+    color: var(--white);
+}
+
+.hero-text p {
+    margin: 0;
+    color: var(--text-gray);
+    font-size: 16px;
+}
+
+/* Floating Pill Navigation */
+.account-nav-container {
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    top: 80px;
+    /* Stick just below main navbar */
+    z-index: 900;
+    padding: 20px;
+    pointer-events: none;
+    /* Let clicks pass through container */
+}
+
+.pill-nav {
+    display: flex;
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    padding: 8px;
+    gap: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+    /* Re-enable clicks for nav */
+    overflow-x: auto;
+    max-width: 100%;
+    /* Hide scrollbar */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.pill-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.pill-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 40px;
+    color: var(--text-gray);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.pill-btn:hover {
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.pill-btn.active {
+    background: rgba(0, 172, 216, 0.15);
+    color: var(--cyan);
+    border-color: rgba(0, 172, 216, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.2);
+}
+
+.nav-spacer {
+    width: 20px;
+}
+
+.logout-pill {
+    color: var(--primary-red);
+}
+
+.logout-pill:hover {
+    background: rgba(208, 44, 47, 0.1);
+    color: var(--primary-red);
+    border-color: rgba(208, 44, 47, 0.3);
+}
+
+/* Content Area */
+.account-content-area {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 60vh;
+}

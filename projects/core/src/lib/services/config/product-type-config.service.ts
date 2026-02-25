@@ -14,7 +14,7 @@ import { ProductType, ProductTypeDefinition, ProductTypeTemplate, SpecificationF
     providedIn: 'root'
 })
 export class ProductTypeConfigService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     private productTypes: Map<ProductType, ProductTypeDefinition> = new Map();
     private templatesLoaded = false;

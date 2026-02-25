@@ -36,6 +36,7 @@
 .logo-img {
     height: 75px;
     width: auto;
+    aspect-ratio: 355 / 150;
     object-fit: contain;
 }
 
@@ -102,23 +103,26 @@
 /* Action Buttons */
 .cart-btn {
     position: relative;
-    background: none;
-    border: none;
+    background: #000;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
     cursor: pointer;
-    padding: 5px;
+    padding: 8px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s;
+    transition: all 0.3s;
 }
 
 .cart-btn:hover {
-    transform: scale(1.1);
+    background: var(--cyan);
+    color: var(--black);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.3);
 }
 
-.cart-btn .icon {
-    font-size: 24px;
-}
+
 
 .cart-badge {
     position: absolute;
@@ -138,20 +142,25 @@
 }
 
 .lang-btn {
-    background: transparent;
-    border: 1px solid var(--text-gray);
-    color: var(--text-gray);
-    padding: 4px 10px;
-    border-radius: 4px;
+    background: #000;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 8px 16px;
+    border-radius: 20px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 13px;
     transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .lang-btn:hover {
-    border-color: var(--cyan);
-    color: var(--cyan);
+    background: var(--cyan);
+    color: var(--black);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.3);
 }
 
 .navbar-cta {
@@ -208,7 +217,7 @@
 
 /* Login Button */
 .login-btn {
-    background: rgba(0, 172, 216, 0.1);
+    background: #000;
     color: var(--cyan);
     border: 1px solid var(--cyan);
     padding: 8px 16px;
@@ -225,6 +234,8 @@
 .login-btn:hover {
     background: var(--cyan);
     color: var(--black);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.3);
 }
 
 /* User Dropdown */
@@ -391,6 +402,10 @@
     font-weight: bold;
     text-transform: uppercase;
     margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 /* Mobile User Section */
@@ -465,6 +480,10 @@
     cursor: pointer;
     transition: all 0.2s;
     margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .mobile-logout-btn:hover {

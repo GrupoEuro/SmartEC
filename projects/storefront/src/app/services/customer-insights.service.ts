@@ -42,7 +42,7 @@ export interface InsightsData {
     providedIn: 'root'
 })
 export class CustomerInsightsService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     getInsights(): Observable<InsightsData> {
         return from(this.calculateInsights());

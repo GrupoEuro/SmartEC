@@ -22,7 +22,7 @@ import { Coupon } from '../models/coupon.model';
     providedIn: 'root'
 })
 export class CouponService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private couponsCollection = collection(this.firestore, 'coupons');
 
     constructor() { }

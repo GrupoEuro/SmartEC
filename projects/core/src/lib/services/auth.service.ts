@@ -15,8 +15,8 @@ import { StateRegistryService } from './state-registry.service';
   providedIn: 'root'
 })
 export class AuthService {
-  private auth: Auth = inject(Auth);
-  private firestore: Firestore = inject(Firestore);
+  private auth: Auth = inject('AUTH' as any) as Auth;
+  private firestore: Firestore = inject('FIRESTORE' as any) as Firestore;
   private router: Router = inject(Router);
   private logService = inject(AdminLogService);
   private platformId = inject(PLATFORM_ID);
@@ -118,12 +118,13 @@ export class AuthService {
       if (profile && profile.role !== 'CUSTOMER') {
         this.toast.error('Admin/Staff must use Google Login.');
         await signOut(this.auth);
-        return;
+        throw new Error('Admin/Staff must use Google Login.');
       }
 
       await this.handleLoginSuccess(user);
     } catch (error: any) {
       this.handleAuthError(error, 'Login');
+      throw error;
     }
   }
 

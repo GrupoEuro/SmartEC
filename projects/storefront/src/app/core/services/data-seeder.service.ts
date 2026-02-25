@@ -25,7 +25,7 @@ export const DEFAULT_CONFIG: SeederConfig = {
     providedIn: 'root'
 })
 export class DataSeederService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private gridLayout = inject(GridLayoutService);
 
     // Version identifier for tracking seed data schema

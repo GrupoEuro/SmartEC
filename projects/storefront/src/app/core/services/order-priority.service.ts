@@ -7,7 +7,7 @@ import { OrderPriority, PriorityLevel, PriorityConfig, DEFAULT_PRIORITY_CONFIG }
     providedIn: 'root'
 })
 export class OrderPriorityService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private prioritiesCollection = collection(this.firestore, 'orderPriorities');
     private config: PriorityConfig = DEFAULT_PRIORITY_CONFIG;
 

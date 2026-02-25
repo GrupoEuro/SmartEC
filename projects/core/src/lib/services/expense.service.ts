@@ -7,7 +7,7 @@ import { Expense, ExpenseSummary, ExpenseCategory, getExpenseCategoryName } from
     providedIn: 'root'
 })
 export class ExpenseService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private expensesCollection = collection(this.firestore, 'expenses');
 
     /**

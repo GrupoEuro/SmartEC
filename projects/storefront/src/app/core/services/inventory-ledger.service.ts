@@ -21,7 +21,7 @@ import { AuthService } from './auth.service';
     providedIn: 'root'
 })
 export class InventoryLedgerService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private auth = inject(AuthService);
 
     /**

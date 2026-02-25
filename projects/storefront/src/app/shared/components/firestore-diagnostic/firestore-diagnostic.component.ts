@@ -53,8 +53,8 @@ import { Auth } from '@angular/fire/auth';
   `
 })
 export class FirestoreDiagnosticComponent {
-    firestore = inject(Firestore);
-    auth = inject(Auth);
+    firestore = inject('FIRESTORE' as any) as Firestore;
+    auth = inject('AUTH' as any) as Auth;
 
     loading = signal(false);
     writeStatus = signal<'pending' | 'success' | 'error'>('pending');

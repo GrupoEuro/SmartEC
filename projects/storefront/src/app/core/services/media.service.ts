@@ -50,8 +50,8 @@ export interface PaginatedMediaResult {
     providedIn: 'root'
 })
 export class MediaService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
 
     private readonly COLLECTION = 'media_assets';
     private readonly FOLDERS_COLLECTION = 'media_folders';

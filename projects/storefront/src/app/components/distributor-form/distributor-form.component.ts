@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
-import { inject } from '@angular/core';
+import { inject, Injector } from '@angular/core';
 
 @Component({
   selector: 'app-distributor-form',
@@ -27,7 +27,13 @@ export class DistributorFormComponent {
   submitSuccess = false;
   submitError = false;
 
-  private firestore: Firestore = inject(Firestore);
+  private injector = inject(Injector);
+  private _firestore?: Firestore;
+
+  private get firestore(): Firestore {
+    if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+    return this._firestore!;;
+  }
 
   states = [
     { value: 'AGU', label: 'Aguascalientes' },

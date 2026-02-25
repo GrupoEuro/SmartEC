@@ -17,9 +17,13 @@
   <router-outlet></router-outlet>
 </main>
 
-@defer (on idle) {
+@defer (on viewport) {
 <app-chat-widget></app-chat-widget>
+} @placeholder {
+<div style="height: 1px; visibility: hidden;"></div>
 }
-@defer (on idle) {
+@defer (on viewport) {
 <app-footer></app-footer>
+} @placeholder {
+<div style="height: 1px; visibility: hidden;"></div>
 }

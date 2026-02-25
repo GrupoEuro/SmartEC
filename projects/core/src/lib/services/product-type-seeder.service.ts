@@ -16,7 +16,7 @@ import { ProductTypeTemplate } from '@lib/core';
     providedIn: 'root'
 })
 export class ProductTypeSeederService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     /**
      * Seed all system product type templates to Firestore

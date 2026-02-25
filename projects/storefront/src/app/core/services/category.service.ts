@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import {
     Firestore,
     collection,
@@ -22,9 +22,18 @@ import { Category } from '../models/catalog.model';
     providedIn: 'root'
 })
 export class CategoryService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
-    private categoriesCollection = collection(this.firestore, 'categories');
+    private injector = inject(Injector);
+    private _firestore?: Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
+
+    private get firestore(): Firestore {
+        if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        return this._firestore!;
+    }
+
+    private get categoriesCollection() {
+        return collection(this.firestore, 'categories');
+    }
 
     /**
      * Get all categories

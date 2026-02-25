@@ -13,7 +13,7 @@ export const commandCenterGuard: CanActivateFn = (route, state) => {
             // Check if user is logged in
             if (!user) {
                 console.log('Command Center: Not logged in - Redirecting to admin login');
-                router.navigate(['/admin/login']);
+                router.navigate(['/login']);
                 return false;
             }
 
@@ -25,7 +25,7 @@ export const commandCenterGuard: CanActivateFn = (route, state) => {
 
             // User doesn't have permission
             console.log('Command Center: Access denied - User role:', user.role);
-            router.navigate(['/admin/dashboard']);
+            router.navigate(['/account']);
             return false;
         })
     );

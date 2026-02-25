@@ -22,8 +22,8 @@ import { Brand } from '../models/catalog.model';
     providedIn: 'root'
 })
 export class BrandService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
     private brandsCollection = collection(this.firestore, 'brands');
 
     /**

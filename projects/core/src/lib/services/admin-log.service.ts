@@ -11,8 +11,8 @@ import { catchError, map } from 'rxjs/operators';
   providedIn: 'root'
 })
 export class AdminLogService {
-  private firestore: Firestore = inject(Firestore);
-  private auth = inject(Auth);
+  private firestore: Firestore = inject('FIRESTORE' as any) as Firestore;
+  private auth = inject('AUTH' as any) as Auth;
   private http = inject(HttpClient);
   private tracker = inject(FirestoreTrackerService); // Moved from async method
   private collectionName = 'admin_logs';

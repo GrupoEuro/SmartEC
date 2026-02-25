@@ -10,7 +10,7 @@ import { AuthService } from './auth.service';
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private authService = inject(AuthService);
     private platformId = inject(PLATFORM_ID);
 

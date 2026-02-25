@@ -18,7 +18,7 @@ export class AuthGuard implements CanActivate {
             return this.router.createUrlTree(['/login']);
         }
 
-        // Default to admin login
-        return this.router.createUrlTree(['/admin/login']);
+        // Default to login
+        return this.router.createUrlTree(['/login']);
     }
 }

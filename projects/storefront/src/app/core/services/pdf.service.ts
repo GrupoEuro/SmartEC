@@ -12,8 +12,8 @@ import * as CryptoJS from 'crypto-js';
     providedIn: 'root'
 })
 export class PdfService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
     private authService = inject(AuthService);
     private platformId = inject(PLATFORM_ID);
 

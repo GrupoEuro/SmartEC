@@ -1,13 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, Injector } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Firestore, collection, addDoc, query, where, getDocs, Timestamp } from '@angular/fire/firestore';
 
 @Component({
-    selector: 'app-newsletter',
-    standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
-    template: `
+  selector: 'app-newsletter',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  template: `
     <div class="newsletter-section">
       <div class="newsletter-container">
         <div class="newsletter-content">
@@ -44,7 +44,7 @@ import { Firestore, collection, addDoc, query, where, getDocs, Timestamp } from 
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .newsletter-section {
       background: linear-gradient(135deg, #00ACD8 0%, #0088b3 100%);
       padding: 4rem 2rem;
@@ -187,67 +187,73 @@ import { Firestore, collection, addDoc, query, where, getDocs, Timestamp } from 
   `]
 })
 export class NewsletterComponent {
-    private firestore = inject(Firestore);
-    private fb = inject(FormBuilder);
+  private injector = inject(Injector);
+  private _firestore?: Firestore;
+  private fb = inject(FormBuilder);
 
-    newsletterForm: FormGroup;
-    isSubmitting = false;
-    isSuccess = false;
-    errorMessage = '';
+  private get firestore(): Firestore {
+    if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+    return this._firestore!;
+  }
 
-    constructor() {
-        this.newsletterForm = this.fb.group({
-            email: ['', [Validators.required, Validators.email]],
-            acceptPrivacy: [false, Validators.requiredTrue]
+  newsletterForm: FormGroup;
+  isSubmitting = false;
+  isSuccess = false;
+  errorMessage = '';
+
+  constructor() {
+    this.newsletterForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      acceptPrivacy: [false, Validators.requiredTrue]
+    });
+  }
+
+  async onSubmit() {
+    if (this.newsletterForm.invalid) {
+      this.newsletterForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.errorMessage = '';
+
+    try {
+      const email = this.newsletterForm.value.email.toLowerCase().trim();
+
+      // Check if email already exists
+      const newsletterCollection = collection(this.firestore, 'newsletter');
+      const q = query(newsletterCollection, where('email', '==', email));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        this.errorMessage = 'Este correo ya está suscrito a nuestro boletín.';
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Add new subscriber
+      await addDoc(newsletterCollection, {
+        email,
+        subscribedAt: Timestamp.now(),
+        source: 'website',
+        active: true
+      });
+
+      // Track with GA4
+      if (typeof gtag !== 'undefined') {
+        gtag('event', 'newsletter_signup', {
+          method: 'website_form'
         });
+      }
+
+      this.isSuccess = true;
+      this.newsletterForm.reset();
+
+    } catch (error) {
+      console.error('Newsletter signup error:', error);
+      this.errorMessage = 'Hubo un error al procesar tu suscripción. Por favor intenta de nuevo.';
+    } finally {
+      this.isSubmitting = false;
     }
-
-    async onSubmit() {
-        if (this.newsletterForm.invalid) {
-            this.newsletterForm.markAllAsTouched();
-            return;
-        }
-
-        this.isSubmitting = true;
-        this.errorMessage = '';
-
-        try {
-            const email = this.newsletterForm.value.email.toLowerCase().trim();
-
-            // Check if email already exists
-            const newsletterCollection = collection(this.firestore, 'newsletter');
-            const q = query(newsletterCollection, where('email', '==', email));
-            const snapshot = await getDocs(q);
-
-            if (!snapshot.empty) {
-                this.errorMessage = 'Este correo ya está suscrito a nuestro boletín.';
-                this.isSubmitting = false;
-                return;
-            }
-
-            // Add new subscriber
-            await addDoc(newsletterCollection, {
-                email,
-                subscribedAt: Timestamp.now(),
-                source: 'website',
-                active: true
-            });
-
-            // Track with GA4
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'newsletter_signup', {
-                    method: 'website_form'
-                });
-            }
-
-            this.isSuccess = true;
-            this.newsletterForm.reset();
-
-        } catch (error) {
-            console.error('Newsletter signup error:', error);
-            this.errorMessage = 'Hubo un error al procesar tu suscripción. Por favor intenta de nuevo.';
-        } finally {
-            this.isSubmitting = false;
-        }
-    }
+  }
 }

@@ -60,7 +60,10 @@ export class LoginComponent {
         this.isRegister.set(!this.isRegister());
     }
 
+    authError = signal<string | null>(null);
+
     async onLogin() {
+        this.authError.set(null);
         if (this.loginForm.invalid) {
             this.loginForm.markAllAsTouched();
             return;
@@ -69,8 +72,19 @@ export class LoginComponent {
         this.isLoading.set(true);
         const { email, password } = this.loginForm.value;
 
-        await this.auth.loginWithEmail(email, password);
-        this.isLoading.set(false);
+        try {
+            await this.auth.loginWithEmail(email, password);
+        } catch (error: any) {
+            let msg = error.message || 'An error occurred during login.';
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                msg = 'Invalid email or password. Please try again.';
+            } else if (error.code === 'auth/too-many-requests') {
+                msg = 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.';
+            }
+            this.authError.set(msg);
+        } finally {
+            this.isLoading.set(false);
+        }
     }
 
     async onRegister() {

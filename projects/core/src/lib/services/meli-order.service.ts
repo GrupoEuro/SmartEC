@@ -10,7 +10,7 @@ import { firstValueFrom } from 'rxjs';
 })
 export class MeliOrderService {
     private http = inject(HttpClient);
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private secrets = inject(SecretsService);
 
     private readonly API_URL = 'https://api.mercadolibre.com';

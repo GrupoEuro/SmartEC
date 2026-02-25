@@ -48,7 +48,7 @@ export interface RecentActivity {
     providedIn: 'root'
 })
 export class DashboardStatsService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     getStats(): Observable<DashboardStats> {
         return forkJoin({

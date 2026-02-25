@@ -49,7 +49,7 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class OrderDetailComponent implements OnInit {
     private route = inject(ActivatedRoute);
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private authService = inject(AuthService);
 
     order: Order | null = null;

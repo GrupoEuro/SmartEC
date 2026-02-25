@@ -8,7 +8,7 @@ import { PurchaseOrder } from '../models/procurement.model';
     providedIn: 'root'
 })
 export class ProcurementService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private poCollection = collection(this.firestore, 'purchase_orders');
 
     /**

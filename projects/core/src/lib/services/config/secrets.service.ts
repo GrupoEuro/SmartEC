@@ -30,7 +30,7 @@ export interface IntegrationConfig {
     providedIn: 'root'
 })
 export class SecretsService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private configPath = 'config/integrations'; // Single doc for simplicity in this prototype
 
     async getConfig(): Promise<IntegrationConfig> {

@@ -27,8 +27,8 @@ import { Product, ProductFilters, ProductSortBy } from '../models/catalog.model'
     providedIn: 'root'
 })
 export class ProductService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
     private productsCollection = collection(this.firestore, 'products');
 
     /**

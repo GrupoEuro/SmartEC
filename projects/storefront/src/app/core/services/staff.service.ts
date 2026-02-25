@@ -9,7 +9,7 @@ import { UserProfile } from '../models/user.model';
     providedIn: 'root'
 })
 export class StaffService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private userService = inject(UserManagementService);
 
     private collectionName = 'staff_profiles';

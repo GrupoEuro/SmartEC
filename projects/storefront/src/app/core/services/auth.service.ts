@@ -1,10 +1,10 @@
-import { Injectable, inject, PLATFORM_ID, signal, DestroyRef } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID, signal, DestroyRef, Injector } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
-import { Observable, of, switchMap, firstValueFrom } from 'rxjs';
+import { Observable, of, switchMap, firstValueFrom, BehaviorSubject } from 'rxjs';
 // import { AdminLogService } from './admin-log.service';
 import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
@@ -15,8 +15,9 @@ import { StateRegistryService } from './state-registry.service';
   providedIn: 'root'
 })
 export class AuthService {
-  private auth: Auth = inject(Auth);
-  private firestore: Firestore = inject(Firestore);
+  private injector = inject(Injector);
+  private _auth: Auth | null = null;
+  private _firestore: Firestore | null = null;
   private router: Router = inject(Router);
   // private logService = inject(AdminLogService); // Removed for Storefront
   private platformId = inject(PLATFORM_ID);
@@ -25,8 +26,20 @@ export class AuthService {
   private stateRegistry = inject(StateRegistryService);
   private destroyRef = inject(DestroyRef);
 
+  private get auth(): Auth {
+    if (!this._auth) this._auth = this.injector.get('AUTH' as any) as Auth;
+    return this._auth!;
+  }
+
+  private get firestore(): Firestore {
+    if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+    return this._firestore!;
+  }
+
   // Raw Firebase User
-  user$: Observable<User | null>;
+  // Use a BehaviorSubject wrapper to lazy load the auth user stream
+  private userSubj = new BehaviorSubject<User | null>(null);
+  user$: Observable<User | null> = this.userSubj.asObservable();
 
   // Full User Profile from Firestore
   userProfile$: Observable<UserProfile | null>;
@@ -37,7 +50,19 @@ export class AuthService {
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      this.user$ = user(this.auth);
+      // Lazy init Firebase Auth off the critical rendering path via Interaction
+      const initAuthAndFirestore = () => {
+        this.initAuth();
+        this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+        // Clean up listeners
+        ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
+          document.removeEventListener(e, initAuthAndFirestore);
+        });
+      };
+
+      ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
+        document.addEventListener(e, initAuthAndFirestore, { passive: true, once: true });
+      });
 
       // Sync logic: Use getDoc instead of docData to avoid type mismatch
       this.userProfile$ = this.user$.pipe(
@@ -74,7 +99,6 @@ export class AuthService {
       );
 
     } else {
-      this.user$ = of(null);
       this.userProfile$ = of(null);
     }
 
@@ -89,12 +113,11 @@ export class AuthService {
       })
     });
 
-    // DEFER subscription to avoid blocking initial page load with Firebase Auth + Firestore
-    if (isPlatformBrowser(this.platformId)) {
-      setTimeout(() => {
-        this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
-      }, 3000);
-    }
+    // DEFER subscription handled by interaction listener above
+  }
+
+  private initAuth() {
+    user(this.auth).subscribe(u => this.userSubj.next(u));
   }
 
   async loginWithGoogle() {
@@ -281,7 +304,7 @@ export class AuthService {
 
       await signOut(this.auth);
       this.toast.success('Logged out successfully.');
-      this.router.navigate(['/admin/login']);
+      this.router.navigate(['/login']);
     } catch (error: any) {
       console.error('Logout error:', error);
       this.toast.error('Logout failed: ' + error.message);

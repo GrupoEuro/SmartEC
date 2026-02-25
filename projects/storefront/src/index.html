@@ -14,13 +14,17 @@
 
   <!-- Content Security Policy (CSP) -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://sdk.mercadopago.com https://www.googletagmanager.com https://scripts.clarity.ms https://www.clarity.ms https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com; font-src 'self' https://fonts.gstatic.com https://fonts.cdnfonts.com; img-src 'self' data: https:; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://secure.googleapis.com https://o.clarity.ms https://z.clarity.ms https://s.clarity.ms https://q.clarity.ms https://c.bing.com https://*.google-analytics.com https://maps.googleapis.com https://securetoken.googleapis.com;">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://sdk.mercadopago.com https://www.googletagmanager.com https://scripts.clarity.ms https://www.clarity.ms https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com; font-src 'self' https://fonts.gstatic.com https://fonts.cdnfonts.com; img-src 'self' data: https:; connect-src 'self' https://firestore.googleapis.com https://firebasestorage.googleapis.com https://identitytoolkit.googleapis.com https://secure.googleapis.com https://o.clarity.ms https://z.clarity.ms https://s.clarity.ms https://q.clarity.ms https://c.bing.com https://*.google-analytics.com https://maps.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://tiendapraxis.firebaseapp.com https://*.firebaseapp.com https://www.google.com;">
+
+
+  <!-- Preload Hero Image for LCP Optimization -->
+  <link rel="preload" as="image" href="assets/images/hero-bg.webp" type="image/webp" fetchpriority="high">
 
   <!-- Performance: Preconnect to Font Origins -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- Google Fonts: render-blocking to prevent CLS from font swap on hero text -->
+  <!-- Google Fonts: standard load for Angular inlining -->
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@300;400;500;700;900&display=swap"
     rel="stylesheet">
 
@@ -40,34 +44,40 @@
 
   <!-- Defer Analytics & Heatmaps -->
   <script>
-    function loadThirdPartyScripts() {
-      // Microsoft Clarity
-      (function (c, l, a, r, i, t, y) {
-        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-        t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-        y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-      })(window, document, "clarity", "script", "ur5ya510na");
+    // Initialize queuing functions immediately so Angular services don't fail
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    window.gtag = gtag;
 
-      // Google Analytics 4
-      const gtmScript = document.createElement('script');
+    window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments) };
+
+    function loadThirdPartyScripts() {
+      if (window._thirdPartyScriptsLoaded) return;
+      window._thirdPartyScriptsLoaded = true;
+
+      // Clean up event listeners
+      ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(function (event) {
+        window.removeEventListener(event, loadThirdPartyScripts, { passive: true });
+      });
+
+      // Inject Microsoft Clarity
+      var t = document.createElement('script'); t.async = 1; t.src = "https://www.clarity.ms/tag/ur5ya510na";
+      var y = document.getElementsByTagName('script')[0]; y.parentNode.insertBefore(t, y);
+
+      // Inject Google Analytics 4
+      var gtmScript = document.createElement('script');
       gtmScript.async = true;
       gtmScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-DS1P5LCE99';
       document.head.appendChild(gtmScript);
 
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
       gtag('js', new Date());
-      gtag('config', 'G-DS1P5LCE99', {
-        send_page_view: false
-      });
+      gtag('config', 'G-DS1P5LCE99', { send_page_view: false });
     }
 
-    // Load after critical rendering (3s delay or idle)
-    if (window.requestIdleCallback) {
-      requestIdleCallback(() => setTimeout(loadThirdPartyScripts, 3000));
-    } else {
-      setTimeout(loadThirdPartyScripts, 4000);
-    }
+    // Attach Idle-Until-Interaction Listeners
+    ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(function (event) {
+      window.addEventListener(event, loadThirdPartyScripts, { passive: true, once: true });
+    });
   </script>
 </head>
 

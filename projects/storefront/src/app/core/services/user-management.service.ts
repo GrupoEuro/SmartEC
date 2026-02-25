@@ -8,7 +8,7 @@ import { UserProfile, UserRole } from '../models/user.model';
     providedIn: 'root'
 })
 export class UserManagementService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private usersCollection = collection(this.firestore, 'users');
     private customersCollection = collection(this.firestore, 'customers');
 

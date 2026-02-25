@@ -13,7 +13,7 @@ export const adminGuard: CanActivateFn = (route, state) => {
     tap(loggedIn => {
       if (!loggedIn) {
         console.log('Access denied - Redirecting to login');
-        router.navigate(['/admin/login']);
+        router.navigate(['/login']);
       }
     })
   );

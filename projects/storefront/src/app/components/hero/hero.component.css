@@ -23,6 +23,11 @@
 }
 
 .hero-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     z-index: 0;
     opacity: 0.6;
@@ -64,6 +69,8 @@
     font-family: 'Bebas Neue', sans-serif;
     font-size: 96px;
     line-height: 0.9;
+    min-height: 260px;
+    /* Reserve space for 3 lines of text to prevent CLS */
     margin-bottom: 24px;
     background: linear-gradient(135deg, var(--white) 0%, var(--text-gray-dim) 100%);
     background-clip: text;
@@ -344,6 +351,7 @@
 @media (max-width: 1024px) {
     .hero-title {
         font-size: 72px;
+        min-height: 195px;
     }
 }
 
@@ -366,6 +374,7 @@
 
     .hero-title {
         font-size: 48px;
+        min-height: 130px;
     }
 
     .hero-actions {

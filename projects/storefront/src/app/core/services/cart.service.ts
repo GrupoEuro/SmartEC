@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, PLATFORM_ID, Injector } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CartItem, CartState } from '../models/cart.model';
 import { Product } from '../models/product.model';
@@ -10,9 +10,17 @@ import { AuthService } from './auth.service';
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
-    private firestore = inject(Firestore);
+    private injector = inject(Injector);
+    private _firestore: Firestore | null = null;
     private authService = inject(AuthService);
     private platformId = inject(PLATFORM_ID);
+
+    private get firestore(): Firestore {
+        if (!this._firestore) {
+            this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        }
+        return this._firestore!;
+    }
 
     // State Signals
     private cartState = signal<CartState>(this.loadFromStorage());

@@ -44,7 +44,7 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     email = '';
     isSubscribing = false;
     subscribeSuccess = false;
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     async subscribe() {
         if (!this.email) return;

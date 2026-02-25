@@ -47,10 +47,8 @@ h1 {
 }
 
 .address-card {
-    background: rgba(30, 30, 30, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #000;
+    border: 1px solid var(--cyan);
     border-radius: 20px;
     padding: 24px;
     position: relative;
@@ -61,9 +59,9 @@ h1 {
 }
 
 .address-card:hover {
-    border-color: rgba(0, 172, 216, 0.3);
+    border-color: var(--cyan);
     transform: translateY(-4px);
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px -10px rgba(0, 172, 216, 0.3);
 }
 
 .address-header {
@@ -82,8 +80,8 @@ h1 {
     color: #fff;
 }
 
-.address-label mat-icon {
-    color: #00ACD8;
+.address-label svg {
+    color: var(--cyan);
 }
 
 .default-badge {
@@ -110,7 +108,7 @@ h1 {
 .address-actions {
     display: flex;
     gap: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(0, 172, 216, 0.2);
     padding-top: 16px;
 }
 

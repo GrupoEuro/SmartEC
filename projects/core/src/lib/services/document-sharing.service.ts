@@ -7,7 +7,7 @@ import { Observable, from, map } from 'rxjs';
     providedIn: 'root'
 })
 export class DocumentSharingService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     // ==========================================
     // Link Management

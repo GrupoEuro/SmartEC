@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, Injector } from '@angular/core';
 import { Firestore, collection, query, where, orderBy, getDocs, Timestamp, onSnapshot } from '@angular/fire/firestore';
 import { Campaign, WebsiteTheme } from '../models/campaign.model';
 import { ThemeService } from './theme.service';
@@ -7,9 +7,17 @@ import { ThemeService } from './theme.service';
     providedIn: 'root'
 })
 export class CampaignService {
-    private firestore = inject(Firestore);
+    private injector = inject(Injector);
+    private _firestore: Firestore | null = null;
     private themeService = inject(ThemeService);
     private initialized = false;
+
+    private get firestore(): Firestore {
+        if (!this._firestore) {
+            this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        }
+        return this._firestore!!;
+    }
 
     // Active Campaign Signal (The "Winner" based on priority)
     activeCampaign = signal<Campaign | null>(null);

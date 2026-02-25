@@ -8,7 +8,7 @@ import { DistributorSubmission } from '../models/distributor.model';
     providedIn: 'root'
 })
 export class DistributorService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     getDistributors(): Observable<DistributorSubmission[]> {
         const distributorsCol = collection(this.firestore, 'distributors');

@@ -8,7 +8,7 @@ export { Address }; // Re-export for convenience
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private authService = inject(AuthService);
 
     private userId(): string | null {

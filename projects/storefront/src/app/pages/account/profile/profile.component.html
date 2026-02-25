@@ -8,51 +8,67 @@
         <mat-spinner diameter="40" class="mx-auto"></mat-spinner>
     </div>
 
-    <div *ngIf="!loading" class="glass-form-card">
-        <form [formGroup]="form" (ngSubmit)="save()">
+    <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="save()" class="profile-form-layout">
 
-            <!-- SECTION 1: Personal Information -->
+        <!-- CARD 1: Personal Information -->
+        <div class="glass-form-card">
             <div class="section-title">
-                <mat-icon>person</mat-icon>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
                 <span>{{ 'ACCOUNT.PROFILE.SECTION_PERSONAL' | translate }}</span>
             </div>
 
             <div class="form-grid">
-                <mat-form-field appearance="outline" class="full-width">
+                <mat-form-field appearance="outline" class="full-width premium-field">
                     <mat-label>{{ 'ACCOUNT.PROFILE.EMAIL' | translate }}</mat-label>
                     <input matInput formControlName="email">
-                    <mat-icon matSuffix class="read-only-icon">lock</mat-icon>
+                    <svg matSuffix class="read-only-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        style="margin-right: 8px; color: var(--text-gray);">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
                     <mat-hint>{{ 'ACCOUNT.PROFILE.EMAIL_HINT' | translate }}</mat-hint>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field">
                     <mat-label>{{ 'ACCOUNT.PROFILE.DISPLAY_NAME' | translate }}</mat-label>
                     <input matInput formControlName="displayName">
                     <mat-error *ngIf="form.get('displayName')?.hasError('required')">{{ 'COMMON.REQUIRED' | translate
                         }}</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field">
                     <mat-label>{{ 'ACCOUNT.PROFILE.PHONE' | translate }}</mat-label>
                     <input matInput formControlName="phone"
                         [placeholder]="'ACCOUNT.PROFILE.PHONE_PLACEHOLDER' | translate">
                 </mat-form-field>
             </div>
+        </div>
 
-            <div class="section-divider"></div>
-
-            <!-- SECTION 2: Fiscal Data (SAT) -->
+        <!-- CARD 2: Fiscal Data (SAT) -->
+        <div class="glass-form-card">
             <div class="section-title">
-                <mat-icon>receipt_long</mat-icon>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
                 <span>{{ 'ACCOUNT.PROFILE.SECTION_FISCAL' | translate }}</span>
             </div>
 
-            <p style="color: #aaa; margin-bottom: 24px; font-size: 0.9rem;">
+            <p class="section-desc">
                 {{ 'ACCOUNT.PROFILE.FISCAL_HELP' | translate }}
             </p>
 
             <div class="form-grid">
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field">
                     <mat-label>{{ 'ACCOUNT.PROFILE.RFC' | translate }}</mat-label>
                     <input matInput formControlName="rfc" [placeholder]="'ACCOUNT.PROFILE.RFC_PLACEHOLDER' | translate"
                         style="text-transform: uppercase;">
@@ -61,51 +77,70 @@
                         { field: 'RFC' } }}</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field">
+                    <mat-label>{{ 'ACCOUNT.PROFILE.FISCAL_ZIP' | translate }}</mat-label>
+                    <input matInput formControlName="fiscalZip" placeholder="06600">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="premium-field full-width">
                     <mat-label>{{ 'ACCOUNT.PROFILE.LEGAL_NAME' | translate }}</mat-label>
                     <input matInput formControlName="legalName"
                         [placeholder]="'ACCOUNT.PROFILE.LEGAL_NAME_PLACEHOLDER' | translate">
                     <mat-hint>{{ 'ACCOUNT.PROFILE.LEGAL_NAME_HINT' | translate }}</mat-hint>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field full-width">
                     <mat-label>{{ 'ACCOUNT.PROFILE.FISCAL_REGIME' | translate }}</mat-label>
-                    <mat-select formControlName="fiscalRegime">
+                    <mat-select formControlName="fiscalRegime" panelClass="premium-select-panel">
                         <mat-option *ngFor="let regime of fiscalRegimes" [value]="regime.code">
                             {{ regime.code }} - {{ regime.description }}
                         </mat-option>
                     </mat-select>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" class="premium-field full-width">
                     <mat-label>{{ 'ACCOUNT.PROFILE.CFDI_USE' | translate }}</mat-label>
-                    <mat-select formControlName="cfdiUse">
+                    <mat-select formControlName="cfdiUse" panelClass="premium-select-panel">
                         <mat-option *ngFor="let use of cfdiUses" [value]="use.code">
                             {{ use.code }} - {{ use.description }}
                         </mat-option>
                     </mat-select>
                 </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.PROFILE.FISCAL_ZIP' | translate }}</mat-label>
-                    <input matInput formControlName="fiscalZip" placeholder="06600">
-                </mat-form-field>
             </div>
+        </div>
 
-            <div class="actions">
-                <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving"
-                    style="padding: 24px 32px; font-size: 1.1rem;">
-                    <mat-spinner *ngIf="saving" diameter="20" class="mr-2 inline"></mat-spinner>
-                    {{ (saving ? 'ACCOUNT.PROFILE.SAVING' : 'ACCOUNT.PROFILE.SAVE') | translate }}
+        <!-- CARD 3: Security Section -->
+        <div class="glass-form-card security-card">
+            <div class="security-card-content">
+                <div class="security-info">
+                    <h3>{{ 'ACCOUNT.PROFILE.SECURITY_TITLE' | translate }}</h3>
+                    <p>{{ 'ACCOUNT.PROFILE.SECURITY_DESC' | translate }}</p>
+                </div>
+                <button type="button" mat-stroked-button color="warn" class="reset-pwd-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                        <path
+                            d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
+                        </path>
+                    </svg>
+                    {{ 'ACCOUNT.PROFILE.RESET_PASSWORD' | translate }}
                 </button>
             </div>
-        </form>
-    </div>
+        </div>
 
-    <!-- Security Section -->
-    <div class="security-section">
-        <h3>{{ 'ACCOUNT.PROFILE.SECURITY_TITLE' | translate }}</h3>
-        <p>{{ 'ACCOUNT.PROFILE.SECURITY_DESC' | translate }}</p>
-        <button mat-stroked-button color="warn">{{ 'ACCOUNT.PROFILE.RESET_PASSWORD' | translate }}</button>
-    </div>
+        <!-- Sticky Action Bar -->
+        <div class="sticky-action-bar">
+            <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || saving"
+                class="save-btn glass-btn">
+                <mat-spinner *ngIf="saving" diameter="20" class="mr-2 inline"></mat-spinner>
+                <svg *ngIf="!saving" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                {{ (saving ? 'ACCOUNT.PROFILE.SAVING' : 'ACCOUNT.PROFILE.SAVE') | translate }}
+            </button>
+        </div>
+    </form>
 </div>

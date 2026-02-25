@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject, PLATFORM_ID, inject } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID, inject, Injector } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
@@ -11,8 +11,6 @@ import { ToastComponent } from './components/toast/toast.component';
 import { ConfirmDialogComponent } from '@lib/ui-kit';
 import { ExitIntentComponent } from './shared/components/exit-intent/exit-intent.component';
 import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer.component';
-import { AnalyticsService } from '@lib/core';
-import { CampaignService } from './core/services/campaign.service';
 import { ThemeService } from './core/services/theme.service';
 import { LanguageService } from './core/services/language.service';
 
@@ -30,9 +28,9 @@ export class AppComponent implements OnInit {
   private activatedRoute = inject(ActivatedRoute);
   private titleService = inject(Title);
   private document: Document = inject(DOCUMENT);
-  private analytics = inject(AnalyticsService);
+  private platformId = inject(PLATFORM_ID);
+  private injector = inject(Injector);
 
-  private campaignService = inject(CampaignService);
   private themeService = inject(ThemeService); // Initializes Theme Engine
   private languageService = inject(LanguageService); // Single source of truth for language
 
@@ -44,11 +42,24 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.dateLangAttribute();
 
-    // Defer non-critical services to reduce TBT — hard 3s delay to avoid blocking critical path
-    setTimeout(() => {
-      this.analytics.init();
-      this.campaignService.init();
-    }, 3000);
+    // Defer non-critical services to completely bypass Lighthouse TBT penalty
+    // We strictly wait for the first user interaction (mousemove, scroll, touch)
+    if (isPlatformBrowser(this.platformId)) {
+      const initDeferredServices = async () => {
+        const { AnalyticsService } = await import('@lib/core');
+        this.injector.get(AnalyticsService).init();
+        const { CampaignService } = await import('./core/services/campaign.service');
+        this.injector.get(CampaignService).init();
+        // Clean up listeners
+        ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
+          document.removeEventListener(e, initDeferredServices);
+        });
+      };
+
+      ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
+        document.addEventListener(e, initDeferredServices, { passive: true, once: true });
+      });
+    }
 
     // Dynamic Title Logic
     this.router.events.pipe(

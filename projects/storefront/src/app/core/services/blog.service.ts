@@ -25,8 +25,8 @@ import { AdminLogService } from './admin-log.service';
     providedIn: 'root'
 })
 export class BlogService {
-    private firestore: Firestore = inject(Firestore);
-    private storage: Storage = inject(Storage);
+    private firestore: Firestore = inject('FIRESTORE' as any) as Firestore;
+    private storage: Storage = inject('STORAGE' as any) as Storage;
     // private logService = inject(AdminLogService); // Removed
     private collectionName = 'blog_posts';
 

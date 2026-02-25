@@ -24,7 +24,7 @@ import { InventoryLedgerService } from './inventory-ledger.service';
     providedIn: 'root'
 })
 export class OrderService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private stateRegistry = inject(StateRegistryService);
     private ledgerService = inject(InventoryLedgerService);
 

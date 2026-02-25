@@ -11,7 +11,7 @@ import { DailyMetrics, KPICard, MetricChartData, RevenueTrendPoint, OrderStatusC
     providedIn: 'root'
 })
 export class MetricsService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private orderService = inject(OrderService);
     private productService = inject(ProductService);
     private userService = inject(UserManagementService);

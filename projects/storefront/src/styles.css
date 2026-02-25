@@ -1,4 +1,7 @@
-/* Angular Material theme loaded per-component in account pages only */
+/* Core Angular Material Theme (Required for MDC Structural Geometry) */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+/* Angular Material Custom theme variables */
 @import 'styles/themes.css';
 
 /* Tailwind: utilities only — base & components removed to reduce initial CSS */
@@ -32,10 +35,23 @@
   --theme-pattern: none;
 }
 
-* {
-  margin: 0;
-  padding: 0;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
 }
 
 body {

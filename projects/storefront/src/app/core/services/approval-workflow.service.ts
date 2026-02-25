@@ -22,7 +22,7 @@ import {
     providedIn: 'root'
 })
 export class ApprovalWorkflowService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
     private authService = inject(AuthService);
     private notificationService = inject(NotificationService);
     private couponService = inject(CouponService);

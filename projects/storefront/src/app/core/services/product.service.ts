@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import {
     Firestore,
     collection,
@@ -27,9 +27,18 @@ import { Product, ProductFilters, ProductSortBy } from '../models/catalog.model'
     providedIn: 'root'
 })
 export class ProductService {
-    private firestore = inject(Firestore);
-    private storage = inject(Storage);
-    private productsCollection = collection(this.firestore, 'products');
+    private injector = inject(Injector);
+    private _firestore?: Firestore;
+    private storage = inject('STORAGE' as any) as Storage;
+
+    private get firestore(): Firestore {
+        if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
+        return this._firestore!;
+    }
+
+    private get productsCollection() {
+        return collection(this.firestore, 'products');
+    }
 
     /**
      * Get all products with optional filters

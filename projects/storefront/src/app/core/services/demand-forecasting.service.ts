@@ -84,7 +84,7 @@ export interface ForecastPoint {
     providedIn: 'root'
 })
 export class DemandForecastingService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     /**
      * Calculate demand statistics for a product over specified period

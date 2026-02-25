@@ -27,7 +27,7 @@ import {
     providedIn: 'root'
 })
 export class FinancialService {
-    private firestore = inject(Firestore); // Keep for now if needed, though AnalyticsService handles data
+    private firestore = inject('FIRESTORE' as any) as Firestore; // Keep for now if needed, though AnalyticsService handles data
     private orderService = inject(OrderService);
     private productService = inject(ProductService);
     private analyticsService = inject(BusinessAnalyticsService);

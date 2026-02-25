@@ -17,7 +17,7 @@ import {
     providedIn: 'root'
 })
 export class ReceivingService {
-    private firestore = inject(Firestore);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
 
     // ============================================
     // ASN Management

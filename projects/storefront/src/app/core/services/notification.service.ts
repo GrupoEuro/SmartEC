@@ -9,8 +9,8 @@ import { AuthService } from './auth.service';
     providedIn: 'root'
 })
 export class NotificationService {
-    private firestore = inject(Firestore);
-    private auth = inject(Auth);
+    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private auth = inject('AUTH' as any) as Auth;
     private authService = inject(AuthService);
 
     /**

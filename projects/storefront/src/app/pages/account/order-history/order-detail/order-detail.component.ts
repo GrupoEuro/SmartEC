@@ -1,12 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { AuthService } from '@lib/core';
 import { Order } from '@lib/core';
@@ -18,33 +13,73 @@ import { TranslateModule } from '@ngx-translate/core';
     imports: [
         CommonModule,
         RouterModule,
-        MatButtonModule,
-        MatIconModule,
-        MatCardModule,
-        MatDividerModule,
         MatProgressSpinnerModule,
-        MatChipsModule,
         TranslateModule
     ],
     templateUrl: './order-detail.component.html',
     styles: [`
-        .order-detail-container { padding: 24px; max-width: 1000px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        h1 { margin: 0; font-size: 24px; }
-        .back-link { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); text-decoration: none; margin-bottom: 16px; }
-        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; margin-top: 24px; }
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 24px; }
+        .order-detail-container { padding: 32px; max-width: 1000px; margin: 0 auto; min-height: 80vh; }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--cyan); text-decoration: none; margin-bottom: 24px; font-weight: 600; padding: 8px 16px; border-radius: 20px; transition: background 0.2s; }
+        .back-link:hover { background: rgba(0, 172, 216, 0.1); }
+        
+        /* Glass Card Base */
+        .glass-card { background: #000; border: 1px solid var(--cyan); border-radius: 16px; padding: 24px; transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -10px rgba(0, 172, 216, 0.3); }
+        
+        /* Header Info */
+        .header-card { margin-bottom: 24px; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .header-left h1 { margin: 0 0 8px 0; font-size: 28px; font-weight: 700; color: #fff; }
+        .header-left .subtitle { color: #888; margin: 0; font-size: 1.1rem; }
+        
+        /* Status Badges */
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-delivered { background: rgba(147, 213, 0, 0.15); color: #93D500; }
+        .status-shipped { background: rgba(0, 172, 216, 0.15); color: #00ACD8; }
+        .status-processing { background: rgba(255, 215, 0, 0.15); color: #FFD700; }
+        .status-pending { background: rgba(136, 136, 136, 0.15); color: #888; }
+        .status-cancelled, .status-failed { background: rgba(255, 68, 68, 0.15); color: #FF4444; }
+        .status-paid { background: rgba(147, 213, 0, 0.15); color: #93D500; }
+
+        /* Two Column Grid */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 32px; }
+        .card-title { font-size: 1.1rem; font-weight: 600; color: var(--cyan); margin-bottom: 16px; border-bottom: 1px solid rgba(0, 172, 216, 0.2); padding-bottom: 12px; }
+        .card-content p { color: #aaa; margin: 0 0 4px 0; line-height: 1.5; }
+        .card-content .payment-title { color: #fff; font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; }
+        .card-content .payment-status { display: flex; align-items: center; gap: 8px; }
+        
+        /* Items List */
+        .items-section { margin-bottom: 32px; }
+        .section-title { font-size: 1.25rem; font-weight: 600; color: #fff; margin-bottom: 16px; }
         .items-list { display: flex; flex-direction: column; gap: 16px; }
-        .item-row { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; }
-        .item-image { width: 80px; height: 80px; object-fit: contain; background: #f5f5f5; border-radius: 4px; }
+        .item-row { display: flex; align-items: center; gap: 24px; padding: 16px 24px; }
+        .item-image { width: 80px; height: 80px; object-fit: contain; border-radius: 8px; background: rgba(255, 255, 255, 0.05); padding: 8px; }
         .item-details { flex: 1; }
-        .item-name { font-weight: 500; margin: 0 0 4px 0; }
-        .item-meta { color: var(--text-secondary); font-size: 14px; margin: 0; }
-        .price-col { text-align: right; font-weight: 500; }
-        .summary-section { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-top: 24px; }
-        .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .summary-row.total { font-weight: 700; font-size: 18px; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
-        .error-state, .loading-state { text-align: center; padding: 48px; }
+        .item-name { font-weight: 600; font-size: 1.1rem; color: #fff; margin: 0 0 8px 0; }
+        .item-meta { color: #888; font-size: 0.95rem; margin: 0 0 4px 0; }
+        .price-col { text-align: right; font-weight: 700; font-size: 1.25rem; color: #fff; }
+        
+        /* Order Summary */
+        .summary-section { margin-bottom: 32px; background: linear-gradient(135deg, rgba(0, 0, 0, 1), rgba(10, 10, 10, 1)); }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; color: #aaa; font-size: 1.1rem; }
+        .summary-row.total { font-weight: 700; font-size: 1.75rem; color: #fff; border-top: 1px solid rgba(0, 172, 216, 0.3); padding-top: 16px; margin-top: 16px; }
+        .discount-label, .discount-val { color: #93D500; }
+        
+        .actions-section { text-align: right; margin-bottom: 40px; }
+        .btn-primary { background: linear-gradient(135deg, #00ACD8, #0088cc); color: white; padding: 12px 32px; font-weight: 600; border-radius: 30px; border: none; font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 172, 216, 0.4); }
+
+        .error-state { text-align: center; padding: 60px; background: rgba(255, 68, 68, 0.1); border: 1px dashed rgba(255, 68, 68, 0.4); border-radius: 16px; margin-top: 40px; }
+        .error-icon { color: #ff4444; margin-bottom: 16px; }
+        .error-state p { color: #ffcfcf; margin-bottom: 24px; font-size: 1.1rem; }
+        
+        .loading-state { display: flex; justify-content: center; padding: 100px 0; }
+        
+        @media (max-width: 768px) {
+            .header-content { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .item-row { flex-direction: column; text-align: center; }
+            .price-col { text-align: center; margin-top: 12px; }
+        }
     `]
 })
 export class OrderDetailComponent implements OnInit {

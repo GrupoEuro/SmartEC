@@ -6,45 +6,72 @@
 
     <div class="modal-content">
         <form [formGroup]="form">
+
             <mat-form-field appearance="outline">
                 <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.LABEL' | translate }}</mat-label>
-                <input matInput formControlName="label">
+                <mat-icon matPrefix>label</mat-icon>
+                <input matInput formControlName="label" placeholder="ej. Casa, Oficina">
             </mat-form-field>
 
+            <!-- ZIP CODE SECTION -->
+            <div class="field-row">
+                <mat-form-field appearance="outline" class="zip-field">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.ZIP' | translate }}</mat-label>
+                    <mat-icon matPrefix>location_on</mat-icon>
+                    <input matInput formControlName="zip" placeholder="12345" maxlength="5">
+                    <mat-spinner matSuffix *ngIf="isLoadingZip" diameter="20"></mat-spinner>
+                </mat-form-field>
+            </div>
+
+            <!-- STATE & CITY -->
             <div class="field-row">
                 <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STREET' | translate }}</mat-label>
-                    <input matInput formControlName="street">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STATE' | translate }}</mat-label>
+                    <mat-icon matPrefix>map</mat-icon>
+                    <input matInput formControlName="state">
                 </mat-form-field>
-                <mat-form-field appearance="outline" style="flex: 0 0 100px;">
+
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CITY' | translate }}</mat-label>
+                    <mat-icon matPrefix>location_city</mat-icon>
+                    <input matInput formControlName="city">
+                </mat-form-field>
+            </div>
+
+            <!-- COLONIA -->
+            <mat-form-field appearance="outline" *ngIf="colonias.length > 0; else textColonia">
+                <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.COLONIA' | translate }}</mat-label>
+                <mat-icon matPrefix>holiday_village</mat-icon>
+                <mat-select formControlName="colonia">
+                    <mat-option *ngFor="let col of colonias" [value]="col">
+                        {{ col }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <ng-template #textColonia>
+                <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.COLONIA' | translate }}</mat-label>
+                    <mat-icon matPrefix>holiday_village</mat-icon>
+                    <input matInput formControlName="colonia">
+                </mat-form-field>
+            </ng-template>
+
+            <!-- STREET -->
+            <mat-form-field appearance="outline">
+                <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STREET' | translate }}</mat-label>
+                <input matInput formControlName="street">
+            </mat-form-field>
+
+            <!-- EXTERIOR / INTERIOR NUMBERS -->
+            <div class="field-row">
+                <mat-form-field appearance="outline" style="flex: 0 0 120px;">
                     <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.EXT_NUM' | translate }}</mat-label>
                     <input matInput formControlName="extNum">
                 </mat-form-field>
-                <mat-form-field appearance="outline" style="flex: 0 0 100px;">
+                <mat-form-field appearance="outline" style="flex: 0 0 120px;">
                     <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.INT_NUM' | translate }}</mat-label>
                     <input matInput formControlName="intNum">
-                </mat-form-field>
-            </div>
-
-            <div class="field-row">
-                <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.COLONIA' | translate }}</mat-label>
-                    <input matInput formControlName="colonia">
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.ZIP' | translate }}</mat-label>
-                    <input matInput formControlName="zip">
-                </mat-form-field>
-            </div>
-
-            <div class="field-row">
-                <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CITY' | translate }}</mat-label>
-                    <input matInput formControlName="city">
-                </mat-form-field>
-                <mat-form-field appearance="outline">
-                    <mat-label>{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.STATE' | translate }}</mat-label>
-                    <input matInput formControlName="state">
                 </mat-form-field>
             </div>
 
@@ -53,15 +80,17 @@
                 <textarea matInput formControlName="reference" rows="3"></textarea>
             </mat-form-field>
 
-            <mat-checkbox formControlName="isDefault">{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.SET_DEFAULT' | translate
-                }}</mat-checkbox>
+            <mat-checkbox formControlName="isDefault" class="default-checkbox">
+                {{ 'ACCOUNT.ADDRESS_BOOK.MODAL.SET_DEFAULT' | translate }}
+            </mat-checkbox>
         </form>
     </div>
 
     <div class="modal-actions">
-        <button mat-button (click)="cancel()" style="color: #ccc;">{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CANCEL' | translate
+        <button mat-button (click)="cancel()" class="cancel-btn">{{ 'ACCOUNT.ADDRESS_BOOK.MODAL.CANCEL' | translate
             }}</button>
-        <button mat-flat-button color="primary" (click)="save()" [disabled]="form.invalid">{{
-            'ACCOUNT.ADDRESS_BOOK.MODAL.SAVE' | translate }}</button>
+        <button mat-flat-button color="primary" (click)="save()" [disabled]="form.invalid" class="save-btn">
+            {{ 'ACCOUNT.ADDRESS_BOOK.MODAL.SAVE' | translate }}
+        </button>
     </div>
 </div>

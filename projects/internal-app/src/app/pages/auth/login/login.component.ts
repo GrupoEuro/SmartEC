@@ -40,7 +40,12 @@ export class LoginComponent {
     constructor() {
         // If already logged in, redirect
         if (this.auth.currentUser()) {
-            this.router.navigate(['/account']);
+            const role = this.auth.currentProfile()?.role;
+            if (role && role !== 'CUSTOMER') {
+                this.router.navigate(['/portal']);
+            } else {
+                this.router.navigate(['/account']);
+            }
         }
 
         this.loginForm = this.fb.group({

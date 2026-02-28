@@ -11,6 +11,7 @@ import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { provideFirestore, initializeFirestore, memoryLocalCache, Firestore } from '@angular/fire/firestore';
 import { provideAuth, getAuth, Auth } from '@angular/fire/auth';
 import { provideStorage, getStorage, Storage } from '@angular/fire/storage';
+import { provideFunctions, getFunctions, Functions } from '@angular/fire/functions';
 
 import { environment } from '../environments/environment';
 
@@ -39,9 +40,11 @@ export const appConfig: ApplicationConfig = {
     })),
     provideAuth(() => getAuth()),
     provideStorage(() => getStorage()),
+    provideFunctions(() => getFunctions()),
     { provide: 'FIRESTORE', useExisting: Firestore },
     { provide: 'AUTH', useExisting: Auth },
     { provide: 'STORAGE', useExisting: Storage },
+    { provide: 'FUNCTIONS', useExisting: Functions },
     provideImageLoader(),
     provideAnimationsAsync()
   ]

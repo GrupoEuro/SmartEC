@@ -4,21 +4,16 @@ import { RouterOutlet, Router, NavigationEnd, ActivatedRoute } from '@angular/ro
 import { Title } from '@angular/platform-browser';
 import { TranslateService, LangChangeEvent } from '@ngx-translate/core';
 import { filter, map, mergeMap } from 'rxjs/operators';
-import { ChatWidgetComponent } from './components/chat-widget/chat-widget.component';
-import { NavbarComponent } from './components/navbar/navbar.component';
-import { FooterComponent } from './components/footer/footer.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { ConfirmDialogComponent } from '@lib/ui-kit';
-import { ExitIntentComponent } from './shared/components/exit-intent/exit-intent.component';
-import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer.component';
 import { AnalyticsService } from '@lib/core';
-import { CampaignService } from './core/services/campaign.service';
 import { ThemeService } from './core/services/theme.service';
+import { DebugRoleWidgetComponent } from './shared/components/debug-role-widget/debug-role-widget.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastComponent, ChatWidgetComponent, ConfirmDialogComponent, ExitIntentComponent, CartDrawerComponent],
+  imports: [RouterOutlet, ToastComponent, ConfirmDialogComponent, DebugRoleWidgetComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -31,7 +26,6 @@ export class AppComponent implements OnInit {
   private document: Document = inject(DOCUMENT);
   private analytics = inject(AnalyticsService);
 
-  private campaignService = inject(CampaignService);
   private themeService = inject(ThemeService); // Initializes Theme Engine
 
   constructor() {
@@ -89,11 +83,6 @@ export class AppComponent implements OnInit {
         });
       }
     });
-  }
-
-  isAdminRoute(): boolean {
-    const url = this.router.url;
-    return url.includes('/admin') || url.includes('/operations') || url.includes('/command-center') || url.includes('/dev-tools') || url.includes('/help') || url.includes('/portal');
   }
 
   private dateLangAttribute() {

@@ -7,6 +7,7 @@ import { trigger, transition, style, animate, state } from '@angular/animations'
 import { CartService } from '@lib/core';
 import { AuthService } from '@lib/core';
 import { MercadoPagoService } from '../../core/services/mercadopago.service';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 @Component({
     selector: 'app-checkout',
@@ -28,6 +29,7 @@ export class CheckoutComponent implements AfterViewInit {
     authService = inject(AuthService);
     mpService = inject(MercadoPagoService);
     router = inject(Router);
+    functions = inject(Functions);
 
     currentStep = signal(1); // 1: Identity, 2: Shipping, 3: Payment
 
@@ -113,8 +115,22 @@ export class CheckoutComponent implements AfterViewInit {
             const token = await this.mpService.createToken(cardHolder!, email!, 'INE', identificationNumber!);
             console.log('Payment Token Generated:', token);
 
-            // Here we would call the Backend/Cloud Function to charge the card using the token
-            // For now, assume success
+            // Call the secure Firebase Cloud Function to process the actual charge
+            const processPaymentFunc = httpsCallable(this.functions, 'processPayment');
+            
+            // Generate a random order ID for now (Normally created when placing order in Firestore first)
+            const orderId = 'order_' + Date.now();
+            
+            const response = await processPaymentFunc({
+                token: token,
+                amount: this.cartService.cartSubtotal(),
+                email: email,
+                description: 'Storefront Order',
+                orderId: orderId,
+                installments: 1
+            });
+
+            console.log('Backend Payment Response:', response.data);
 
             this.router.navigate(['/order-confirmation']);
             this.cartService.clearCart();

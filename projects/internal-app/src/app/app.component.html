@@ -1,16 +1,7 @@
 <app-toast></app-toast>
-<app-cart-drawer></app-cart-drawer>
-<app-exit-intent></app-exit-intent>
 <app-confirm-dialog></app-confirm-dialog>
-@if (!isAdminRoute()) {
-<app-navbar></app-navbar>
-}
+<app-debug-role-widget></app-debug-role-widget>
 
-<main [style.padding-top]="isAdminRoute() ? '0' : '140px'" style="min-height: 100vh;">
+<main style="min-height: 100vh;">
   <router-outlet></router-outlet>
 </main>
-
-@if (!isAdminRoute()) {
-<app-chat-widget></app-chat-widget>
-<app-footer></app-footer>
-}

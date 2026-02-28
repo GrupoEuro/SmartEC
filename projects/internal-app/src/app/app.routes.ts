@@ -1,10 +1,9 @@
 import { Routes } from '@angular/router';
-import { HomeComponent } from './pages/home/home.component';
 import { devModeGuard } from './core/guards/dev-mode.guard';
 import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
-    { path: '', component: HomeComponent },
+    { path: '', redirectTo: 'admin/login', pathMatch: 'full' },
     {
         path: 'login',
         loadComponent: () => import('./pages/auth/login/login.component').then(m => m.LoginComponent),

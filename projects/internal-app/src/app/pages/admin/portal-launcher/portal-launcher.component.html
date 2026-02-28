@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+<div class="min-h-screen portal-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
 
     <!-- Background Elements -->
     <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
@@ -46,13 +46,13 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @for (portal of availablePortals(); track portal.id) {
             <button (click)="navigateTo(portal.route)"
-                class="group relative text-left bg-slate-900/50 hover:bg-slate-800 border border-slate-800 hover:border-slate-600 rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-1">
+                class="group relative text-left portal-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
 
                 <!-- Icon -->
                 <div
-                    class="w-12 h-12 rounded-lg bg-slate-800 group-hover:bg-slate-700 border border-slate-700 group-hover:border-slate-600 flex items-center justify-center mb-4 transition-colors">
+                    class="w-12 h-12 rounded-lg portal-icon-bg border flex items-center justify-center mb-4 transition-colors">
                     <app-icon [name]="portal.icon" [size]="24"
-                        class="text-slate-400 group-hover:text-white transition-colors"></app-icon>
+                        class="text-current transition-colors"></app-icon>
                 </div>
 
                 <!-- Content -->

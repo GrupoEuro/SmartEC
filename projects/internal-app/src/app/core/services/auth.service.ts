@@ -113,13 +113,7 @@ export class AuthService {
       const credential = await signInWithEmailAndPassword(this.auth, email, pass);
       const user = credential.user;
 
-      // STRICT CHECK: Email login only for CUSTOMER role
-      const profile = await this.syncUserProfile(user);
-      if (profile && profile.role !== 'CUSTOMER') {
-        this.toast.error('Admin/Staff must use Google Login.');
-        await signOut(this.auth);
-        return;
-      }
+      await this.syncUserProfile(user);
 
       await this.handleLoginSuccess(user);
     } catch (error: any) {

@@ -776,6 +776,16 @@
     }
   },
   "COMMAND_CENTER": {
+    "TITLE": "Centro de Comando",
+    "DASHBOARD": "Tablero",
+    "APPROVALS": { "TITLE": "Aprobaciones" },
+    "FINANCIALS": { "TITLE": "Finanzas" },
+    "INCOME_STATEMENT": { "TITLE": "Estado de Resultados" },
+    "INVENTORY_ANALYTICS": { "TITLE": "Análisis de Inventario" },
+    "SALES_ANALYTICS": { "TITLE": "Análisis de Ventas" },
+    "CUSTOMER_INSIGHTS": { "TITLE": "Análisis de Clientes" },
+    "OPERATIONAL_METRICS": { "TITLE": "Métricas Operacionales" },
+    "EXPENSES": { "TITLE": "Gestión de Gastos" },
     "ACTIONS": {
       "EXPORT": "Exportar CSV",
       "VIEW_DATA": "Ver Datos"

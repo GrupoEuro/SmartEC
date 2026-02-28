@@ -33,3 +33,30 @@
 .zoom-in {
     animation-name: zoomIn;
 }
+
+.portal-bg {
+    background-color: #3b3a4a;
+    background: radial-gradient(circle at center, #3c3852 0%, #17151f 100%);
+}
+
+.portal-card {
+    background: #24242e;
+    border-color: #3d3b4b;
+}
+
+.portal-card:hover {
+    background: #2d2d39;
+    border-color: #6e61f2;
+    box-shadow: 0 0 0 1px rgba(110, 97, 242, 0.2);
+}
+
+.portal-icon-bg {
+    background: rgba(110, 97, 242, 0.1);
+    border-color: rgba(110, 97, 242, 0.2);
+    color: #6e61f2;
+}
+
+.portal-card:hover .portal-icon-bg {
+    background: #6e61f2;
+    color: white;
+}

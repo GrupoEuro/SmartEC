@@ -183,7 +183,8 @@
     "TITLE": "Centro de Comando",
     "BREADCRUMB": "Resumen / Estado del Sistema",
     "LOADING": "Iniciando Tablero...",
-    "DASHBOARD": {
+    "DASHBOARD": "Tablero",
+    "DASHBOARD_MESSAGES": {
       "WELCOME": "Bienvenido al Tablero de Importadora Euro",
       "SUBTITLE": "Gestiona tu contenido, banners, publicaciones de blog y biblioteca PDF desde un solo lugar.",
       "BANNERS_DESC": "Actualizar sliders de inicio",

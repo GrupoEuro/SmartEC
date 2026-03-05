@@ -120,19 +120,22 @@
 
             <!-- Tabs Navigation -->
             <div class="border-b border-zinc-800 flex gap-6 px-2 overflow-x-auto">
-                <button *ngFor="let tab of ['overview', 'orders', 'activity', 'insights']" (click)="setTab(tab)"
+                <button *ngFor="let tab of ['overview', 'orders', 'balance', 'notes', 'addresses']" (click)="setTab(tab)"
                     class="pb-3 text-sm font-medium transition-all border-b-2 capitalize flex items-center gap-2"
                     [ngClass]="activeTab() === tab ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'">
 
                     <app-icon *ngIf="tab === 'overview'" name="grid" [size]="16"></app-icon>
                     <app-icon *ngIf="tab === 'orders'" name="shopping-bag" [size]="16"></app-icon>
-                    <app-icon *ngIf="tab === 'activity'" name="activity" [size]="16"></app-icon>
-                    <app-icon *ngIf="tab === 'insights'" name="zap" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'balance'" name="dollar-sign" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'notes'" name="message-square" [size]="16"></app-icon>
+                    <app-icon *ngIf="tab === 'addresses'" name="map-pin" [size]="16"></app-icon>
 
                     {{ tab }}
                     <span *ngIf="tab === 'orders'"
                         class="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded-full text-zinc-400 ml-1 font-mono">{{
                         customer()?.stats?.totalOrders || 0 }}</span>
+                    <span *ngIf="tab === 'notes'"
+                        class="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded-full text-zinc-400 ml-1 font-mono">{{ notes().length }}</span>
                 </button>
             </div>
 
@@ -252,12 +255,101 @@
                 </div>
             </div>
 
-            <!-- PLACEHOLDERS -->
-            <div *ngIf="activeTab() === 'activity' || activeTab() === 'insights'"
-                class="flex flex-col items-center justify-center py-20 bg-zinc-900/30 rounded-xl border border-zinc-800 border-dashed animate-fadeIn text-zinc-500">
-                <app-icon name="construction" [size]="48" class="mb-4 opacity-50"></app-icon>
-                <h3 class="text-lg font-bold text-zinc-300">Under Construction</h3>
-                <p class="text-sm">Advanced customer analytics coming soon.</p>
+            <!-- BALANCE -->
+            <div *ngIf="activeTab() === 'balance'" class="animate-fadeIn space-y-4">
+                <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-8 flex flex-col items-center justify-center text-center">
+                    <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                         [ngClass]="(customer()?.stats?.pendingBalance || 0) > 0 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'">
+                        <app-icon name="dollar-sign" [size]="32"></app-icon>
+                    </div>
+                    <h3 class="text-3xl font-bold font-mono text-white mb-2">
+                        {{ formatCurrency(customer()?.stats?.pendingBalance || 0) }}
+                    </h3>
+                    <p class="text-zinc-500 text-sm">Total Outstanding Balance</p>
+                    
+                    <div *ngIf="(customer()?.stats?.pendingBalance || 0) === 0" class="mt-4 px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full uppercase tracking-wide border border-emerald-500/20">
+                        Account in Good Standing
+                    </div>
+                </div>
+            </div>
+
+            <!-- NOTES (COMMUNICATION LOG) -->
+            <div *ngIf="activeTab() === 'notes'" class="animate-fadeIn space-y-6">
+                
+                <!-- Add Note Input -->
+                <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-4">
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {{ (currentStaff?.name || 'M').charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="flex-1">
+                            <textarea [(ngModel)]="newNoteText" rows="2" placeholder="Add a note about this customer (e.g., 'Called to verify fitment')"
+                                class="w-full bg-zinc-950/50 border border-zinc-700/50 rounded-lg p-3 text-sm text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all resize-none"></textarea>
+                            <div class="flex justify-end mt-2">
+                                <button (click)="submitNote()" [disabled]="!newNoteText().trim()"
+                                    class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2 relative">
+                                    <app-icon name="send" [size]="14"></app-icon> Post Note
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="relative pl-4 space-y-6 before:absolute before:inset-0 before:ml-[1.4rem] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-zinc-800 before:to-transparent">
+                    
+                    <div *ngIf="isLoadingNotes()" class="flex justify-center p-8">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-zinc-500"></div>
+                    </div>
+
+                    <div *ngIf="!isLoadingNotes() && notes().length === 0" class="text-center py-8 text-zinc-600 text-sm bg-zinc-900/20 rounded-xl border border-zinc-800/30">
+                        No notes recorded for this customer yet.
+                    </div>
+
+                    <div *ngFor="let note of notes()" class="relative flex items-start gap-4 z-10">
+                        <div class="w-8 h-8 rounded-full bg-zinc-800 border-2 border-zinc-900 flex items-center justify-center text-zinc-400 flex-shrink-0 z-10 shadow-lg">
+                            <app-icon name="message-square" [size]="14"></app-icon>
+                        </div>
+                        <div class="flex-1 bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-zinc-800/50 p-4 shadow-xl">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-white text-sm font-bold">{{ note.authorName }}</span>
+                                <span class="text-zinc-500 text-xs">{{ formatDate(note.createdAt) }}</span>
+                            </div>
+                            <p class="text-zinc-300 text-sm whitespace-pre-wrap leading-relaxed">{{ note.text }}</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ADDRESSES -->
+            <div *ngIf="activeTab() === 'addresses'" class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                <!-- Primary Address -->
+                <div *ngIf="customer()?.shippingAddress" class="bg-zinc-900/60 rounded-xl border border-emerald-500/30 p-5 relative overflow-hidden group">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                            <app-icon name="star" [size]="14"></app-icon> Primary
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col gap-1 text-sm text-zinc-300">
+                        <span class="font-bold text-white">{{ customer()?.displayName }}</span>
+                        <span>{{ customer()!.shippingAddress!.street }} {{ customer()!.shippingAddress!.exteriorNumber }} {{ customer()!.shippingAddress!.interiorNumber ? 'Int ' + customer()!.shippingAddress!.interiorNumber : '' }}</span>
+                        <span>{{ customer()!.shippingAddress!.colonia }}</span>
+                        <span>{{ customer()!.shippingAddress!.city }}, {{ customer()!.shippingAddress!.state }}</span>
+                        <span class="font-mono text-zinc-500 mt-1">CP {{ customer()!.shippingAddress!.zipCode }}</span>
+
+                        <div *ngIf="customer()!.shippingAddress!.references" class="mt-3 text-xs text-zinc-400 bg-zinc-950/50 p-2 rounded border border-zinc-800/50">
+                            <b>Ref:</b> {{ customer()!.shippingAddress!.references }}
+                        </div>
+                    </div>
+                </div>
+
+                <div *ngIf="!customer()?.shippingAddress" class="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-16 bg-zinc-900/30 rounded-xl border border-zinc-800 border-dashed text-zinc-500">
+                    <app-icon name="map" [size]="40" class="mb-3 opacity-50"></app-icon>
+                    <p class="text-sm">No addresses saved for this customer.</p>
+                </div>
             </div>
 
         </div>

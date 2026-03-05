@@ -65,11 +65,11 @@
                     <label class="form-label required">{{ 'PRODUCT_TYPES.FORM.ICON' | translate }}</label>
                     <div class="input-with-prefix cursor-pointer" (click)="openIconPicker()">
                         <span class="currency-prefix">
-                            <app-icon [name]="productTypeForm?.get('icon')?.value || 'folder'" [size]="18"></app-icon>
+                            <app-icon [name]="productTypeForm.get('icon')?.value || 'folder'" [size]="18"></app-icon>
                         </span>
                         <div
                             class="form-input with-prefix flex items-center text-slate-300 hover:border-blue-500/50 transition-colors">
-                            {{ productTypeForm?.get('icon')?.value || 'Select icon...' }}
+                            {{ productTypeForm.get('icon')?.value || 'Select icon...' }}
                         </div>
                         <span class="currency-suffix">
                             <app-icon name="search" [size]="14"></app-icon>

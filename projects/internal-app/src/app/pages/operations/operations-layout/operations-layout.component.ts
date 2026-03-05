@@ -98,9 +98,7 @@ export class OperationsLayoutComponent {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
 
-    logout() {
-        this.authService.logout().then(() => {
-            this.router.navigate(['/']);
-        });
+    async logout() {
+        await this.authService.logout();
     }
 }

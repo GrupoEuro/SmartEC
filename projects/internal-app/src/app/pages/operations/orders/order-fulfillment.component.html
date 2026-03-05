@@ -101,9 +101,9 @@
                 <!-- Channel Badge -->
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-zinc-400">Channel:</span>
-                    <span class="channel-badge" [ngClass]="getChannelBadgeConfig(order()!.channel || 'WEB').class">
-                        <app-icon [name]="getChannelBadgeConfig(order()!.channel || 'WEB').icon" [size]="14"></app-icon>
-                        {{ getChannelBadgeConfig(order()!.channel || 'WEB').label }}
+                    <span class="channel-badge" [ngClass]="getChannelBadgeConfig(getLegacyChannel(order()!)).class">
+                        <app-icon [name]="getChannelBadgeConfig(getLegacyChannel(order()!)).icon" [size]="14"></app-icon>
+                        {{ getChannelBadgeConfig(getLegacyChannel(order()!)).label }}
                     </span>
                 </div>
 
@@ -128,7 +128,7 @@
                 </div>
 
                 <!-- ON_BEHALF specific metadata -->
-                <div *ngIf="order()!.channel === 'ON_BEHALF' && order()!.metadata"
+                <div *ngIf="order()!.sourceChannel === 'on_behalf' && order()!.metadata"
                     class="pt-3 border-t border-zinc-700/50">
                     <div class="flex justify-between items-center text-sm mb-2">
                         <span class="text-zinc-400">Source:</span>
@@ -142,7 +142,7 @@
                 </div>
 
                 <!-- Marketplace specific metadata -->
-                <div *ngIf="(order()!.channel === 'AMAZON_MFN' || order()!.channel === 'AMAZON_FBA' || order()!.channel === 'MELI_CLASSIC' || order()!.channel === 'MELI_FULL') && order()!.externalOrderId"
+                <div *ngIf="(order()!.sourceChannel === 'amazon' || order()!.sourceChannel === 'mercadolibre') && order()!.externalOrderId"
                     class="pt-3 border-t border-zinc-700/50">
                     <div class="text-xs text-zinc-500 uppercase font-semibold mb-2">Marketplace Info</div>
                     <div class="flex justify-between items-center text-sm">
@@ -556,7 +556,177 @@
                     </div>
                 </div>
 
-                <!-- Shipping Form -->
+
+                <!-- ── SkyDropX Shipping Panel ─────────────────────────────── -->
+                @if (order()!.status === 'processing') {
+                <div class="mt-5 border border-indigo-500/30 rounded-xl overflow-hidden">
+                    <!-- Panel Toggle Button -->
+                    <button (click)="showShippingPanel.set(!showShippingPanel())"
+                        class="w-full flex items-center justify-between px-5 py-3.5 text-left transition-all"
+                        style="background: linear-gradient(135deg,rgba(99,102,241,0.15),rgba(79,70,229,0.1))">
+                        <span class="flex items-center gap-2.5 font-bold text-indigo-300 text-sm">
+                            <app-icon name="truck" [size]="18"></app-icon>
+                            Generar Guía · SkyDropX
+                            <span class="text-xs bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full text-indigo-400">PRO</span>
+                        </span>
+                        <app-icon [name]="showShippingPanel() ? 'chevron-up' : 'chevron-down'" [size]="16" class="text-indigo-400"></app-icon>
+                    </button>
+
+                    @if (showShippingPanel()) {
+                    <div class="p-5 bg-zinc-900/50 space-y-5">
+
+                        <!-- Parcel Dimensions -->
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3">📦 Dimensiones del Paquete</div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="text-xs text-zinc-500 mb-1 block">Peso (kg)</label>
+                                    <input type="number" [(ngModel)]="parcelWeight" min="0.1" step="0.5"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none text-center font-mono">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-zinc-500 mb-1 block">Alto (cm)</label>
+                                    <input type="number" [(ngModel)]="parcelHeight" min="1"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none text-center font-mono">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-zinc-500 mb-1 block">Ancho (cm)</label>
+                                    <input type="number" [(ngModel)]="parcelWidth" min="1"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none text-center font-mono">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-zinc-500 mb-1 block">Largo (cm)</label>
+                                    <input type="number" [(ngModel)]="parcelLength" min="1"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none text-center font-mono">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Get Rates Button -->
+                        <button (click)="getRates()" [disabled]="isLoadingRates()"
+                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                            @if (isLoadingRates()) {
+                                <div class="animate-spin h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
+                                Consultando tarifas... (puede tomar ~3s)
+                            } @else {
+                                <app-icon name="refresh-cw" [size]="16"></app-icon>
+                                Consultar Tarifas
+                            }
+                        </button>
+
+                        <!-- Rates Grid -->
+                        @if (rates().length > 0) {
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3">🚚 Tarifas Disponibles</div>
+                            <div class="space-y-2">
+                                @for (rate of rates(); track rate.rateId) {
+                                <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+                                    [class]="selectedRateId() === rate.rateId
+                                        ? 'border-indigo-500 bg-indigo-500/10'
+                                        : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'">
+                                    <input type="radio" [value]="rate.rateId" [checked]="selectedRateId() === rate.rateId"
+                                        (change)="selectedRateId.set(rate.rateId)" class="sr-only">
+                                    <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                                        [class]="selectedRateId() === rate.rateId ? 'border-indigo-400' : 'border-zinc-600'">
+                                        @if (selectedRateId() === rate.rateId) {
+                                        <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
+                                        }
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold border"
+                                        [ngClass]="getCarrierColor(rate.carrier)">
+                                        {{ rate.carrier }}
+                                    </span>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-medium text-zinc-200 truncate">{{ rate.serviceName }}</div>
+                                        <div class="text-xs text-zinc-500">
+                                            {{ rate.estimatedDays ? rate.estimatedDays + ' día(s)' : 'Sin estimado' }}
+                                        </div>
+                                    </div>
+                                    <div class="text-right flex-shrink-0">
+                                        <div class="font-bold text-white text-sm">{{ rate.price | currency:'MXN':'$':'1.2-2' }}</div>
+                                        <div class="text-xs text-zinc-500">{{ rate.currency }}</div>
+                                    </div>
+                                </label>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Generate Label CTA -->
+                        <button (click)="generateLabel()" [disabled]="!selectedRateId() || isGeneratingLabel()"
+                            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg"
+                            style="background: linear-gradient(135deg,#6366f1,#4f46e5); box-shadow: 0 4px 20px rgba(99,102,241,0.3)">
+                            @if (isGeneratingLabel()) {
+                                <div class="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                                Generando guía...
+                            } @else {
+                                <app-icon name="printer" [size]="18"></app-icon>
+                                Generar Guía y Marcar como Enviado
+                            }
+                        </button>
+                        }
+
+                    </div>
+                    }
+                </div>
+                }
+
+                <!-- ── SkyDropX: Existing Label + Live Tracking ────────────── -->
+                @if (order()!.status === 'shipped' && order()!.trackingNumber) {
+                <div class="mt-5 p-4 bg-emerald-900/10 border border-emerald-500/30 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                            <app-icon name="check-circle" [size]="18"></app-icon>
+                            Guía SkyDropX Generada
+                        </div>
+                        <span class="text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full font-mono">
+                            {{ order()!.trackingNumber }}
+                        </span>
+                    </div>
+
+                    <div class="flex gap-2 flex-wrap">
+                        @if (order()!.shippingLabelUrl) {
+                        <a [href]="order()!.shippingLabelUrl" target="_blank"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-200 hover:text-white rounded-lg text-xs font-semibold transition-all">
+                            <app-icon name="file-text" [size]="14"></app-icon>
+                            Ver PDF Guía
+                        </a>
+                        }
+                        <button (click)="viewLiveTracking()" [disabled]="isLoadingTracking()"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold transition-all disabled:opacity-50">
+                            @if (isLoadingTracking()) {
+                                <div class="animate-spin h-3 w-3 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
+                            } @else {
+                                <app-icon name="map-pin" [size]="14"></app-icon>
+                            }
+                            Tracking en Vivo
+                        </button>
+                    </div>
+
+                    <!-- Live Tracking Events -->
+                    @if (trackingResult()) {
+                    <div class="mt-3 space-y-2 border-t border-zinc-700 pt-3">
+                        <div class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                            Estado: <span class="text-white">{{ trackingResult()!.status }}</span>
+                            @if (trackingResult()!.estimatedDelivery) {
+                            · Est. entrega: <span class="text-emerald-400">{{ trackingResult()!.estimatedDelivery }}</span>
+                            }
+                        </div>
+                        @for (event of trackingResult()!.events; track $index) {
+                        <div class="flex gap-3 text-xs text-zinc-400">
+                            <div class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0"></div>
+                            <div>
+                                <span class="text-zinc-200 font-semibold">{{ event.description }}</span>
+                                @if (event.location) { · <span>{{ event.location }}</span> }
+                                <div class="text-zinc-600">{{ event.occurredAt }}</div>
+                            </div>
+                        </div>
+                        }
+                    </div>
+                    }
+                </div>
+                }
+
+                <!-- Original manual shipping form (fallback when not using SkyDropX) -->
                 @if (showShippingForm) {
                 <form [formGroup]="statusForm" (ngSubmit)="updateStatus()"
                     class="mt-6 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700">

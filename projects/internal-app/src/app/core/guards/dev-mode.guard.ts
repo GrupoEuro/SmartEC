@@ -1,14 +1,20 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { environment } from '../../../environments/environment';
+import { AuthService } from '../services/auth.service';
+import { map, take } from 'rxjs/operators';
 
+// Dev tools are restricted to SUPER_ADMIN role only, in any environment.
 export const devModeGuard: CanActivateFn = (route, state) => {
+    const authService = inject(AuthService);
     const router = inject(Router);
 
-    if (!environment.production) {
-        return true;
-    }
-
-    // Redirect to home or 404 in production
-    return router.createUrlTree(['/']);
+    return authService.userProfile$.pipe(
+        take(1),
+        map(profile => {
+            if (profile?.role === 'SUPER_ADMIN') {
+                return true;
+            }
+            return router.createUrlTree(['/admin/dashboard']);
+        })
+    );
 };

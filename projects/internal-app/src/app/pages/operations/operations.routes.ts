@@ -120,6 +120,11 @@ export const operationsRoutes: Routes = [
                 path: 'pricing/grid',
                 loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
             },
+            // Channels & Integrations
+            {
+                path: 'channels/mercadolibre',
+                loadComponent: () => import('./channels/mercadolibre-hub/mercadolibre-hub.component').then(m => m.MercadolibreHubComponent)
+            },
             // Legacy / Redirects
             {
                 path: 'pricing-grid',

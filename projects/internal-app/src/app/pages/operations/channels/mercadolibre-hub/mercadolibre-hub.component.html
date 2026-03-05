@@ -1,0 +1,347 @@
+<app-admin-page-header iconName="shopping-bag" title="MercadoLibre Hub"
+    subtitle="Manage all MercadoLibre Classic and Full orders, inventory, and listings." variant="operations">
+    <div class="flex gap-2">
+        <button (click)="syncRecentOrders()" [disabled]="isSyncing() || isAnalyzing()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="background: linear-gradient(135deg, #eab308, #ca8a04); border: 1px solid rgba(234,179,8,0.5);">
+            <app-icon name="refresh-cw" [size]="16" [ngClass]="{'animate-spin': isSyncing()}"></app-icon>
+            {{ isSyncing() ? 'Syncing...' : 'Quick Sync' }}
+        </button>
+    </div>
+</app-admin-page-header>
+
+<div class="meli-hub-container p-6 max-w-7xl mx-auto space-y-6">
+    <div
+        class="bg-blue-900/40 border border-blue-500/50 text-blue-200 px-4 py-3 rounded-lg flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+            <app-icon name="info" [size]="18"></app-icon>
+            <span class="font-medium tracking-wide">Hub Version: v2.4 (Parallel Shipments Patch applied)</span>
+        </div>
+        <span class="text-xs opacity-70">2026-03-04</span>
+    </div>
+    <!-- Tabs Navigation -->
+    <div
+        class="tabs-container bg-zinc-800/80 backdrop-blur-md rounded-xl p-2 border border-zinc-700/50 flex gap-2 overflow-x-auto shadow-lg">
+        <button (click)="setTab('overview')"
+            class="tab-btn px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            [ngClass]="activeTab() === 'overview' ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+            <app-icon name="layout-dashboard" [size]="16"></app-icon>
+            Overview
+        </button>
+
+        <button (click)="setTab('classic')"
+            class="tab-btn px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            [ngClass]="activeTab() === 'classic' ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+            <app-icon name="package" [size]="16"></app-icon>
+            Classic Orders (Merchant)
+            <span class="ml-1 bg-yellow-500/20 text-yellow-400 py-0.5 px-2 rounded-full text-xs">New</span>
+        </button>
+
+        <button (click)="setTab('full')"
+            class="tab-btn px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            [ngClass]="activeTab() === 'full' ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+            <app-icon name="truck" [size]="16"></app-icon>
+            Full Inventory
+        </button>
+
+        <button (click)="setTab('listings')"
+            class="tab-btn px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            [ngClass]="activeTab() === 'listings' ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+            <app-icon name="list" [size]="16"></app-icon>
+            Listings
+        </button>
+    </div>
+
+    <!-- Overview Tab Content -->
+    <div *ngIf="activeTab() === 'overview'"
+        class="tab-content relative grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+
+        <!-- Connection Status Card -->
+        <div
+            class="card p-6 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden group hover:border-zinc-600/50 transition-all duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent z-0 pointer-events-none">
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-zinc-900/50 border border-zinc-700/50">
+                        <app-icon name="link" [size]="24" class="text-yellow-400"></app-icon>
+                    </div>
+                    <span
+                        class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Connected
+                    </span>
+                </div>
+
+                <h3 class="text-xl font-bold text-white mb-2 tracking-tight">API Connection</h3>
+                <p class="text-sm text-zinc-400 break-words mb-4">MercadoLibre Global API V2</p>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-500">Last Sync</span>
+                        <span class="text-zinc-300 font-medium">10 mins ago</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-500">Token Status</span>
+                        <span class="text-emerald-400 font-medium">Valid</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Card 1 -->
+        <div
+            class="card p-6 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden group hover:border-zinc-600/50 transition-all duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent z-0 pointer-events-none">
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-zinc-900/50 border border-zinc-700/50">
+                        <app-icon name="shopping-bag" [size]="24" class="text-blue-400"></app-icon>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold text-white mb-1 tracking-tight">Pending Classic Orders</h3>
+                <div
+                    class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 mt-2">
+                    {{ pendingCount() }}
+                </div>
+                <p class="text-sm text-zinc-400 mt-2">Needs dispatch</p>
+            </div>
+        </div>
+
+        <!-- Metric Card 2 -->
+        <div
+            class="card p-6 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl flex flex-col justify-between relative overflow-hidden group hover:border-zinc-600/50 transition-all duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent z-0 pointer-events-none">
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-zinc-900/50 border border-zinc-700/50">
+                        <app-icon name="truck" [size]="24" class="text-emerald-400"></app-icon>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold text-white mb-1 tracking-tight">Full Orders Today</h3>
+                <div
+                    class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 mt-2">
+                    {{ fullOrdersTodayCount() }}
+                </div>
+                <p class="text-sm text-zinc-400 mt-2">Shipped by ML</p>
+            </div>
+        </div>
+
+        <!-- Historical Sync Operation Card (Spans full width) -->
+        <div
+            class="card p-6 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl col-span-1 md:col-span-3 transition-all duration-300">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 rounded-lg bg-indigo-500/20 text-indigo-400">
+                    <app-icon name="database" [size]="20"></app-icon>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white tracking-tight">Historical Data Sync</h3>
+                    <p class="text-xs text-zinc-400">Import lifetime orders from this MercadoLibre account via chunked
+                        batches.</p>
+                </div>
+            </div>
+
+            <!-- Pre-Analysis State -->
+            <div *ngIf="totalHistoricalRecords() === null && !isSyncing()"
+                class="bg-zinc-900/50 border border-zinc-700/50 rounded-xl p-4 flex items-center justify-between">
+                <div class="text-sm text-zinc-300">
+                    Before starting a massive import, analyze how many records exist.
+                </div>
+                <button (click)="analyzeSync()" [disabled]="isAnalyzing()"
+                    class="ml-4 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50">
+                    <app-icon name="activity" [size]="16"
+                        [ngClass]="{'animate-pulse text-indigo-400': isAnalyzing()}"></app-icon>
+                    {{ isAnalyzing() ? 'Analyzing...' : 'Analyze Sync' }}
+                </button>
+            </div>
+
+            <!-- Post-Analysis / Ready to Sync State -->
+            <div *ngIf="totalHistoricalRecords() !== null && !isSyncing()"
+                class="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <div class="text-indigo-300 text-sm font-medium">Analysis Complete</div>
+                        <div class="text-2xl font-bold text-white mt-1">{{ totalHistoricalRecords() | number }} <span
+                                class="text-zinc-400 text-lg font-normal">records found</span></div>
+                    </div>
+                    <button (click)="startHistoricalSync()"
+                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20">
+                        <app-icon name="play" [size]="16"></app-icon>
+                        Start Batch Import
+                    </button>
+                </div>
+                <div class="text-xs text-zinc-400 bg-black/20 p-2 rounded border border-zinc-800">
+                    <span class="text-yellow-400 font-medium tracking-wider">ℹ️ ETA</span>: Depending on server load,
+                    this will be processed in chunks of 250 records to prevent quota exhaustion. Do not close this tab
+                    during sync.
+                </div>
+            </div>
+
+            <!-- Sync In Progress State -->
+            <div *ngIf="isSyncing() && totalHistoricalRecords() !== null"
+                class="bg-zinc-900/50 border border-emerald-500/30 rounded-xl p-5">
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-emerald-400 font-medium flex items-center gap-2">
+                        <app-icon name="loader" [size]="14" class="animate-spin"></app-icon>
+                        Syncing Records...
+                    </span>
+                    <span class="text-zinc-300 font-bold">
+                        {{ syncProgress().processed | number }} / {{ syncProgress().total | number }}
+                    </span>
+                </div>
+                <div class="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden border border-zinc-700">
+                    <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2.5 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-500"
+                        [style.width.%]="(syncProgress().processed / syncProgress().total) * 100">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Classic Orders Table -->
+    <div *ngIf="activeTab() === 'classic' && !isLoadingData() && !dataError()"
+        class="tab-content relative animate-fade-in space-y-4">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-tight">Classic Orders to Ship</h3>
+                <p class="text-sm text-zinc-400 mt-1">These are MercadoLibre orders that you need to pack and ship
+                    (FBM).</p>
+            </div>
+            <button [disabled]="pendingClassicOrders().length === 0"
+                class="px-4 py-2 bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 text-white text-sm font-semibold rounded-lg border border-zinc-700 transition-colors shadow-lg shadow-black/20 flex items-center gap-2">
+                <app-icon name="printer" [size]="16"></app-icon> Print Selected Labels
+            </button>
+        </div>
+
+        <div class="bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-zinc-900/50 border-b border-zinc-700/50 text-sm text-zinc-400">
+                        <th class="p-4 font-semibold w-12"><input type="checkbox"
+                                class="rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500/50">
+                        </th>
+                        <th class="p-4 font-semibold">Order</th>
+                        <th class="p-4 font-semibold">Product SKU</th>
+                        <th class="p-4 font-semibold">Items</th>
+                        <th class="p-4 font-semibold text-right">Total</th>
+                        <th class="p-4 font-semibold text-center w-32">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    <tr *ngFor="let order of pendingClassicOrders()"
+                        class="border-b border-zinc-800/50 hover:bg-zinc-700/20 transition-colors group">
+                        <td class="p-4"><input type="checkbox"
+                                class="rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500/50">
+                        </td>
+                        <td class="p-4">
+                            <div class="font-bold text-white">{{ order.orderNumber }}</div>
+                            <div class="text-xs text-zinc-500 mt-1">{{ $any(order.createdAt) | date:'MMM d, y, h:mm a'
+                                }}
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <div
+                                class="text-emerald-400 font-mono text-xs bg-emerald-900/20 px-2 py-1 rounded inline-block">
+                                {{ $any(order).items[0]?.sku || 'NO-SKU' }}
+                            </div>
+                        </td>
+                        <td class="p-4 text-zinc-400">
+                            <div *ngFor="let item of order.items" class="truncate max-w-[200px]"
+                                [title]="item.productName">
+                                {{ item.quantity }}x {{ item.productName }}
+                            </div>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="font-bold text-emerald-400">{{ order.total | currency:'MXN' }}</div>
+                            <div class="text-xs text-zinc-500 mt-1">Paid</div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button *ngIf="$any(order).shippingId" (click)="downloadMeliLabel($any(order))"
+                                    [disabled]="isDownloadingLabel() === order.id" title="Descargar Guía de Embarque"
+                                    class="text-amber-400 hover:text-amber-300 font-bold p-2.5 rounded-lg hover:bg-amber-500/10 transition-colors border border-transparent hover:border-amber-500/30 disabled:opacity-50">
+                                    <app-icon *ngIf="isDownloadingLabel() !== order.id" name="download"
+                                        [size]="18"></app-icon>
+                                    <app-icon *ngIf="isDownloadingLabel() === order.id" name="loader" [size]="18"
+                                        class="animate-spin"></app-icon>
+                                </button>
+                                <button
+                                    class="text-indigo-400 hover:text-indigo-300 font-bold px-4 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors border border-transparent hover:border-indigo-500/30">
+                                    Prepare
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr *ngIf="pendingClassicOrders().length === 0">
+                        <td colspan="6" class="p-16 text-center text-zinc-500">
+                            <div
+                                class="mx-auto w-16 h-16 bg-zinc-900/50 border border-zinc-700/50 rounded-full flex items-center justify-center mb-4">
+                                <app-icon name="check-circle" [size]="24" class="text-emerald-500/70"></app-icon>
+                            </div>
+                            <p class="font-medium text-zinc-400">All caught up!</p>
+                            <p class="text-sm mt-1">No classic orders waiting for dispatch.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Full Inventory Placeholder -->
+    <div *ngIf="activeTab() === 'full' && !isLoadingData() && !dataError()"
+        class="tab-content relative animate-fade-in bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-8 text-center shadow-xl">
+        <div
+            class="mx-auto w-16 h-16 bg-zinc-900/50 border border-zinc-700/50 rounded-full flex items-center justify-center mb-4">
+            <app-icon name="truck" [size]="24" class="text-zinc-500"></app-icon>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">MercadoLibre Full Inventory</h3>
+        <p class="text-zinc-400 max-w-md mx-auto mb-6">
+            In the future, this tab will display what inventory you currently have stored at MercadoLibre's physical
+            warehouses (FBM - Full By Merchant).
+            <br><br>
+            It will let you track stock levels there vs. stock levels in your local Praxis warehouse.
+        </p>
+    </div>
+
+    <!-- Listings Placeholder (Assuming it's similarly structured) -->
+    <div *ngIf="activeTab() === 'listings' && !isLoadingData() && !dataError()"
+        class="tab-content relative animate-fade-in bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-8 text-center shadow-xl">
+        <div
+            class="mx-auto w-16 h-16 bg-zinc-900/50 border border-zinc-700/50 rounded-full flex items-center justify-center mb-4">
+            <app-icon name="list" [size]="24" class="text-zinc-500"></app-icon>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Manage Listings & Prices</h3>
+        <p class="text-zinc-400 max-w-md mx-auto mb-6">
+            This tab will allow you to see all your active MercadoLibre product listings.
+            <br><br>
+            You'll be able to pause/resume listings, and adjust prices directly from here without logging into
+            MercadoLibre.
+        </p>
+    </div>
+
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>

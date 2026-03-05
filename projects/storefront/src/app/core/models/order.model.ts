@@ -72,8 +72,9 @@ export interface Order {
     total: number;
     currency?: string;
 
-    // [NEW] Multi-Channel Support
-    channel?: 'WEB' | 'POS' | 'ON_BEHALF' | 'AMAZON_MFN' | 'AMAZON_FBA' | 'MELI_CLASSIC' | 'MELI_FULL'; // Default: 'WEB'
+    // [NEW] Multi-Channel Support & Architecture
+    sourceChannel?: 'storefront' | 'mercadolibre' | 'amazon' | 'pos' | 'on_behalf';
+    fulfillmentType?: 'merchant' | 'platform'; // 'merchant' (we pack) vs 'platform' (FBA/Meli Full packs)
     externalOrderId?: string; // ID from Amazon/ML (e.g., '114-1234567-1234567')
     shippingLabelUrl?: string; // PDF URL for shipping label from external provider
 

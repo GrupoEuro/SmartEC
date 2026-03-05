@@ -1,9 +1,12 @@
 <app-admin-page-header iconName="truck" [title]="'OPERATIONS.ORDERS.QUEUE' | translate"
     [subtitle]="paginationConfig.totalItems + ' ' + ('OPERATIONS.ORDERS.ORDERS' | translate)" variant="operations">
-    <div class="flex gap-2">
+    <div class="flex gap-2 items-center">
         <app-help-context-button topicId="fulfillment-process"
-            tooltip="View Fulfillment Guide"></app-help-context-button>
-        <button class="btn-glass-primary" (click)="createOrder()">
+            tooltip="Ver Guía de Cumplimiento"></app-help-context-button>
+        <button
+            (click)="createOrder()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all active:scale-[0.97] shadow-lg shadow-indigo-500/20"
+            style="background: linear-gradient(135deg, #6366f1, #4f46e5); border: 1px solid rgba(99,102,241,0.5);">
             <app-icon name="plus" [size]="16"></app-icon>
             {{ 'OPERATIONS.ORDERS.CREATE_ORDER' | translate }}
         </button>
@@ -222,10 +225,10 @@
                         <span class="order-number font-mono font-bold text-white">{{ order.orderNumber }}</span>
                     </td>
                     <td class="p-4 text-center">
-                        @if (order.channel) {
-                        <span class="channel-badge" [ngClass]="getChannelBadgeConfig(order.channel).class">
-                            <app-icon [name]="getChannelBadgeConfig(order.channel).icon" [size]="12"></app-icon>
-                            {{ getChannelBadgeConfig(order.channel).label | translate }}
+                        @if (order.sourceChannel) {
+                        <span class="channel-badge" [ngClass]="getChannelBadgeConfig(getLegacyChannel(order)).class">
+                            <app-icon [name]="getChannelBadgeConfig(getLegacyChannel(order)).icon" [size]="12"></app-icon>
+                            {{ getChannelBadgeConfig(getLegacyChannel(order)).label | translate }}
                         </span>
                         } @else {
                         <span class="channel-badge channel-web">

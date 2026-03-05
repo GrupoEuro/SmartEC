@@ -80,7 +80,16 @@ export class CustomerUnificationService {
             if (orderDate < firstSeen) profile.firstSeen = order.createdAt;
 
             // Track Channels
-            const channel = order.channel || 'WEB';
+            const getLegacyChannel = (ord: Order) => {
+                if (!ord.sourceChannel) return 'WEB'; 
+                if (ord.sourceChannel === 'storefront') return 'WEB';
+                if (ord.sourceChannel === 'pos') return 'POS';
+                if (ord.sourceChannel === 'on_behalf') return 'ON_BEHALF';
+                if (ord.sourceChannel === 'amazon') return ord.fulfillmentType === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+                if (ord.sourceChannel === 'mercadolibre') return ord.fulfillmentType === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+                return 'WEB';
+            };
+            const channel = getLegacyChannel(order);
             if (!profile.channels.includes(channel)) {
                 profile.channels.push(channel);
             }

@@ -1,343 +1,379 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Allow anyone to create a distributor request
+
+    // ── Helper Functions ──────────────────────────────────────────────────────
+
+    // True if the user is logged in
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // True if the user has a Custom Claim role in the given list
+    // Requires Firebase Custom Claims to be set (see syncUserClaims Cloud Function)
+    function hasRole(roles) {
+      return isAuth() && request.auth.token.role in roles;
+    }
+
+    // Convenience aliases
+    function isStaff() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF']);
+    }
+    function isManager() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN', 'MANAGER']);
+    }
+    function isAdmin() {
+      return hasRole(['SUPER_ADMIN', 'ADMIN']);
+    }
+    function isSuperAdmin() {
+      return hasRole(['SUPER_ADMIN']);
+    }
+
+    // ── Public Submission Forms ───────────────────────────────────────────────
+
+    // Distributor contact form — public create, staff read only
     match /distributors/{document} {
       allow create: if true;
-      allow read: if request.auth != null; // Admins can read for dashboard
-      allow update, delete: if false; // Only admins via console
+      allow read: if isStaff();
+      allow update, delete: if false;
     }
 
-    // System Counters (used for IDs etc): Auth read/write
-    match /sys_counters/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Allow anyone to subscribe to newsletter
+    // Newsletter subscriptions — public create, staff read only
     match /newsletter/{document} {
       allow create: if true;
-      allow read: if request.auth != null; // Admins can read for dashboard
+      allow read: if isStaff();
       allow update, delete: if false;
     }
 
-    // Banners: Public read, Admin write
-    match /banners/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // ── System ───────────────────────────────────────────────────────────────
+
+    // System counters (order IDs, etc.) — staff read, admin write only
+    match /sys_counters/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Campaigns: Public read, Admin write
-    match /campaigns/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Blog Posts: Public read, Admin write
-    match /posts/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Blog Posts (new collection): Public read, Admin write
-    match /blog_posts/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // PDFs: Public read for active public PDFs, Admin write
-    match /pdfs/{document} {
-      // Public can read active public PDFs
-      allow read: if resource.data.active == true && resource.data.isPublic == true;
-      // Authenticated users can read all active PDFs (including restricted ones)
-      allow read: if request.auth != null && resource.data.active == true;
-      // Only admins can write
-      allow write: if request.auth != null;
-    }
-
-    // PDF Downloads: Track all downloads, Admin read
-    match /pdf_downloads/{document} {
-      allow create: if true; // Anyone can log downloads
-      allow read: if request.auth != null; // Only admins can read logs
-      allow update, delete: if false; // Immutable logs
-    }
-
-    // Admin Logs: Admin read/write, No public access
+    // Admin audit logs — staff read, staff write (system writes on actions)
+    // Note: write is needed so the app can log actions. Ideally done via Cloud Function.
     match /admin_logs/{document} {
-      allow read, write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isStaff();
     }
 
-    // Users Collection: Authenticated users can read/write (for profile sync)
-    match /users/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Site Configuration: Public read, Admin write
+    // Site Configuration — public read, admin write
     match /config/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Brands: Public read, Admin write
+    // System metadata (seed version, etc.) — admin only
+    match /_metadata/{document} {
+      allow read: if isStaff();
+      allow write: if isSuperAdmin();
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    //
+    // C2 FIX: Users can only read/update their own profile.
+    // SUPER_ADMIN can manage any user (role changes, deactivation, etc.)
+    // Staff can read all user docs (for assigning orders, etc.)
+    //
+    match /users/{userId} {
+      // Each user can read and update their own profile
+      allow read, update: if isAuth() && request.auth.uid == userId;
+      // Staff can read all users (for order management, CRM, etc.)
+      allow read: if isStaff();
+      // Only SUPER_ADMIN can create or delete users (or change roles)
+      allow create, delete: if isSuperAdmin();
+      // Prevent self-role-escalation: only SUPER_ADMIN can write the 'role' field
+      allow update: if isSuperAdmin();
+    }
+
+    // Customers collection (mirrors users for storefront)
+    match /customers/{customerId} {
+      // Customers can read/update their own record
+      allow read, update: if isAuth() && request.auth.uid == customerId;
+      // Staff can read all customers
+      allow read: if isStaff();
+      // System creates customer records on sign-up (authenticated)
+      allow create: if isAuth();
+      // Only admins can delete
+      allow delete: if isAdmin();
+      
+      // CRM Notes Subcollection
+      match /notes/{noteId} {
+        allow read, write: if isStaff();
+      }
+    }
+
+    // ── Catalogue (C1 FIX) ────────────────────────────────────────────────────
+    // Products, banners, blog, categories, etc. — all need ADMIN+ to write
+
+    match /banners/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /campaigns/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /posts/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /blog_posts/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /brands/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Categories: Public read, Admin write
     match /categories/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Products: Public read, Admin write
     match /products/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Product Type Templates: Public read, Admin write
     match /productTypeTemplates/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Channel Commission Rules: Public read, Admin write
-    match /channel_commission_rules/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Pricing Rules: Public read, Admin write
-    match /pricing_rules/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Pricing Strategies: Public read, Admin write (Relaxed for Dev)
-    match /pricing_strategies/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Pricing History: Public read, Admin write (Relaxed for Dev)
-    match /pricing_history/{document} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Customers: Admin read/write, owner read/write
-    match /customers/{document} {
-      allow read, write: if request.auth != null; // Simplified: Trust authenticated users to behave or rely on admin checks in app for now. 
-      // Ideally: allow read, write: if request.auth != null && (request.auth.uid == document || isAdmin());
-    }
-
-    // Orders: Admin read/write, owner read
-    match /orders/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Order Assignments: Operations staff read/write
-    match /orderAssignments/{document} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Order Notes: Operations staff read/write
-    match /orderNotes/{document} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Order Priorities: Operations staff read/write
-    match /orderPriorities/{document} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-
-    // Coupons: Public read (if active), Admin write
     match /coupons/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isManager();
     }
 
-    // Product Kits: Public read, Admin write
     match /productKits/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Approval Requests: Role-based access
-    match /approval_requests/{document} {
-      // Helper function to check user role (would need custom claims in production)
-      function getUserRole() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      }
-      
-      function hasRole(roles) {
-        return request.auth != null && getUserRole() in roles;
-      }
-      
-      // MANAGER and SUPER_ADMIN can read all
-      allow read: if hasRole(['SUPER_ADMIN', 'MANAGER']);
-      
-      // Users can read their own requests
-      allow read: if request.auth != null && resource.data.requestedBy.uid == request.auth.uid;
-      
-      // ADMIN and above can create requests
-      allow create: if hasRole(['SUPER_ADMIN', 'MANAGER', 'ADMIN']);
-      
-      // Only MANAGER and SUPER_ADMIN can approve/reject
-      allow update: if hasRole(['SUPER_ADMIN', 'MANAGER']) && 
-                       request.resource.data.status in ['APPROVED', 'REJECTED'];
-      
-      // Requesters can cancel their own pending requests
-      allow update: if request.auth != null && 
-                       resource.data.requestedBy.uid == request.auth.uid &&
-                       resource.data.status == 'PENDING' &&
-                       request.resource.data.status == 'CANCELLED';
-                       
-      // Allow delete (Strictly for Data Seeder/Cleanup - allow any auth user in dev)
-      allow delete: if request.auth != null;
-    }
-
-    // Expenses: Admin and Manager read/write for financial tracking
-    match /expenses/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Notifications: User-specific access
-    match /notifications/{document} {
-      // Relaxed rule: Allow authenticated users to read notifications
-      // (Originally required resource.data.userId == request.auth.uid, but docs were created without userId)
-      allow read: if request.auth != null;
-      
-      // Allow updates if you own it OR if you are the creator (system)
-      allow update: if request.auth != null;
-      
-      // System can create notifications (authenticated users)
-      allow create: if request.auth != null;
-      
-      // Users can delete their own notifications
-      allow delete: if request.auth != null;
-    }
-
-    // Inventory Ledger: Admin/Ops read/write
-    match /inventory_ledger/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Inventory Balances: Admin/Ops read/write
-    match /inventory_balances/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Purchase Orders: Admin/Ops read/write
-    match /purchase_orders/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Supplier Product Mappings: Admin/Ops read/write
-    match /supplier_product_mappings/{document} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Locations: Public read, Admin write
     match /locations/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // --- WAREHOUSE LAYOUT ---
-    
-    // Warehouses: Public read, Admin write
+    // ── Pricing (Admin only) ──────────────────────────────────────────────────
+
+    match /channel_commission_rules/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /pricing_rules/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /pricing_strategies/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    match /pricing_history/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ── PDFs ─────────────────────────────────────────────────────────────────
+
+    match /pdfs/{document} {
+      // Public PDFs are publicly readable
+      allow read: if resource.data.active == true && resource.data.isPublic == true;
+      // Authenticated users can read all active PDFs
+      allow read: if isAuth() && resource.data.active == true;
+      // Only staff can write
+      allow write: if isStaff();
+    }
+
+    match /pdf_downloads/{document} {
+      allow create: if true; // Anyone can log downloads
+      allow read: if isStaff();
+      allow update, delete: if false;
+    }
+
+    // ── Orders (C3 FIX) ───────────────────────────────────────────────────────
+    //
+    // Customers can read their own orders only.
+    // Staff can read all orders.
+    // Only staff can create/update/delete orders.
+    //
+
+    match /orders/{orderId} {
+      // Customer can read their own orders
+      allow read: if isAuth() && resource.data.customer.uid == request.auth.uid;
+      // Staff can read all orders
+      allow read: if isStaff();
+      // Only staff can create, update, or delete orders
+      allow create, update: if isStaff();
+      // Only SUPER_ADMIN and admins can delete orders
+      allow delete: if isAdmin();
+    }
+
+    match /orderAssignments/{document} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+
+    match /orderNotes/{document} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /orderPriorities/{document} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+
+    // ── Approval Requests ─────────────────────────────────────────────────────
+
+    match /approval_requests/{document} {
+      // Managers and above can read all requests
+      allow read: if isManager();
+      // Users can read their own requests
+      allow read: if isAuth() && resource.data.requestedBy.uid == request.auth.uid;
+      // Admin and above can create requests
+      allow create: if isAdmin();
+      // Only MANAGER+ can approve/reject
+      allow update: if isManager() && request.resource.data.status in ['APPROVED', 'REJECTED'];
+      // Requesters can cancel their own pending requests
+      allow update: if isAuth()
+                    && resource.data.requestedBy.uid == request.auth.uid
+                    && resource.data.status == 'PENDING'
+                    && request.resource.data.status == 'CANCELLED';
+      // Only SUPER_ADMIN can delete (no more open dev delete)
+      allow delete: if isSuperAdmin();
+    }
+
+    // ── Financials ────────────────────────────────────────────────────────────
+
+    match /expenses/{document} {
+      allow read, write: if isManager();
+    }
+
+    // ── Inventory ─────────────────────────────────────────────────────────────
+
+    match /inventory_ledger/{document} {
+      allow read, write: if isStaff();
+    }
+
+    match /inventory_balances/{document} {
+      allow read, write: if isStaff();
+    }
+
+    match /purchase_orders/{document} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+
+    match /supplier_product_mappings/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ── Warehouse Layout ──────────────────────────────────────────────────────
+
     match /warehouses/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Zones: Public read, Admin write
     match /warehouse_zones/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Structures (Racks): Public read, Admin write
     match /warehouse_structures/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Warehouse Locations (Bins): Public read, Admin write
     match /warehouse_locations/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Warehouse Obstacles: Public read, Admin write
     match /warehouse_obstacles/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Warehouse Doors: Public read, Admin write
     match /warehouse_doors/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Warehouse Scale Markers: Public read, Admin write
     match /warehouse_scale_markers/{document} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // Metadata: System metadata (seed version, etc.) - Admin read/write
-    match /_metadata/{document} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    // Media Folders: Public read, Admin write
+    // ── Media ─────────────────────────────────────────────────────────────────
+
     match /media_folders/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isStaff();
     }
 
-    // Media Assets: Public read, Admin write
     match /media_assets/{document} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isStaff();
     }
 
-    // MercadoLibre Items: Admin read/write
+    // ── MercadoLibre ──────────────────────────────────────────────────────────
+
     match /meli_items/{document} {
-      allow read, write: if request.auth != null;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
 
-    // --- ANALYTICS ---
+    // ── Notifications ─────────────────────────────────────────────────────────
 
-    // Search Logs: Public create, Admin read
+    match /notifications/{document} {
+      // Users can read their own notifications
+      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      // Staff can read all
+      allow read: if isStaff();
+      // System (authenticated) can create notifications
+      allow create: if isAuth();
+      // Users can update/delete their own, staff can manage all
+      allow update, delete: if isAuth() && resource.data.userId == request.auth.uid;
+      allow update, delete: if isStaff();
+    }
+
+    // ── Analytics (append-only, public) ───────────────────────────────────────
+
     match /search_logs/{document} {
       allow create: if true;
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow update, delete: if false;
     }
 
-    // Search Clicks: Public create, Admin read
     match /search_clicks/{document} {
       allow create: if true;
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow update, delete: if false;
     }
 
-    // --- COMMERCE ---
+    // ── Commerce: Carts ───────────────────────────────────────────────────────
 
-    // Shopping Carts: 
-    // - Authenticated: Read/Write own cart
-    // - Guest: Read/Write (We will rely on obscure IDs for now, or auth check in app)
-    match /carts/{document} {
-      allow read, write: if true; 
-      // TODO: Tighten this for production to request.auth.uid == document OR resource.data.sessionId == request.resource.data.sessionId
+    match /carts/{cartId} {
+      // Anyone can create a cart (anonymous abandon-cart analytics preserved)
+      allow create: if true;
+      // Only the authenticated owner can read/update/delete their own cart
+      allow read, update, delete: if isAuth() && request.auth.uid == cartId;
     }
+
   }
 }

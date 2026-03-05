@@ -273,12 +273,24 @@ export class OrderQueueComponent implements OnInit {
 
             // Channel filter
             const channelFilter = this.channelFilter();
-            if (channelFilter !== 'all' && order.channel !== channelFilter) {
-                return false;
+            if (channelFilter !== 'all') {
+                if (this.getLegacyChannel(order) !== channelFilter) {
+                    return false;
+                }
             }
 
             return true;
         });
+    }
+
+    getLegacyChannel(order: Order): string {
+        if (!order.sourceChannel) return 'WEB';
+        if (order.sourceChannel === 'storefront') return 'WEB';
+        if (order.sourceChannel === 'pos') return 'POS';
+        if (order.sourceChannel === 'on_behalf') return 'ON_BEHALF';
+        if (order.sourceChannel === 'amazon') return order.fulfillmentType === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+        if (order.sourceChannel === 'mercadolibre') return order.fulfillmentType === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+        return 'WEB';
     }
 
     // Deprecated methods replaced by TableDataSource logic
@@ -467,7 +479,7 @@ export class OrderQueueComponent implements OnInit {
             const date = this.getJsDate(o.createdAt);
             return [
                 escapeCSVField(o.orderNumber),
-                escapeCSVField(o.channel || 'WEB'),
+                escapeCSVField(this.getLegacyChannel(o)),
                 escapeCSVField(date.toLocaleDateString('es-MX')),
                 escapeCSVField(o.customer.name),
                 escapeCSVField(o.customer.email),

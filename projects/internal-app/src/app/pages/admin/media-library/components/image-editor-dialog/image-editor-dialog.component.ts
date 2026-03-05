@@ -3,9 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { MediaAsset } from '../../../../../core/models/media.model';
 import { MediaService } from '../../../../../core/services/media.service';
 import { AppIconComponent } from '../../../../../shared/components/app-icon/app-icon.component';
+
 
 interface ImageAdjustments {
     brightness: number; // 100 default
@@ -49,7 +51,13 @@ export class ImageEditorDialogComponent {
     // SVG State
     svgContent = signal<string>('');
     svgColor = '#000000';
-    sanitizedSvg = computed(() => this.sanitizer.bypassSecurityTrustHtml(this.svgContent()));
+    // SVG content is always sanitized through DOMPurify before bypassing Angular's sanitizer.
+    // DOMPurify strips <script> tags, event handlers (onerror, onclick, etc.) and XSS payloads.
+    sanitizedSvg = computed(() =>
+        this.sanitizer.bypassSecurityTrustHtml(
+            DOMPurify.sanitize(this.svgContent(), { USE_PROFILES: { svg: true, svgFilters: true } })
+        )
+    );
 
     // Image/Crop State
     imgLoaded = false;
@@ -160,7 +168,9 @@ export class ImageEditorDialogComponent {
         if (this.isSaving()) return;
         this.isSaving.set(true);
         try {
-            const blob = new Blob([this.svgContent()], { type: 'image/svg+xml' });
+            // Sanitize SVG before saving back to storage
+            const cleanSvg = DOMPurify.sanitize(this.svgContent(), { USE_PROFILES: { svg: true, svgFilters: true } });
+            const blob = new Blob([cleanSvg], { type: 'image/svg+xml' });
             await this.mediaService.uploadBlob(blob, `edited_${this.asset.filename}`, this.asset.metadata.folderId || null, 'image/svg+xml');
             this.close.emit(true);
         } catch (e) {

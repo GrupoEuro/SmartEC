@@ -149,13 +149,39 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 id: 'customers',
                 title: 'OPERATIONS.SIDEBAR.CUSTOMERS',
                 icon: 'users',
-                route: '/operations/customers'
+                children: [
+                    {
+                        id: 'customer_directory',
+                        title: 'Directory', // Add localization later if needed
+                        icon: 'users',
+                        route: '/operations/customers'
+                    },
+                    {
+                        id: 'customer_segments',
+                        title: 'Segments & Insights', // Priority 4 Roadmap Placeholder
+                        icon: 'pie-chart',
+                        route: '/operations/customers' // Pointing to base for now until priority 4 is built
+                    }
+                ]
             },
             {
                 id: 'promotions',
                 title: 'OPERATIONS.SIDEBAR.PROMOTIONS',
                 icon: 'tag',
                 route: '/operations/promotions'
+            }
+        ]
+    },
+    {
+        id: 'channels',
+        title: 'Marketplaces', // Add translation key later
+        icon: 'shopping-cart',
+        children: [
+            {
+                id: 'mercadolibre',
+                title: 'MercadoLibre Hub',
+                icon: 'shopping-bag', // Best available lucide icon for shopping
+                route: '/operations/channels/mercadolibre'
             }
         ]
     }

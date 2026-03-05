@@ -275,10 +275,23 @@ export class SearchBarComponent {
         this.router.navigate(['/product', product.slug || product.id]);
     }
 
+    /** Escape HTML special chars to prevent XSS from product names stored in Firestore */
+    private escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+    }
+
     highlightMatch(text: string): string {
         const term = this.searchControl.value;
-        if (!term) return text;
-        const re = new RegExp(term, 'gi');
-        return text.replace(re, match => `<strong>${match}</strong>`);
+        const safeText = this.escapeHtml(text);
+        if (!term) return safeText;
+        // Escape the term so special regex chars in user input don't break the regex
+        const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(safeTerm, 'gi');
+        return safeText.replace(re, match => `<strong>${match}</strong>`);
     }
 }

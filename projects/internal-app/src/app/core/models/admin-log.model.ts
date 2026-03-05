@@ -1,7 +1,7 @@
 export interface AdminLog {
     id?: string;
-    action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'REGISTER';
-    module: 'BANNER' | 'BLOG' | 'AUTH';
+    action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'UNAUTHORIZED';
+    module: 'BANNER' | 'BLOG' | 'AUTH' | 'SECURITY';
     targetId?: string;
     details: string;
     timestamp: Date;

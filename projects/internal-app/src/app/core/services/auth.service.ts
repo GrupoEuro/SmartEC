@@ -11,6 +11,9 @@ import { UserProfile } from '../models/user.model';
 import { DevConfigService } from './dev-config.service';
 import { StateRegistryService } from './state-registry.service';
 
+// Roles permitted to use the Internal App. Customers are explicitly excluded.
+const INTERNAL_STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'];
+
 @Injectable({
   providedIn: 'root'
 })
@@ -164,7 +167,6 @@ export class AuthService {
 
     // ORPHAN RECOVERY: If Auth exists but Firestore profile is missing, create it.
     if (!profile) {
-      console.warn('AuthService: Orphaned account detected. Creating fallback profile.', firebaseUser.email);
       const newProfile: UserProfile = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || '',
@@ -179,36 +181,35 @@ export class AuthService {
 
       try {
         await setDoc(doc(this.firestore, 'users', firebaseUser.uid), newProfile);
-        // Also ensure it's in customers if we are mirroring
         await setDoc(doc(this.firestore, 'customers', firebaseUser.uid), newProfile);
-
         profile = newProfile;
         this.logService.log('REGISTER', 'AUTH', `Recovered orphan account: ${newProfile.email}`);
       } catch (err) {
-        console.error('AuthService: Failed to recover orphan account', err);
         this.toast.error('Account error. Please contact support.');
         await signOut(this.auth);
         return;
       }
     }
 
+    // SECURITY: Block customers from accessing the internal app.
+    // If the user is registered as a customer email, deny access entirely.
+    if (!INTERNAL_STAFF_ROLES.includes(profile.role)) {
+      this.toast.error('Access denied. This portal is for internal staff only.');
+      await this.logService.log('UNAUTHORIZED', 'AUTH', `Customer attempted internal app login: ${profile.email} (role: ${profile.role})`);
+      await signOut(this.auth);
+      return;
+    }
+
     if (!profile.isActive) {
-      this.toast.error('Your account has been deactivated.');
+      this.toast.error('Your account has been deactivated. Contact an administrator.');
       await signOut(this.auth);
       return;
     }
 
     await this.logService.log('LOGIN', 'AUTH', `User logged in: ${profile.email} (${profile.role})`);
-
     const name = profile.displayName || profile.email.split('@')[0];
     this.toast.success(`Welcome back, ${name}!`);
-
-    // Redirect based on role
-    if (profile.role === 'CUSTOMER') {
-      this.router.navigate(['/account']);
-    } else {
-      this.router.navigate(['/portal']);
-    }
+    this.router.navigate(['/portal']);
   }
 
   private handleAuthError(error: any, context: string) {

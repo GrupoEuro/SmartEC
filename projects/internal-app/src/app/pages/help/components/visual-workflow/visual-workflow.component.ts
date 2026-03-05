@@ -170,7 +170,7 @@ export class VisualWorkflowComponent implements OnChanges, AfterViewInit {
         mermaid.initialize({
           startOnLoad: false,
           theme: 'dark',
-          securityLevel: 'loose',
+          securityLevel: 'antiscript',
           fontFamily: 'Inter, system-ui, sans-serif',
           ...this.config
         });

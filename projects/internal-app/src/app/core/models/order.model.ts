@@ -1,7 +1,9 @@
 import { Timestamp } from '@angular/fire/firestore';
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'partial';
+export type SocialSource = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'TIKTOK' | 'PHONE' | 'EMAIL' | 'B2B' | 'WALK_IN' | 'OTHER';
+export type ShippingMethod = 'STORE_PICKUP' | 'LOCAL_DELIVERY' | 'NATIONAL_CARRIER' | 'EXPRESS' | 'FEDEX' | 'DHL' | 'ESTAFETA' | 'AMAZON_CARRIER' | 'MELI_CARRIER';
 
 export interface OrderItem {
     productId: string;
@@ -29,11 +31,12 @@ export interface ShippingAddress {
 }
 
 export interface CustomerInfo {
-    id?: string; // UserId if registered
+    id?: string; // UserId if registered — absent for guest customers
     name: string;
     email: string;
     phone: string;
     rfc?: string; // Mexican Tax ID
+    isGuest?: boolean; // True for social/walk-in customers not in Firebase Auth
 }
 
 export interface OrderHistory {
@@ -72,27 +75,31 @@ export interface Order {
     total: number;
     currency?: string;
 
-    // [NEW] Multi-Channel Support
-    channel?: 'WEB' | 'POS' | 'ON_BEHALF' | 'AMAZON_MFN' | 'AMAZON_FBA' | 'MELI_CLASSIC' | 'MELI_FULL'; // Default: 'WEB'
+    // [NEW] Multi-Channel Support & Architecture
+    sourceChannel?: 'storefront' | 'mercadolibre' | 'amazon' | 'pos' | 'on_behalf';
+    fulfillmentType?: 'merchant' | 'platform'; // 'merchant' (we pack) vs 'platform' (FBA/Meli Full packs)
     externalOrderId?: string; // ID from Amazon/ML (e.g., '114-1234567-1234567')
     shippingLabelUrl?: string; // PDF URL for shipping label from external provider
 
     // [NEW] ON_BEHALF metadata
     metadata?: {
-        enteredBy?: string; // Staff member who created the order
+        enteredBy?: string;        // Staff UID who created the order
+        enteredByName?: string;    // Staff display name
         enteredAt?: Date;
-        source?: 'PHONE' | 'EMAIL' | 'B2B' | 'WALK_IN';
+        source?: SocialSource;     // Where the customer came from
+        sourceNote?: string;       // Free-text note (e.g. "DM on IG @eurollantas")
     };
 
 
     // State
     status: OrderStatus;
     paymentStatus: PaymentStatus;
-    paymentMethod?: 'stripe' | 'paypal' | 'bank_transfer' | 'cash';
+    paymentMethod?: 'stripe' | 'bank_transfer' | 'cash' | 'oxxo' | 'card_link' | 'partial';
     paymentId?: string;
 
     // Shipping
     shippingAddress: ShippingAddress;
+    shippingMethod?: ShippingMethod;
     trackingNumber?: string;
     carrier?: string;
 

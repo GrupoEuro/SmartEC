@@ -5,32 +5,35 @@ import { MercadoPagoConfig, Payment } from 'mercadopago';
 admin.initializeApp();
 const db = admin.firestore();
 
+// ─── MercadoPago Payment Processing ─────────────────────────────────────────
+
 export const processPayment = functions.https.onCall(async (data, context) => {
-    // Enforce authentication
     if (!context.auth) {
-        throw new functions.https.HttpsError(
-            'unauthenticated',
-            'You must be logged in to process a payment.'
-        );
+        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to process a payment.');
     }
 
     const { token, amount, email, description, orderId, installments, paymentMethodId, issuerId } = data;
 
     if (!token || !amount || !email) {
-        throw new functions.https.HttpsError(
-            'invalid-argument',
-            'Missing required payment parameters.'
-        );
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required payment parameters.');
     }
 
-    // Initialize MercadoPago configuration
-    const accessToken = process.env.MP_ACCESS_TOKEN;
+    let accessToken = process.env.MP_ACCESS_TOKEN;
+    try {
+        const integrationsDoc = await db.collection('config').doc('integrations').get();
+        if (integrationsDoc.exists) {
+            const mpConfig = integrationsDoc.data()?.mercadopago || {};
+            if (mpConfig.accessToken) {
+                accessToken = mpConfig.accessToken;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not read MP keys from config/integrations', err);
+    }
+
     if (!accessToken) {
         console.error("Missing MP_ACCESS_TOKEN");
-        throw new functions.https.HttpsError(
-            'internal',
-            'Server configuration error. Missing Access Token.'
-        );
+        throw new functions.https.HttpsError('internal', 'Server configuration error. Missing Access Token.');
     }
 
     const client = new MercadoPagoConfig({ accessToken, options: { timeout: 5000 } });
@@ -44,51 +47,881 @@ export const processPayment = functions.https.onCall(async (data, context) => {
             installments: Number(installments) || 1,
             payment_method_id: paymentMethodId,
             issuer_id: issuerId,
-            payer: {
-                email: email,
-            },
-            metadata: {
-                order_id: orderId || ''
-            }
+            payer: { email },
+            metadata: { order_id: orderId || '' }
         };
 
         const result = await payment.create({ body: paymentData });
 
-        // Update Firestore order with payment status
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: result.status,
                 paymentId: result.id,
                 paymentMethod: result.payment_method_id,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => {
-                console.error("Failed to update order status in Firestore:", err);
-            });
+            }).catch(err => console.error("Failed to update order status:", err));
         }
 
-        return {
-            success: true,
-            status: result.status,
-            paymentId: result.id,
-            statusDetail: result.status_detail
-        };
+        return { success: true, status: result.status, paymentId: result.id, statusDetail: result.status_detail };
 
     } catch (error: any) {
         console.error('MercadoPago Payment Create Error:', error);
-        
+
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: 'rejected',
                 paymentError: error.message || 'Unknown processing error',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => {
-                console.error("Failed to update order rejected status in Firestore:", err);
-            });
+            }).catch(err => console.error("Failed to update rejected status:", err));
         }
 
+        throw new functions.https.HttpsError('internal', error.message || 'Payment processing failed.');
+    }
+});
+
+
+// ─── Firebase Custom Claims: Role Sync ───────────────────────────────────────
+//
+// This function triggers whenever a user document in `users/{uid}` is written.
+// It reads the `role` field and sets it as a Custom Claim on the Firebase Auth
+// token, making `request.auth.token.role` available in all Firestore rules.
+//
+// Valid roles: SUPER_ADMIN | ADMIN | MANAGER | STAFF | CUSTOMER
+//
+
+const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'CUSTOMER'];
+
+export const syncUserClaims = functions.firestore
+    .document('users/{uid}')
+    .onWrite(async (change, context) => {
+        const uid = context.params.uid;
+
+        // Document was deleted — revoke claims
+        if (!change.after.exists) {
+            await admin.auth().setCustomUserClaims(uid, { role: null });
+            console.log(`[Claims] Cleared claims for deleted user: ${uid}`);
+            return;
+        }
+
+        const data = change.after.data();
+        if (!data) return;
+
+        const role: string = VALID_ROLES.includes(data.role) ? data.role : 'CUSTOMER';
+
+        try {
+            await admin.auth().setCustomUserClaims(uid, { role });
+            console.log(`[Claims] Set role='${role}' for uid=${uid}`);
+        } catch (err) {
+            console.error(`[Claims] Failed to set claim for uid=${uid}:`, err);
+        }
+    });
+
+
+// ─── Backfill: Set Custom Claims for All Existing Users ──────────────────────
+//
+// Call this ONE TIME via Firebase Console or CLI after deploying to push Claims
+// to all existing users who had roles set before this function existed.
+// Only callable by SUPER_ADMIN (verified via existing claims or first-run flag).
+//
+
+export const backfillUserClaims = functions.https.onCall(async (data, context) => {
+    // Only allow this to run if the caller is already SUPER_ADMIN
+    // OR if there are no admin claims yet (first-time setup)
+    const callerRole = context.auth?.token?.role;
+    if (callerRole !== 'SUPER_ADMIN') {
         throw new functions.https.HttpsError(
-            'internal',
-            error.message || 'Payment processing failed.'
+            'permission-denied',
+            'Only SUPER_ADMIN can trigger the claims backfill.'
         );
+    }
+
+    const usersSnapshot = await db.collection('users').get();
+    const results: { uid: string; email: string; role: string; status: string }[] = [];
+
+    for (const doc of usersSnapshot.docs) {
+        const userData = doc.data();
+        const uid = doc.id;
+        const role = VALID_ROLES.includes(userData.role) ? userData.role : 'CUSTOMER';
+        const email = userData.email || 'unknown';
+
+        try {
+            await admin.auth().setCustomUserClaims(uid, { role });
+            results.push({ uid, email, role, status: 'ok' });
+        } catch (err: any) {
+            results.push({ uid, email, role, status: `error: ${err.message}` });
+        }
+    }
+
+    console.log(`[Claims Backfill] Processed ${results.length} users.`);
+    return { processed: results.length, results };
+});
+
+
+// ─── SkyDropX PRO: Shipping Integration ───────────────────────────────────────
+//
+// Proxies all SkyDropX PRO API calls — API key never hits the browser.
+//
+// Set these environment variables before deploying (add to .env or Secret Manager):
+//   SKYDROPX_API_KEY           = <from SkyDropX PRO dashboard › Conexiones › API>
+//   SKYDROPX_ORIGIN_NAME       = Importadora Euro
+//   SKYDROPX_ORIGIN_PHONE      = +524441234567
+//   SKYDROPX_ORIGIN_STREET     = Av. Salvador Nava
+//   SKYDROPX_ORIGIN_NUMBER     = 804
+//   SKYDROPX_ORIGIN_COLONIA    = Col. Nuevo Paseo
+//   SKYDROPX_ORIGIN_CITY       = San Luis Potosí
+//   SKYDROPX_ORIGIN_STATE      = San Luis Potosí
+//   SKYDROPX_ORIGIN_ZIPCODE    = 78140
+//   SKYDROPX_ORIGIN_COUNTRY    = MX
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SKYDROPX_BASE = 'https://api.skydropx.com/v1';
+
+async function skydropxHeaders(): Promise<Record<string, string>> {
+    let apiKey = process.env.SKYDROPX_API_KEY;
+    try {
+        const integrationsDoc = await db.collection('config').doc('integrations').get();
+        if (integrationsDoc.exists) {
+            const skydropxConfig = integrationsDoc.data()?.skydropx || {};
+            if (skydropxConfig.apiKey) {
+                apiKey = skydropxConfig.apiKey;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not read SkyDropX API key from config/integrations', err);
+    }
+
+    if (!apiKey) throw new functions.https.HttpsError('internal', 'SkyDropX API key not configured.');
+    return {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    };
+}
+
+/**
+ * Builds the origin address for SkyDropX.
+ * Priority:
+ *   1. config/shipping document in Firestore  (structured, managed from admin panel)
+ *   2. config/website general fields           (phone, email, companyName)
+ *   3. Environment variable fallbacks
+ *   4. Hardcoded defaults (Av. Salvador Nava 704-1)
+ */
+async function originAddress() {
+    let companyName = process.env.SKYDROPX_ORIGIN_NAME || 'Importadora Euro';
+    let phone = process.env.SKYDROPX_ORIGIN_PHONE || '';
+    let email = 'ventas@importadoraeuro.com';
+    let street = process.env.SKYDROPX_ORIGIN_STREET || 'Av. Salvador Nava';
+    let number = process.env.SKYDROPX_ORIGIN_NUMBER || '704-1';
+    let colonia = process.env.SKYDROPX_ORIGIN_COLONIA || 'Col. Nuevo Paseo';
+    let city = process.env.SKYDROPX_ORIGIN_CITY || 'San Luis Potosí';
+    let province = process.env.SKYDROPX_ORIGIN_STATE || 'San Luis Potosí';
+    let zip = process.env.SKYDROPX_ORIGIN_ZIPCODE || '78140';
+
+    try {
+        // 1. Try config/website for company name, phone and email
+        const websiteDoc = await db.collection('config').doc('website').get();
+        if (websiteDoc.exists) {
+            const general = websiteDoc.data()?.general || {};
+            if (general.companyName) companyName = general.companyName;
+            if (general.phone) phone = general.phone;
+            if (general.email) email = general.email;
+        }
+
+        // 2. Try config/shipping for full structured origin address
+        const shippingDoc = await db.collection('config').doc('shipping').get();
+        if (shippingDoc.exists) {
+            const origin = shippingDoc.data()?.origin || {};
+            if (origin.street) street = origin.street;
+            if (origin.number) number = origin.number;
+            if (origin.colonia) colonia = origin.colonia;
+            if (origin.city) city = origin.city;
+            if (origin.province) province = origin.province;
+            if (origin.zip) zip = origin.zip;
+        }
+    } catch (err) {
+        console.warn('[SkyDropX] Could not read Firestore config, using defaults:', err);
+    }
+
+    return {
+        name: companyName,
+        company: companyName,
+        phone,
+        email,
+        address1: `${street} ${number}`,
+        address2: colonia,
+        city,
+        province,
+        zip,
+        country_code: process.env.SKYDROPX_ORIGIN_COUNTRY || 'MX',
+    };
+}
+
+// ── 1. Get Shipping Rates ──────────────────────────────────────────────────────
+// Calls POST /quotations, waits 2.5s for async processing, then fetches rates.
+export const skydropxGetRates = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const { orderId, parcel, addressTo } = data as {
+        orderId?: string;
+        addressTo?: Record<string, any>;
+        parcel: { weight: number; height: number; width: number; length: number };
+    };
+    if (!parcel) throw new functions.https.HttpsError('invalid-argument', 'parcel required.');
+    if (!orderId && !addressTo) throw new functions.https.HttpsError('invalid-argument', 'orderId or addressTo required.');
+
+    let finalAddressTo = addressTo;
+
+    if (orderId && !finalAddressTo) {
+        const orderDoc = await db.collection('orders').doc(orderId).get();
+        if (!orderDoc.exists) throw new functions.https.HttpsError('not-found', 'Order not found.');
+        const order = orderDoc.data()!;
+        const addr = order.shippingAddress;
+
+        finalAddressTo = {
+            name: order.customer?.name || 'Cliente',
+            phone: order.customer?.phone || '',
+            email: order.customer?.email || '',
+            address1: `${addr.street} ${addr.exteriorNumber}`,
+            address2: addr.colonia || '',
+            city: addr.city,
+            province: addr.state,
+            zip: addr.zipCode,
+            country_code: 'MX',
+        };
+    }
+
+    const body = {
+        address_from: await originAddress(),
+        address_to: finalAddressTo,
+        parcel: {
+            mass_unit: 'kg',
+            distance_unit: 'cm',
+            weight: parcel.weight || 5,
+            height: parcel.height || 30,
+            width: parcel.width || 30,
+            length: parcel.length || 20,
+        },
+    };
+
+    try {
+        // Create quotation
+        const quoteRes = await fetch(`${SKYDROPX_BASE}/quotations`, {
+            method: 'POST',
+            headers: await skydropxHeaders(),
+            body: JSON.stringify(body),
+        });
+        const quoteJson = await quoteRes.json() as any;
+        if (!quoteRes.ok) throw new Error(`Quotation failed: ${JSON.stringify(quoteJson)}`);
+
+        const quotationId = quoteJson.data?.id;
+        if (!quotationId) throw new Error('No quotation ID returned from SkyDropX.');
+
+        // SkyDropX processes rates asynchronously — poll after short wait
+        await new Promise(r => setTimeout(r, 2500));
+
+        const ratesRes = await fetch(`${SKYDROPX_BASE}/quotations/${quotationId}`, {
+            headers: await skydropxHeaders(),
+        });
+        const ratesJson = await ratesRes.json() as any;
+
+        // Rates come as JSON:API `included` array
+        const included: any[] = ratesJson.included || [];
+        const rates = included
+            .filter((r: any) => r.type === 'rates')
+            .map((r: any) => ({
+                rateId: r.id,
+                carrier: r.attributes?.carrier || '',
+                serviceName: r.attributes?.service_level_name || r.attributes?.service_name || '',
+                price: parseFloat(r.attributes?.amount || '0'),
+                currency: r.attributes?.currency || 'MXN',
+                estimatedDays: r.attributes?.estimated_days ?? null,
+            }))
+            .sort((a: any, b: any) => a.price - b.price); // cheapest first
+
+        return { quotationId, rates };
+    } catch (err: any) {
+        console.error('[SkyDropX] GetRates error:', err.message);
+        throw new functions.https.HttpsError('internal', `SkyDropX rate error: ${err.message}`);
+    }
+});
+
+// ── 2. Create Shipment + Generate Label (one step) ────────────────────────────
+// Creates a shipment with the selected rate, then auto-updates Firestore order
+// with trackingNumber, carrier, shippingLabelUrl, and sets status = 'shipped'.
+export const skydropxCreateLabel = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const { orderId, rateId } = data as { orderId: string; rateId: string };
+    if (!orderId || !rateId) throw new functions.https.HttpsError('invalid-argument', 'orderId and rateId required.');
+
+    try {
+        // Step A: Create shipment with selected rate
+        const shipRes = await fetch(`${SKYDROPX_BASE}/shipments`, {
+            method: 'POST',
+            headers: await skydropxHeaders(),
+            body: JSON.stringify({ rate_id: rateId, address_from: await originAddress(), metadata: { order_id: orderId } }),
+        });
+        const shipJson = await shipRes.json() as any;
+        if (!shipRes.ok) throw new Error(`Shipment failed: ${JSON.stringify(shipJson)}`);
+
+        const attrs = shipJson.data?.attributes || {};
+        const trackingNumber: string = attrs.tracking_number || '';
+        const carrier: string = attrs.carrier || '';
+        const labelUrl: string = attrs.label_url || '';
+
+        // Auto-update Firestore order
+        await db.collection('orders').doc(orderId).update({
+            trackingNumber,
+            carrier,
+            shippingLabelUrl: labelUrl,
+            shippingMethod: 'NATIONAL_CARRIER',
+            status: 'shipped',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            history: admin.firestore.FieldValue.arrayUnion({
+                status: 'shipped',
+                note: `Guía SkyDropX generada. Carrier: ${carrier}. Tracking: ${trackingNumber}`,
+                timestamp: new Date(),
+                updatedBy: context.auth!.uid,
+            }),
+        });
+
+        console.log(`[SkyDropX] Label created — order: ${orderId}, tracking: ${trackingNumber}`);
+        return { trackingNumber, carrier, labelUrl, shipmentId: shipJson.data?.id };
+
+    } catch (err: any) {
+        console.error('[SkyDropX] CreateLabel error:', err.message);
+        throw new functions.https.HttpsError('internal', `SkyDropX label error: ${err.message}`);
+    }
+});
+
+// ── 3. Get Live Tracking Status ────────────────────────────────────────────────
+export const skydropxGetTracking = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const { trackingNumber } = data as { trackingNumber: string };
+    if (!trackingNumber) throw new functions.https.HttpsError('invalid-argument', 'trackingNumber required.');
+
+    try {
+        const res = await fetch(`${SKYDROPX_BASE}/tracking/${encodeURIComponent(trackingNumber)}`, {
+            headers: await skydropxHeaders(),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(JSON.stringify(json));
+
+        const attrs = json.data?.attributes || {};
+        return {
+            trackingNumber,
+            status: attrs.status || 'unknown',
+            statusDetail: attrs.status_detail || '',
+            estimatedDelivery: attrs.estimated_delivery || null,
+            events: (attrs.tracking_events || []).map((e: any) => ({
+                status: e.status,
+                description: e.description,
+                location: e.location,
+                occurredAt: e.occurred_at,
+            })),
+        };
+    } catch (err: any) {
+        console.error('[SkyDropX] Tracking error:', err.message);
+        throw new functions.https.HttpsError('internal', `SkyDropX tracking error: ${err.message}`);
+    }
+});
+
+// ─── MercadoLibre Integration (OAuth2 & Sync) ──────────────────────────────────
+
+// Get Meli Config helper
+async function getMeliConfig() {
+    const doc = await db.collection('config').doc('integrations').get();
+    if (!doc.exists) throw new Error('Integrations config not found');
+    const config = doc.data()?.meli;
+    if (!config || !config.appId || !config.clientSecret || !config.redirectUri) {
+        throw new Error('MercadoLibre not fully configured in /admin/integrations');
+    }
+    return config;
+}
+
+// 1. Generate Auth URL (Callable)
+export const meliAuthUrl = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    try {
+        const config = await getMeliConfig();
+        // Meli Mexico auth URL
+        const url = `https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=${config.appId}&redirect_uri=${encodeURIComponent(config.redirectUri)}`;
+        return { url };
+    } catch (err: any) {
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// 2. OAuth Callback (HTTP Endpoint)
+// The frontend will redirect here after the user logs in to Meli.
+export const meliCallback = functions.https.onRequest(async (req, res) => {
+    // CORS headers just in case
+    res.set('Access-Control-Allow-Origin', '*');
+
+    const code = req.query.code as string;
+    if (!code) {
+        res.status(400).send('Missing authorization code');
+        return;
+    }
+
+    try {
+        const config = await getMeliConfig();
+
+        // Exchange code for tokens
+        const bodyParams = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: config.appId,
+            client_secret: config.clientSecret,
+            code: code,
+            redirect_uri: 'https://us-central1-tiendapraxis.cloudfunctions.net/meliCallback'
+        });
+
+        console.log(`[Meli] Exchanging token with body: ${bodyParams.toString()}`);
+
+        const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            },
+            body: bodyParams.toString()
+        });
+
+        const tokenData = await tokenRes.json() as any;
+        if (!tokenRes.ok) {
+            console.error('Meli Token Error:', tokenData);
+            res.status(500).send(`Failed to exchange token: ${JSON.stringify(tokenData)}`);
+            return;
+        }
+
+        // Save tokens to Firestore
+        const expiresAt = Date.now() + (tokenData.expires_in * 1000); // Usually 21600 seconds (6 hours)
+
+        await db.collection('config').doc('integrations').set({
+            meli: {
+                accessToken: tokenData.access_token,
+                refreshToken: tokenData.refresh_token,
+                expiresAt: expiresAt,
+                userId: tokenData.user_id,
+                connected: true
+            }
+        }, { merge: true });
+
+        console.log('[Meli] Successfully authenticated and saved tokens for user:', tokenData.user_id);
+
+        // Redirect back to the admin integrations page
+        res.redirect(`${req.headers.origin || 'http://localhost:4300'}/admin/settings/integrations?meli_success=true`);
+
+    } catch (err: any) {
+        console.error('[Meli] Callback error:', err);
+        res.status(500).send(`Internal Server Error: ${err.message}`);
+    }
+});
+
+// 3. Refresh Token (Scheduled Cron Job - Every 4 hours)
+export const meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').onRun(async (context) => {
+    console.log('[Meli] Running scheduled token refresh...');
+    try {
+        const config = await getMeliConfig();
+        if (!config.refreshToken) {
+            console.log('[Meli] No refresh token available. Skipping.');
+            return null;
+        }
+
+        const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            },
+            body: new URLSearchParams({
+                grant_type: 'refresh_token',
+                client_id: config.appId,
+                client_secret: config.clientSecret,
+                refresh_token: config.refreshToken
+            }).toString()
+        });
+
+        const tokenData = await tokenRes.json() as any;
+        if (!tokenRes.ok) {
+            console.error('[Meli] Scheduled refresh failed:', tokenData);
+            // Optionally flag connected as false if refresh fails permanently
+            if (tokenData.error === 'invalid_grant') {
+                await db.collection('config').doc('integrations').set({
+                    meli: { connected: false }
+                }, { merge: true });
+            }
+            return null;
+        }
+
+        const expiresAt = Date.now() + (tokenData.expires_in * 1000);
+
+        await db.collection('config').doc('integrations').set({
+            meli: {
+                accessToken: tokenData.access_token,
+                refreshToken: tokenData.refresh_token, // Sometimes Meli returns a new refresh token
+                expiresAt: expiresAt,
+                connected: true
+            }
+        }, { merge: true });
+
+        console.log('[Meli] Successfully refreshed tokens automatically.');
+        return null;
+
+    } catch (err: any) {
+        console.error('[Meli] Scheduled refresh error:', err);
+        return null;
+    }
+});
+
+// 4. Sync Orders (Callable)
+// Syncs orders from last sync date to now, using a date cursor for accuracy.
+export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = configDoc.data()?.meli;
+
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            throw new Error('MercadoLibre is not connected or missing tokens.');
+        }
+
+        // Use lastSyncDate cursor to get only new orders since last run
+        const lastSyncDate = meliConfig.lastSyncDate
+            ? new Date(meliConfig.lastSyncDate)
+            : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default: last 7 days
+
+        const dateFrom = lastSyncDate.toISOString().replace('.000Z', '.000-00:00');
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50&order.date_created.from=${encodeURIComponent(dateFrom)}`;
+        console.log(`[Meli] Syncing orders since: ${dateFrom}`);
+
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${meliConfig.accessToken}`
+            }
+        });
+
+        const json = await res.json() as any;
+        if (!res.ok) {
+            console.error('[Meli] Sync Orders Error:', json);
+            throw new Error(JSON.stringify(json));
+        }
+
+        const meliOrders = json.results || [];
+
+        // Fetch shipments in parallel using individual GET /shipments/{id}
+        const shipmentsMap: any = {};
+        await Promise.all(
+            meliOrders
+                .filter((mo: any) => mo.shipping?.id)
+                .map(async (mo: any) => {
+                    try {
+                        const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                            headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        });
+                        if (sRes.ok) {
+                            const sData = await sRes.json();
+                            shipmentsMap[mo.shipping.id] = sData;
+                        }
+                    } catch (e) { /* skip */ }
+                })
+        );
+
+        let importedCount = 0;
+
+        for (const mo of meliOrders) {
+            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+            const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
+
+            // Determine order status mapping
+            let internalStatus = 'pending';
+            if (mo.status === 'paid') internalStatus = 'processing';
+            const hasDeliveredTag = mo.tags && mo.tags.includes('delivered');
+            const hasNotDeliveredTag = mo.tags && mo.tags.includes('not_delivered');
+            const realShippingStatus = shipData?.status || mo.shipping?.status;
+
+            if (hasNotDeliveredTag || realShippingStatus === 'shipped') internalStatus = 'shipped';
+            if (hasDeliveredTag || realShippingStatus === 'delivered') internalStatus = 'delivered';
+            if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled') internalStatus = 'cancelled';
+
+            const isMeliFull = shipData?.logistic_type === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
+            const fType = isMeliFull ? 'platform' : 'merchant';
+
+            // Construct Eurollantas Order object
+            const newOrder = {
+                id: `meli_${mo.id}`,
+                orderNumber: `ML-${mo.id}`,
+                sourceChannel: 'mercadolibre',
+                fulfillmentType: fType,
+                shippingId: mo.shipping?.id ? String(mo.shipping.id) : '',
+                externalOrderId: String(mo.id),
+                customer: {
+                    id: `ml_${mo.buyer?.id}`,
+                    name: mo.buyer?.nickname || 'Meli Buyer',
+                    email: `${mo.buyer?.id}@mercadolibre.com`,
+                    isGuest: true
+                },
+                status: internalStatus,
+                items: mo.order_items.map((item: any) => ({
+                    productId: item.item.id,
+                    name: item.item.title,
+                    price: item.unit_price,
+                    quantity: item.quantity,
+                    sku: item.item.seller_sku || ''
+                })),
+                total: mo.total_amount,
+                subtotal: mo.total_amount,
+                marketplaceFee: mo.order_items.reduce((acc: number, val: any) => acc + (val.sale_fee || 0), 0),
+                paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
+                shippingAddress: {
+                    street: 'Meli fulfillment or direct shipping',
+                    exteriorNumber: '',
+                    city: mo.buyer?.nickname || 'Meli Buyer',
+                    state: '',
+                    zipCode: '',
+                    country: 'MX'
+                },
+                createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            await orderRef.set(newOrder, { merge: true });
+            importedCount++;
+        }
+
+        // Save lastSyncDate cursor to Firestore
+        await db.collection('config').doc('integrations').set({
+            meli: { lastSyncDate: new Date().toISOString() }
+        }, { merge: true });
+
+        console.log(`[Meli] Successfully synced ${importedCount} orders since ${dateFrom}.`);
+        return { success: true, imported: importedCount, totalProcessed: meliOrders.length, syncedFrom: dateFrom };
+
+    } catch (err: any) {
+        console.error('[Meli] Sync Orders failed:', err);
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// 5. Analyze Historical Sync (Callable)
+// Returns the exact count of historical orders available on MercadoLibre
+export const meliAnalyzeHistoricalSync = functions.runWith({ timeoutSeconds: 60 }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = configDoc.data()?.meli;
+
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            throw new Error('MercadoLibre is not connected or missing tokens.');
+        }
+
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&limit=1`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(JSON.stringify(json));
+
+        const totalRecords = json.paging?.total || 0;
+        return { success: true, totalRecords };
+
+    } catch (err: any) {
+        console.error('[Meli] Analyze Historical Sync failed:', err);
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// 6. Sync Historical Orders (Callable)
+// Syncs a specific chunk of historical orders using Chunked Batching Architecture
+export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const offset = data.offset || 0;
+    const limit = data.limit || 50; // max batch operations is 50 for Meli search API
+
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = configDoc.data()?.meli;
+
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            throw new Error('MercadoLibre is not connected or missing tokens.');
+        }
+
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_desc&limit=${limit}&offset=${offset}`;
+        console.log(`[Meli Historical Sync] Fetching batch from Meli: ${url}`);
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(JSON.stringify(json));
+
+        const meliOrders = json.results || [];
+        if (meliOrders.length === 0) {
+            return { success: true, processed: 0, message: 'No more orders to sync.' };
+        }
+
+        // Fetch shipments in parallel using individual GET /shipments/{id}
+        const shipmentsMap: any = {};
+        await Promise.all(
+            meliOrders
+                .filter((mo: any) => mo.shipping?.id)
+                .map(async (mo: any) => {
+                    try {
+                        const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                            headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        });
+                        if (sRes.ok) {
+                            const sData = await sRes.json();
+                            shipmentsMap[mo.shipping.id] = sData;
+                        }
+                    } catch (e) { /* skip */ }
+                })
+        );
+
+        const batch = db.batch();
+
+        for (const mo of meliOrders) {
+            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+            const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
+
+            let internalStatus = 'pending';
+            if (mo.status === 'paid') internalStatus = 'processing';
+            const hasDeliveredTag = mo.tags && mo.tags.includes('delivered');
+            const hasNotDeliveredTag = mo.tags && mo.tags.includes('not_delivered');
+            const realShippingStatus = shipData?.status || mo.shipping?.status;
+
+            if (hasNotDeliveredTag || realShippingStatus === 'shipped') internalStatus = 'shipped';
+            if (hasDeliveredTag || realShippingStatus === 'delivered') internalStatus = 'delivered';
+            if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled') internalStatus = 'cancelled';
+
+            const isMeliFull = shipData?.logistic_type === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
+            const fType = isMeliFull ? 'platform' : 'merchant';
+
+            const newOrder = {
+                id: `meli_${mo.id}`,
+                orderNumber: `ML-${mo.id}`,
+                sourceChannel: 'mercadolibre',
+                fulfillmentType: fType,
+                shippingId: mo.shipping?.id ? String(mo.shipping.id) : '',
+                externalOrderId: String(mo.id),
+                status: internalStatus,
+                items: mo.order_items.map((item: any) => ({
+                    productId: item.item.id,
+                    name: item.item.title,
+                    price: item.unit_price,
+                    quantity: item.quantity,
+                    sku: item.item.seller_sku || ''
+                })),
+                total: mo.total_amount,
+                subtotal: mo.total_amount,
+                marketplaceFee: mo.order_items.reduce((acc: number, val: any) => acc + (val.sale_fee || 0), 0),
+                paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
+                customer: {
+                    id: `ml_${mo.buyer?.id}`,
+                    name: mo.buyer?.nickname || 'Meli Buyer',
+                    email: mo.buyer?.email || `${mo.buyer?.id}@mercadolibre.com`,
+                    isGuest: true
+                },
+                shippingAddress: {
+                    street: 'Meli fulfillment or direct shipping',
+                    exteriorNumber: '',
+                    city: mo.buyer?.nickname || 'Meli Buyer',
+                    state: '',
+                    zipCode: '',
+                    country: 'MX'
+                },
+                createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Upsert the order
+            batch.set(orderRef, newOrder, { merge: true });
+        }
+
+        await batch.commit();
+
+        console.log(`[Meli Historical Sync] Batched ${meliOrders.length} orders. Offset: ${offset}`);
+        return { success: true, processed: meliOrders.length, hasMore: (offset + limit) < (json.paging?.total || 0) };
+
+    } catch (err: any) {
+        console.error('[Meli Historical Sync] Failed:', err);
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// 7. Temporary Debug Endpoint to Check Order JSON Payload Structure
+export const testMeliApi = functions.runWith({ timeoutSeconds: 120 }).https.onRequest(async (req, res) => {
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = configDoc.data()?.meli;
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            res.status(400).send('MercadoLibre not configured.');
+            return;
+        }
+
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&limit=10&offset=0`;
+        const mRes = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+        const json = await mRes.json() as any;
+        const orders = json.results || [];
+
+        // Return the raw shipping object from the first few orders
+        const shippingSamples = orders.slice(0, 3).map((o: any) => ({
+            order_id: o.id,
+            status: o.status,
+            tags: o.tags,
+            shipping: o.shipping
+        }));
+
+        // Also fetch one individual shipment to check structure
+        let individualShipment = null;
+        if (orders[0]?.shipping?.id) {
+            const sRes = await fetch(`https://api.mercadolibre.com/shipments/${orders[0].shipping.id}`, {
+                headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+            });
+            individualShipment = await sRes.json();
+        }
+
+        res.json({ success: true, shippingSamples, individualShipment });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// 8. Get Meli Shipping Label (Callable)
+// MercadoLibre only allows getting labels for Meli Classic (merchant fulfilled) orders.
+export const meliGetShippingLabel = functions.runWith({ timeoutSeconds: 60 }).https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const shippingId = data.shippingId;
+    if (!shippingId) throw new functions.https.HttpsError('invalid-argument', 'shippingId is required');
+
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = configDoc.data()?.meli;
+
+        if (!meliConfig || !meliConfig.accessToken) {
+            throw new Error('MercadoLibre is not connected or missing tokens.');
+        }
+
+        const url = `https://api.mercadolibre.com/shipment_labels?shipment_ids=${shippingId}&response_type=pdf`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+
+        if (!res.ok) {
+            const errJson = await res.json() as any;
+            throw new Error(errJson.message || 'Failed to fetch shipping label from MercadoLibre.');
+        }
+
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64Pdf = buffer.toString('base64');
+
+        return { success: true, pdfBase64: base64Pdf };
+    } catch (err: any) {
+        console.error('[Meli Label] Failed:', err);
+        throw new functions.https.HttpsError('internal', err.message);
     }
 });

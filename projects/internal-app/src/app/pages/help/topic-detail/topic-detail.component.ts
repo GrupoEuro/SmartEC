@@ -6,13 +6,14 @@ import { HelpContentService } from '../services/help-content.service';
 import { VisualWorkflowComponent } from '../components/visual-workflow/visual-workflow.component';
 import { HelpHeaderComponent } from '../components/help-header/help-header.component';
 import { FeedbackWidgetComponent } from '../components/feedback-widget/feedback-widget.component';
+import { SafeHtmlPipe } from '../../../shared/pipes/safe-html.pipe';
 import { switchMap } from 'rxjs';
 import { TourService } from '../../../core/services/tour.service';
 
 @Component({
   selector: 'app-topic-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, VisualWorkflowComponent, HelpHeaderComponent, FeedbackWidgetComponent],
+  imports: [CommonModule, RouterModule, VisualWorkflowComponent, HelpHeaderComponent, FeedbackWidgetComponent, SafeHtmlPipe],
   template: `
     <div class="topic-page-container">
       <app-help-header></app-help-header>
@@ -57,7 +58,7 @@ import { TourService } from '../../../core/services/tour.service';
 
             <!-- Documentation Content -->
             <article class="prose-content">
-              <div [innerHTML]="topic()!.content"></div>
+              <div [innerHTML]="topic()!.content | safeHtml"></div>
             </article>
 
             <!-- Feedback Widget -->

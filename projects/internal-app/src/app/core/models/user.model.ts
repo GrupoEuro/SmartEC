@@ -11,6 +11,15 @@ export interface CustomerStats {
     totalSpend: number;
     lastOrderDate?: any; // Timestamp
     averageOrderValue: number;
+    pendingBalance?: number; // Total outstanding debt from unpaid or partially paid orders
+}
+
+export interface CustomerNote {
+    id?: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    createdAt: any; // Timestamp
 }
 
 export interface TaxInfo {

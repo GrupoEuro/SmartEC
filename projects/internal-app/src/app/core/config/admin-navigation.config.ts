@@ -137,16 +137,7 @@ export const ADMIN_NAVIGATION: NavItem[] = [
             }
         ]
     },
-    {
-        id: 'integrations',
-        title: 'ADMIN.SIDEBAR.INTEGRATIONS',
-        icon: 'link',
-        route: '/admin/integrations',
-        badge: {
-            text: 'BETA',
-            color: 'bg-indigo-500'
-        }
-    },
+
     {
         id: 'system',
         title: 'ADMIN.SIDEBAR.SECTION_SYSTEM',
@@ -176,6 +167,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 title: 'ADMIN.SIDEBAR.SETTINGS', // Define new key
                 icon: 'settings',
                 route: '/admin/settings'
+            },
+            {
+                id: 'integrations',
+                title: 'ADMIN.SIDEBAR.INTEGRATIONS',
+                icon: 'power-plug',
+                route: '/admin/integrations'
             },
             {
                 id: 'logs',

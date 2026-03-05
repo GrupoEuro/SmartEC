@@ -17,11 +17,22 @@ export interface IntegrationConfig {
     amazon?: {
         clientId: string;
         clientSecret: string;
+        refreshToken?: string;
+        region?: string;
         connected: boolean;
     };
     stripe?: {
         publishableKey: string;
         secretKey: string;
+        connected: boolean;
+    };
+    mercadopago?: {
+        accessToken: string;
+        publicKey: string;
+        connected: boolean;
+    };
+    skydropx?: {
+        apiKey: string;
         connected: boolean;
     };
 }
@@ -41,7 +52,9 @@ export class SecretsService {
         }
         return {
             meli: { appId: '', clientSecret: '', redirectUri: window.location.origin + '/admin/settings/integrations/callback', connected: false },
-            amazon: { clientId: '', clientSecret: '', connected: false }
+            amazon: { clientId: '', clientSecret: '', refreshToken: '', region: 'na', connected: false },
+            mercadopago: { accessToken: '', publicKey: '', connected: false },
+            skydropx: { apiKey: '', connected: false }
         };
     }
 

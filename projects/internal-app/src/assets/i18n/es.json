@@ -3942,17 +3942,18 @@
   },
   "OPERATIONS": {
     "ORDERS": {
+      "ORDERS": "pedidos",
       "CREATE_ORDER": "Crear Pedido",
-      "ORDER_NUMBER": "Order Number",
+      "ORDER_NUMBER": "Núm. Pedido",
       "DATE": "Fecha",
       "TOTAL": "Total",
-      "STATUS_LABEL": "Status Label",
+      "STATUS_LABEL": "Estado",
       "ACTIONS": "Acciones",
-      "QUEUE": "Queue",
+      "QUEUE": "Cola de Pedidos",
       "CUSTOMER": "Cliente",
-      "VIEW_DETAILS": "View Details",
-      "LOADING": "Cargando",
-      "PACKING_SLIP": "Packing Slip",
+      "VIEW_DETAILS": "Ver Detalles",
+      "LOADING": "Cargando pedidos...",
+      "PACKING_SLIP": "Guía de Empaque",
       "ORDER": "Pedido",
       "PRINT_INVOICE": "Print Invoice",
       "PRINT_PACKING_SLIP": "Print Packing Slip",
@@ -3978,9 +3979,11 @@
       "STATUS": {
         "PENDING": "Pendiente",
         "PROCESSING": "En Proceso",
-        "SHIPPED": "Shipped",
-        "DELIVERED": "Delivered",
-        "ALL": "Todos los Pedidos",
+        "SHIPPED": "Enviado",
+        "DELIVERED": "Entregado",
+        "CANCELLED": "Cancelado",
+        "REFUNDED": "Reembolsado",
+        "ALL": "Todos",
         "UNASSIGNED": "Sin Asignar"
       },
       "QUICK_ACTIONS": "Quick Actions",
@@ -4005,10 +4008,10 @@
       "TRACKING_PLACEHOLDER": "Número de rastreo",
       "NOTES_PLACEHOLDER": "Notas adicionales...",
       "DATE_RANGE": "Rango de Fechas",
-      "TODAY": "Today",
-      "THIS_WEEK": "This Week",
-      "THIS_MONTH": "This Month",
-      "CLEAR_FILTERS": "Clear Filters",
+      "TODAY": "Hoy",
+      "THIS_WEEK": "Esta Semana",
+      "THIS_MONTH": "Este Mes",
+      "CLEAR_FILTERS": "Limpiar Filtros",
       "FILTERS": {
         "ALL_PRIORITIES": "All Priorities",
         "STANDARD": "Standard",
@@ -4022,12 +4025,12 @@
       },
       "CHANNELS": {
         "WEB": "Web",
-        "POS": "Pos",
-        "PHONE": "Teléfono",
-        "AMAZON_MFN": "Amazon Mfn",
-        "MELI_CLASSIC": "Meli Classic",
-        "AMAZON_FBA": "Amazon Fba",
-        "MELI_FULL": "Meli Full"
+        "POS": "POS",
+        "PHONE": "Teléfono / Social",
+        "AMAZON_MFN": "Amazon MFN",
+        "MELI_CLASSIC": "Mercado Libre Classic",
+        "AMAZON_FBA": "Amazon FBA",
+        "MELI_FULL": "Mercado Libre Full"
       },
       "EXPORT_CSV": "Exportar CSV",
       "BULK_PRINT_SLIPS": "Bulk Print Slips",
@@ -4044,11 +4047,12 @@
       },
       "UNASSIGNED": "Unassigned",
       "SLA": {
-        "OVERDUE": "Overdue",
-        "ON_TIME": "On Time"
+        "OVERDUE": "🔴 Vencido",
+        "ON_TIME": "✅ A Tiempo",
+        "APPROACHING": "⚠️ Próximo"
       },
-      "NO_ORDERS": "No Orders",
-      "NO_RESULTS": "No Results",
+      "NO_ORDERS": "Sin pedidos",
+      "NO_RESULTS": "No se encontraron resultados con los filtros seleccionados",
       "SEARCH_PLACEHOLDER": "Buscar pedidos...",
       "PRINT_SLIP": "Print Slip",
       "SELECTED_COUNT": "Selected Count",
@@ -4057,6 +4061,34 @@
       "ALL_PRIORITIES": "Todas las Prioridades",
       "ALL_SLA": "Todos los SLA",
       "ALL_CHANNELS": "Todos los Canales",
+      "FILTERS": {
+        "ALL_PRIORITIES": "Todas las Prioridades",
+        "STANDARD": "Estándar",
+        "EXPRESS": "Express",
+        "RUSH": "🚨 Urgente",
+        "ALL_SLA": "Todos los SLA",
+        "ON_TIME": "A Tiempo",
+        "APPROACHING": "Próximo",
+        "OVERDUE": "Vencido",
+        "ALL_CHANNELS": "Todos los Canales"
+      },
+      "TABLE": {
+        "ASSIGNED_TO": "Asignado a",
+        "PRIORITY": "Prioridad",
+        "SLA_STATUS": "SLA"
+      },
+      "BULK_PRINT_SLIPS": "Imprimir Guías",
+      "BULK_UPDATE_STATUS": "Actualizar Estado",
+      "BULK": {
+        "ASSIGN_TO": "Asignar a...",
+        "ASSIGN_ORDERS": "Asignar Pedidos"
+      },
+      "EXPORT_CSV": "Exportar CSV",
+      "CHANNEL": "Canal",
+      "UNASSIGNED": "Sin asignar",
+      "SELECTED_COUNT": "{{ count }} pedido(s) seleccionado(s)",
+      "SEARCH_PLACEHOLDER": "Buscar por # pedido, cliente o email...",
+      "PRINT_SLIP": "Imprimir Guía",
       "HELP": "Ayuda"
     },
     "CUSTOMERS": {

@@ -2,6 +2,14 @@
   "projects": {
     "TiendaPraxis": "tiendapraxis"
   },
-  "targets": {},
+  "targets": {
+    "tiendapraxis": {
+      "hosting": {
+        "internal": [
+          "app-importadora-euro"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

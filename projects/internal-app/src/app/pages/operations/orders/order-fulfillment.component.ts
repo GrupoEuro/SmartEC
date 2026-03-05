@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus, OrderItem } from '../../../core/models/order.model';
@@ -13,11 +13,12 @@ import { OrderPriorityComponent } from '../../../shared/components/order-priorit
 import { PdfGenerationService } from '../../../core/services/pdf-generation.service';
 import { HelpContextButtonComponent } from '../../../shared/components/help-context-button/help-context-button.component';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { SkydropxService, ShippingRate, TrackingResult } from '../../../core/services/skydropx.service';
 
 @Component({
     selector: 'app-order-fulfillment',
     standalone: true,
-    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, OrderAssignmentComponent, OrderNotesComponent, OrderPriorityComponent, HelpContextButtonComponent, AppIconComponent],
+    imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule, TranslateModule, AdminPageHeaderComponent, OrderAssignmentComponent, OrderNotesComponent, OrderPriorityComponent, HelpContextButtonComponent, AppIconComponent],
     templateUrl: './order-fulfillment.component.html',
     styleUrls: ['./order-fulfillment.component.css']
 })
@@ -28,6 +29,7 @@ export class OrderFulfillmentComponent implements OnInit {
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
     private pdfService = inject(PdfGenerationService);
+    private skydropx = inject(SkydropxService);
 
     order = signal<Order | undefined>(undefined);
     isLoading = signal(true);
@@ -44,6 +46,22 @@ export class OrderFulfillmentComponent implements OnInit {
 
     // Print mode
     isPrintMode = signal(false);
+
+    // ── SkyDropX Shipping Panel ────────────────────────────────────────────────
+    showShippingPanel = signal(false);
+    isLoadingRates    = signal(false);
+    isGeneratingLabel = signal(false);
+    isLoadingTracking = signal(false);
+    rates             = signal<ShippingRate[]>([]);
+    selectedRateId    = signal<string | null>(null);
+    quotationId       = signal<string | null>(null);
+    trackingResult    = signal<TrackingResult | null>(null);
+
+    // Parcel dimensions (defaults for a typical tire)
+    parcelWeight = 5;
+    parcelHeight = 30;
+    parcelWidth  = 30;
+    parcelLength = 20;
 
     constructor() {
         this.statusForm = this.fb.group({
@@ -248,6 +266,87 @@ export class OrderFulfillmentComponent implements OnInit {
         this.router.navigate(['/operations/orders']);
     }
 
+    // ── SkyDropX Methods ──────────────────────────────────────────────────────
+
+    getRates() {
+        const order = this.order();
+        if (!order?.id) return;
+
+        this.isLoadingRates.set(true);
+        this.rates.set([]);
+        this.selectedRateId.set(null);
+
+        this.skydropx.getRates({
+            orderId: order.id,
+            parcel: {
+                weight: this.parcelWeight,
+                height: this.parcelHeight,
+                width:  this.parcelWidth,
+                length: this.parcelLength,
+            }
+        }).subscribe({
+            next: (result) => {
+                this.quotationId.set(result.quotationId);
+                this.rates.set(result.rates);
+                if (result.rates.length === 0) {
+                    this.toast.error('No rates available for this destination. Check the shipping address.');
+                } else {
+                    this.selectedRateId.set(result.rates[0].rateId); // pre-select cheapest
+                    this.toast.success(`${result.rates.length} shipping rates found`);
+                }
+                this.isLoadingRates.set(false);
+            },
+            error: (err) => {
+                console.error('SkyDropX rates error', err);
+                this.toast.error('Could not fetch rates. Check that the SkyDropX API key is configured.');
+                this.isLoadingRates.set(false);
+            }
+        });
+    }
+
+    generateLabel() {
+        const order = this.order();
+        const rateId = this.selectedRateId();
+        if (!order?.id || !rateId) return;
+
+        this.isGeneratingLabel.set(true);
+
+        this.skydropx.createLabel(order.id, rateId).subscribe({
+            next: (result) => {
+                this.toast.success(`Guía generada ✓ — Tracking: ${result.trackingNumber}`);
+                this.isGeneratingLabel.set(false);
+                this.showShippingPanel.set(false);
+                this.loadOrder(order.id!); // reload to show updated status + tracking
+            },
+            error: (err) => {
+                console.error('SkyDropX label error', err);
+                this.toast.error('Label generation failed. See console for details.');
+                this.isGeneratingLabel.set(false);
+            }
+        });
+    }
+
+    viewLiveTracking() {
+        const order = this.order();
+        if (!order?.trackingNumber) return;
+
+        this.isLoadingTracking.set(true);
+        this.skydropx.getTracking(order.trackingNumber).subscribe({
+            next: (result) => {
+                this.trackingResult.set(result);
+                this.isLoadingTracking.set(false);
+            },
+            error: () => {
+                this.toast.error('Could not load tracking information.');
+                this.isLoadingTracking.set(false);
+            }
+        });
+    }
+
+    getCarrierColor(carrier: string): string {
+        return this.skydropx.getCarrierColor(carrier);
+    }
+
     // Utilities
     getStatusBadgeClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
@@ -315,9 +414,19 @@ export class OrderFulfillmentComponent implements OnInit {
         if (!order) return 'MAIN';
 
         // Determine fulfillment location based on channel
-        if (order.channel === 'AMAZON_FBA') return 'AMAZON_FBA';
-        if (order.channel === 'MELI_FULL') return 'MELI_FULL';
+        if (order.sourceChannel === 'amazon' && order.fulfillmentType === 'platform') return 'AMAZON_FBA';
+        if (order.sourceChannel === 'mercadolibre' && order.fulfillmentType === 'platform') return 'MELI_FULL';
         return 'MAIN';
+    }
+
+    getLegacyChannel(order: Order): string {
+        if (!order.sourceChannel) return 'WEB'; 
+        if (order.sourceChannel === 'storefront') return 'WEB';
+        if (order.sourceChannel === 'pos') return 'POS';
+        if (order.sourceChannel === 'on_behalf') return 'ON_BEHALF';
+        if (order.sourceChannel === 'amazon') return order.fulfillmentType === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+        if (order.sourceChannel === 'mercadolibre') return order.fulfillmentType === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+        return 'WEB';
     }
 
     // Get company info for print

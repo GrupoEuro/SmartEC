@@ -477,7 +477,15 @@ export class OperationalMetricsService {
 
                 periodOrders.forEach(o => {
                     // Normalize channel name
-                    const channelRaw = o.channel || 'WEB'; // Default to web if missing
+                    const getLegacyChannel = (ord: any) => {
+                        if (ord.sourceChannel === 'storefront') return 'WEB';
+                        if (ord.sourceChannel === 'pos') return 'POS';
+                        if (ord.sourceChannel === 'on_behalf') return 'ON_BEHALF';
+                        if (ord.sourceChannel === 'amazon') return ord.fulfillmentType === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+                        if (ord.sourceChannel === 'mercadolibre') return ord.fulfillmentType === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+                        return 'WEB';
+                    };
+                    const channelRaw = getLegacyChannel(o);
                     const channel = channelRaw.toUpperCase().replace('_', ' ');
 
                     const current = channelMap.get(channel) || { revenue: 0, count: 0 };

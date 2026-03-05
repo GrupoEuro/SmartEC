@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where } from '@angular/fire/firestore';
-import { Observable, from, BehaviorSubject } from 'rxjs';
-import { map, shareReplay } from 'rxjs/operators';
-import { UserProfile, UserRole } from '../models/user.model';
+import { Firestore, collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where, orderBy } from '@angular/fire/firestore';
+import { Observable, from, BehaviorSubject, throwError } from 'rxjs';
+import { map, shareReplay, catchError } from 'rxjs/operators';
+import { UserProfile, UserRole, CustomerNote } from '../models/user.model';
 
 @Injectable({
     providedIn: 'root'
@@ -126,6 +126,44 @@ export class UserManagementService {
             stats: data['stats'],
             shippingAddress: data['shippingAddress']
         };
+    }
+
+    // ── CRM Features ────────────────────────────────────────────────────────
+    
+    getCustomerNotes(uid: string): Observable<CustomerNote[]> {
+        const notesRef = collection(this.firestore, `customers/${uid}/notes`);
+        const q = query(notesRef, orderBy('createdAt', 'desc'));
+        return from(getDocs(q)).pipe(
+            map(snapshot => {
+                return snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        text: data['text'],
+                        authorId: data['authorId'],
+                        authorName: data['authorName'],
+                        createdAt: data['createdAt']?.toDate ? data['createdAt'].toDate() : new Date()
+                    } as CustomerNote;
+                });
+            }),
+            catchError(err => {
+                console.error("[UserManagementService] getCustomerNotes fatal error:", err);
+                return throwError(() => err);
+            })
+        );
+    }
+
+    addCustomerNote(uid: string, text: string, authorId: string, authorName: string): Observable<string> {
+        const notesRef = collection(this.firestore, `customers/${uid}/notes`);
+        const newNote = {
+            text,
+            authorId,
+            authorName,
+            createdAt: new Date()
+        };
+        return from(addDoc(notesRef, newNote)).pipe(
+            map(docRef => docRef.id)
+        );
     }
 
     // Keep original getUsers for admin/staff management

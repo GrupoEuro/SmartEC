@@ -11,6 +11,7 @@ import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
 import { getFirestore, provideFirestore, initializeFirestore, memoryLocalCache } from '@angular/fire/firestore';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { getStorage, provideStorage } from '@angular/fire/storage';
+import { getFunctions, provideFunctions } from '@angular/fire/functions';
 import { environment } from '../environments/environment';
 
 export function HttpLoaderFactory(http: HttpClient) {
@@ -46,6 +47,10 @@ export const appConfig: ApplicationConfig = {
     provideStorage(() => {
       const app = getApp();
       return getStorage(app);
+    }),
+    provideFunctions(() => {
+      const app = getApp();
+      return getFunctions(app);
     }),
     provideImageLoader(),
     provideAnimations()

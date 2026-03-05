@@ -19,7 +19,9 @@ export const ADMIN_ROUTES: Routes = [
             },
             {
                 path: 'populate-data',
-                loadComponent: () => import('./populate-data/populate-data.component').then(m => m.PopulateDataComponent)
+                loadComponent: () => import('./populate-data/populate-data.component').then(m => m.PopulateDataComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
             },
             {
                 path: 'banners',

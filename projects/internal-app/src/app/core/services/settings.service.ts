@@ -34,6 +34,18 @@ export interface SocialLinks {
     showTiktok: boolean;
 }
 
+export interface ShippingSettings {
+    origin: {
+        street: string;
+        number: string;
+        colonia: string;
+        city: string;
+        province: string;
+        zip: string;
+        country: string;
+    }
+}
+
 export interface WebsiteSettings {
     general: {
         companyName: string;
@@ -57,6 +69,7 @@ export interface WebsiteSettings {
         metaDescription: string;
         ogImage: string;
     };
+    shipping: ShippingSettings;
 }
 
 const DEFAULT_SETTINGS: WebsiteSettings = {
@@ -102,6 +115,17 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
         metaTitle: '{{page_title}} | Importadora Eurollantas',
         metaDescription: 'Importadora Euro: Distribuidor líder de llantas de motocicleta (Michelin, Praxis) y refacciones en México. Envíos nacionales y excelente servicio garantizado.',
         ogImage: 'https://tiendapraxis.web.app/assets/social-share.jpg'
+    },
+    shipping: {
+        origin: {
+            street: 'Av. Salvador Nava',
+            number: '704-1',
+            colonia: 'Col. Nuevo Paseo',
+            city: 'San Luis Potosí',
+            province: 'San Luis Potosí',
+            zip: '78140',
+            country: 'MX'
+        }
     }
 };
 
@@ -113,25 +137,26 @@ export class SettingsService {
     // Use 'as any' only if strict types block doc() creation, but try to avoid if possible.
 
 
-    private get configDocRef() {
-        return doc(this.firestore, 'config/website');
-    }
+    private get configDocRef() { return doc(this.firestore, 'config/website'); }
+    private get shippingDocRef() { return doc(this.firestore, 'config/shipping'); }
 
-    // Observable that loads settings once on subscription (not real-time, but safe)
+    // Observable that loads settings once on subscription
     settings$: Observable<WebsiteSettings> = new Observable<WebsiteSettings>(observer => {
-        getDoc(this.configDocRef).then(snapshot => {
-            if (snapshot.exists()) {
-                const data = snapshot.data();
-                observer.next({
-                    general: { ...DEFAULT_SETTINGS.general, ...data['general'] },
-                    social: { ...DEFAULT_SETTINGS.social, ...data['social'] },
-                    businessHours: { ...DEFAULT_SETTINGS.businessHours, ...data['businessHours'] },
-                    features: { ...DEFAULT_SETTINGS.features, ...data['features'] },
-                    seo: { ...DEFAULT_SETTINGS.seo, ...data['seo'] }
-                });
-            } else {
-                observer.next(DEFAULT_SETTINGS);
-            }
+        Promise.all([
+            getDoc(this.configDocRef),
+            getDoc(this.shippingDocRef)
+        ]).then(([webSnap, shipSnap]) => {
+            const data = webSnap.exists() ? webSnap.data() : {};
+            const shipData = shipSnap.exists() ? shipSnap.data() : {};
+            
+            observer.next({
+                general: { ...DEFAULT_SETTINGS.general, ...data['general'] },
+                social: { ...DEFAULT_SETTINGS.social, ...data['social'] },
+                businessHours: { ...DEFAULT_SETTINGS.businessHours, ...data['businessHours'] },
+                features: { ...DEFAULT_SETTINGS.features, ...data['features'] },
+                seo: { ...DEFAULT_SETTINGS.seo, ...data['seo'] },
+                shipping: { ...DEFAULT_SETTINGS.shipping, ...shipData['shipping'], ...(shipData['origin'] ? { origin: shipData['origin'] } : {}) }
+            });
             observer.complete();
         }).catch(err => {
             console.error('SettingsService Error:', err);
@@ -141,6 +166,17 @@ export class SettingsService {
     }).pipe(shareReplay(1));
 
     async updateSettings(settings: Partial<WebsiteSettings>): Promise<void> {
-        return setDoc(this.configDocRef, settings, { merge: true });
+        const { shipping, ...websiteConfig } = settings;
+        
+        const promises = [];
+        if (Object.keys(websiteConfig).length > 0) {
+            promises.push(setDoc(this.configDocRef, websiteConfig, { merge: true }));
+        }
+        if (shipping) {
+            // Note: Cloud function expects { origin: {...} } at root of config/shipping
+            promises.push(setDoc(this.shippingDocRef, { origin: shipping.origin, updatedAt: new Date().toISOString() }, { merge: true }));
+        }
+        
+        await Promise.all(promises);
     }
 }

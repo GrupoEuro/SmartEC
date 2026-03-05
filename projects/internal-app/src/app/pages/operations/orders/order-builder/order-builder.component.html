@@ -1,119 +1,98 @@
-<app-admin-page-header iconName="shopping-cart" [title]="'New Order' | translate"
-    [subtitle]="customer() ? 'For: ' + (customer()!.displayName || customer()!.email) : 'Select a customer'"
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<app-admin-page-header iconName="shopping-cart" title="New On-Behalf Order"
+    [subtitle]="customer() ? 'For: ' + (customer()?.displayName || customer()?.email || 'Guest') : 'Select or create a customer'"
     variant="operations">
 </app-admin-page-header>
 
-<div class="p-6 h-full overflow-hidden">
-    <div class="order-builder-grid h-full">
+<div class="p-6">
+    <div class="order-builder-grid">
 
-        <!-- Left Column: Products & Cart -->
-        <div class="flex flex-col gap-6 h-full overflow-hidden">
+        <!-- ── LEFT: Products + Cart ──────────────────────────────────── -->
+        <div class="flex flex-col gap-5">
 
             <!-- Product Search -->
             <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
+                <h3 class="text-xs uppercase tracking-widest text-slate-500 font-bold mb-3 flex items-center gap-2">
+                    <app-icon name="package" [size]="14"></app-icon> Products
+                </h3>
                 <div class="relative">
-                    <app-icon name="search" [size]="20"
-                        class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
-                    <input type="text" [formControl]="searchControl" placeholder="Search products by Name and SKU..."
-                        class="w-full bg-slate-800/50 border border-white/10 rounded-lg pl-12 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all">
-
-                    <!-- Search Spinner -->
-                    <div *ngIf="isSearching()" class="absolute right-4 top-1/2 -translate-y-1/2">
-                        <div class="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full">
-                        </div>
+                    <app-icon name="search" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></app-icon>
+                    <input type="text" [formControl]="searchControl" placeholder="Search by name, SKU, or brand..."
+                        class="w-full bg-slate-800/50 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all text-sm">
+                    <div *ngIf="isSearching()" class="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
                     </div>
                 </div>
 
-                <!-- Search Results Dropdown -->
-                <div *ngIf="searchResults().length > 0"
-                    class="mt-4 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                <!-- Results -->
+                <div *ngIf="searchResults().length > 0" class="mt-3 space-y-1.5 max-h-64 overflow-y-auto">
                     <div *ngFor="let product of searchResults()" (click)="addItem(product)"
-                        class="flex items-center gap-3 p-3 bg-slate-800/40 hover:bg-slate-700/60 rounded-lg cursor-pointer transition-all border border-transparent hover:border-indigo-500/30 group">
-                        <img [src]="product.images.main || 'assets/placeholder.png'"
-                            class="w-10 h-10 rounded object-cover bg-slate-800 border border-white/5">
-                        <div class="flex-1">
-                            <div class="font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">{{
-                                product.name }}</div>
-                            <div class="text-xs text-slate-400 font-mono">{{ product.sku }}</div>
+                        class="flex items-center gap-3 p-2.5 bg-slate-800/40 hover:bg-slate-700/60 rounded-lg cursor-pointer transition-all border border-transparent hover:border-indigo-500/40 group">
+                        <img [src]="product.images.main || 'assets/placeholder.png'" class="w-9 h-9 rounded object-cover bg-slate-800 border border-white/5 flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-slate-200 text-sm truncate group-hover:text-indigo-300">{{ product.name['es'] || product.name['en'] || product.name }}</div>
+                            <div class="text-xs text-slate-500 font-mono">{{ product.sku }}</div>
                         </div>
-                        <div class="text-right">
-                            <div class="font-bold text-emerald-400">{{ product.price | currency }}</div>
+                        <div class="text-right flex-shrink-0">
+                            <div class="font-bold text-emerald-400 text-sm">{{ product.price | currency:'MXN':'$' }}</div>
                             <div class="text-xs text-slate-500">Stock: {{ product.stockQuantity || 0 }}</div>
                         </div>
-                        <app-icon name="plus" [size]="16"
-                            class="text-indigo-400 opacity-0 group-hover:opacity-100"></app-icon>
+                        <app-icon name="plus" [size]="14" class="text-indigo-400 opacity-0 group-hover:opacity-100 flex-shrink-0"></app-icon>
                     </div>
                 </div>
             </div>
 
             <!-- Cart Items -->
-            <div
-                class="flex-1 bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 flex flex-col overflow-hidden">
+            <div class="flex-1 bg-slate-900/60 backdrop-blur-md rounded-xl shadow-xl border border-white/10 flex flex-col">
                 <div class="p-4 border-b border-white/10 flex justify-between items-center bg-slate-800/30">
-                    <h3 class="font-bold text-slate-200 flex items-center gap-2">
-                        <app-icon name="list" [size]="18"></app-icon>
+                    <h3 class="font-bold text-slate-200 flex items-center gap-2 text-sm">
+                        <app-icon name="list" [size]="16"></app-icon>
                         Order Items
-                        <span
-                            class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full border border-indigo-500/30">{{
-                            cartItems().length
-                            }}</span>
+                        <span class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full border border-indigo-500/30">{{ cartItems().length }}</span>
                     </h3>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                <div class="flex-1 overflow-y-auto p-3">
                     <table *ngIf="cartItems().length > 0; else emptyCart" class="w-full text-left border-collapse">
-                        <thead
-                            class="text-xs text-slate-400 uppercase font-mono sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10 shadow-sm">
+                        <thead class="text-xs text-slate-400 uppercase font-mono sticky top-0 bg-slate-900/95 z-10">
                             <tr>
-                                <th class="p-3">Product</th>
-                                <th class="p-3 text-center">Qty</th>
-                                <th class="p-3 text-right">Price</th>
-                                <th class="p-3 text-right">Total</th>
-                                <th class="p-3 w-10"></th>
+                                <th class="p-2">Product</th>
+                                <th class="p-2 text-center w-32">Qty</th>
+                                <th class="p-2 text-right">Price</th>
+                                <th class="p-2 text-right">Total</th>
+                                <th class="p-2 w-8"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
                             <tr *ngFor="let item of cartItems()" class="hover:bg-white/5 group transition-colors">
-                                <td class="p-3">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="h-10 w-10 rounded bg-slate-800 flex-shrink-0 overflow-hidden border border-white/10">
-                                            <img [src]="item.productImage || 'assets/placeholders/product-placeholder.png'"
-                                                class="h-full w-full object-cover">
-                                        </div>
+                                <td class="p-2">
+                                    <div class="flex items-center gap-2">
+                                        <img [src]="item.productImage || 'assets/placeholder.png'" class="h-8 w-8 rounded object-cover bg-slate-800 border border-white/10 flex-shrink-0">
                                         <div>
-                                            <div class="font-medium text-slate-200">{{ item.productName }}</div>
+                                            <div class="font-medium text-slate-200 text-sm">{{ item.productName }}</div>
                                             <div class="text-xs text-slate-500 font-mono">{{ item.sku }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="p-3 text-center">
-                                    <div
-                                        class="flex items-center justify-center gap-1 bg-slate-800/50 rounded-lg p-1 w-24 mx-auto border border-white/10">
+                                <td class="p-2 text-center">
+                                    <div class="flex items-center justify-center gap-1 bg-slate-800/50 rounded-lg p-1 w-24 mx-auto border border-white/10">
                                         <button (click)="updateQuantity(item.productId, item.quantity - 1)"
-                                            class="p-1 hover:text-red-400 text-slate-400 transition-colors disabled:opacity-30"
-                                            [disabled]="item.quantity <= 1">
-                                            <app-icon name="minus" [size]="14"></app-icon>
+                                            class="p-0.5 hover:text-red-400 text-slate-400 transition-colors" [disabled]="item.quantity <= 1">
+                                            <app-icon name="minus" [size]="12"></app-icon>
                                         </button>
-                                        <input type="number" [ngModel]="item.quantity"
-                                            (ngModelChange)="updateQuantity(item.productId, $event)"
+                                        <input type="number" [ngModel]="item.quantity" (ngModelChange)="updateQuantity(item.productId, $event)"
                                             class="w-8 bg-transparent text-center text-sm font-bold text-white border-none focus:ring-0 p-0 appearance-none">
                                         <button (click)="updateQuantity(item.productId, item.quantity + 1)"
-                                            class="p-1 hover:text-emerald-400 text-slate-400 transition-colors">
-                                            <app-icon name="plus" [size]="14"></app-icon>
+                                            class="p-0.5 hover:text-emerald-400 text-slate-400 transition-colors">
+                                            <app-icon name="plus" [size]="12"></app-icon>
                                         </button>
                                     </div>
                                 </td>
-                                <td class="p-3 text-right text-slate-400 font-mono text-sm">
-                                    {{ item.price | currency }}
-                                </td>
-                                <td class="p-3 text-right text-white font-bold font-mono text-sm">
-                                    {{ item.subtotal | currency }}
-                                </td>
-                                <td class="p-3 text-center">
-                                    <button (click)="removeItem(item.productId)"
-                                        class="text-slate-500 hover:text-red-500 transition-colors">
-                                        <app-icon name="trash-2" [size]="16"></app-icon>
+                                <td class="p-2 text-right text-slate-400 font-mono text-xs">{{ item.price | currency:'MXN':'$' }}</td>
+                                <td class="p-2 text-right text-white font-bold font-mono text-sm">{{ item.subtotal | currency:'MXN':'$' }}</td>
+                                <td class="p-2">
+                                    <button (click)="removeItem(item.productId)" class="text-slate-600 hover:text-red-500 transition-colors">
+                                        <app-icon name="trash-2" [size]="14"></app-icon>
                                     </button>
                                 </td>
                             </tr>
@@ -121,11 +100,9 @@
                     </table>
 
                     <ng-template #emptyCart>
-                        <div
-                            class="h-full flex flex-col items-center justify-center text-slate-500 opacity-60 min-h-[300px]">
-                            <app-icon name="shopping-cart" [size]="48" class="mb-4"></app-icon>
-                            <p>Cart is empty</p>
-                            <p class="text-sm">Search for products to begin</p>
+                        <div class="h-40 flex flex-col items-center justify-center text-slate-600">
+                            <app-icon name="shopping-cart" [size]="36" class="mb-3"></app-icon>
+                            <p class="text-sm">Search for products above to add items</p>
                         </div>
                     </ng-template>
                 </div>
@@ -133,120 +110,299 @@
 
         </div>
 
-        <!-- Right Column: Summary & Context -->
-        <div class="flex flex-col gap-6">
+        <!-- ── RIGHT: Context + Summary ───────────────────────────────── -->
+        <div class="flex flex-col gap-5">
 
-            <!-- Customer Card -->
-            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-6 shadow-xl border border-white/10">
-                <h3 class="font-bold text-white mb-4 flex items-center gap-2">
-                    <app-icon name="user" [size]="18" class="text-indigo-400"></app-icon> Customer
-                </h3>
-
-                <div *ngIf="customer(); else noCustomer" class="flex items-start gap-4">
-                    <div
-                        class="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-lg border border-indigo-500/30">
-                        {{ (customer()!.displayName || 'G').charAt(0).toUpperCase() }}
-                    </div>
-                    <div class="flex-1 overflow-hidden">
-                        <div class="font-bold text-white truncate">{{ customer()!.displayName || 'Guest' }}</div>
-                        <div class="text-sm text-slate-400 truncate">{{ customer()!.email }}</div>
-                        <div class="text-xs text-slate-500 mt-1">{{ customer()!.phone || 'No Phone' }}</div>
+            <!-- 1. Customer Card -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                        <app-icon name="user" [size]="16" class="text-indigo-400"></app-icon> Customer
+                    </h3>
+                    <!-- Tab: Search / Guest -->
+                    <div *ngIf="!customer()" class="flex gap-1 bg-slate-800/60 p-0.5 rounded-lg border border-white/10">
+                        <button (click)="showGuestForm.set(false)"
+                            class="text-xs px-2.5 py-1 rounded font-semibold transition-all"
+                            [class]="!showGuestForm() ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'">
+                            Search
+                        </button>
+                        <button (click)="showGuestForm.set(true)"
+                            class="text-xs px-2.5 py-1 rounded font-semibold transition-all"
+                            [class]="showGuestForm() ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'">
+                            + Guest
+                        </button>
                     </div>
                 </div>
 
-                <ng-template #noCustomer>
-                    <div class="p-4 border border-dashed border-slate-600 rounded-lg bg-slate-800/30">
-                        <h4 class="text-sm font-bold text-slate-300 mb-3">Find Customer</h4>
-                        <div class="relative">
-                            <app-icon name="search" [size]="16"
-                                class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></app-icon>
-                            <input type="text" [formControl]="customerSearchControl"
-                                placeholder="Search customer by name or email..."
-                                class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+    <!-- Selected Customer Display -->
+    <div *ngIf="customer()">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold border border-indigo-500/30 flex-shrink-0">
+                {{ (customer()?.displayName || 'G').charAt(0).toUpperCase() }}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-white text-sm truncate">
+                    {{ customer()?.displayName || 'Guest' }}
+                    <span *ngIf="!customer()?.uid" class="ml-1 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-full">Guest</span>
+                </div>
+                <div class="text-xs text-slate-400 truncate">{{ customer()?.email || 'No email' }}</div>
+                <div class="text-xs text-slate-500">{{ customer()?.phone || 'No phone' }}</div>
+            </div>
+            <button (click)="clearCustomer()" class="text-slate-600 hover:text-red-400 transition-colors mt-1">
+                <app-icon name="x" [size]="14"></app-icon>
+            </button>
+        </div>
+    </div>
 
-                            <div *ngIf="isSearchingCustomer()" class="absolute right-3 top-1/2 -translate-y-1/2">
-                                <div
-                                    class="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full">
+                <!-- Search registered customers -->
+                <div *ngIf="!customer() && !showGuestForm()">
+                    <div class="relative">
+                        <app-icon name="search" [size]="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></app-icon>
+                        <input type="text" [formControl]="customerSearchControl" placeholder="Name or email..."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none transition-colors">
+                        <div *ngIf="isSearchingCustomer()" class="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div class="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                        </div>
+                    </div>
+                    <div *ngIf="customerSearchResults().length > 0"
+                        class="mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-20 relative">
+                        <div *ngFor="let user of customerSearchResults()" (click)="setCustomer(user)"
+                            class="p-2.5 hover:bg-slate-800 cursor-pointer flex items-center gap-2.5 transition-colors border-b border-slate-800/50 last:border-0">
+                            <div class="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-400 flex-shrink-0 flex items-center justify-center text-xs font-bold">
+                                {{ (user.displayName || user.email || 'U').charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-sm text-white truncate font-medium">{{ user.displayName || 'No Name' }}</div>
+                                <div class="text-xs text-slate-500 truncate">{{ user.email }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div *ngIf="customerSearchResults().length === 0 && customerSearchControl.value && !isSearchingCustomer()"
+                        class="mt-2 text-xs text-center text-slate-500 py-2">
+                        No registered customer found. Use <b class="text-emerald-400">+ Guest</b> to create one.
+                    </div>
+                </div>
+
+                <!-- Guest Customer Form -->
+                <div *ngIf="!customer() && showGuestForm()" class="space-y-2">
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">Name *</label>
+                        <input [(ngModel)]="guestName" type="text" placeholder="Full name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">Phone *</label>
+                        <input [(ngModel)]="guestPhone" type="tel" placeholder="+52 ..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">Email (optional)</label>
+                        <input [(ngModel)]="guestEmail" type="email" placeholder="email@..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <button (click)="confirmGuest()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-sm transition-all">
+                        Confirm Guest Customer
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Social Source -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 mb-3">
+                    <span class="text-base">📍</span> Lead Source
+                </h3>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button *ngFor="let src of socialSources" (click)="selectSource(src.key)"
+                        class="source-chip transition-all"
+                        [ngClass]="[src.color, selectedSource() === src.key ? 'ring-2 ring-offset-1 ring-offset-slate-900 scale-105' : 'opacity-70 hover:opacity-100']"
+                        [style.ring-color]="selectedSource() === src.key ? 'currentColor' : ''">
+                        {{ src.icon }} {{ src.label }}
+                    </button>
+                </div>
+                <input [(ngModel)]="sourceNote" type="text" placeholder='Note (e.g. "DM on IG story post")'
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition-colors">
+            </div>
+
+            <!-- 3. Shipping -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 mb-3">
+                    <app-icon name="truck" [size]="16" class="text-indigo-400"></app-icon> Shipping
+                </h3>
+                <select [(ngModel)]="shippingMethod" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none mb-3">
+                    <option *ngFor="let m of shippingMethodOptions" [value]="m.key">{{ m.label }}</option>
+                </select>
+                <div *ngIf="shippingMethod() !== 'STORE_PICKUP'">
+                    <div *ngIf="shippingAddress()" class="text-xs text-slate-300 leading-relaxed bg-slate-800/50 rounded-lg p-3 border border-white/10 mb-2">
+                        {{ shippingAddress()?.street }} {{ shippingAddress()?.exteriorNumber }}<br>
+                        {{ shippingAddress()?.colonia }}<br>
+                        {{ shippingAddress()?.city }}, {{ shippingAddress()?.state }} {{ shippingAddress()?.zipCode }}
+                        <button (click)="showAddressForm.set(true)" class="block mt-1 text-indigo-400 hover:text-indigo-300 text-xs">Edit</button>
+                    </div>
+                    <button *ngIf="!shippingAddress() && !showAddressForm()" (click)="showAddressForm.set(true)"
+                        class="w-full py-2 border border-dashed border-slate-600 rounded-lg text-slate-400 hover:border-indigo-500 hover:text-indigo-400 text-xs transition-colors">
+                        + Add Shipping Address
+                    </button>
+                    <!-- Inline Address Form -->
+                    <div *ngIf="showAddressForm()" [formGroup]="addressForm" class="space-y-2 mt-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="col-span-2 relative">
+                                <input formControlName="zipCode" placeholder="ZIP Code *" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none uppercase">
+                                <div *ngIf="isLoadingZip()" class="absolute right-2 top-1/2 -translate-y-1/2">
+                                    <div class="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                                </div>
+                            </div>
+                            
+                            <select *ngIf="colonias().length > 0" formControlName="colonia" class="col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                                <option value="" disabled selected>Select Colonia *</option>
+                                <option *ngFor="let c of colonias()" [value]="c">{{ c }}</option>
+                            </select>
+                            <input *ngIf="colonias().length === 0" formControlName="colonia" placeholder="Colonia *" class="col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            
+                            <input formControlName="street" placeholder="Street *" class="col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            <input formControlName="exteriorNumber" placeholder="Ext # *" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            <input formControlName="interiorNumber" placeholder="Int #" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            <input formControlName="city" placeholder="City *" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            <input formControlName="state" placeholder="State *" class="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                            
+                            <input formControlName="references" placeholder="References (Optional)" class="col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button (click)="saveAddress()" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded transition-all">Save</button>
+                            <button (click)="showAddressForm.set(false)" class="flex-1 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded transition-all">Cancel</button>
+                        </div>
+                    </div>
+                    <!-- SkyDropX Rates UI -->
+                    <div *ngIf="shippingAddress() && shippingMethod() !== 'STORE_PICKUP'" class="mt-4 border-t border-white/10 pt-3">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-bold text-slate-300">Live Shipping Rates</h4>
+                            <button (click)="fetchShippingRates()" [disabled]="isLoadingRates() || cartItems().length === 0"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded text-xs font-medium transition-colors disabled:opacity-50">
+                                <app-icon *ngIf="!isLoadingRates()" name="refresh-cw" [size]="12"></app-icon>
+                                <div *ngIf="isLoadingRates()" class="animate-spin h-3 w-3 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
+                                Get Quotes
+                            </button>
+                        </div>
+
+                        <!-- Rates Grid -->
+                        <div *ngIf="shippingRates().length > 0" class="space-y-2 mb-3">
+                            <div *ngFor="let rate of shippingRates()" (click)="selectShippingRate(rate)"
+                                class="flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all"
+                                [ngClass]="selectedRateId() === rate.rateId ? 'bg-indigo-500/10 border-indigo-500' : 'bg-slate-800/50 border-white/5 hover:border-white/20'">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0" [ngClass]="getCarrierColor(rate.carrier)">
+                                        <app-icon name="truck" [size]="14"></app-icon>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-white uppercase">{{ rate.carrier }}</div>
+                                        <div class="text-[10px] text-slate-400">{{ rate.serviceName }} • {{ rate.estimatedDays ? rate.estimatedDays + ' días est.' : '' }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm font-bold text-emerald-400">
+                                    {{ rate.price | currency:'MXN' }}
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Dropdown -->
-                        <div *ngIf="customerSearchResults().length > 0"
-                            class="mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto custom-scrollbar z-20 relative">
-                            <div *ngFor="let user of customerSearchResults()" (click)="setCustomer(user)"
-                                class="p-2 hover:bg-slate-800 cursor-pointer flex items-center gap-3 transition-colors border-b border-slate-800/50 last:border-0">
-                                <div
-                                    class="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex-shrink-0 flex items-center justify-center text-xs font-bold">
-                                    {{ (user.displayName || user.email || 'U').charAt(0).toUpperCase() }}
-                                </div>
-                                <div class="overflow-hidden min-w-0">
-                                    <div class="text-sm text-white truncate font-medium">{{ user.displayName || 'No
-                                        Name' }}</div>
-                                    <div class="text-xs text-slate-500 truncate">{{ user.email }}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div *ngIf="customerSearchResults().length === 0 && customerSearchControl.value && !isSearchingCustomer()"
-                            class="mt-2 text-xs text-center text-slate-500">
-                            No customers found.
+                        <div *ngIf="shippingRates().length === 0 && !isLoadingRates()" class="text-xs text-center text-slate-500 py-4 bg-slate-800/30 rounded-lg border border-dashed border-slate-700 flex flex-col items-center gap-2">
+                            <app-icon name="package" [size]="20" class="text-slate-600 block opacity-50"></app-icon>
+                            Click "Get Quotes" to fetch live carrier rates.
                         </div>
                     </div>
-                </ng-template>
 
-                <!-- Shipping Address Mini-View -->
-                <div *ngIf="shippingAddress()" class="mt-6 pt-4 border-t border-white/10">
-                    <div class="flex justify-between items-center mb-2">
-                        <h4 class="text-xs uppercase text-slate-500 font-bold tracking-wider">Shipping To</h4>
-                        <button class="text-xs text-indigo-400 hover:text-indigo-300">Edit</button>
-                    </div>
-                    <div class="text-sm text-slate-300 leading-relaxed">
-                        {{ shippingAddress()!.street }} {{ shippingAddress()!.exteriorNumber }}<br>
-                        {{ shippingAddress()!.colonia }}<br>
-                        {{ shippingAddress()!.city }}, {{ shippingAddress()!.state }} {{ shippingAddress()!.zipCode }}
+                    <!-- Custom Manual Override -->
+                    <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-white/5">
+                        <label class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Manual Cost Override:</label>
+                        <div class="relative w-32">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">$</span>
+                            <input type="number" [ngModel]="shippingCost()" (ngModelChange)="shippingCost.set($event || 0)" min="0" placeholder="0.00"
+                                class="w-full bg-slate-900 border border-slate-700 rounded pl-5 pr-2 py-1 text-xs text-white focus:border-indigo-500 focus:outline-none placeholder-slate-600">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Order Summary -->
-            <div
-                class="bg-slate-900/60 backdrop-blur-md rounded-xl p-6 shadow-xl border border-white/10 flex flex-col gap-4">
-                <h3 class="font-bold text-white mb-2">Order Summary</h3>
+            <!-- 4. Payment -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 mb-3">
+                    <app-icon name="credit-card" [size]="16" class="text-indigo-400"></app-icon> Payment
+                </h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button *ngFor="let pm of [
+                        {key:'bank_transfer', label:'🏦 Bank Transfer'},
+                        {key:'cash',          label:'💵 Cash'},
+                        {key:'oxxo',          label:'🟡 OXXO'},
+                        {key:'card_link',     label:'💳 Card Link'},
+                        {key:'partial',       label:'🔀 Partial'},
+                        {key:'stripe',        label:'💜 Stripe'}
+                    ]" (click)="selectedPaymentMethod.set($any(pm.key))"
+                        class="py-2 px-3 rounded-lg text-xs font-semibold border transition-all"
+                        [ngClass]="selectedPaymentMethod() === pm.key
+                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'">
+                        {{ pm.label }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. Discount -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10">
+                <h3 class="font-bold text-white text-sm flex items-center gap-2 mb-3">
+                    <app-icon name="tag" [size]="16" class="text-amber-400"></app-icon> Discount
+                </h3>
+                <div class="flex gap-2 mb-2">
+                    <button (click)="discountType.set('percent')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded border transition-all"
+                        [ngClass]="discountType() === 'percent' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'">
+                        % Percent
+                    </button>
+                    <button (click)="discountType.set('fixed')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded border transition-all"
+                        [ngClass]="discountType() === 'fixed' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'">
+                        $ Fixed
+                    </button>
+                </div>
+                <input type="number" min="0" [max]="discountType() === 'percent' ? 100 : subtotal()"
+                    [ngModel]="discountValue()" (ngModelChange)="discountValue.set($event || 0)"
+                    [placeholder]="discountType() === 'percent' ? '0 %' : '0.00'"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none mb-2">
+                <input [(ngModel)]="discountReason" type="text" placeholder="Reason (e.g. VIP, loyalty, negotiated)"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 placeholder-slate-600 focus:border-amber-500 focus:outline-none">
+                <div *ngIf="discountAmount() > 0" class="mt-2 text-xs text-amber-400 font-semibold">
+                    Discount: -{{ discountAmount() | currency:'MXN':'$' }}
+                </div>
+            </div>
+
+            <!-- 6. Order Summary + CTA -->
+            <div class="bg-slate-900/60 backdrop-blur-md rounded-xl p-5 shadow-xl border border-white/10 flex flex-col gap-3">
+                <h3 class="font-bold text-white text-sm mb-1">Summary</h3>
 
                 <div class="flex justify-between text-slate-400 text-sm">
                     <span>Subtotal</span>
-                    <span class="font-mono text-white">{{ subtotal() | currency }}</span>
+                    <span class="font-mono text-white">{{ subtotal() | currency:'MXN':'$' }}</span>
                 </div>
-                <!-- Tax -->
-                <div class="flex justify-between text-slate-400 text-sm">
-                    <span>Tax (16%)</span>
-                    <span class="font-mono text-white">{{ tax() | currency }}</span>
+                <div *ngIf="discountAmount() > 0" class="flex justify-between text-sm">
+                    <span class="text-amber-400">Discount</span>
+                    <span class="font-mono text-amber-400">-{{ discountAmount() | currency:'MXN':'$' }}</span>
                 </div>
-                <!-- Shipping -->
                 <div class="flex justify-between text-slate-400 text-sm">
+                    <span>IVA (16%)</span>
+                    <span class="font-mono text-white">{{ tax() | currency:'MXN':'$' }}</span>
+                </div>
+                <div *ngIf="shippingCost() > 0" class="flex justify-between text-slate-400 text-sm">
                     <span>Shipping</span>
-                    <span class="font-mono text-white">{{ shippingCost() | currency }}</span>
+                    <span class="font-mono text-white">{{ shippingCost() | currency:'MXN':'$' }}</span>
                 </div>
 
-                <div class="border-t border-white/10 pt-4 mt-2">
-                    <div class="flex justify-between items-end">
-                        <span class="font-bold text-white">Total</span>
-                        <div class="text-right">
-                            <span class="text-2xl font-black text-emerald-400 tracking-tight">{{ total() | currency
-                                }}</span>
-                        </div>
-                    </div>
+                <div class="border-t border-white/10 pt-3 flex justify-between items-end">
+                    <span class="font-bold text-white">Total</span>
+                    <span class="text-2xl font-black text-emerald-400 tracking-tight">{{ total() | currency:'MXN':'$' }}</span>
                 </div>
 
                 <button (click)="createOrder()" [disabled]="isSubmitting() || !customer() || cartItems().length === 0"
-                    class="mt-4 w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-bold rounded-lg shadow-lg shadow-indigo-500/20 mb transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-transparent">
-                    <div *ngIf="isSubmitting()"
-                        class="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                    class="mt-2 w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    <div *ngIf="isSubmitting()" class="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
                     <app-icon *ngIf="!isSubmitting()" name="check-circle" [size]="20"></app-icon>
-                    Create Order
+                    {{ isSubmitting() ? 'Creating...' : 'Create Order' }}
                 </button>
             </div>
+
         </div>
     </div>
 </div>

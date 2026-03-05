@@ -94,8 +94,8 @@ export class AdminLayoutComponent {
     this.languageService.toggleLanguage();
   }
 
-  logout() {
-    this.authService.logout();
+  async logout() {
+    await this.authService.logout();
   }
 
   getUserInitials(displayName: string | null | undefined): string {

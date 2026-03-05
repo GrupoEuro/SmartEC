@@ -1,12 +1,17 @@
 /* ========================================
-   SETTINGS PAGE - Specific Styles
+   PREMIUM DARK GLASSMORPHISM SETTINGS PAGE
    ======================================== */
 
 .settings-page {
     min-height: 100vh;
     position: relative;
     padding-bottom: 5rem;
-    /* Space for sticky footer */
+}
+
+.settings-page {
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 5rem;
 }
 
 /* ========================================
@@ -15,42 +20,47 @@
 
 .settings-tabs-nav {
     display: flex;
-    gap: 2rem;
-    border-bottom: 1px solid var(--admin-border-color);
-    margin-bottom: 2rem;
-    padding: 0 0.5rem;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 2.5rem;
+    padding: 0 0.5rem 0.5rem;
     overflow-x: auto;
-    /* Allow scrolling on small screens */
 }
 
 .tab-link {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 0.5rem;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--admin-text-secondary);
+    padding: 0.75rem 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+    color: #94a3b8; /* text-slate-400 */
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
+    backdrop-filter: blur(10px);
 }
 
 .tab-link:hover {
-    color: var(--admin-text-primary);
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
 }
 
 .tab-link.active {
-    color: var(--admin-primary-light);
-    border-bottom-color: var(--admin-primary);
+    color: #3b82f6; /* text-blue-500 */
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
 }
 
 .tab-link app-icon {
     opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: opacity 0.3s;
 }
 
 .tab-link:hover app-icon,
@@ -58,16 +68,16 @@
     opacity: 1;
 }
 
+/* Tab Content Animation */
 .tab-content {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeInSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes fadeIn {
+@keyframes fadeInSlideUp {
     from {
         opacity: 0;
-        transform: translateY(5px);
+        transform: translateY(10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -75,25 +85,61 @@
 }
 
 /* ========================================
-   FEATURE CARDS (Shared Style)
+   GLASS PANELS & CARDS
    ======================================== */
 
-.feature-card {
-    background: var(--admin-bg-surface);
-    border: 1px solid var(--admin-border-color);
-    padding: 1.5rem;
-    border-radius: 12px;
-    transition: all 0.2s;
+.glass-panel,
+.feature-card,
+.social-card,
+.asset-upload-card,
+.hours-preview-card,
+.hours-row,
+.form-section > .form-row > .form-group,
+.form-section > .form-group {
+    background: rgba(15, 23, 42, 0.6); /* Zinc-900 with opacity */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.2);
 }
 
-.feature-card:hover {
-    border-color: var(--admin-border-hover);
-    box-shadow: var(--admin-shadow-md);
-    transform: translateY(-2px);
+.form-section {
+    margin-bottom: 2rem;
 }
+
+.form-section > .form-row > .form-group,
+.form-section > .form-group {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.feature-card { padding: 1.5rem; }
+.social-card { padding: 1.25rem; }
+.asset-upload-card, .hours-preview-card, .hours-row { padding: 1.5rem; }
+
+.glass-panel:hover,
+.feature-card:hover,
+.social-card:hover,
+.asset-upload-card:hover,
+.hours-row:not(.is-closed):hover,
+.form-section > .form-row > .form-group:hover,
+.form-section > .form-group:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+    background: rgba(15, 23, 42, 0.8);
+}
+
+/* Glowing Card Effects based on Context */
+.social-card:hover:has(.text-blue-500) { border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+.social-card:hover:has(.text-pink-500) { border-color: rgba(236, 72, 153, 0.4); box-shadow: 0 0 20px rgba(236, 72, 153, 0.15); }
+.social-card:hover:has(.text-blue-700) { border-color: rgba(29, 78, 216, 0.4); box-shadow: 0 0 20px rgba(29, 78, 216, 0.15); }
+.social-card:hover:has(.text-gray-400) { border-color: rgba(156, 163, 175, 0.4); box-shadow: 0 0 20px rgba(156, 163, 175, 0.15); }
+.social-card:hover:has(.text-red-600)  { border-color: rgba(220, 38, 38, 0.4); box-shadow: 0 0 20px rgba(220, 38, 38, 0.15); }
 
 /* ========================================
-   BUSINESS HOURS SPECIFIC
+   BUSINESS HOURS COMPONENT SPECIFIC
    ======================================== */
 
 .hours-grid {
@@ -106,20 +152,12 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem 1.5rem;
-    background: var(--admin-bg-surface);
-    border: 1px solid var(--admin-border-color);
-    border-radius: 12px;
-    transition: all 0.2s;
-}
-
-.hours-row:hover {
-    border-color: var(--admin-border-hover);
+    margin-bottom: 0 !important;
 }
 
 .hours-row.is-closed {
-    opacity: 0.6;
-    background: var(--admin-bg-elevated);
+    opacity: 0.5;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .day-label {
@@ -128,6 +166,77 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: #e2e8f0;
+}
+
+/* ========================================
+   FORM CONTROLS & INPUTS
+   ======================================== */
+
+.form-control,
+.premium-input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.form-control:hover,
+.premium-input:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.form-control:focus,
+.premium-input:focus {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    outline: none;
+}
+
+/* Transparent Textarea Support */
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+label {
+    color: #cbd5e1; /* text-slate-300 */
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.form-hint {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 0.5rem;
+}
+
+.char-counter {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: normal;
 }
 
 /* ========================================
@@ -145,94 +254,144 @@
 }
 
 .copy-btn {
-    background: var(--admin-bg-elevated);
-    border: 1px solid var(--admin-border-color);
-    color: var(--admin-text-secondary);
-    min-width: 42px;
-    height: 42px;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
 }
 
-.copy-btn:hover {
-    background: var(--admin-bg-surface);
-    color: var(--admin-primary);
-    border-color: var(--admin-primary);
+.copy-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+}
+
+.copy-btn.copied {
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.copy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Email Suggestions */
+.email-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.suggestion-btn {
+    color: #60a5fa;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.suggestion-btn:hover {
+    background: rgba(59, 130, 246, 0.1);
 }
 
 /* ========================================
-   RESPONSIVE OVERRIDES
+   PREVIEW BOX (Image Uploads)
    ======================================== */
-
-@media (max-width: 768px) {
-    .hours-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .hours-inputs {
-        width: 100%;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .time-input-group {
-        width: 100%;
-    }
-}
-
-/* ========================================
-   ASSET UPLOAD STYLES
-   ======================================== */
-
-.asset-upload-card {
-    transition: all 0.2s ease;
-}
-
-.asset-upload-card:hover {
-    border-color: var(--admin-primary-light);
-    box-shadow: var(--admin-shadow-sm);
-}
 
 .preview-box {
     background-image:
-        linear-gradient(45deg, #1f2937 25%, transparent 25%),
-        linear-gradient(-45deg, #1f2937 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #1f2937 75%),
-        linear-gradient(-45deg, transparent 75%, #1f2937 75%);
+        linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.02) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.02) 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-    background-color: var(--admin-bg-main);
-    /* Fallback/Base */
+    background-color: rgba(0,0,0,0.3);
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
 }
 
 /* ========================================
-   CUSTOM BUTTON STYLES (Overrides)
+   BUTTON OVERRIDES
    ======================================== */
 
+.flex.gap-2 > .btn-secondary,
+.flex-1.justify-center.btn-secondary,
 .btn-secondary {
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--admin-text-secondary);
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 0.6rem 1.25rem;
+    font-weight: 500;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: var(--admin-text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.btn-secondary:active {
-    transform: translateY(0);
+.btn-danger-ghost {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    transition: all 0.2s;
+}
+
+.btn-danger-ghost:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+
+/* Grid adjustments */
+.form-row.cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .form-row.cols-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .hours-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .hours-inputs {
+        width: 100%;
+        flex-direction: column;
+    }
+    .time-input-group { width: 100%; }
 }
 
 /* ========================================
@@ -240,51 +399,44 @@
    ======================================== */
 
 .sticky-footer-actions {
-    backdrop-filter: blur(16px);
-    background: rgba(15, 23, 42, 0.8);
-    border-top: 1px solid rgba(59, 130, 246, 0.15);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(11, 15, 25, 0.85); /* Deep dark with high blur */
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+    padding: 1rem 1.5rem;
+    border-radius: 16px 16px 0 0;
 }
 
 .sticky-footer-actions .btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     box-shadow:
-        0 4px 6px -1px rgba(37, 99, 235, 0.1),
-        0 2px 4px -1px rgba(37, 99, 235, 0.06),
+        0 4px 15px rgba(37, 99, 235, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(59, 130, 246, 0.5);
+    border: 1px solid rgba(96, 165, 250, 0.4);
     color: white;
     font-weight: 600;
-    letter-spacing: 0.025em;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.sticky-footer-actions .btn-primary:hover {
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+.sticky-footer-actions .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
     transform: translateY(-2px);
     box-shadow:
-        0 10px 15px -3px rgba(37, 99, 235, 0.3),
-        0 4px 6px -2px rgba(37, 99, 235, 0.15),
-        0 0 20px rgba(59, 130, 246, 0.4);
-    /* Glow effect */
-    border-color: rgba(96, 165, 250, 0.6);
+        0 8px 25px rgba(37, 99, 235, 0.4),
+        0 0 15px rgba(59, 130, 246, 0.3);
+    border-color: rgba(147, 197, 253, 0.6);
 }
 
-.sticky-footer-actions .btn-primary:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-}
-
-/* Specific override for footer secondary button if needed, 
-   but the general one above covers it nicely. */
-.sticky-footer-actions .btn-secondary {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.sticky-footer-actions .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+.sticky-footer-actions .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(59, 130, 246, 0.2);
+    box-shadow: none;
+    border-color: transparent;
 }

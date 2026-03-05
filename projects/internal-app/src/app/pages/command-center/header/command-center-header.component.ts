@@ -117,8 +117,8 @@ export class CommandCenterHeaderComponent implements OnInit {
         this.isPeriodSelectorOpen.set(false);
     }
 
-    logout() {
-        this.authService.logout();
+    async logout() {
+        await this.authService.logout();
     }
 
     refreshData() {

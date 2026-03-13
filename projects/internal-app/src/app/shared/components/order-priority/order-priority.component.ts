@@ -16,6 +16,7 @@ import { Timestamp } from '@angular/fire/firestore';
 export class OrderPriorityComponent implements OnInit, OnDestroy {
     @Input() orderId!: string;
     @Input() orderCreatedAt: any;
+    @Input() nativeSla?: any; // New input for channel-native SLA timestamps
 
     private priorityService = inject(OrderPriorityService);
     private toast = inject(ToastService);
@@ -77,17 +78,19 @@ export class OrderPriorityComponent implements OnInit, OnDestroy {
 
             const currentPriority = this.priority();
             if (currentPriority) {
-                await this.priorityService.updatePriorityLevel(
+                await (this.priorityService as any).updatePriorityLevel(
                     this.orderId,
                     this.selectedPriority(),
-                    createdAt
+                    createdAt,
+                    this.nativeSla
                 );
                 this.toast.success('Priority updated successfully');
             } else {
-                await this.priorityService.setPriority(
+                await (this.priorityService as any).setPriority(
                     this.orderId,
                     this.selectedPriority(),
-                    createdAt
+                    createdAt,
+                    this.nativeSla
                 );
                 this.toast.success('Priority set successfully');
             }

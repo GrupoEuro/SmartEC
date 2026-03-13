@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxGetRates = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
+exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxGetRates = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -535,10 +535,198 @@ exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').o
         return null;
     }
 });
+// Helper: Parse and construct Eurollantas Order object from a Meli Order, Ship Data, and Billing Info
+function parseAndSaveMeliOrder(mo, shipData, billingData) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    let internalStatus = 'pending';
+    if (mo.status === 'paid')
+        internalStatus = 'processing';
+    const hasDeliveredTag = mo.tags && mo.tags.includes('delivered');
+    const hasNotDeliveredTag = mo.tags && mo.tags.includes('not_delivered');
+    const realShippingStatus = (shipData === null || shipData === void 0 ? void 0 : shipData.status) || ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.status);
+    if (hasNotDeliveredTag || realShippingStatus === 'shipped')
+        internalStatus = 'shipped';
+    if (hasDeliveredTag || realShippingStatus === 'delivered')
+        internalStatus = 'delivered';
+    if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled')
+        internalStatus = 'cancelled';
+    const isMeliFull = (shipData === null || shipData === void 0 ? void 0 : shipData.logistic_type) === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
+    const fType = isMeliFull ? 'platform' : 'merchant';
+    // Extract Handling Limit (Native Meli SLA Dispatch Deadline)
+    // MercadoLibre provides this in shipping_option.estimated_handling_limit.date
+    let nativeSla = null;
+    if ((_c = (_b = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _b === void 0 ? void 0 : _b.estimated_handling_limit) === null || _c === void 0 ? void 0 : _c.date) {
+        nativeSla = new Date(shipData.shipping_option.estimated_handling_limit.date);
+    }
+    else if ((_e = (_d = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _d === void 0 ? void 0 : _d.estimated_delivery_time) === null || _e === void 0 ? void 0 : _e.date) {
+        // Fallback to delivery time if handling limit is absent
+        nativeSla = new Date(shipData.shipping_option.estimated_delivery_time.date);
+    }
+    // Build timeline history map
+    const history = [];
+    if (mo.date_created) {
+        history.push({
+            status: 'pending',
+            timestamp: new Date(mo.date_created),
+            note: 'Placed on MercadoLibre',
+            updatedBy: 'system'
+        });
+    }
+    const paidDate = (mo.payments && mo.payments.length > 0 && mo.payments[0].date_approved) || mo.date_closed;
+    if (paidDate) {
+        history.push({
+            status: 'processing',
+            timestamp: new Date(paidDate),
+            note: 'Payment approved',
+            updatedBy: 'system'
+        });
+    }
+    if (shipData && shipData.status_history) {
+        if (shipData.status_history.date_shipped) {
+            history.push({
+                status: 'shipped',
+                timestamp: new Date(shipData.status_history.date_shipped),
+                note: 'Shipped via ' + (shipData.tracking_method || 'MercadoEnvíos'),
+                carrier: shipData.tracking_method || 'MercadoEnvíos',
+                trackingNumber: shipData.tracking_number || '',
+                updatedBy: 'system'
+            });
+        }
+        if (shipData.status_history.date_delivered) {
+            history.push({
+                status: 'delivered',
+                timestamp: new Date(shipData.status_history.date_delivered),
+                note: 'Delivered to buyer',
+                updatedBy: 'system'
+            });
+        }
+    }
+    else if (hasDeliveredTag) {
+        history.push({
+            status: 'delivered',
+            timestamp: mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp(),
+            note: 'Marked delivered via ML tags',
+            updatedBy: 'system'
+        });
+    }
+    if (internalStatus === 'cancelled') {
+        const cd = mo.cancel_detail;
+        // Build a readable note from cancel_detail when available
+        let cancelNote = 'Cancelled on MercadoLibre';
+        if (cd) {
+            const parts = [];
+            if (cd.requested_by)
+                parts.push(`By: ${cd.requested_by}`);
+            if (cd.group)
+                parts.push(`Group: ${cd.group}`);
+            if (cd.code)
+                parts.push(`Code: ${cd.code}`);
+            if (cd.description)
+                parts.push(cd.description);
+            if (parts.length)
+                cancelNote = parts.join(' · ');
+        }
+        history.push({
+            status: 'cancelled',
+            timestamp: (cd === null || cd === void 0 ? void 0 : cd.date)
+                ? new Date(cd.date)
+                : (mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp()),
+            note: cancelNote,
+            updatedBy: 'system'
+        });
+    }
+    return Object.assign(Object.assign({ id: `meli_${mo.id}`, orderNumber: `ML-${mo.id}`, sourceChannel: 'mercadolibre', fulfillmentType: fType, shippingId: ((_f = mo.shipping) === null || _f === void 0 ? void 0 : _f.id) ? String(mo.shipping.id) : '', externalOrderId: String(mo.id), 
+        // Store pack_id separately — since 2024 all MeLi orders belong to a pack.
+        // pack_id is what webhooks typically reference; mo.id is the seller-visible order ID.
+        meliPackId: mo.pack_id ? String(mo.pack_id) : null, customer: {
+            id: `ml_${(_g = mo.buyer) === null || _g === void 0 ? void 0 : _g.id}`,
+            name: mo.buyer ? `${mo.buyer.first_name || ''} ${mo.buyer.last_name || ''}`.trim() || mo.buyer.nickname || 'Meli Buyer' : 'Meli Buyer',
+            email: ((_h = mo.buyer) === null || _h === void 0 ? void 0 : _h.email) || `${(_j = mo.buyer) === null || _j === void 0 ? void 0 : _j.id}@mercadolibre.com`,
+            phone: ((_l = (_k = mo.buyer) === null || _k === void 0 ? void 0 : _k.phone) === null || _l === void 0 ? void 0 : _l.number) || ((_o = (_m = mo.buyer) === null || _m === void 0 ? void 0 : _m.phone) === null || _o === void 0 ? void 0 : _o.area_code) ? `${((_q = (_p = mo.buyer) === null || _p === void 0 ? void 0 : _p.phone) === null || _q === void 0 ? void 0 : _q.area_code) || ''}${((_s = (_r = mo.buyer) === null || _r === void 0 ? void 0 : _r.phone) === null || _s === void 0 ? void 0 : _s.number) || ''}` : '',
+            isGuest: true
+        }, status: internalStatus, history: history, items: (mo.order_items || []).map((item) => ({
+            productId: item.item.id,
+            productName: item.item.title,
+            name: item.item.title,
+            price: item.unit_price,
+            quantity: item.quantity,
+            subtotal: item.unit_price * item.quantity,
+            sku: item.item.seller_sku || ''
+        })), total: mo.total_amount, subtotal: mo.total_amount, marketplaceFee: (mo.order_items || []).reduce((acc, val) => acc + (val.sale_fee || 0), 0), paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending', shippingAddress: (() => {
+            var _a, _b, _c, _d, _e;
+            const recvAddr = shipData === null || shipData === void 0 ? void 0 : shipData.receiver_address;
+            if (recvAddr) {
+                return {
+                    street: recvAddr.street_name || 'N/A',
+                    exteriorNumber: recvAddr.street_number || '',
+                    interiorNumber: '',
+                    // 'comment' field = delivery references (NOT interior number)
+                    references: recvAddr.comment || '',
+                    colonia: ((_a = recvAddr.neighborhood) === null || _a === void 0 ? void 0 : _a.name) || '',
+                    city: ((_b = recvAddr.city) === null || _b === void 0 ? void 0 : _b.name) || ((_c = recvAddr.municipality) === null || _c === void 0 ? void 0 : _c.name) || '',
+                    state: ((_d = recvAddr.state) === null || _d === void 0 ? void 0 : _d.name) || '',
+                    zipCode: recvAddr.zip_code || '',
+                    country: ((_e = recvAddr.country) === null || _e === void 0 ? void 0 : _e.id) || 'MX',
+                    // Recipient name ("Recibe:") from the shipment receiver
+                    recipientName: recvAddr.receiver_name || ''
+                };
+            }
+            return {
+                street: 'MercadoEnvíos',
+                exteriorNumber: '',
+                interiorNumber: '',
+                references: '',
+                city: '',
+                state: '',
+                zipCode: '',
+                country: 'MX',
+                recipientName: ''
+            };
+        })(), createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(), updatedAt: mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp(), nativeSla: nativeSla }, (billingData && !billingData.error ? (() => {
+        var _a, _b, _c, _d, _e;
+        // MeLi returns different shapes in v1 vs v2. Normalize both.
+        const bi = billingData.billing_info || billingData;
+        const rfcNumber = ((_a = bi === null || bi === void 0 ? void 0 : bi.identification) === null || _a === void 0 ? void 0 : _a.number) || null;
+        return {
+            meliInvoice: {
+                name: (bi === null || bi === void 0 ? void 0 : bi.first_name)
+                    ? `${bi.first_name} ${bi.last_name || ''}`.trim()
+                    : null,
+                rfc: rfcNumber,
+                identificationType: ((_b = bi === null || bi === void 0 ? void 0 : bi.identification) === null || _b === void 0 ? void 0 : _b.type) || 'RFC',
+                // Billing address (often different from shipping address)
+                billingAddress: (bi === null || bi === void 0 ? void 0 : bi.address) ? {
+                    street: bi.address.street_name || '',
+                    exteriorNumber: bi.address.street_number || '',
+                    city: ((_c = bi.address.city) === null || _c === void 0 ? void 0 : _c.name) || bi.address.city || '',
+                    state: ((_d = bi.address.state) === null || _d === void 0 ? void 0 : _d.name) || bi.address.state || '',
+                    zipCode: bi.address.zip_code || '',
+                    country: ((_e = bi.address.country) === null || _e === void 0 ? void 0 : _e.id) || 'MX'
+                } : null,
+                // CFDI use code: S01=Sin efectos, G01=Adquisición, G03=Gastos grles
+                cfdiUse: (bi === null || bi === void 0 ? void 0 : bi.cfdi_use) || null,
+                // Taxpayer type: 'Persona Física' | 'Persona Moral'
+                taxpayerType: (bi === null || bi === void 0 ? void 0 : bi.taxpayer_type) || null,
+                activityDescription: (bi === null || bi === void 0 ? void 0 : bi.activity_description) || null,
+                // true = generic RFC, buyer did NOT request nominal invoice
+                isGenericRfc: rfcNumber === 'XAXX010101000' || rfcNumber === 'XEXX010101000'
+            }
+        };
+    })() : {})), (mo.cancel_detail ? {
+        meliCancellation: {
+            requestedBy: mo.cancel_detail.requested_by || null,
+            group: mo.cancel_detail.group || null,
+            code: mo.cancel_detail.code || null,
+            description: mo.cancel_detail.description || null,
+            date: mo.cancel_detail.date ? new Date(mo.cancel_detail.date) : null,
+            originalStatus: mo.status || null // e.g. 'cancelled' | 'invalid'
+        }
+    } : {}));
+}
 // 4. Sync Orders (Callable)
 // Syncs orders from last sync date to now, using a date cursor for accuracy.
 exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall(async (data, context) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b;
     if (!context.auth)
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     try {
@@ -565,78 +753,43 @@ exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall
             throw new Error(JSON.stringify(json));
         }
         const meliOrders = json.results || [];
-        // Fetch shipments in parallel using individual GET /shipments/{id}
+        // Fetch shipments + billing_info in parallel
         const shipmentsMap = {};
+        const billingMap = {};
         await Promise.all(meliOrders
-            .filter((mo) => { var _a; return (_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id; })
             .map(async (mo) => {
+            var _a;
             try {
-                const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                // Shipment
+                if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
+                    const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (sRes.ok)
+                        shipmentsMap[mo.shipping.id] = await sRes.json();
+                }
+                // Billing info (try v2 for Mexico, fallback v1)
+                const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
                 });
-                if (sRes.ok) {
-                    const sData = await sRes.json();
-                    shipmentsMap[mo.shipping.id] = sData;
+                if (bRes.ok)
+                    billingMap[mo.id] = await bRes.json();
+                else {
+                    const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (bRes1.ok)
+                        billingMap[mo.id] = await bRes1.json();
                 }
             }
-            catch (e) { /* skip */ }
+            catch (e) { /* skip non-critical */ }
         }));
         let importedCount = 0;
         for (const mo of meliOrders) {
             const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
             const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
-            // Determine order status mapping
-            let internalStatus = 'pending';
-            if (mo.status === 'paid')
-                internalStatus = 'processing';
-            const hasDeliveredTag = mo.tags && mo.tags.includes('delivered');
-            const hasNotDeliveredTag = mo.tags && mo.tags.includes('not_delivered');
-            const realShippingStatus = (shipData === null || shipData === void 0 ? void 0 : shipData.status) || ((_c = mo.shipping) === null || _c === void 0 ? void 0 : _c.status);
-            if (hasNotDeliveredTag || realShippingStatus === 'shipped')
-                internalStatus = 'shipped';
-            if (hasDeliveredTag || realShippingStatus === 'delivered')
-                internalStatus = 'delivered';
-            if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled')
-                internalStatus = 'cancelled';
-            const isMeliFull = (shipData === null || shipData === void 0 ? void 0 : shipData.logistic_type) === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
-            const fType = isMeliFull ? 'platform' : 'merchant';
-            // Construct Eurollantas Order object
-            const newOrder = {
-                id: `meli_${mo.id}`,
-                orderNumber: `ML-${mo.id}`,
-                sourceChannel: 'mercadolibre',
-                fulfillmentType: fType,
-                shippingId: ((_d = mo.shipping) === null || _d === void 0 ? void 0 : _d.id) ? String(mo.shipping.id) : '',
-                externalOrderId: String(mo.id),
-                customer: {
-                    id: `ml_${(_e = mo.buyer) === null || _e === void 0 ? void 0 : _e.id}`,
-                    name: ((_f = mo.buyer) === null || _f === void 0 ? void 0 : _f.nickname) || 'Meli Buyer',
-                    email: `${(_g = mo.buyer) === null || _g === void 0 ? void 0 : _g.id}@mercadolibre.com`,
-                    isGuest: true
-                },
-                status: internalStatus,
-                items: mo.order_items.map((item) => ({
-                    productId: item.item.id,
-                    name: item.item.title,
-                    price: item.unit_price,
-                    quantity: item.quantity,
-                    sku: item.item.seller_sku || ''
-                })),
-                total: mo.total_amount,
-                subtotal: mo.total_amount,
-                marketplaceFee: mo.order_items.reduce((acc, val) => acc + (val.sale_fee || 0), 0),
-                paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
-                shippingAddress: {
-                    street: 'Meli fulfillment or direct shipping',
-                    exteriorNumber: '',
-                    city: ((_h = mo.buyer) === null || _h === void 0 ? void 0 : _h.nickname) || 'Meli Buyer',
-                    state: '',
-                    zipCode: '',
-                    country: 'MX'
-                },
-                createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            };
+            // Construct Eurollantas Order object using helper
+            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
             await orderRef.set(newOrder, { merge: true });
             importedCount++;
         }
@@ -664,7 +817,7 @@ exports.meliAnalyzeHistoricalSync = functions.runWith({ timeoutSeconds: 60 }).ht
         if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
             throw new Error('MercadoLibre is not connected or missing tokens.');
         }
-        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&limit=1`;
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&limit=1&order.date_created.from=2026-01-01T00:00:00.000-00:00`;
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
         const json = await res.json();
         if (!res.ok)
@@ -680,7 +833,7 @@ exports.meliAnalyzeHistoricalSync = functions.runWith({ timeoutSeconds: 60 }).ht
 // 6. Sync Historical Orders (Callable)
 // Syncs a specific chunk of historical orders using Chunked Batching Architecture
 exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1GB' }).https.onCall(async (data, context) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c;
     if (!context.auth)
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     const offset = data.offset || 0;
@@ -691,7 +844,7 @@ exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1
         if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
             throw new Error('MercadoLibre is not connected or missing tokens.');
         }
-        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_desc&limit=${limit}&offset=${offset}`;
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_desc&limit=${limit}&offset=${offset}&order.date_created.from=2026-01-01T00:00:00.000-00:00`;
         console.log(`[Meli Historical Sync] Fetching batch from Meli: ${url}`);
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
         const json = await res.json();
@@ -701,18 +854,31 @@ exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1
         if (meliOrders.length === 0) {
             return { success: true, processed: 0, message: 'No more orders to sync.' };
         }
-        // Fetch shipments in parallel using individual GET /shipments/{id}
+        // Fetch shipments + billing_info in parallel
         const shipmentsMap = {};
+        const billingMap = {};
         await Promise.all(meliOrders
-            .filter((mo) => { var _a; return (_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id; })
             .map(async (mo) => {
+            var _a;
             try {
-                const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
+                    const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (sRes.ok)
+                        shipmentsMap[mo.shipping.id] = await sRes.json();
+                }
+                const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
                 });
-                if (sRes.ok) {
-                    const sData = await sRes.json();
-                    shipmentsMap[mo.shipping.id] = sData;
+                if (bRes.ok)
+                    billingMap[mo.id] = await bRes.json();
+                else {
+                    const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (bRes1.ok)
+                        billingMap[mo.id] = await bRes1.json();
                 }
             }
             catch (e) { /* skip */ }
@@ -721,62 +887,13 @@ exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1
         for (const mo of meliOrders) {
             const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
             const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
-            let internalStatus = 'pending';
-            if (mo.status === 'paid')
-                internalStatus = 'processing';
-            const hasDeliveredTag = mo.tags && mo.tags.includes('delivered');
-            const hasNotDeliveredTag = mo.tags && mo.tags.includes('not_delivered');
-            const realShippingStatus = (shipData === null || shipData === void 0 ? void 0 : shipData.status) || ((_c = mo.shipping) === null || _c === void 0 ? void 0 : _c.status);
-            if (hasNotDeliveredTag || realShippingStatus === 'shipped')
-                internalStatus = 'shipped';
-            if (hasDeliveredTag || realShippingStatus === 'delivered')
-                internalStatus = 'delivered';
-            if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled')
-                internalStatus = 'cancelled';
-            const isMeliFull = (shipData === null || shipData === void 0 ? void 0 : shipData.logistic_type) === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
-            const fType = isMeliFull ? 'platform' : 'merchant';
-            const newOrder = {
-                id: `meli_${mo.id}`,
-                orderNumber: `ML-${mo.id}`,
-                sourceChannel: 'mercadolibre',
-                fulfillmentType: fType,
-                shippingId: ((_d = mo.shipping) === null || _d === void 0 ? void 0 : _d.id) ? String(mo.shipping.id) : '',
-                externalOrderId: String(mo.id),
-                status: internalStatus,
-                items: mo.order_items.map((item) => ({
-                    productId: item.item.id,
-                    name: item.item.title,
-                    price: item.unit_price,
-                    quantity: item.quantity,
-                    sku: item.item.seller_sku || ''
-                })),
-                total: mo.total_amount,
-                subtotal: mo.total_amount,
-                marketplaceFee: mo.order_items.reduce((acc, val) => acc + (val.sale_fee || 0), 0),
-                paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
-                customer: {
-                    id: `ml_${(_e = mo.buyer) === null || _e === void 0 ? void 0 : _e.id}`,
-                    name: ((_f = mo.buyer) === null || _f === void 0 ? void 0 : _f.nickname) || 'Meli Buyer',
-                    email: ((_g = mo.buyer) === null || _g === void 0 ? void 0 : _g.email) || `${(_h = mo.buyer) === null || _h === void 0 ? void 0 : _h.id}@mercadolibre.com`,
-                    isGuest: true
-                },
-                shippingAddress: {
-                    street: 'Meli fulfillment or direct shipping',
-                    exteriorNumber: '',
-                    city: ((_j = mo.buyer) === null || _j === void 0 ? void 0 : _j.nickname) || 'Meli Buyer',
-                    state: '',
-                    zipCode: '',
-                    country: 'MX'
-                },
-                createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            };
+            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
             // Upsert the order
             batch.set(orderRef, newOrder, { merge: true });
         }
         await batch.commit();
         console.log(`[Meli Historical Sync] Batched ${meliOrders.length} orders. Offset: ${offset}`);
-        return { success: true, processed: meliOrders.length, hasMore: (offset + limit) < (((_k = json.paging) === null || _k === void 0 ? void 0 : _k.total) || 0) };
+        return { success: true, processed: meliOrders.length, hasMore: (offset + limit) < (((_c = json.paging) === null || _c === void 0 ? void 0 : _c.total) || 0) };
     }
     catch (err) {
         console.error('[Meli Historical Sync] Failed:', err);
@@ -847,6 +964,359 @@ exports.meliGetShippingLabel = functions.runWith({ timeoutSeconds: 60 }).https.o
     catch (err) {
         console.error('[Meli Label] Failed:', err);
         throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+// ─── MercadoLibre Full Inventory Sync ───────────────────────────────────────
+exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => {
+    var _a, _b;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to sync FBM inventory.');
+    }
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            throw new functions.https.HttpsError('failed-precondition', 'MercadoLibre is not connected or missing tokens.');
+        }
+        // @ts-ignore
+        const fetch = require('node-fetch');
+        // 1. Fetch fulfillment items by paging through user items
+        let offset = 0;
+        const limit = 50;
+        const allItemIds = [];
+        while (true) {
+            const searchUrl = `https://api.mercadolibre.com/users/${meliConfig.userId}/items/search?logistic_type=fulfillment&limit=${limit}&offset=${offset}`;
+            const searchRes = await fetch(searchUrl, { headers: { Authorization: `Bearer ${meliConfig.accessToken}` } });
+            if (!searchRes.ok) {
+                console.error('[Meli FBM] Search failed:', await searchRes.text());
+                throw new functions.https.HttpsError('internal', 'MercadoLibre API search failed.');
+            }
+            const searchJson = await searchRes.json();
+            if (!searchJson.results || searchJson.results.length === 0)
+                break;
+            allItemIds.push(...searchJson.results);
+            if (searchJson.results.length < limit)
+                break;
+            offset += limit;
+        }
+        if (allItemIds.length === 0) {
+            return { success: true, message: 'No FBM items found.', syncedCount: 0 };
+        }
+        // 2. Fetch full item details in chunks of 20 (max per MULTIGET api)
+        const chunkSize = 20;
+        let syncedCount = 0;
+        const batch = db.batch();
+        for (let i = 0; i < allItemIds.length; i += chunkSize) {
+            const chunk = allItemIds.slice(i, i + chunkSize);
+            const itemsUrl = `https://api.mercadolibre.com/items?ids=${chunk.join(',')}`;
+            const itemsRes = await fetch(itemsUrl, { headers: { Authorization: `Bearer ${meliConfig.accessToken}` } });
+            if (!itemsRes.ok) {
+                console.error(`[Meli FBM] Failed to fetch items chunk ${i}`, await itemsRes.text());
+                continue;
+            }
+            const itemsJson = await itemsRes.json();
+            for (const itemObj of itemsJson) {
+                if (itemObj.code !== 200 || !itemObj.body)
+                    continue;
+                const body = itemObj.body;
+                // Extract SKU
+                const skuAttr = (_b = body.attributes) === null || _b === void 0 ? void 0 : _b.find((a) => a.id === 'SELLER_SKU');
+                const sku = skuAttr ? skuAttr.value_name : null;
+                // Firestore document IDs cannot contain forward slashes
+                // Some SKUs like "80/90-17-EY..." contain them.
+                const rawDocId = String(sku || body.id);
+                const safeDocId = rawDocId.replace(/\//g, '_');
+                const inventoryRef = db.collection('meli_fbm_inventory').doc(safeDocId);
+                batch.set(inventoryRef, {
+                    mlItemId: body.id,
+                    sku: sku,
+                    title: body.title,
+                    inventoryId: body.inventory_id || null,
+                    availableQuantity: body.available_quantity || 0,
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                syncedCount++;
+            }
+        }
+        // 3. Commit batch to Firestore
+        await batch.commit();
+        return { success: true, syncedCount };
+    }
+    catch (e) {
+        console.error('Error in meliSyncFullInventory:', e);
+        throw new functions.https.HttpsError('internal', 'sync failed');
+    }
+});
+// 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
+exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
+    var _a, _b;
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            console.log('[Meli Cron] Not connected. Skipping.');
+            return;
+        }
+        const lastSyncDate = meliConfig.lastSyncDate
+            ? new Date(meliConfig.lastSyncDate)
+            : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const dateFrom = lastSyncDate.toISOString().replace('.000Z', '.000-00:00');
+        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50&order.date_created.from=${encodeURIComponent(dateFrom)}`;
+        console.log(`[Meli Cron] Sweeping orders since: ${dateFrom}`);
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+        if (!res.ok) {
+            const errJson = await res.json();
+            throw new Error(JSON.stringify(errJson));
+        }
+        const json = await res.json();
+        const meliOrders = json.results || [];
+        const shipmentsMap = {};
+        const billingMap = {};
+        await Promise.all(meliOrders
+            .map(async (mo) => {
+            var _a;
+            try {
+                if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
+                    const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (sRes.ok)
+                        shipmentsMap[mo.shipping.id] = await sRes.json();
+                }
+                const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
+                });
+                if (bRes.ok)
+                    billingMap[mo.id] = await bRes.json();
+                else {
+                    const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                    });
+                    if (bRes1.ok)
+                        billingMap[mo.id] = await bRes1.json();
+                }
+            }
+            catch (e) { /* skip */ }
+        }));
+        let importedCount = 0;
+        for (const mo of meliOrders) {
+            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+            const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
+            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
+            await orderRef.set(newOrder, { merge: true });
+            importedCount++;
+        }
+        if (importedCount > 0) {
+            await db.collection('config').doc('integrations').set({
+                meli: { lastSyncDate: new Date().toISOString() }
+            }, { merge: true });
+        }
+        console.log(`[Meli Cron] Success. Upserted ${importedCount} orders.`);
+    }
+    catch (err) {
+        console.error('[Meli Cron] Failed:', err);
+    }
+});
+// 13. Automated Sync: Webhook (Real-Time push)
+exports.meliWebhook = functions.https.onRequest(async (req, res) => {
+    var _a;
+    // MercadoLibre heavily monitors Webhook response times.
+    // Spec requires HTTP 200/201 ACK immediately.
+    res.status(200).send('OK');
+    try {
+        const payload = req.body;
+        // --- 1) Temporary Webhook Activity Log ---
+        try {
+            await db.collection('meli_webhook_logs').add({
+                topic: (payload === null || payload === void 0 ? void 0 : payload.topic) || 'unknown',
+                resource: (payload === null || payload === void 0 ? void 0 : payload.resource) || 'unknown',
+                payload: payload || {},
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        catch (logErr) {
+            console.error('[Meli Webhook] Failed to write to log:', logErr);
+        }
+        // --- 2) Process Orders ---
+        if (payload && payload.topic === 'orders_v2' && payload.resource) {
+            console.log(`[Meli Webhook] Processing event for resource: ${payload.resource}`);
+            const configDoc = await db.collection('config').doc('integrations').get();
+            const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+            if (!meliConfig || !meliConfig.accessToken)
+                return;
+            const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
+            // Fetch the resource — may be a pack or a single order
+            const resourceUrl = `https://api.mercadolibre.com${payload.resource}`;
+            const resourceRes = await fetch(resourceUrl, { headers });
+            if (!resourceRes.ok)
+                throw new Error(`Failed to fetch resource: ${resourceRes.status}`);
+            const resourceData = await resourceRes.json();
+            // ── PACK ORDER HANDLING ────────────────────────────────────────────
+            // Since 2024 ALL MeLi orders are pack orders.
+            // The webhook resource may point to /orders/{pack_id} OR /orders/{order_id}.
+            // A pack response has `orders` array; an individual order has `order_items`.
+            // We collect the real individual order ID(s) to process.
+            let singleOrderId = null;
+            if (resourceData.order_items) {
+                // This IS an individual order already — use its id directly
+                singleOrderId = String(resourceData.id);
+            }
+            else if (resourceData.orders && Array.isArray(resourceData.orders)) {
+                // This is a pack — process each individual order inside
+                for (const packOrder of resourceData.orders) {
+                    const orderId = String(packOrder.id || packOrder.order_id);
+                    await processAndSaveMeliOrderById(orderId, meliConfig.accessToken, headers);
+                }
+                return;
+            }
+            else if (payload.resource.includes('/orders/')) {
+                // Unknown shape — extract the ID from the URL and try fetching directly
+                const idMatch = payload.resource.match(/\/orders\/(\d+)/);
+                if (idMatch)
+                    singleOrderId = idMatch[1];
+            }
+            if (singleOrderId) {
+                const moRes = await fetch(`https://api.mercadolibre.com/orders/${singleOrderId}`, { headers });
+                if (!moRes.ok)
+                    throw new Error(`Failed to fetch order ${singleOrderId}: ${moRes.status}`);
+                const mo = await moRes.json();
+                await processAndSaveMeliOrderFromData(mo, meliConfig.accessToken, headers);
+            }
+        }
+    }
+    catch (err) {
+        console.error('[Meli Webhook] Error processing payload:', err);
+    }
+});
+// ── Webhook helpers ─────────────────────────────────────────────────────────
+async function processAndSaveMeliOrderById(orderId, token, headers) {
+    const moRes = await fetch(`https://api.mercadolibre.com/orders/${orderId}`, { headers });
+    if (!moRes.ok) {
+        console.error(`[Meli Webhook] Could not fetch order ${orderId}: ${moRes.status}`);
+        return;
+    }
+    const mo = await moRes.json();
+    await processAndSaveMeliOrderFromData(mo, token, headers);
+}
+async function processAndSaveMeliOrderFromData(mo, token, headers) {
+    var _a;
+    // Fetch shipment
+    let shipData = null;
+    if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
+        const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, { headers });
+        if (sRes.ok)
+            shipData = await sRes.json();
+    }
+    // Fetch billing info (v2 for Mexico, fallback v1)
+    let billingData = null;
+    try {
+        const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+            headers: Object.assign(Object.assign({}, headers), { 'x-version': '2' })
+        });
+        if (bRes.ok)
+            billingData = await bRes.json();
+        else {
+            const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, { headers });
+            if (bRes1.ok)
+                billingData = await bRes1.json();
+        }
+    }
+    catch (e) { /* non-critical */ }
+    const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
+    // Use the REAL individual order id (what the seller sees on MeLi) as the doc key
+    const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+    await orderRef.set(newOrder, { merge: true });
+    console.log(`[Meli Webhook] Saved order ML-${mo.id} (pack_id: ${mo.pack_id || 'n/a'})`);
+}
+exports.getMeliRawOrderDebug = functions.runWith({ timeoutSeconds: 500 }).https.onRequest(async (req, res) => {
+    var _a;
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+            res.status(400).json({ error: 'MercadoLibre is not connected.' });
+            return;
+        }
+        // Fetch ALL 2026 orders starting late Dec 2025 to catch timezone bleed (Mexico vs Argentina vs UTC)
+        let offset = 0;
+        const limit = 50;
+        let hasMore = true;
+        const allOrders = [];
+        while (hasMore && offset < 2000) {
+            const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&order.date_created.from=2025-12-30T00:00:00.000-00:00&sort=date_desc&limit=${limit}&offset=${offset}`;
+            const apiRes = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
+            if (!apiRes.ok)
+                break;
+            const json = await apiRes.json();
+            const meliOrders = json.results || [];
+            if (meliOrders.length === 0)
+                break;
+            allOrders.push(...meliOrders);
+            offset += limit;
+            if (json.paging && json.paging.total <= allOrders.length)
+                hasMore = false;
+        }
+        // We want to test different mathematical grouping rules month-by-month for 2026
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const analysis = {};
+        for (const mo of allOrders) {
+            // Group by Mexico Time (UTC-6)
+            const dateStr = mo.date_created || mo.date_closed;
+            if (!dateStr)
+                continue;
+            const dateUTC = new Date(dateStr);
+            const dateMX = new Date(dateUTC.getTime() - (6 * 60 * 60 * 1000));
+            if (dateMX.getUTCFullYear() !== 2026)
+                continue; // Only care about 2026
+            const monthName = months[dateMX.getUTCMonth()];
+            if (!analysis[monthName]) {
+                analysis[monthName] = {
+                    totalAmountIncCancelled: 0,
+                    totalAmountActiveOnly: 0,
+                    paidAmountActiveOnly: 0,
+                    unitPriceSumActiveOnly: 0,
+                    totalUnitsActiveOnly: 0,
+                    totalUnitsIncCancelled: 0,
+                    activeOrderCount: 0,
+                    cancelledOrderCount: 0
+                };
+            }
+            const isCancelled = (mo.status === 'cancelled' || mo.status === 'invalid');
+            const m = analysis[monthName];
+            m.totalAmountIncCancelled += (mo.total_amount || 0);
+            let itemsQty = 0;
+            let itemsSubtotal = 0;
+            if (mo.order_items && Array.isArray(mo.order_items)) {
+                mo.order_items.forEach((item) => {
+                    itemsQty += (item.quantity || 0);
+                    itemsSubtotal += (item.quantity * item.unit_price);
+                });
+            }
+            m.totalUnitsIncCancelled += itemsQty;
+            if (isCancelled) {
+                m.cancelledOrderCount++;
+            }
+            else {
+                m.activeOrderCount++;
+                m.totalAmountActiveOnly += (mo.total_amount || 0);
+                m.paidAmountActiveOnly += (mo.paid_amount || 0);
+                m.unitPriceSumActiveOnly += itemsSubtotal;
+                m.totalUnitsActiveOnly += itemsQty;
+            }
+        }
+        res.status(200).json({
+            success: true,
+            totalScanned: allOrders.length,
+            targetMatches: {
+                "User Requested Jan": { sales: 275408, units: 343 },
+                "User Requested Feb": { sales: 375912, units: 460 },
+                "User Requested Mar": { sales: 170964, units: 216 }
+            },
+            analysis
+        });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 //# sourceMappingURL=index.js.map

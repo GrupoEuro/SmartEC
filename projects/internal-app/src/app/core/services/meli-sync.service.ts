@@ -1,11 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Firestore, collection, doc, writeBatch, getDocs, query, where } from '@angular/fire/firestore';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 import { SecretsService } from './config/secrets.service';
 import { MeliTokens } from './meli.service';
 import { MeliItem, MeliSyncResult } from '../models/meli-item.model';
 import { ProductService } from './product.service';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, from, Observable } from 'rxjs';
 
 @Injectable({
     providedIn: 'root'
@@ -15,6 +16,7 @@ export class MeliSyncService {
     private firestore = inject(Firestore);
     private secrets = inject(SecretsService);
     private productService = inject(ProductService);
+    private functions = inject(Functions);
 
     private readonly API_URL = 'https://api.mercadolibre.com';
 
@@ -133,5 +135,19 @@ export class MeliSyncService {
         const config = await this.secrets.getConfig();
         // Simple check. In prod, check expiration and refresh if needed using refresh_token
         return config?.meli?.accessToken || null;
+    }
+
+    /**
+     * Call the meliGetShippingLabel Cloud Function and return a base64-encoded PDF.
+     * Used for MeLi Classic (merchant-fulfilled) orders.
+     */
+    getShippingLabel(shippingId: string): Observable<{ pdfBase64: string }> {
+        const fn = httpsCallable<{ shippingId: string }, { success: boolean; pdfBase64: string }>(
+            this.functions,
+            'meliGetShippingLabel'
+        );
+        return from(
+            fn({ shippingId }).then(result => ({ pdfBase64: result.data.pdfBase64 }))
+        );
     }
 }

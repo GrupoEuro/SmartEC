@@ -93,25 +93,16 @@ export class OrderService {
     }
 
     /**
-     * Get order by ID
+     * Get order by ID — real-time reactive observable
      */
     getOrderById(id: string): Observable<Order | undefined> {
         const q = query(this.ordersCollection, where('__name__', '==', id));
-        return new Observable(observer => {
-            getDocs(q).then(snapshot => {
-                if (!snapshot.empty) {
-                    const doc = snapshot.docs[0];
-                    const data = doc.data() as any;
-                    observer.next(this.convertTimestamps({ ...data, id: doc.id }));
-                } else {
-                    observer.next(undefined);
-                }
-                observer.complete();
-            }).catch(error => {
-                console.error('Error getting order:', error);
-                observer.error(error);
-            });
-        });
+        return collectionData(q, { idField: 'id' }).pipe(
+            map((orders: any[]) => {
+                if (orders.length === 0) return undefined;
+                return this.convertTimestamps(orders[0]);
+            })
+        );
     }
 
     /**
@@ -320,17 +311,44 @@ export class OrderService {
     }
 
     /**
-     * Convert Firestore Timestamps to Date objects
+     * Convert Firestore Timestamps to Date objects.
+     * Also synthesizes a minimum history for legacy orders.
      */
     private convertTimestamps(order: any): Order {
+        const createdAt = order.createdAt?.toDate ? order.createdAt.toDate() : (order.createdAt ? new Date(order.createdAt) : new Date());
+        const updatedAt = order.updatedAt?.toDate ? order.updatedAt.toDate() : (order.updatedAt ? new Date(order.updatedAt) : createdAt);
+
+        let history = (order.history || []).map((h: any) => ({
+            ...h,
+            timestamp: h.timestamp?.toDate ? h.timestamp.toDate() : (h.timestamp ? new Date(h.timestamp) : new Date())
+        }));
+
+        // For legacy orders with no history, synthesize one from available data
+        if (history.length === 0) {
+            history.push({
+                status: 'pending',
+                timestamp: createdAt,
+                note: 'Order created',
+                updatedBy: 'system'
+            });
+
+            // If the order has already progressed past pending, add a synthetic final entry
+            const terminalStatuses = ['processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'returned'];
+            if (terminalStatuses.includes(order.status) && order.status !== 'pending') {
+                history.push({
+                    status: order.status,
+                    timestamp: updatedAt,
+                    note: `Status: ${order.status}`,
+                    updatedBy: 'system'
+                });
+            }
+        }
+
         return {
             ...order,
-            createdAt: order.createdAt?.toDate ? order.createdAt.toDate() : (order.createdAt || new Date()),
-            updatedAt: order.updatedAt?.toDate ? order.updatedAt.toDate() : (order.updatedAt || new Date()),
-            history: (order.history || []).map((h: any) => ({
-                ...h,
-                timestamp: h.timestamp?.toDate ? h.timestamp.toDate() : (h.timestamp || new Date())
-            }))
+            createdAt,
+            updatedAt,
+            history
         };
     }
 }

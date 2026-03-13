@@ -15,7 +15,8 @@ import { getFunctions, provideFunctions } from '@angular/fire/functions';
 import { environment } from '../environments/environment';
 
 export function HttpLoaderFactory(http: HttpClient) {
-  return new TranslateHttpLoader(http, './assets/i18n/', '.json');
+  // Use a cache-buster query parameter so json files reload during dev
+  return new TranslateHttpLoader(http, './assets/i18n/', '.json?v=' + Date.now());
 }
 
 export const appConfig: ApplicationConfig = {

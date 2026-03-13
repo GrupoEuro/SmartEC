@@ -15,9 +15,9 @@
         class="bg-blue-900/40 border border-blue-500/50 text-blue-200 px-4 py-3 rounded-lg flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
             <app-icon name="info" [size]="18"></app-icon>
-            <span class="font-medium tracking-wide">Hub Version: v2.4 (Parallel Shipments Patch applied)</span>
+            <span class="font-medium tracking-wide">Hub Version: v2.5 (YTD Analytics Patch)</span>
         </div>
-        <span class="text-xs opacity-70">2026-03-04</span>
+        <span class="text-xs opacity-70">2026-03-12</span>
     </div>
     <!-- Tabs Navigation -->
     <div
@@ -203,6 +203,52 @@
             </div>
 
         </div>
+
+        <!-- Webhook Activity Logs (Spans full width) -->
+        <div
+            class="card p-6 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl col-span-1 md:col-span-3 transition-all duration-300 mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-lg bg-pink-500/20 text-pink-400">
+                        <app-icon name="activity" [size]="20"></app-icon>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white tracking-tight">Real-Time Webhook Logs</h3>
+                        <p class="text-xs text-zinc-400">Recent API push events received from MercadoLibre.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-zinc-700/50">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-zinc-900/50 text-zinc-400">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Time</th>
+                            <th class="px-4 py-3 font-semibold">Topic</th>
+                            <th class="px-4 py-3 font-semibold">Resource</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800/50 text-zinc-300">
+                        <tr *ngIf="webhookLogs().length === 0">
+                            <td colspan="3" class="px-4 py-8 text-center text-zinc-500 italic">Listening for new webhook
+                                events...</td>
+                        </tr>
+                        <tr *ngFor="let log of webhookLogs()" class="hover:bg-zinc-700/20 transition-colors">
+                            <td class="px-4 py-3 font-mono text-xs text-zinc-500">
+                                {{ $any(log.createdAt)?.toDate() | date:'short' || 'Just now' }}
+                            </td>
+                            <td class="px-4 py-3 text-pink-400 font-medium">
+                                {{ log.topic }}
+                            </td>
+                            <td class="px-4 py-3 text-zinc-400 font-mono text-xs">
+                                {{ log.resource }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Classic Orders Table -->
@@ -294,20 +340,173 @@
         </div>
     </div>
 
-    <!-- Full Inventory Placeholder -->
-    <div *ngIf="activeTab() === 'full' && !isLoadingData() && !dataError()"
-        class="tab-content relative animate-fade-in bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl p-8 text-center shadow-xl">
-        <div
-            class="mx-auto w-16 h-16 bg-zinc-900/50 border border-zinc-700/50 rounded-full flex items-center justify-center mb-4">
-            <app-icon name="truck" [size]="24" class="text-zinc-500"></app-icon>
+    <!-- Full Inventory Tab -->
+    <div *ngIf="activeTab() === 'full' && !isLoadingFbm()" class="tab-content relative animate-fade-in space-y-4">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-tight">Full Inventory (FBM)</h3>
+                <p class="text-sm text-zinc-400 mt-1">Stock currently stored and managed by MercadoLibre.</p>
+            </div>
+            <button (click)="syncFbmInventory()" [disabled]="isSyncing()"
+                class="px-4 py-2 bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2">
+                <app-icon name="refresh-cw" [size]="16" [ngClass]="{'animate-spin': isSyncing()}"></app-icon>
+                {{ isSyncing() ? 'Syncing...' : 'Sync FBM Stock' }}
+            </button>
         </div>
-        <h3 class="text-xl font-bold text-white mb-2">MercadoLibre Full Inventory</h3>
-        <p class="text-zinc-400 max-w-md mx-auto mb-6">
-            In the future, this tab will display what inventory you currently have stored at MercadoLibre's physical
-            warehouses (FBM - Full By Merchant).
-            <br><br>
-            It will let you track stock levels there vs. stock levels in your local Praxis warehouse.
-        </p>
+
+        <div class="bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-zinc-900/50 border-b border-zinc-700/50 text-sm text-zinc-400">
+                        <th class="p-4 font-semibold cursor-pointer hover:bg-zinc-800 transition-colors"
+                            (click)="setFbmSort('sku')">
+                            <div class="flex items-center gap-2">
+                                SKU / ML ID
+                                <app-icon *ngIf="fbmSortColumn() === 'sku'"
+                                    [name]="fbmSortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                                <app-icon *ngIf="fbmSortColumn() !== 'sku'" name="chevrons-up-down" [size]="14"
+                                    class="opacity-30"></app-icon>
+                            </div>
+                        </th>
+                        <th class="p-4 font-semibold cursor-pointer hover:bg-zinc-800 transition-colors"
+                            (click)="setFbmSort('title')">
+                            <div class="flex items-center gap-2">
+                                Product Title
+                                <app-icon *ngIf="fbmSortColumn() === 'title'"
+                                    [name]="fbmSortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                                <app-icon *ngIf="fbmSortColumn() !== 'title'" name="chevrons-up-down" [size]="14"
+                                    class="opacity-30"></app-icon>
+                            </div>
+                        </th>
+                        <th class="p-4 font-semibold text-center w-32 cursor-pointer hover:bg-zinc-800 transition-colors"
+                            (click)="setFbmSort('sales')">
+                            <div class="flex items-center justify-center gap-2">
+                                30-Day Sales
+                                <app-icon *ngIf="fbmSortColumn() === 'sales'"
+                                    [name]="fbmSortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                                <app-icon *ngIf="fbmSortColumn() !== 'sales'" name="chevrons-up-down" [size]="14"
+                                    class="opacity-30"></app-icon>
+                            </div>
+                        </th>
+                        <th class="p-4 font-semibold text-center w-48 cursor-pointer hover:bg-zinc-800 transition-colors"
+                            (click)="setFbmSort('qty')">
+                            <div class="flex items-center justify-center gap-2">
+                                FBM Stock & Forecast
+                                <app-icon *ngIf="fbmSortColumn() === 'qty'"
+                                    [name]="fbmSortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                                    [size]="14"></app-icon>
+                                <app-icon *ngIf="fbmSortColumn() !== 'qty'" name="chevrons-up-down" [size]="14"
+                                    class="opacity-30"></app-icon>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    <tr *ngFor="let item of paginatedFbmInventory()"
+                        class="border-b border-zinc-800/50 hover:bg-zinc-700/20 transition-colors group">
+                        <td class="p-4">
+                            <div
+                                class="text-emerald-400 font-mono text-xs bg-emerald-900/20 px-2 py-1 rounded inline-block mb-1">
+                                {{ item.sku || 'NO-SKU' }}
+                            </div>
+                            <div class="text-[10px] text-zinc-500 font-mono">{{ item.mlItemId }}</div>
+                        </td>
+                        <td class="p-4 text-zinc-300 font-medium max-w-sm truncate" [title]="item.title">
+                            {{ item.title }}
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="font-bold text-white">{{ item.sold30Days }}</div>
+                            <div class="text-[10px] text-zinc-500 mt-1" *ngIf="item.dailyBurnRate > 0">
+                                ({{ item.dailyBurnRate | number:'1.1-1' }}/day)
+                            </div>
+                            <div class="text-[10px] text-zinc-600 mt-1" *ngIf="item.dailyBurnRate === 0">
+                                No sales
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="mb-1">
+                                <span
+                                    class="inline-flex items-center justify-center min-w-[3rem] px-2.5 py-1 text-sm font-bold rounded-lg lg:text-base border transition-colors"
+                                    [ngClass]="{
+                                        'bg-red-500/20 text-red-400 border-red-500/20': item.daysRemaining <= 15,
+                                        'bg-yellow-500/20 text-yellow-400 border-yellow-500/20': item.daysRemaining > 15 && item.daysRemaining <= 30,
+                                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/20': item.daysRemaining > 30 && item.daysRemaining !== 999,
+                                        'bg-zinc-500/20 text-zinc-400 border-zinc-500/20': item.availableQuantity === 0 || item.daysRemaining === 999
+                                    }">
+                                    {{ item.availableQuantity }}
+                                </span>
+                            </div>
+
+                            <ng-container
+                                *ngIf="item.dailyBurnRate === 0 || item.daysRemaining === 999; else forecastTemplate">
+                                <div
+                                    class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700/50 inline-block font-medium">
+                                    Awaiting Data
+                                </div>
+                            </ng-container>
+
+                            <ng-template #forecastTemplate>
+                                <div *ngIf="item.daysRemaining > 30"
+                                    class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-block font-medium">
+                                    ~{{ item.daysRemaining }} days left
+                                </div>
+                                <div *ngIf="item.daysRemaining > 15 && item.daysRemaining <= 30"
+                                    class="text-[10px] px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 inline-block font-medium">
+                                    Order Soon (~{{ item.daysRemaining }}d)
+                                </div>
+                                <div *ngIf="item.daysRemaining <= 15"
+                                    class="text-[10px] px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 inline-block font-bold animate-pulse">
+                                    CRITICAL (~{{ item.daysRemaining }}d)
+                                </div>
+                            </ng-template>
+                        </td>
+                    </tr>
+                    <tr *ngIf="paginatedFbmInventory().length === 0">
+                        <td colspan="4" class="p-16 text-center text-zinc-500">
+                            <div
+                                class="mx-auto w-16 h-16 bg-zinc-900/50 border border-zinc-700/50 rounded-full flex items-center justify-center mb-4">
+                                <app-icon name="package-x" [size]="24" class="text-zinc-600"></app-icon>
+                            </div>
+                            <p class="font-medium text-zinc-400">No FBM stock found.</p>
+                            <p class="text-sm mt-1">Sync your inventory or send more stock to MercadoLibre.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Pagination Controls -->
+            <div *ngIf="fbmTotalPages() > 1"
+                class="flex items-center justify-between p-4 bg-zinc-900/50 border-t border-zinc-700/50">
+                <div class="text-xs text-zinc-400">
+                    Showing <span class="font-bold text-white">{{ fbmInventoryWithBurnRate().length }}</span> total
+                    items
+                </div>
+                <div class="flex items-center gap-2">
+                    <button (click)="setFbmPage(fbmCurrentPage() - 1)" [disabled]="fbmCurrentPage() === 1"
+                        class="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <app-icon name="chevron-left" [size]="16"></app-icon>
+                    </button>
+
+                    <div class="flex items-center gap-1">
+                        <span class="text-sm text-zinc-400">Page</span>
+                        <select [ngModel]="fbmCurrentPage()" (ngModelChange)="setFbmPage($event)"
+                            class="bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-2 py-1 focus:ring-yellow-500 focus:border-yellow-500 outline-none w-16 text-center appearance-none cursor-pointer">
+                            <option *ngFor="let p of [].constructor(fbmTotalPages()); let i = index" [value]="i + 1">{{
+                                i + 1 }}</option>
+                        </select>
+                        <span class="text-sm text-zinc-400">of {{ fbmTotalPages() }}</span>
+                    </div>
+
+                    <button (click)="setFbmPage(fbmCurrentPage() + 1)" [disabled]="fbmCurrentPage() === fbmTotalPages()"
+                        class="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <app-icon name="chevron-right" [size]="16"></app-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Listings Placeholder (Assuming it's similarly structured) -->

@@ -80,6 +80,7 @@ export interface Order {
     fulfillmentType?: 'merchant' | 'platform'; // 'merchant' (we pack) vs 'platform' (FBA/Meli Full packs)
     externalOrderId?: string; // ID from Amazon/ML (e.g., '114-1234567-1234567')
     shippingLabelUrl?: string; // PDF URL for shipping label from external provider
+    nativeSla?: any;
 
     // [NEW] ON_BEHALF metadata
     metadata?: {

@@ -5,10 +5,13 @@
                 <i class="fas fa-flag"></i>
                 Priority & SLA
             </h3>
-            <button class="btn btn-sm btn-light" (click)="togglePriorityForm()" *ngIf="!isLoading()">
+            <button *ngIf="!isLoading() && !nativeSla" class="btn btn-sm btn-light" (click)="togglePriorityForm()">
                 <i class="fas" [ngClass]="showPriorityForm() ? 'fa-times' : 'fa-edit'"></i>
                 {{ showPriorityForm() ? 'Cancel' : (priority() ? 'Change' : 'Set Priority') }}
             </button>
+            <span *ngIf="nativeSla" class="text-xs text-zinc-500 italic mt-1" title="SLA is managed directly by the sales channel">
+                Channel Managed
+            </span>
         </div>
     </div>
 
@@ -39,10 +42,14 @@
         <!-- Current Priority Display -->
         <div *ngIf="!isLoading() && priority() && !showPriorityForm()" class="priority-display">
             <!-- Priority Badge -->
-            <div class="priority-badge-container">
+            <div class="priority-badge-container flex gap-2 mb-3">
                 <div class="priority-badge" [ngClass]="getPriorityBadgeClass(priority()!.level)">
                     <i class="fas fa-flag"></i>
                     <span class="priority-label">{{ priority()!.level | titlecase }}</span>
+                </div>
+                
+                <div *ngIf="nativeSla" class="bg-blue-900/40 text-blue-400 border border-blue-500/30 px-2 py-1 rounded text-xs font-bold flex items-center">
+                    <i class="fas fa-link mr-1"></i> Native SLA
                 </div>
             </div>
 

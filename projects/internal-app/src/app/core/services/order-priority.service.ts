@@ -174,42 +174,31 @@ export class OrderPriorityService {
     }
 
     /**
-     * Get SLA compliance statistics
+     * Get SLA boundaries for orders within timeframe.
+     * Used by analytics to compute compliance factoring in order completion status.
      */
-    async getSLAStats(): Promise<{
-        total: number;
-        onTime: number;
-        overdue: number;
-        approaching: number;
-        complianceRate: number;
-    }> {
-        const allSnapshot = await getDocs(this.prioritiesCollection);
-        const total = allSnapshot.size;
+    async getSLAOverridesMap(startDate?: Date, endDate?: Date): Promise<Map<string, number>> {
+        let statsQuery: any = this.prioritiesCollection;
 
-        const overdueSnapshot = await getDocs(
-            query(this.prioritiesCollection, where('isOverdue', '==', true))
-        );
-        const overdue = overdueSnapshot.size;
-
-        const sixHoursFromNow = Timestamp.fromMillis(Date.now() + (6 * 60 * 60 * 1000));
-        const approachingSnapshot = await getDocs(
-            query(
+        if (startDate && endDate) {
+            statsQuery = query(
                 this.prioritiesCollection,
-                where('isOverdue', '==', false),
-                where('sla', '<=', sixHoursFromNow)
-            )
-        );
-        const approaching = approachingSnapshot.size;
+                where('createdAt', '>=', Timestamp.fromDate(startDate)),
+                where('createdAt', '<=', Timestamp.fromDate(endDate))
+            );
+        }
 
-        const onTime = total - overdue - approaching;
-        const complianceRate = total > 0 ? ((onTime + approaching) / total) * 100 : 100;
+        const allSnapshot = await getDocs(statsQuery);
+        const map = new Map<string, number>();
 
-        return {
-            total,
-            onTime,
-            overdue,
-            approaching,
-            complianceRate: Math.round(complianceRate * 100) / 100
-        };
+        const now = Date.now();
+        allSnapshot.forEach(docSnap => {
+            const data = docSnap.data() as any;
+            const slaDeadline = data['sla'] instanceof Timestamp ? data['sla'].toMillis() : (data['sla']?.seconds ? data['sla'].seconds * 1000 : now);
+            const orderId = data['orderId'] || docSnap.id;
+            map.set(orderId, slaDeadline);
+        });
+
+        return map;
     }
 }

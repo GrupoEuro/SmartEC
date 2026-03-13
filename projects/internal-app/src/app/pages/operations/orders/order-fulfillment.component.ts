@@ -14,6 +14,7 @@ import { PdfGenerationService } from '../../../core/services/pdf-generation.serv
 import { HelpContextButtonComponent } from '../../../shared/components/help-context-button/help-context-button.component';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { SkydropxService, ShippingRate, TrackingResult } from '../../../core/services/skydropx.service';
+import { MeliSyncService } from '../../../core/services/meli-sync.service';
 
 @Component({
     selector: 'app-order-fulfillment',
@@ -30,6 +31,7 @@ export class OrderFulfillmentComponent implements OnInit {
     private fb = inject(FormBuilder);
     private pdfService = inject(PdfGenerationService);
     private skydropx = inject(SkydropxService);
+    private meliSync = inject(MeliSyncService);
 
     order = signal<Order | undefined>(undefined);
     isLoading = signal(true);
@@ -49,18 +51,18 @@ export class OrderFulfillmentComponent implements OnInit {
 
     // ── SkyDropX Shipping Panel ────────────────────────────────────────────────
     showShippingPanel = signal(false);
-    isLoadingRates    = signal(false);
+    isLoadingRates = signal(false);
     isGeneratingLabel = signal(false);
     isLoadingTracking = signal(false);
-    rates             = signal<ShippingRate[]>([]);
-    selectedRateId    = signal<string | null>(null);
-    quotationId       = signal<string | null>(null);
-    trackingResult    = signal<TrackingResult | null>(null);
+    rates = signal<ShippingRate[]>([]);
+    selectedRateId = signal<string | null>(null);
+    quotationId = signal<string | null>(null);
+    trackingResult = signal<TrackingResult | null>(null);
 
     // Parcel dimensions (defaults for a typical tire)
     parcelWeight = 5;
     parcelHeight = 30;
-    parcelWidth  = 30;
+    parcelWidth = 30;
     parcelLength = 20;
 
     constructor() {
@@ -225,6 +227,17 @@ export class OrderFulfillmentComponent implements OnInit {
         return checkIndex < currentIndex;
     }
 
+    // Get the timestamp for a specific status from history
+    getStatusDate(status: OrderStatus): Date | null {
+        const order = this.order();
+        if (!order || !order.history) return null;
+
+        const entry = order.history.find(h => h.status === status);
+        if (!entry || !entry.timestamp) return null;
+
+        return entry.timestamp instanceof Date ? entry.timestamp : (entry.timestamp as any).toDate?.() || new Date(entry.timestamp as any);
+    }
+
 
 
 
@@ -236,13 +249,64 @@ export class OrderFulfillmentComponent implements OnInit {
             return;
         }
 
+        // MeLi Classic: use the official MercadoLibre shipping label
+        if (order.sourceChannel === 'mercadolibre' && order.fulfillmentType === 'merchant') {
+            this.getMeliLabel();
+            return;
+        }
+
+        // All other channels: generate our own packing slip PDF
         try {
             const pdf = this.pdfService.generatePackingSlip(order);
             this.pdfService.printPdf(pdf);
             this.toast.success('Packing slip sent to printer');
         } catch (error) {
+            console.error('Packing slip error:', error);
             this.toast.error('Failed to generate packing slip');
         }
+    }
+
+    getMeliLabel() {
+        const order = this.order();
+        const shippingId = (order as any)?.shippingId;
+        if (!shippingId) {
+            this.toast.error('No MercadoLibre shipping ID found for this order');
+            return;
+        }
+
+        this.toast.success('Fetching MercadoLibre label...');
+        this.meliSync.getShippingLabel(shippingId).subscribe({
+            next: (result) => {
+                const byteCharacters = atob(result.pdfBase64);
+                const byteNumbers = Array.from(byteCharacters, c => c.charCodeAt(0));
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            },
+            error: (err) => {
+                console.error('MeLi label error:', err);
+                this.toast.error('Failed to fetch MercadoLibre label');
+            }
+        });
+    }
+
+    /** True when this is a MeLi Classic (merchant-fulfilled) order */
+    isMeliClassic(): boolean {
+        const o = this.order();
+        return o?.sourceChannel === 'mercadolibre' && o?.fulfillmentType !== 'platform';
+    }
+
+    /** True when this is a MeLi Full (platform-fulfilled) order */
+    isMeliFull(): boolean {
+        const o = this.order();
+        return o?.sourceChannel === 'mercadolibre' && o?.fulfillmentType === 'platform';
+    }
+
+    /** External MercadoLibre order URL */
+    getMeliOrderUrl(): string {
+        const o = this.order();
+        return o?.externalOrderId ? `https://www.mercadolibre.com.mx/ventas/${o.externalOrderId}/detalle` : '';
     }
 
     printInvoice() {
@@ -281,7 +345,7 @@ export class OrderFulfillmentComponent implements OnInit {
             parcel: {
                 weight: this.parcelWeight,
                 height: this.parcelHeight,
-                width:  this.parcelWidth,
+                width: this.parcelWidth,
                 length: this.parcelLength,
             }
         }).subscribe({
@@ -420,7 +484,7 @@ export class OrderFulfillmentComponent implements OnInit {
     }
 
     getLegacyChannel(order: Order): string {
-        if (!order.sourceChannel) return 'WEB'; 
+        if (!order.sourceChannel) return 'WEB';
         if (order.sourceChannel === 'storefront') return 'WEB';
         if (order.sourceChannel === 'pos') return 'POS';
         if (order.sourceChannel === 'on_behalf') return 'ON_BEHALF';

@@ -17,11 +17,20 @@ export class OrderPriorityService {
     async setPriority(
         orderId: string,
         level: PriorityLevel,
-        orderCreatedAt: Timestamp
+        orderCreatedAt: Timestamp,
+        nativeSla?: Timestamp | Date
     ): Promise<void> {
-        const slaHours = this.config[level];
-        const slaDate = new Date(orderCreatedAt.toMillis() + (slaHours * 60 * 60 * 1000));
-        const sla = Timestamp.fromDate(slaDate);
+        let sla: Timestamp;
+
+        if (nativeSla) {
+            // Respect MercadoLibre (or other channel) native handling limit
+            sla = nativeSla instanceof Timestamp ? nativeSla : Timestamp.fromDate(new Date(nativeSla));
+        } else {
+            // Fallback to local calculation
+            const slaHours = this.config[level];
+            const slaDate = new Date(orderCreatedAt.toMillis() + (slaHours * 60 * 60 * 1000));
+            sla = Timestamp.fromDate(slaDate);
+        }
 
         const orderAge = this.calculateOrderAge(orderCreatedAt);
         const isOverdue = Timestamp.now().toMillis() > sla.toMillis();
@@ -46,11 +55,18 @@ export class OrderPriorityService {
     async updatePriorityLevel(
         orderId: string,
         level: PriorityLevel,
-        orderCreatedAt: Timestamp
+        orderCreatedAt: Timestamp,
+        nativeSla?: Timestamp | Date
     ): Promise<void> {
-        const slaHours = this.config[level];
-        const slaDate = new Date(orderCreatedAt.toMillis() + (slaHours * 60 * 60 * 1000));
-        const sla = Timestamp.fromDate(slaDate);
+        let sla: Timestamp;
+
+        if (nativeSla) {
+            sla = nativeSla instanceof Timestamp ? nativeSla : Timestamp.fromDate(new Date(nativeSla));
+        } else {
+            const slaHours = this.config[level];
+            const slaDate = new Date(orderCreatedAt.toMillis() + (slaHours * 60 * 60 * 1000));
+            sla = Timestamp.fromDate(slaDate);
+        }
 
         const orderAge = this.calculateOrderAge(orderCreatedAt);
         const isOverdue = Timestamp.now().toMillis() > sla.toMillis();
@@ -135,11 +151,12 @@ export class OrderPriorityService {
      * Get orders approaching SLA deadline (within 6 hours)
      */
     getOrdersApproachingSLA(): Observable<OrderPriority[]> {
+        const now = Timestamp.now();
         const sixHoursFromNow = Timestamp.fromMillis(Date.now() + (6 * 60 * 60 * 1000));
 
         const q = query(
             this.prioritiesCollection,
-            where('isOverdue', '==', false),
+            where('sla', '>', now),
             where('sla', '<=', sixHoursFromNow),
             orderBy('sla', 'asc')
         );
@@ -176,32 +193,50 @@ export class OrderPriorityService {
     /**
      * Get SLA compliance statistics
      */
-    async getSLAStats(): Promise<{
+    async getSLAStats(startDate?: Date, endDate?: Date): Promise<{
         total: number;
         onTime: number;
         overdue: number;
         approaching: number;
         complianceRate: number;
     }> {
-        const allSnapshot = await getDocs(this.prioritiesCollection);
+        let statsQuery: any = this.prioritiesCollection;
+
+        if (startDate && endDate) {
+            statsQuery = query(
+                this.prioritiesCollection,
+                where('createdAt', '>=', Timestamp.fromDate(startDate)),
+                where('createdAt', '<=', Timestamp.fromDate(endDate))
+            );
+        }
+
+        const allSnapshot = await getDocs(statsQuery);
         const total = allSnapshot.size;
 
-        const overdueSnapshot = await getDocs(
-            query(this.prioritiesCollection, where('isOverdue', '==', true))
-        );
-        const overdue = overdueSnapshot.size;
+        if (total === 0) {
+            return { total: 0, onTime: 0, overdue: 0, approaching: 0, complianceRate: 100 };
+        }
 
-        const sixHoursFromNow = Timestamp.fromMillis(Date.now() + (6 * 60 * 60 * 1000));
-        const approachingSnapshot = await getDocs(
-            query(
-                this.prioritiesCollection,
-                where('isOverdue', '==', false),
-                where('sla', '<=', sixHoursFromNow)
-            )
-        );
-        const approaching = approachingSnapshot.size;
+        let onTime = 0;
+        let overdue = 0;
+        let approaching = 0;
 
-        const onTime = total - overdue - approaching;
+        const now = Date.now();
+        const sixHoursFromNow = now + (6 * 60 * 60 * 1000);
+
+        allSnapshot.forEach(docSnap => {
+            const data = docSnap.data() as any;
+            const slaDeadline = data['sla'] instanceof Timestamp ? data['sla'].toMillis() : (data['sla']?.seconds ? data['sla'].seconds * 1000 : now);
+
+            if (now > slaDeadline) {
+                overdue++;
+            } else if (slaDeadline <= sixHoursFromNow) {
+                approaching++;
+            } else {
+                onTime++;
+            }
+        });
+
         const complianceRate = total > 0 ? ((onTime + approaching) / total) * 100 : 100;
 
         return {

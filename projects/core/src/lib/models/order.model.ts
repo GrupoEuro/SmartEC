@@ -109,6 +109,7 @@ export interface Order {
     assignmentId?: string;         // Reference to OrderAssignment document
     priorityLevel?: 'standard' | 'express' | 'rush';
     slaDeadline?: Timestamp | Date;  // Expected ship date based on priority
+    nativeSla?: Timestamp | Date;    // Native SLA deadline extracted from source channel (e.g., MercadoLibre)
     isOverdue?: boolean;           // SLA status
     internalNotesCount?: number;   // Count of internal notes
     unresolvedIssuesCount?: number; // Count of unresolved issue notes

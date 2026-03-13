@@ -1,7 +1,8 @@
 import { Component, inject, OnInit, OnDestroy, AfterViewInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
 import { OrderPriorityService } from '../../../core/services/order-priority.service';
@@ -18,6 +19,8 @@ interface DashboardStats {
     pendingOrders: number;
     processingOrders: number;
     shippedToday: number;
+    monthlySales: number;
+    monthlyPiecesSold: number;
 }
 
 interface SLAStats {
@@ -46,7 +49,7 @@ import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.c
 @Component({
     selector: 'app-operations-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
     templateUrl: './operations-dashboard.component.html',
     styleUrls: ['./operations-dashboard.component.css']
 })
@@ -55,12 +58,19 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private priorityService = inject(OrderPriorityService);
     private assignmentService = inject(OrderAssignmentService);
     private toast = inject(ToastService);
+    private translate = inject(TranslateService);
+
+    timeframe = signal<'MTD' | 'YTD'>('MTD');
+    channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos'>('ALL');
+    allFetchedOrders: Order[] = [];
 
     stats = signal<DashboardStats>({
         totalOrders: 0,
         pendingOrders: 0,
         processingOrders: 0,
-        shippedToday: 0
+        shippedToday: 0,
+        monthlySales: 0,
+        monthlyPiecesSold: 0
     });
 
     slaStats = signal<SLAStats>({
@@ -89,19 +99,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     ngOnInit() {
         this.loadDashboardData();
-        this.loadSLAStats();
-        this.loadPriorityStats();
-        this.loadStaffWorkload();
-        this.loadOverdueOrders();
     }
 
     ngAfterViewInit() {
-        // Create charts after view is initialized
-        setTimeout(() => {
-            this.createSLAChart();
-            this.createPriorityChart();
-            this.createTrendChart();
-        }, 500);
+        // Initialization moved to after data loads to prevent race conditions
+        // with the @if (!isLoading()) block in the template.
     }
 
     ngOnDestroy() {
@@ -121,39 +123,126 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         return timestamp.toMillis ? timestamp.toMillis() : new Date(timestamp).getTime();
     }
 
+    setTimeframe(tf: 'MTD' | 'YTD') {
+        if (this.timeframe() !== tf) {
+            this.timeframe.set(tf);
+            this.loadDashboardData();
+        }
+    }
+
+    setChannelFilter(filter: 'ALL' | 'mercadolibre' | 'web' | 'pos') {
+        if (this.channelFilter() !== filter) {
+            this.channelFilter.set(filter);
+            this.applyFilters();
+        }
+    }
+
     loadDashboardData() {
         this.isLoading.set(true);
-        this.orderService.getOrders().subscribe({
+
+        const today = new Date();
+        const endDate = new Date(today);
+        endDate.setHours(23, 59, 59, 999);
+
+        let startDate: Date;
+        if (this.timeframe() === 'MTD') {
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        } else {
+            startDate = new Date(today.getFullYear(), 0, 1);
+        }
+
+        this.orderService.getOrdersByDateRange(startDate, endDate).subscribe({
             next: (orders) => {
-                this.calculateStats(orders);
-                this.recentOrders.set(orders.slice(0, 5)); // Get 5 most recent
+                this.allFetchedOrders = orders;
+                this.applyFilters();
                 this.isLoading.set(false);
             },
             error: (error: any) => {
                 console.error('Error loading dashboard data:', error);
-                this.toast.error('Error loading dashboard stats');
+                this.toast.error(this.translate.instant('OPERATIONS.DASHBOARD.ERROR_LOADING'));
                 this.isLoading.set(false);
             }
         });
+    }
+
+    private chartRenderTimeout: any;
+
+    applyFilters() {
+        const filter = this.channelFilter();
+        let filteredOrders = this.allFetchedOrders;
+        
+        if (filter !== 'ALL') {
+            filteredOrders = this.allFetchedOrders.filter(o => o.sourceChannel === filter);
+        }
+
+        this.calculateStats(filteredOrders);
+        this.calculateSLAStats(filteredOrders);
+        this.calculatePriorityStats(filteredOrders);
+        this.calculateStaffWorkload(filteredOrders);
+        this.calculateOverdueOrders(filteredOrders);
+
+        this.recentOrders.set(filteredOrders.slice(0, 5));
+
+        if (this.chartRenderTimeout) {
+            clearTimeout(this.chartRenderTimeout);
+        }
+
+        this.chartRenderTimeout = setTimeout(() => {
+            if (document.getElementById('trendChart')) {
+                this.createSLAChart();
+                this.createPriorityChart();
+                this.createTrendChart(filteredOrders);
+            }
+        }, 150);
     }
 
     calculateStats(orders: Order[]) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        let sales = 0;
+        let piecesSold = 0;
+        let totalOrders = orders.length;
+        let pendingOrders = 0;
+        let processingOrders = 0;
+
+        orders.forEach(o => {
+            if (o.status === 'pending') pendingOrders++;
+            if (o.status === 'processing') processingOrders++;
+
+            // Ignore cancelled and refunded orders for the sales calculation
+            if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned') {
+                sales += o.total || 0;
+                if (o.items && Array.isArray(o.items)) {
+                    o.items.forEach(item => {
+                        piecesSold += item.quantity || 0;
+                    });
+                }
+            }
+        });
+
         const stats: DashboardStats = {
-            totalOrders: orders.length,
-            pendingOrders: orders.filter(o => o.status === 'pending').length,
-            processingOrders: orders.filter(o => o.status === 'processing').length,
+            totalOrders,
+            pendingOrders,
+            processingOrders,
             shippedToday: orders.filter(o => {
                 if (o.status !== 'shipped') return false;
                 const orderDate = this.getJsDate(o.updatedAt);
                 orderDate.setHours(0, 0, 0, 0);
                 return orderDate.getTime() === today.getTime();
-            }).length
+            }).length,
+            monthlySales: sales, // Kept property name for interface stability, represents active timeframe
+            monthlyPiecesSold: piecesSold
         };
 
         this.stats.set(stats);
+        
+        // Populate specific widget stats respecting timeframe
+        // These are now called directly from applyFilters
+        // this.calculateSLAStats(orders);
+        // this.calculatePriorityStats(orders);
+        // this.calculateStaffWorkload(orders);
+        // this.calculateOverdueOrders(orders);
     }
 
     getStatusBadgeClass(status: OrderStatus): string {
@@ -188,136 +277,197 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }).format(amount);
     }
 
-    async loadSLAStats() {
+    async calculateSLAStats(orders: Order[]) {
         try {
-            const stats = await this.priorityService.getSLAStats();
-
-            // If no priority records exist, calculate from orders directly
-            if (stats.total === 0) {
-                this.orderService.getOrders().subscribe({
-                    next: (orders) => {
-                        const now = Date.now();
-                        const sixHoursFromNow = now + (6 * 60 * 60 * 1000);
-
-                        // Default SLA: 48 hours for standard priority
-                        const defaultSLAHours = 48;
-
-                        let onTime = 0;
-                        let overdue = 0;
-                        let approaching = 0;
-
-                        orders.forEach(order => {
-                            const createdAt = this.getTimestampMillis(order.createdAt);
-                            const slaDeadline = createdAt + (defaultSLAHours * 60 * 60 * 1000);
-
-                            if (now > slaDeadline) {
-                                overdue++;
-                            } else if (slaDeadline <= sixHoursFromNow) {
-                                approaching++;
-                            } else {
-                                onTime++;
-                            }
-                        });
-
-                        const total = orders.length;
-                        const complianceRate = total > 0 ? ((onTime + approaching) / total) * 100 : 100;
-
-                        this.slaStats.set({
-                            total,
-                            onTime,
-                            overdue,
-                            approaching,
-                            complianceRate: Math.round(complianceRate * 100) / 100
-                        });
-
-                        if (this.slaChart) {
-                            this.updateSLAChart();
-                        }
-                    }
-                });
+            let startDate = new Date();
+            let endDate = new Date();
+            if (orders.length > 0) {
+                // Since orders are pre-sorted by date in the UI, we can just grab bounds
+                const dates = orders.map(o => this.getTimestampMillis(o.createdAt || o.updatedAt));
+                startDate = new Date(Math.min(...dates));
+                endDate = new Date(Math.max(...dates));
             } else {
-                this.slaStats.set(stats);
-                if (this.slaChart) {
-                    this.updateSLAChart();
+                 if (this.timeframe() === 'MTD') {
+                     startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                 } else {
+                     startDate = new Date(startDate.getFullYear(), 0, 1);
+                 }
+            }
+
+            // Fetch any custom SLA overrides (like rush/express upgrades) applied to orders in this timeframe
+            const priorityOverridesMap = await this.priorityService.getSLAOverridesMap(startDate, endDate);
+            
+            const now = Date.now();
+            const sixHoursFromNow = now + (6 * 60 * 60 * 1000);
+            
+            let onTime = 0;
+            let overdue = 0;
+            let approaching = 0;
+            let validOrdersForSLA = 0;
+
+            orders.forEach(order => {
+                // Ignore cancelled, refunded, or returned orders entirely from SLA compliance
+                if (['cancelled', 'refunded', 'returned'].includes(order.status)) {
+                    return;
                 }
+                
+                validOrdersForSLA++;
+
+                let slaDeadline: number;
+                
+                // 1. Check for custom priority override from the database
+                if (order.id && priorityOverridesMap.has(order.id)) {
+                    slaDeadline = priorityOverridesMap.get(order.id)!;
+                }
+                // 2. Check for native marketplace SLA (e.g. MercadoLibre handling time)
+                // @ts-ignore
+                else if (order.nativeSla) {
+                    // @ts-ignore
+                    slaDeadline = this.getTimestampMillis(order.nativeSla);
+                } 
+                // 3. Fallback to standard 48/72 timeframe based on priority tier
+                else {
+                    const defaultSLAHours = order.priorityLevel === 'rush' ? 24 : (order.priorityLevel === 'express' ? 48 : 72);
+                    const createdAt = this.getTimestampMillis(order.createdAt);
+                    slaDeadline = createdAt + (defaultSLAHours * 60 * 60 * 1000);
+                }
+
+                // If order was fulfilled by the platform directly (MeLi Full, Amazon FBA), don't penalize our warehouse SLA
+                if (order.fulfillmentType === 'platform') {
+                    onTime++;
+                    return;
+                }
+
+                // If order is already completed, compare the deadline against when it was actually shipped/delivered
+                if (['shipped', 'delivered'].includes(order.status)) {
+                    let completionTime: number;
+                    let shippedEvent = null;
+
+                    if (order.history && Array.isArray(order.history)) {
+                        // Find the first time it was marked shipped or delivered
+                        shippedEvent = order.history.find(h => h.status === 'shipped' || h.status === 'delivered');
+                    }
+
+                    if (shippedEvent && shippedEvent.timestamp) {
+                        completionTime = this.getTimestampMillis(shippedEvent.timestamp);
+                    } else if (order.shipments && order.shipments.length > 0 && order.shipments[0].shippedDate) {
+                        completionTime = this.getTimestampMillis(order.shipments[0].shippedDate);
+                    } else {
+                        completionTime = this.getTimestampMillis(order.updatedAt || order.createdAt);
+                    }
+
+                    if (completionTime > slaDeadline) {
+                        overdue++;
+                    } else {
+                        onTime++;
+                    }
+                } else {
+                    // For active orders, compare against current time
+                    if (now > slaDeadline) {
+                        overdue++;
+                    } else if (slaDeadline <= sixHoursFromNow) {
+                        approaching++;
+                    } else {
+                        onTime++;
+                    }
+                }
+            });
+
+            const complianceRate = validOrdersForSLA > 0 ? ((onTime + approaching) / validOrdersForSLA) * 100 : 100;
+
+            this.slaStats.set({
+                total: validOrdersForSLA,
+                onTime,
+                overdue,
+                approaching,
+                complianceRate: Math.round(complianceRate * 100) / 100
+            });
+
+            if (this.slaChart) {
+                this.updateSLAChart();
             }
         } catch (error) {
-            console.error('Error loading SLA stats:', error);
-            this.toast.error('Error loading SLA validation');
+            console.error('Error calculating SLA stats:', error);
+            this.toast.error('Error calculating SLA validation');
         }
     }
 
-    async loadPriorityStats() {
+    calculatePriorityStats(orders: Order[]) {
         try {
-            this.orderService.getOrders().subscribe({
-                next: (orders) => {
-                    const stats: PriorityStats = {
-                        standard: orders.filter(o => o.priorityLevel === 'standard').length,
-                        express: orders.filter(o => o.priorityLevel === 'express').length,
-                        rush: orders.filter(o => o.priorityLevel === 'rush').length
+            const stats: PriorityStats = {
+                standard: orders.filter(o => o.priorityLevel === 'standard').length,
+                express: orders.filter(o => o.priorityLevel === 'express').length,
+                rush: orders.filter(o => o.priorityLevel === 'rush').length
+            };
+
+            // If no orders have priority levels set, default all to standard
+            const total = stats.standard + stats.express + stats.rush;
+            if (total === 0 && orders.length > 0) {
+                stats.standard = orders.length;
+            }
+
+            this.priorityStats.set(stats);
+            // Update chart if it exists
+            if (this.priorityChart) {
+                this.updatePriorityChart();
+            }
+        } catch (error) {
+            console.error('Error calculating priority stats:', error);
+        }
+    }
+
+    calculateStaffWorkload(orders: Order[]) {
+        try {
+            // Group orders by assigned staff
+            const workloadMap = new Map<string, StaffWorkload>();
+
+            orders.forEach(order => {
+                if (order.assignedToName) {
+                    const existing = workloadMap.get(order.assignedToName) || {
+                        staffName: order.assignedToName,
+                        assignedOrders: 0,
+                        inProgress: 0,
+                        completed: 0
                     };
 
-                    // If no orders have priority levels set, default all to standard
-                    const total = stats.standard + stats.express + stats.rush;
-                    if (total === 0 && orders.length > 0) {
-                        stats.standard = orders.length;
-                    }
+                    existing.assignedOrders++;
+                    if (order.status === 'processing') existing.inProgress++;
+                    if (order.status === 'shipped' || order.status === 'delivered') existing.completed++;
 
-                    this.priorityStats.set(stats);
-                    // Update chart if it exists
-                    if (this.priorityChart) {
-                        this.updatePriorityChart();
-                    }
+                    workloadMap.set(order.assignedToName, existing);
                 }
             });
+
+            this.staffWorkload.set(Array.from(workloadMap.values()));
         } catch (error) {
-            console.error('Error loading priority stats:', error);
+            console.error('Error calculating staff workload:', error);
+            this.toast.error('Error calculating staff metrics');
         }
     }
 
-    async loadStaffWorkload() {
+    calculateOverdueOrders(orders: Order[]) {
         try {
-            this.orderService.getOrders().subscribe({
-                next: (orders) => {
-                    // Group orders by assigned staff
-                    const workloadMap = new Map<string, StaffWorkload>();
-
-                    orders.forEach(order => {
-                        if (order.assignedToName) {
-                            const existing = workloadMap.get(order.assignedToName) || {
-                                staffName: order.assignedToName,
-                                assignedOrders: 0,
-                                inProgress: 0,
-                                completed: 0
-                            };
-
-                            existing.assignedOrders++;
-                            if (order.status === 'processing') existing.inProgress++;
-                            if (order.status === 'shipped' || order.status === 'delivered') existing.completed++;
-
-                            workloadMap.set(order.assignedToName, existing);
-                        }
-                    });
-
-                    this.staffWorkload.set(Array.from(workloadMap.values()));
+            // Re-evaluate overdue locally to match SLA chart computation instead of relying on the DB flag
+            const now = Date.now();
+            const overdue = orders.filter(o => {
+                if (o.status === 'shipped' || o.status === 'delivered' || o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded') return false;
+                
+                let slaDeadline: number;
+                // @ts-ignore
+                if (o.nativeSla) {
+                    // @ts-ignore
+                    slaDeadline = this.getTimestampMillis(o.nativeSla);
+                } else {
+                    const defaultSLAHours = o.priorityLevel === 'rush' ? 24 : (o.priorityLevel === 'express' ? 48 : 72);
+                    const createdAt = this.getTimestampMillis(o.createdAt);
+                    slaDeadline = createdAt + (defaultSLAHours * 60 * 60 * 1000);
                 }
+                
+                return now > slaDeadline;
             });
+            this.overdueOrders.set(overdue.slice(0, 5)); // Top 5 overdue
         } catch (error) {
-            console.error('Error loading staff workload:', error);
-            this.toast.error('Error loading staff metrics');
-        }
-    }
-
-    async loadOverdueOrders() {
-        try {
-            this.orderService.getOrders().subscribe({
-                next: (orders) => {
-                    const overdue = orders.filter(o => o.isOverdue && o.status !== 'shipped' && o.status !== 'delivered');
-                    this.overdueOrders.set(overdue.slice(0, 5)); // Top 5 overdue
-                }
-            });
-        } catch (error) {
-            console.error('Error loading overdue orders:', error);
+            console.error('Error calculating overdue orders:', error);
         }
     }
 
@@ -346,7 +496,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const config: ChartConfiguration = {
             type: 'pie',
             data: {
-                labels: ['On Time', 'Approaching', 'Overdue'],
+                labels: [
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.ON_TIME'),
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.APPROACHING'),
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.OVERDUE')
+                ],
                 datasets: [{
                     data: [stats.onTime, stats.approaching, stats.overdue],
                     backgroundColor: [
@@ -397,7 +551,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const config: ChartConfiguration = {
             type: 'doughnut',
             data: {
-                labels: ['Standard', 'Express', 'Rush'],
+                labels: [
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.STANDARD'),
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.EXPRESS'),
+                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.RUSH')
+                ],
                 datasets: [{
                     data: [stats.standard, stats.express, stats.rush],
                     backgroundColor: [
@@ -427,7 +585,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                             label: (context) => {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
-                                return `${label}: ${value} orders`;
+                                return `${label}: ${value} pedidos`;
                             }
                         }
                     }
@@ -438,56 +596,132 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.priorityChart = new Chart(canvas, config);
     }
 
-    private createTrendChart() {
+    private createTrendChart(orders: Order[]) {
         const canvas = document.getElementById('trendChart') as HTMLCanvasElement;
         if (!canvas) return;
 
-        // Get last 7 days of data
-        const labels: string[] = [];
-        const pendingData: number[] = [];
-        const processingData: number[] = [];
-        const shippedData: number[] = [];
-
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            labels.push(date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }));
-
-            // For now, use placeholder data
-            // In production, you'd fetch actual historical data
-            pendingData.push(Math.floor(Math.random() * 20) + 5);
-            processingData.push(Math.floor(Math.random() * 15) + 3);
-            shippedData.push(Math.floor(Math.random() * 25) + 10);
+        // Destroy existing instance to prevent chart overlap when toggling timeframes
+        if (this.trendChart) {
+            this.trendChart.destroy();
         }
 
+        const today = new Date();
+        const currentYear = today.getFullYear();
+
+        const labels: string[] = [];
+        let dataLength = 0;
+        let getIndexFn: (d: Date) => number;
+
+        if (this.timeframe() === 'MTD') {
+            const currentMonth = today.getMonth();
+            const daysInMonth = today.getDate(); // 1 to today's date
+            dataLength = daysInMonth;
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(currentYear, currentMonth, i);
+                labels.push(date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }));
+            }
+            getIndexFn = (d: Date) => d.getDate() - 1;
+        } else {
+            // YTD Logic
+            const currentMonthIndex = today.getMonth(); // 0 to today's month
+            dataLength = currentMonthIndex + 1;
+
+            for (let i = 0; i <= currentMonthIndex; i++) {
+                const date = new Date(currentYear, i, 1);
+                let monthStr = date.toLocaleDateString('es-MX', { month: 'short' });
+                labels.push(monthStr.charAt(0).toUpperCase() + monthStr.slice(1));
+            }
+            getIndexFn = (d: Date) => d.getMonth();
+        }
+
+        const pendingData: number[] = new Array(dataLength).fill(0);
+        const processingData: number[] = new Array(dataLength).fill(0);
+        const shippedData: number[] = new Array(dataLength).fill(0);
+        const deliveredData: number[] = new Array(dataLength).fill(0);
+        const cancelledData: number[] = new Array(dataLength).fill(0);
+        const salesData: number[] = new Array(dataLength).fill(0);
+
+        orders.forEach(o => {
+            const orderDate = this.getJsDate(o.createdAt || o.updatedAt);
+            const index = getIndexFn(orderDate);
+
+            if (index >= 0 && index < dataLength) {
+                if (o.status === 'pending') pendingData[index]++;
+                else if (o.status === 'processing') processingData[index]++;
+                else if (o.status === 'shipped') shippedData[index]++;
+                else if (o.status === 'delivered') deliveredData[index]++;
+                else if (o.status === 'cancelled' || o.status === 'refunded' || o.status === 'returned') cancelledData[index]++;
+
+                if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned' && o.status !== 'invalid') {
+                    salesData[index] += o.total || 0;
+                }
+            }
+        });
+
         const config: ChartConfiguration = {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels,
                 datasets: [
                     {
-                        label: 'Pending',
+                        type: 'line',
+                        label: 'Net Sales ($)',
+                        data: salesData,
+                        borderColor: '#2dd4bf', // teal-400
+                        backgroundColor: '#2dd4bf',
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#2dd4bf',
+                        pointBorderColor: '#fff',
+                        pointRadius: 4,
+                        order: 0
+                    },
+                    {
+                        type: 'bar',
+                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PENDING'),
                         data: pendingData,
-                        borderColor: '#ffc107',
-                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: '#ffc107',
+                        borderWidth: 0,
+                        order: 1,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Processing',
+                        type: 'bar',
+                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PROCESSING'),
                         data: processingData,
-                        borderColor: '#17a2b8',
-                        backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: '#17a2b8',
+                        borderWidth: 0,
+                        order: 1,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Shipped',
+                        type: 'bar',
+                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.SHIPPED'),
                         data: shippedData,
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: '#8b5cf6', // Purple/Violet to distinguish from Delivered
+                        borderWidth: 0,
+                        order: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'bar',
+                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.DELIVERED'),
+                        data: deliveredData,
+                        backgroundColor: '#10b981', // Emerald Green
+                        borderWidth: 0,
+                        order: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        type: 'bar',
+                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.CANCELLED_RETURNED'),
+                        data: cancelledData,
+                        backgroundColor: '#dc3545', // Danger Red
+                        borderWidth: 0,
+                        order: 1,
+                        yAxisID: 'y'
                     }
                 ]
             },
@@ -499,21 +733,51 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                         position: 'bottom',
                         labels: {
                             padding: 15,
-                            font: {
-                                size: 12
-                            }
+                            font: { size: 12 }
                         }
                     },
                     tooltip: {
                         mode: 'index',
-                        intersect: false
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.dataset.type === 'line') {
+                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed.y);
+                                } else {
+                                    label += context.parsed.y;
+                                }
+                                return label;
+                            }
+                        }
                     }
                 },
                 scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false }
+                    },
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        stacked: true,
                         beginAtZero: true,
+                        ticks: { precision: 0 }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
                         ticks: {
-                            precision: 0
+                            callback: function(value) {
+                                return '$' + (Number(value) / 1000).toFixed(0) + 'k';
+                            }
                         }
                     }
                 }

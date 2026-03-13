@@ -7,16 +7,18 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 import { ToastService } from '../../../../core/services/toast.service';
 import { OrderService } from '../../../../core/services/order.service';
 import { Order } from '../../../../core/models/order.model';
-import { Timestamp } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, Timestamp, query, orderBy, limit } from '@angular/fire/firestore';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-mercadolibre-hub',
     standalone: true,
-    imports: [CommonModule, AdminPageHeaderComponent, AppIconComponent, TranslateModule],
+    imports: [CommonModule, AdminPageHeaderComponent, AppIconComponent, TranslateModule, FormsModule],
     templateUrl: './mercadolibre-hub.component.html'
 })
 export class MercadolibreHubComponent implements OnInit {
     private functions = inject(Functions);
+    private firestore = inject(Firestore);
     private toast = inject(ToastService);
     private orderService = inject(OrderService);
 
@@ -33,6 +35,13 @@ export class MercadolibreHubComponent implements OnInit {
     allOrders = signal<Order[]>([]);
     isLoadingData = signal(true);
     dataError = signal<string | null>(null);
+
+    // FBM Inventory Data
+    fbmInventory = signal<any[]>([]);
+    isLoadingFbm = signal(true);
+
+    // Webhook Logs
+    webhookLogs = signal<any[]>([]);
 
     // Computed signals for MercadoLibre
     meliOrders = computed(() => {
@@ -53,6 +62,122 @@ export class MercadolibreHubComponent implements OnInit {
         return this.meliOrders().filter(o => o.fulfillmentType === 'platform' || (o as any).channel === 'MELI_FULL');
     });
 
+    // FBM Sort & Pagination State
+    fbmSortColumn = signal<'sku' | 'title' | 'qty' | 'sales' | 'days'>('qty');
+    fbmSortDirection = signal<'asc' | 'desc'>('asc');
+    fbmCurrentPage = signal<number>(1);
+    fbmPageSize = signal<number>(10);
+
+    fbmInventoryWithBurnRate = computed(() => {
+        const inventory = this.fbmInventory();
+        // Use all MercadoLibre orders to get accurate total platform velocity for the SKU
+        const orders = this.meliOrders();
+
+        // Calculate 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Map SKUs to quantity sold in last 30 days
+        const skuSales = new Map<string, number>();
+
+        for (const order of orders) {
+            let orderDate: Date | null = null;
+            if (order.createdAt instanceof Date) {
+                orderDate = order.createdAt;
+            } else if ((order.createdAt as any)?.toDate) {
+                orderDate = (order.createdAt as any).toDate();
+            } else if (typeof order.createdAt === 'string' || typeof order.createdAt === 'number') {
+                orderDate = new Date(order.createdAt);
+            }
+
+            if (orderDate && orderDate >= thirtyDaysAgo) {
+                for (const item of order.items || []) {
+                    if (item.sku) {
+                        const current = skuSales.get(item.sku) || 0;
+                        skuSales.set(item.sku, current + (item.quantity || 1));
+                    }
+                }
+            }
+        }
+
+        return inventory.map(item => {
+            const sold30Days = skuSales.get(item.sku) || 0;
+            const dailyBurnRate = sold30Days / 30;
+            let daysRemaining = 999;
+
+            if (dailyBurnRate > 0) {
+                daysRemaining = Math.max(0, Math.floor(item.availableQuantity / dailyBurnRate));
+            }
+
+            return {
+                ...item,
+                sold30Days,
+                dailyBurnRate,
+                daysRemaining
+            };
+        });
+    });
+
+    processedFbmInventory = computed(() => {
+        let items = [...this.fbmInventoryWithBurnRate()];
+        const col = this.fbmSortColumn();
+        const dir = this.fbmSortDirection() === 'asc' ? 1 : -1;
+
+        items.sort((a, b) => {
+            let valA: any = a[col];
+            let valB: any = b[col];
+
+            if (col === 'sku') {
+                valA = (a.sku || '').toLowerCase();
+                valB = (b.sku || '').toLowerCase();
+            } else if (col === 'qty') {
+                valA = a.availableQuantity || 0;
+                valB = b.availableQuantity || 0;
+            } else if (col === 'sales') {
+                valA = a.sold30Days || 0;
+                valB = b.sold30Days || 0;
+            } else if (col === 'days') {
+                valA = a.daysRemaining;
+                valB = b.daysRemaining;
+            } else {
+                valA = (a.title || '').toLowerCase();
+                valB = (b.title || '').toLowerCase();
+            }
+
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+
+        return items;
+    });
+
+    paginatedFbmInventory = computed(() => {
+        const items = this.processedFbmInventory();
+        const startIndex = (this.fbmCurrentPage() - 1) * this.fbmPageSize();
+        return items.slice(startIndex, startIndex + this.fbmPageSize());
+    });
+
+    fbmTotalPages = computed(() => {
+        return Math.max(1, Math.ceil(this.processedFbmInventory().length / this.fbmPageSize()));
+    });
+
+    setFbmSort(column: 'sku' | 'title' | 'qty' | 'sales' | 'days') {
+        if (this.fbmSortColumn() === column) {
+            this.fbmSortDirection.set(this.fbmSortDirection() === 'asc' ? 'desc' : 'asc');
+        } else {
+            this.fbmSortColumn.set(column);
+            this.fbmSortDirection.set('asc');
+        }
+        this.fbmCurrentPage.set(1); // Reset to first page on sort
+    }
+
+    setFbmPage(page: number) {
+        if (page >= 1 && page <= this.fbmTotalPages()) {
+            this.fbmCurrentPage.set(page);
+        }
+    }
+
     // Overview Stats
     pendingCount = computed(() => this.pendingClassicOrders().length);
     fullOrdersTodayCount = computed(() => {
@@ -66,6 +191,8 @@ export class MercadolibreHubComponent implements OnInit {
 
     ngOnInit() {
         this.loadOrders();
+        this.loadFbmInventory();
+        this.loadWebhookLogs();
     }
 
     private loadOrders() {
@@ -82,6 +209,32 @@ export class MercadolibreHubComponent implements OnInit {
                 this.dataError.set('Could not load orders from database.');
                 this.isLoadingData.set(false);
             }
+        });
+    }
+
+    private loadFbmInventory() {
+        this.isLoadingFbm.set(true);
+        const ref = collection(this.firestore, 'meli_fbm_inventory');
+        collectionData(ref, { idField: 'id' }).subscribe({
+            next: (data) => {
+                this.fbmInventory.set(data as any[]);
+                this.isLoadingFbm.set(false);
+            },
+            error: (err) => {
+                console.error('Failed to load FBM inventory', err);
+                this.isLoadingFbm.set(false);
+            }
+        });
+    }
+
+    private loadWebhookLogs() {
+        const ref = collection(this.firestore, 'meli_webhook_logs');
+        const q = query(ref, orderBy('createdAt', 'desc'), limit(20));
+        collectionData(q, { idField: 'id' }).subscribe({
+            next: (data) => {
+                this.webhookLogs.set(data as any[]);
+            },
+            error: (err) => console.error('Failed to load webhook logs', err)
         });
     }
 
@@ -163,6 +316,27 @@ export class MercadolibreHubComponent implements OnInit {
             }
         } catch (err: any) {
             this.toast.error('Quick sync failed.');
+        } finally {
+            this.isSyncing.set(false);
+        }
+    }
+
+    async syncFbmInventory() {
+        if (this.isSyncing()) return;
+        this.isSyncing.set(true);
+        this.toast.info('Requesting FBM inventory sync from MercadoLibre...');
+
+        try {
+            const syncFn = httpsCallable(this.functions, 'meliSyncFullInventory');
+            const result: any = await syncFn();
+            if (result.data?.success) {
+                this.toast.success(`Synced ${result.data.syncedCount} FBM items.`);
+            } else {
+                throw new Error("Unexpected API response");
+            }
+        } catch (err: any) {
+            console.error('FBM Sync Error:', err);
+            this.toast.error('Failed to sync FBM inventory.');
         } finally {
             this.isSyncing.set(false);
         }

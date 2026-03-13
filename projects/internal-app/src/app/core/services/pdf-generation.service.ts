@@ -68,19 +68,25 @@ export class PdfGenerationService {
         doc.text('SHIP TO:', 20, yPos);
         yPos += 5;
         doc.setFont('helvetica', 'normal');
-        doc.text(order.customer.name, 20, yPos);
+        doc.text(order.customer?.name || 'N/A', 20, yPos);
         yPos += 5;
         const addr = order.shippingAddress;
-        doc.text(`${addr.street} ${addr.exteriorNumber}${addr.interiorNumber ? ' Int. ' + addr.interiorNumber : ''}`, 20, yPos);
+        const streetLine = addr
+            ? `${addr.street || ''} ${addr.exteriorNumber || ''}${addr.interiorNumber ? ' Int. ' + addr.interiorNumber : ''}`.trim()
+            : 'N/A';
+        doc.text(streetLine || 'N/A', 20, yPos);
         yPos += 5;
-        if (addr.colonia) {
+        if (addr?.colonia) {
             doc.text(`Col. ${addr.colonia}`, 20, yPos);
             yPos += 5;
         }
-        doc.text(`${addr.city}, ${addr.state} ${addr.zipCode}`, 20, yPos);
+        doc.text(`${addr?.city || ''}, ${addr?.state || ''} ${addr?.zipCode || ''}`.trim() || 'N/A', 20, yPos);
         yPos += 5;
-        doc.text(order.customer.phone, 20, yPos);
-        yPos += 10;
+        if (order.customer?.phone) {
+            doc.text(order.customer.phone, 20, yPos);
+            yPos += 5;
+        }
+        yPos += 5;
 
         // Items Table
         const tableData = order.items.map(item => [

@@ -133,6 +133,8 @@ export class OrderBuilderComponent implements OnInit {
     shippingRates = signal<ShippingRate[]>([]);
     isLoadingRates = signal(false);
     selectedRateId = signal<string | null>(null);
+    quoteZipCode = signal<string>('');
+    selectedCarrier = signal<string | null>(null);
 
     // Inline address form fields
     colonias = signal<string[]>([]);
@@ -336,31 +338,28 @@ export class OrderBuilderComponent implements OnInit {
 
     fetchShippingRates() {
         const addr = this.shippingAddress();
-        if (!addr) {
-            this.toast.error('Save a shipping address first.');
-            return;
-        }
-        if (this.cartItems().length === 0) {
-            this.toast.error('Add items to the cart to calculate shipping.');
+        const zip = addr?.zipCode || this.quoteZipCode();
+        
+        if (!zip || zip.length < 5) {
+            this.toast.error('Enter a valid 5-digit ZIP code to calculate shipping.');
             return;
         }
 
         this.isLoadingRates.set(true);
 
-        // Aggregate parcel weight. Default assumption 10kg per item if unknown
         const totalQty = this.cartItems().reduce((acc, item) => acc + item.quantity, 0);
         const parcel = { weight: Math.max(1, totalQty * 10), height: 30, width: 30, length: 20 };
 
         const addressTo = {
-            name: this.customer()?.displayName || this.customer()?.email || 'Cliente',
-            phone: this.customer()?.phone || '',
-            email: this.customer()?.email || '',
-            address1: `${addr.street} ${addr.exteriorNumber}`,
-            address2: addr.colonia || '',
-            city: addr.city,
-            province: addr.state,
-            zip: addr.zipCode,
-            country_code: 'MX' // currently locked to MX
+            name: this.customer()?.displayName || this.customer()?.email || 'N/A',
+            phone: this.customer()?.phone || '0000000000',
+            email: this.customer()?.email || 'quote@example.com',
+            address1: addr ? `${addr.street} ${addr.exteriorNumber}` : 'N/A',
+            address2: addr?.colonia || 'N/A',
+            city: addr?.city || 'N/A',
+            province: addr?.state || 'N/A',
+            zip: zip,
+            country_code: 'MX' 
         };
 
         this.skydropxService.getRates({ addressTo, parcel }).subscribe({
@@ -380,13 +379,8 @@ export class OrderBuilderComponent implements OnInit {
     selectShippingRate(rate: ShippingRate) {
         this.selectedRateId.set(rate.rateId);
         this.shippingCost.set(rate.price);
-        
-        // Map SkyDropX carrier to our simple internal enum labels
-        const upper = (rate.carrier || '').toUpperCase();
-        if (upper.includes('FEDEX')) this.shippingMethod.set('FEDEX' as ShippingMethod);
-        else if (upper.includes('DHL')) this.shippingMethod.set('DHL' as ShippingMethod);
-        else if (upper.includes('ESTAFETA')) this.shippingMethod.set('ESTAFETA' as ShippingMethod);
-        else this.shippingMethod.set('EXPRESS' as ShippingMethod);
+        this.selectedCarrier.set(rate.carrier);
+        this.shippingMethod.set('NATIONAL_CARRIER');
     }
 
     getCarrierColor(carrier: string) {
@@ -438,6 +432,7 @@ export class OrderBuilderComponent implements OnInit {
                 paymentStatus: 'pending',
                 paymentMethod: this.selectedPaymentMethod(),
                 shippingMethod: this.shippingMethod(),
+                carrier: this.selectedCarrier() || undefined,
                 shippingAddress: this.shippingAddress() ?? {
                     street: '', exteriorNumber: '', city: '', state: '', zipCode: '', country: 'México'
                 },
@@ -467,15 +462,11 @@ export class OrderBuilderComponent implements OnInit {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    get shippingMethodOptions(): { key: ShippingMethod; label: string }[] {
+    get shippingMethodOptions(): { key: ShippingMethod; label: string, icon: string, desc: string }[] {
         return [
-            { key: 'STORE_PICKUP',      label: '🏪 Store Pickup (Free)' },
-            { key: 'LOCAL_DELIVERY',    label: '🛵 Local Delivery' },
-            { key: 'NATIONAL_CARRIER',  label: '📦 National Carrier' },
-            { key: 'EXPRESS',           label: '⚡ Express' },
-            { key: 'FEDEX',             label: 'FedEx' },
-            { key: 'DHL',               label: 'DHL' },
-            { key: 'ESTAFETA',          label: 'Estafeta' },
+            { key: 'STORE_PICKUP',      label: 'Store Pickup', icon: 'package', desc: 'Free pickup at EuroLlantas' },
+            { key: 'LOCAL_DELIVERY',    label: 'Local Delivery', icon: 'truck', desc: 'Direct delivery in SLP' },
+            { key: 'NATIONAL_CARRIER',  label: 'National Courier', icon: 'globe', desc: 'Quote via SkyDropX' },
         ];
     }
 }

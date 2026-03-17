@@ -225,9 +225,33 @@
                 <h3 class="font-bold text-white text-sm flex items-center gap-2 mb-3">
                     <app-icon name="truck" [size]="16" class="text-indigo-400"></app-icon> Shipping
                 </h3>
-                <select [(ngModel)]="shippingMethod" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none mb-3">
-                    <option *ngFor="let m of shippingMethodOptions" [value]="m.key">{{ m.label }}</option>
-                </select>
+                <!-- Shipping Method Toggles -->
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <button *ngFor="let m of shippingMethodOptions" (click)="shippingMethod.set(m.key); shippingCost.set(0); selectedCarrier.set(null); selectedRateId.set(null)"
+                        class="p-2 rounded-xl border text-left transition-all relative overflow-hidden group"
+                        [ngClass]="shippingMethod() === m.key 
+                            ? 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/50' 
+                            : 'bg-slate-800/50 border-white/5 hover:border-slate-500 hover:bg-slate-800'">
+                        
+                        <div class="flex flex-col h-full relative z-10">
+                            <div class="flex items-center gap-1.5 mb-1 text-white">
+                                <app-icon [name]="m.icon" [size]="14" [class]="shippingMethod() === m.key ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-300'"></app-icon>
+                                <span class="font-bold text-[11px] uppercase tracking-wide leading-none" [class.text-indigo-300]="shippingMethod() === m.key">{{ m.label }}</span>
+                            </div>
+                            <div class="text-[10px] leading-snug mt-auto" [class]="shippingMethod() === m.key ? 'text-indigo-200/80' : 'text-slate-500 group-hover:text-slate-400'">
+                                {{ m.desc }}
+                            </div>
+                        </div>
+
+                        <!-- Active State Gradient Background -->
+                        <div *ngIf="shippingMethod() === m.key" class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent z-0"></div>
+                        
+                        <!-- Checkmark Indicator -->
+                        <div *ngIf="shippingMethod() === m.key" class="absolute top-1.5 right-1.5 h-3.5 w-3.5 bg-indigo-500 rounded-full flex items-center justify-center shadow-sm">
+                            <app-icon name="check" [size]="10" class="text-white"></app-icon>
+                        </div>
+                    </button>
+                </div>
                 <div *ngIf="shippingMethod() !== 'STORE_PICKUP'">
                     <div *ngIf="shippingAddress()" class="text-xs text-slate-300 leading-relaxed bg-slate-800/50 rounded-lg p-3 border border-white/10 mb-2">
                         {{ shippingAddress()?.street }} {{ shippingAddress()?.exteriorNumber }}<br>
@@ -269,15 +293,18 @@
                         </div>
                     </div>
                     <!-- SkyDropX Rates UI -->
-                    <div *ngIf="shippingAddress() && shippingMethod() !== 'STORE_PICKUP'" class="mt-4 border-t border-white/10 pt-3">
+                    <div *ngIf="shippingMethod() !== 'STORE_PICKUP'" class="mt-4 border-t border-white/10 pt-3">
                         <div class="flex items-center justify-between mb-3">
-                            <h4 class="text-xs font-bold text-slate-300">Live Shipping Rates</h4>
-                            <button (click)="fetchShippingRates()" [disabled]="isLoadingRates() || cartItems().length === 0"
-                                class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded text-xs font-medium transition-colors disabled:opacity-50">
-                                <app-icon *ngIf="!isLoadingRates()" name="refresh-cw" [size]="12"></app-icon>
-                                <div *ngIf="isLoadingRates()" class="animate-spin h-3 w-3 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
-                                Get Quotes
-                            </button>
+                            <h4 class="text-xs font-bold text-slate-300">Quick Quote (Zip Code)</h4>
+                            <div class="flex gap-2">
+                                <input type="text" [ngModel]="quoteZipCode()" (ngModelChange)="quoteZipCode.set($event)" placeholder="78140" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 text-xs text-white focus:border-indigo-500 focus:outline-none">
+                                <button (click)="fetchShippingRates()" [disabled]="isLoadingRates() || quoteZipCode().length < 5"
+                                    class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded text-xs font-medium transition-colors disabled:opacity-50">
+                                    <app-icon *ngIf="!isLoadingRates()" name="refresh-cw" [size]="12"></app-icon>
+                                    <div *ngIf="isLoadingRates()" class="animate-spin h-3 w-3 border-2 border-indigo-400 border-t-transparent rounded-full"></div>
+                                    Get Quotes
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Rates Grid -->

@@ -121,8 +121,7 @@
     }
 
     <!-- New Metrics Widgets -->
-    @if (!isLoading()) {
-    <div class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+    <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 transition-opacity duration-300">
         <!-- SLA Compliance -->
         <div
             class="metric-card sla-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
@@ -288,12 +287,10 @@
             </div>
         </div>
     </div>
-    }
 
 
     <!-- Charts Section -->
-    @if (!isLoading()) {
-    <div class="charts-section">
+    <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="charts-section transition-opacity duration-300">
         <h2 class="text-xl font-bold text-white mb-4">{{ 'OPERATIONS.DASHBOARD.METRICS.PERFORMANCE_ANALYSIS' | translate
             }}</h2>
 
@@ -339,8 +336,152 @@
                 </div>
             </div>
         </div>
+
+        <!-- Geographic Shipment Heatmap & Table (Full Width, Below) -->
+        <div class="chart-card full-width mt-6 bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700">
+            <div class="chart-header bg-zinc-900/50 p-4 border-b border-zinc-700 flex justify-between items-center text-white">
+                <h3 class="flex items-center text-sm font-semibold text-zinc-300">
+                    <app-icon [name]="showGeographicTable() ? 'list' : 'map'" [size]="18" class="mr-2"></app-icon> 
+                    {{ showGeographicTable() ? 'Detalles Geográficos de Ventas' : ('OPERATIONS.DASHBOARD.METRICS.GEOGRAPHIC_DISTRIBUTION' | translate) }}
+                </h3>
+                <div class="flex items-center gap-4">
+                    <button class="flex items-center text-xs font-semibold px-3 py-1.5 rounded-md border transition-all"
+                            [class.bg-blue-600]="showGeographicTable()" [class.border-blue-500]="showGeographicTable()" [class.text-white]="showGeographicTable()"
+                            [class.bg-zinc-800]="!showGeographicTable()" [class.border-zinc-700]="!showGeographicTable()" [class.text-zinc-400]="!showGeographicTable()" [class.hover:text-zinc-200]="!showGeographicTable()"
+                            (click)="toggleGeographicTable()">
+                        <app-icon name="table" [size]="14" class="mr-1.5"></app-icon> Ver Datos
+                    </button>
+                    
+                    <div class="flex items-center gap-3 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
+                        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Total Heat Nodes</span>
+                        <span class="text-sm font-black text-rose-500 font-mono">{{ rawHeatmapData().length }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-body p-0" style="height: 500px; width: 100%;">
+                @if (!showGeographicTable()) {
+                    <google-map height="500px" width="100%" [options]="mapOptions" (mapInitialized)="updateHeatmapSignal()">
+                        @if (heatmapDataSignal().length > 0) {
+                            <map-heatmap-layer [data]="heatmapDataSignal()" [options]="heatmapOptions"></map-heatmap-layer>
+                            
+                            <!-- Invisible markers used for hovering/clicking to show tooltips -->
+                            @for (metric of stateMetricsSignal(); track metric.name) {
+                                <map-marker 
+                                    #marker="mapMarker"
+                                    [position]="{lat: metric.lat, lng: metric.lng}"
+                                    [options]="{opacity: 0, title: metric.name}"
+                                    (mapClick)="openInfoWindow(marker, metric)">
+                                </map-marker>
+                            }
+                            
+                            <!-- Floating Info Window -->
+                            <map-info-window>
+                                @if (activeStateMetric) {
+                                    <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-lg shadow-2xl min-w-[200px]" style="background-color: #27272a; color: white;">
+                                        <h4 class="font-bold text-white text-base border-b border-zinc-700 pb-2 mb-3 uppercase tracking-wider flex items-center">
+                                            <app-icon name="map-pin" [size]="16" class="mr-2 text-rose-500"></app-icon> 
+                                            {{ activeStateMetric.name }}
+                                        </h4>
+                                        
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded">
+                                                <span class="text-zinc-400">Total Orders</span>
+                                                <span class="font-mono font-bold text-white">{{ activeStateMetric.orders }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded">
+                                                <span class="text-zinc-400">Items Sold</span>
+                                                <span class="font-mono font-bold text-white">{{ activeStateMetric.pieces }}</span>
+                                            </div>
+                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded border-l-2 border-teal-500">
+                                                <span class="text-zinc-400">Sales Value</span>
+                                                <span class="font-mono font-bold text-teal-400">{{ formatCurrency(activeStateMetric.sales) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </map-info-window>
+                        }
+                    </google-map>
+                } @else {
+                    <div class="h-full overflow-y-auto w-full bg-zinc-800">
+                        <table class="orders-table w-full text-left border-collapse">
+                            <thead class="bg-zinc-900/80 sticky top-0 z-10 backdrop-blur-sm">
+                                <tr>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700">Estado</th>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700">Ciudad</th>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700">C.P.</th>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700 text-right cursor-pointer hover:text-white transition-colors group select-none" (click)="sortGeographicTable('orders')">
+                                        <div class="flex items-center justify-end gap-1">
+                                            Órdenes
+                                            <app-icon [name]="sortColumn() === 'orders' ? (sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down') : 'minus'" 
+                                                      [size]="14" 
+                                                      [class]="sortColumn() === 'orders' ? 'text-zinc-300' : 'text-zinc-600 opacity-0 group-hover:opacity-50'"></app-icon>
+                                        </div>
+                                    </th>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700 text-right cursor-pointer hover:text-white transition-colors group select-none" (click)="sortGeographicTable('pieces')">
+                                        <div class="flex items-center justify-end gap-1">
+                                            Piezas
+                                            <app-icon [name]="sortColumn() === 'pieces' ? (sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down') : 'minus'" 
+                                                      [size]="14" 
+                                                      [class]="sortColumn() === 'pieces' ? 'text-zinc-300' : 'text-zinc-600 opacity-0 group-hover:opacity-50'"></app-icon>
+                                        </div>
+                                    </th>
+                                    <th class="py-3 px-6 text-xs uppercase tracking-wider text-zinc-400 font-semibold border-b border-zinc-700 text-right cursor-pointer hover:text-white transition-colors group select-none" (click)="sortGeographicTable('sales')">
+                                        <div class="flex items-center justify-end gap-1">
+                                            Venta Neta
+                                            <app-icon [name]="sortColumn() === 'sales' ? (sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down') : 'minus'" 
+                                                      [size]="14" 
+                                                      [class]="sortColumn() === 'sales' ? 'text-zinc-300' : 'text-zinc-600 opacity-0 group-hover:opacity-50'"></app-icon>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-zinc-300">
+                                @if (stateGeographicDetailsSignal().length > 0) {
+                                    @for (stateDetail of stateGeographicDetailsSignal(); track stateDetail.state) {
+                                        <!-- State Parent Row -->
+                                        <tr class="border-b border-zinc-700/50 hover:bg-zinc-700/30 transition-colors cursor-pointer" (click)="toggleStateRow(stateDetail.state)">
+                                            <td class="py-3 px-6 font-medium text-white flex items-center">
+                                                <app-icon [name]="stateDetail.isExpanded ? 'chevron-down' : 'chevron-right'" [size]="16" class="mr-2 text-zinc-400"></app-icon>
+                                                {{ stateDetail.state }}
+                                            </td>
+                                            <td class="py-3 px-6 text-zinc-500 italic text-sm">-- Toda la entidad --</td>
+                                            <td class="py-3 px-6 text-zinc-500 italic font-mono text-sm">--</td>
+                                            <td class="py-3 px-6 text-right font-mono font-bold">{{ stateDetail.orders }}</td>
+                                            <td class="py-3 px-6 text-right font-mono font-bold text-blue-400">{{ stateDetail.pieces }}</td>
+                                            <td class="py-3 px-6 text-right font-mono font-bold text-emerald-400">{{ formatCurrency(stateDetail.sales) }}</td>
+                                        </tr>
+                                        
+                                        <!-- Nested City Rows -->
+                                        @if (stateDetail.isExpanded) {
+                                            @for (city of stateDetail.cities; track city.zipCode + city.city) {
+                                                <tr class="border-b border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors text-sm">
+                                                    <td class="py-2 px-6 pl-12 text-zinc-400 flex items-center">
+                                                        <div class="w-1.5 h-1.5 rounded-full bg-zinc-600 mr-3"></div>
+                                                        <span class="sr-only">Ciudad:</span>
+                                                    </td>
+                                                    <td class="py-2 px-6 text-zinc-300">{{ city.city }}</td>
+                                                    <td class="py-2 px-6 font-mono text-zinc-400 text-xs">{{ city.zipCode }}</td>
+                                                    <td class="py-2 px-6 text-right font-mono font-medium">{{ city.orders }}</td>
+                                                    <td class="py-2 px-6 text-right font-mono font-medium text-blue-400/80">{{ city.pieces }}</td>
+                                                    <td class="py-2 px-6 text-right font-mono font-medium text-emerald-400/80">{{ formatCurrency(city.sales) }}</td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                } @else {
+                                    <tr>
+                                        <td colspan="6" class="py-8 text-center text-zinc-500">No hay datos geográficos disponibles para este período.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
-    }
 
 
     <!-- Quick Actions -->

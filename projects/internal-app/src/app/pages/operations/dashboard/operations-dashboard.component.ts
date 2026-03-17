@@ -10,9 +10,37 @@ import { OrderAssignmentService } from '../../../core/services/order-assignment.
 import { AdminPageHeaderComponent } from '../../admin/shared/admin-page-header/admin-page-header.component';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { ToastService } from '../../../core/services/toast.service';
+import { GoogleMapsModule, MapMarker, MapInfoWindow } from '@angular/google-maps';
+import { ViewChild } from '@angular/core';
 
 // Register Chart.js components
 Chart.register(...registerables);
+
+export interface StateMetric {
+    name: string;
+    lat: number;
+    lng: number;
+    orders: number;
+    pieces: number;
+    sales: number;
+}
+
+export interface CityGeographicDetail {
+    zipCode: string;
+    city: string;
+    orders: number;
+    pieces: number;
+    sales: number;
+}
+
+export interface StateGeographicDetail {
+    state: string;
+    orders: number;
+    pieces: number;
+    sales: number;
+    isExpanded?: boolean;
+    cities: CityGeographicDetail[];
+}
 
 interface DashboardStats {
     totalOrders: number;
@@ -46,10 +74,49 @@ interface StaffWorkload {
 
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 
+const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
+    'AGUASCALIENTES': { lat: 21.8853, lng: -102.2916 },
+    'BAJA CALIFORNIA': { lat: 30.8406, lng: -115.2838 },
+    'BAJA CALIFORNIA SUR': { lat: 26.0444, lng: -111.6661 },
+    'CAMPECHE': { lat: 18.8055, lng: -90.2694 },
+    'CHIAPAS': { lat: 16.7480, lng: -92.9372 },
+    'CHIHUAHUA': { lat: 28.6320, lng: -106.0691 },
+    'COAHUILA': { lat: 27.0587, lng: -101.7068 },
+    'COLIMA': { lat: 19.1223, lng: -104.0028 },
+    'CIUDAD DE MEXICO': { lat: 19.4326, lng: -99.1332 },
+    'CDMX': { lat: 19.4326, lng: -99.1332 },
+    'DISTRITO FEDERAL': { lat: 19.4326, lng: -99.1332 },
+    'DURANGO': { lat: 24.0277, lng: -104.6532 },
+    'GUANAJUATO': { lat: 21.0190, lng: -101.2574 },
+    'GUERRERO': { lat: 17.5516, lng: -99.5010 },
+    'HIDALGO': { lat: 20.0911, lng: -98.7624 },
+    'JALISCO': { lat: 20.6595, lng: -103.3490 },
+    'ESTADO DE MEXICO': { lat: 19.3268, lng: -99.7042 },
+    'MEXICO': { lat: 19.3268, lng: -99.7042 },
+    'MICHOCAN': { lat: 19.2274, lng: -101.8311 },
+    'MICHOACAN DE OCAMPO': { lat: 19.2274, lng: -101.8311 },
+    'MORELOS': { lat: 18.9186, lng: -99.2342 },
+    'NAYARIT': { lat: 21.5037, lng: -104.8947 },
+    'NUEVO LEON': { lat: 25.5922, lng: -99.9962 },
+    'OAXACA': { lat: 17.0732, lng: -96.7266 },
+    'PUEBLA': { lat: 19.0414, lng: -98.2063 },
+    'QUERETARO': { lat: 20.5888, lng: -100.3899 },
+    'QUINTANA ROO': { lat: 19.4447, lng: -87.8227 },
+    'SAN LUIS POTOSI': { lat: 22.1565, lng: -100.9855 },
+    'SINALOA': { lat: 25.1721, lng: -107.4795 },
+    'SONORA': { lat: 29.2972, lng: -110.3309 },
+    'TABASCO': { lat: 17.8409, lng: -92.6189 },
+    'TAMAULIPAS': { lat: 24.2669, lng: -98.8363 },
+    'TLAXCALA': { lat: 19.3139, lng: -98.2411 },
+    'VERACRUZ': { lat: 19.1738, lng: -96.1342 },
+    'YUCATAN': { lat: 20.9754, lng: -89.6170 },
+    'ZACATECAS': { lat: 22.7709, lng: -102.5832 }
+};
+
 @Component({
     selector: 'app-operations-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule],
     templateUrl: './operations-dashboard.component.html',
     styleUrls: ['./operations-dashboard.component.css']
 })
@@ -91,6 +158,74 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     overdueOrders = signal<Order[]>([]);
     recentOrders = signal<Order[]>([]);
     isLoading = signal(true);
+
+    // Geographic Map Properties
+    heatmapOptions: any = {
+        radius: 35,
+        opacity: 0.9,
+        gradient: [
+            'rgba(0, 0, 0, 0)',
+            'rgba(30, 215, 96, 1)',   // Spotify Green / Emerald
+            'rgba(16, 185, 129, 1)',  // Emerald 500
+            'rgba(5, 150, 105, 1)',   // Emerald 600
+            'rgba(59, 130, 246, 1)',  // Blue 500
+            'rgba(37, 99, 235, 1)',   // Blue 600
+            'rgba(147, 51, 234, 1)',  // Purple 600
+            'rgba(219, 39, 119, 1)',  // Pink 600
+            'rgba(225, 29, 72, 1)',   // Rose 600
+            'rgba(244, 63, 94, 1)'    // Rose 500 (Heat apex)
+        ]
+    };
+    rawHeatmapData = signal<{lat: number, lng: number, weight: number}[]>([]);
+    
+    // Data specifically for interactive tooltips
+    stateMetricsSignal = signal<StateMetric[]>([]);
+    @ViewChild(MapInfoWindow) infoWindow?: MapInfoWindow;
+    activeStateMetric: StateMetric | null = null;
+    
+    // Geographic Details Table
+    showGeographicTable = signal(false);
+    stateGeographicDetailsSignal = signal<StateGeographicDetail[]>([]);
+    sortColumn = signal<'orders' | 'pieces' | 'sales'>('pieces');
+    sortDirection = signal<'asc' | 'desc'>('desc');
+    
+    mapOptions: any = {
+        center: { lat: 23.6345, lng: -102.5528 }, // Center of Mexico
+        zoom: 4.8,
+        disableDefaultUI: true,
+        backgroundColor: '#27272a', // zinc-800
+        styles: [
+            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+            { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+            { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+            { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+            { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+            { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+            { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+            { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+            { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+            { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+            { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+            { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+            { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+            { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+            { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+            { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+        ]
+    };
+
+    heatmapDataSignal = signal<any[]>([]);
+    
+    updateHeatmapSignal() {
+        if (typeof google === 'undefined' || !google.maps || !google.maps.LatLng) return;
+        const mapped = this.rawHeatmapData().map(raw => ({
+            location: new google.maps.LatLng(raw.lat, raw.lng),
+            weight: raw.weight
+        }));
+        this.heatmapDataSignal.set(mapped);
+    }
 
     // Chart instances
     private slaChart?: Chart;
@@ -180,6 +315,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.calculatePriorityStats(filteredOrders);
         this.calculateStaffWorkload(filteredOrders);
         this.calculateOverdueOrders(filteredOrders);
+        this.generateHeatmapData(filteredOrders);
 
         this.recentOrders.set(filteredOrders.slice(0, 5));
 
@@ -194,6 +330,161 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 this.createTrendChart(filteredOrders);
             }
         }, 150);
+    }
+
+    openInfoWindow(marker: MapMarker, metric: StateMetric) {
+        if (this.infoWindow) {
+            this.activeStateMetric = metric;
+            this.infoWindow.open(marker);
+        }
+    }
+
+    toggleGeographicTable() {
+        this.showGeographicTable.update(v => !v);
+    }
+
+    sortGeographicTable(column: 'orders' | 'pieces' | 'sales') {
+        if (this.sortColumn() === column) {
+            this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
+        } else {
+            this.sortColumn.set(column);
+            this.sortDirection.set('desc');
+        }
+        
+        this.applySorting();
+    }
+
+    private applySorting() {
+        const column = this.sortColumn();
+        const direction = this.sortDirection() === 'asc' ? 1 : -1;
+        
+        this.stateGeographicDetailsSignal.update(states => {
+            return [...states].sort((a, b) => {
+                const valA = a[column];
+                const valB = b[column];
+                return (valA - valB) * direction;
+            });
+        });
+    }
+
+    toggleStateRow(stateName: string) {
+        this.stateGeographicDetailsSignal.update(states => {
+            return states.map(s => {
+                if (s.state === stateName) {
+                    return { ...s, isExpanded: !s.isExpanded };
+                }
+                return s;
+            });
+        });
+    }
+
+    private generateHeatmapData(orders: Order[]) {
+        const stateCounts: Record<string, { pieces: number, orders: number, sales: number }> = {};
+        const stateHierarchies: Record<string, StateGeographicDetail> = {};
+
+        orders.forEach(o => {
+            if (o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded') return;
+            
+            const state = o.shippingAddress?.state;
+            if (!state) return;
+            
+            // Normalize state name
+            const normalizedState = state.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            const coords = MEXICO_STATES_COORDS[normalizedState] || MEXICO_STATES_COORDS[normalizedState.replace(' DE OCAMPO', '').replace(' DE ZARAGOZA', '')];
+            
+            if (coords) {
+                const totalPieces = (o.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+                const salesValue = o.total || 0;
+                
+                if (!stateCounts[normalizedState]) {
+                    stateCounts[normalizedState] = { pieces: 0, orders: 0, sales: 0 };
+                }
+                
+                stateCounts[normalizedState].pieces += totalPieces;
+                stateCounts[normalizedState].orders += 1;
+                stateCounts[normalizedState].sales += salesValue;
+                
+                // Granular details for the nested expandable table
+                const zip = o.shippingAddress?.zipCode || 'N/A';
+                const city = o.shippingAddress?.city || 'N/A';
+                
+                // Initialize State Header if it doesn't exist
+                if (!stateHierarchies[normalizedState]) {
+                    stateHierarchies[normalizedState] = {
+                        state: normalizedState,
+                        orders: 0,
+                        pieces: 0,
+                        sales: 0,
+                        isExpanded: false,
+                        cities: []
+                    };
+                }
+                
+                // Update State Aggregates
+                stateHierarchies[normalizedState].pieces += totalPieces;
+                stateHierarchies[normalizedState].orders += 1;
+                stateHierarchies[normalizedState].sales += salesValue;
+
+                // Update or Initialize City within the State
+                let cityEntry = stateHierarchies[normalizedState].cities.find(c => c.city === city && c.zipCode === zip);
+                if (!cityEntry) {
+                    cityEntry = {
+                        city: city,
+                        zipCode: zip,
+                        orders: 0,
+                        pieces: 0,
+                        sales: 0
+                    };
+                    stateHierarchies[normalizedState].cities.push(cityEntry);
+                }
+
+                cityEntry.pieces += totalPieces;
+                cityEntry.orders += 1;
+                cityEntry.sales += salesValue;
+            }
+        });
+
+        const rawData: any[] = [];
+        const stateMetrics: StateMetric[] = [];
+        
+        Object.keys(stateCounts).forEach(state => {
+            const coords = MEXICO_STATES_COORDS[state] || MEXICO_STATES_COORDS[state.replace(' DE OCAMPO', '').replace(' DE ZARAGOZA', '')];
+            
+            // For the visual heatmap layer
+            rawData.push({
+                lat: coords.lat,
+                lng: coords.lng,
+                weight: stateCounts[state].pieces // Heatmap intensity based on pieces sold
+            });
+            
+            // For the interactive tooltips layer
+            stateMetrics.push({
+                name: state,
+                lat: coords.lat,
+                lng: coords.lng,
+                orders: stateCounts[state].orders,
+                pieces: stateCounts[state].pieces,
+                sales: stateCounts[state].sales
+            });
+        });
+
+        this.rawHeatmapData.set(rawData);
+        this.stateMetricsSignal.set(stateMetrics);
+        
+        // Convert to array and sort nested cities inside each state
+        const stateArray = Object.values(stateHierarchies).map(stateObj => {
+            // Sort nested cities by pieces sold descending always
+            stateObj.cities.sort((a, b) => b.pieces - a.pieces);
+            return stateObj;
+        });
+
+        this.stateGeographicDetailsSignal.set(stateArray);
+        this.applySorting(); // Apply initial sorting
+
+        // Update the actual LatLng objects if Google Maps API is ready
+        if (typeof google !== 'undefined' && google.maps && google.maps.LatLng) {
+            this.updateHeatmapSignal();
+        }
     }
 
     calculateStats(orders: Order[]) {
@@ -492,9 +783,23 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const canvas = document.getElementById('slaChart') as HTMLCanvasElement;
         if (!canvas) return;
 
+        // Force native chart destruction
+        if (this.slaChart) {
+            this.slaChart.destroy();
+            this.slaChart = undefined;
+        }
+
+        // Hard unmount any ghost instances locked to this canvas ID globally
+        for (let id in Chart.instances) {
+            const instance = Chart.instances[id];
+            if (instance && instance.canvas && instance.canvas.id === 'slaChart') {
+                instance.destroy();
+            }
+        }
+
         const stats = this.slaStats();
         const config: ChartConfiguration = {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: [
                     this.translate.instant('OPERATIONS.DASHBOARD.METRICS.ON_TIME'),
@@ -504,36 +809,26 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 datasets: [{
                     data: [stats.onTime, stats.approaching, stats.overdue],
                     backgroundColor: [
-                        '#28a745',
-                        '#ffc107',
-                        '#dc3545'
+                        '#10b981', // emerald-500
+                        '#f59e0b', // amber-500
+                        '#ef4444'  // red-500
                     ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
+                    borderWidth: 0,
+                    hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // @ts-ignore - Chart.js v3+ typings mismatch, bypass TS2353 crash
+                cutout: '70%',
                 plugins: {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            padding: 15,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = stats.total || 1;
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: ${value} (${percentage}%)`;
-                            }
+                            color: '#a1a1aa', // text-zinc-400
+                            usePointStyle: true,
+                            padding: 20
                         }
                     }
                 }
@@ -547,9 +842,21 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const canvas = document.getElementById('priorityChart') as HTMLCanvasElement;
         if (!canvas) return;
 
+        if (this.priorityChart) {
+            this.priorityChart.destroy();
+            this.priorityChart = undefined;
+        }
+
+        for (let id in Chart.instances) {
+            const instance = Chart.instances[id];
+            if (instance && instance.canvas && instance.canvas.id === 'priorityChart') {
+                instance.destroy();
+            }
+        }
+
         const stats = this.priorityStats();
         const config: ChartConfiguration = {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: [
                     this.translate.instant('OPERATIONS.DASHBOARD.METRICS.STANDARD'),
@@ -557,14 +864,14 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                     this.translate.instant('OPERATIONS.DASHBOARD.METRICS.RUSH')
                 ],
                 datasets: [{
+                    label: this.translate.instant('OPERATIONS.DASHBOARD.TOTAL_ORDERS'),
                     data: [stats.standard, stats.express, stats.rush],
                     backgroundColor: [
-                        '#667eea',
-                        '#f5576c',
-                        '#fa709a'
+                        '#3b82f6', // blue-500
+                        '#8b5cf6', // violet-500
+                        '#ec4899'  // pink-500
                     ],
-                    borderWidth: 2,
-                    borderColor: '#fff'
+                    borderRadius: 4
                 }]
             },
             options: {
@@ -572,21 +879,25 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            font: {
-                                size: 12
-                            }
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#3f3f46' // border-zinc-700
+                        },
+                        ticks: {
+                            color: '#a1a1aa' // text-zinc-400
                         }
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                return `${label}: ${value} pedidos`;
-                            }
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#a1a1aa' // text-zinc-400
                         }
                     }
                 }
@@ -600,9 +911,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const canvas = document.getElementById('trendChart') as HTMLCanvasElement;
         if (!canvas) return;
 
-        // Destroy existing instance to prevent chart overlap when toggling timeframes
         if (this.trendChart) {
             this.trendChart.destroy();
+            this.trendChart = undefined;
+        }
+
+        for (let id in Chart.instances) {
+            const instance = Chart.instances[id];
+            if (instance && instance.canvas && instance.canvas.id === 'trendChart') {
+                instance.destroy();
+            }
         }
 
         const today = new Date();
@@ -621,7 +939,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 const date = new Date(currentYear, currentMonth, i);
                 labels.push(date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }));
             }
-            getIndexFn = (d: Date) => d.getDate() - 1;
+            getIndexFn = (d: Date) => {
+                if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                    return d.getDate() - 1;
+                }
+                return -1; // Out of bounds
+            };
         } else {
             // YTD Logic
             const currentMonthIndex = today.getMonth(); // 0 to today's month
@@ -632,7 +955,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 let monthStr = date.toLocaleDateString('es-MX', { month: 'short' });
                 labels.push(monthStr.charAt(0).toUpperCase() + monthStr.slice(1));
             }
-            getIndexFn = (d: Date) => d.getMonth();
+            getIndexFn = (d: Date) => {
+                if (d.getFullYear() === currentYear) {
+                    return d.getMonth();
+                }
+                return -1; // Out of bounds
+            };
         }
 
         const pendingData: number[] = new Array(dataLength).fill(0);
@@ -642,9 +970,22 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const cancelledData: number[] = new Array(dataLength).fill(0);
         const salesData: number[] = new Array(dataLength).fill(0);
 
+        let debugCount = 0;
         orders.forEach(o => {
             const orderDate = this.getJsDate(o.createdAt || o.updatedAt);
             const index = getIndexFn(orderDate);
+
+            // Isolate parsing logs specifically to January (Month index 0)
+            if (orderDate.getMonth() === 0 && debugCount++ < 5) {
+                console.log(`Debug YTD Chart [Jan Order] ${o.id}:`, {
+                    rawCreatedAt: o.createdAt,
+                    parsedDate: orderDate,
+                    year: orderDate.getFullYear(),
+                    month: orderDate.getMonth(),
+                    assignedIndex: index,
+                    expectedLength: dataLength
+                });
+            }
 
             if (index >= 0 && index < dataLength) {
                 if (o.status === 'pending') pendingData[index]++;
@@ -653,10 +994,21 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 else if (o.status === 'delivered') deliveredData[index]++;
                 else if (o.status === 'cancelled' || o.status === 'refunded' || o.status === 'returned') cancelledData[index]++;
 
-                if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned' && o.status !== 'invalid') {
-                    salesData[index] += o.total || 0;
+                if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned') {
+                    salesData[index] += (o.total || 0);
                 }
             }
+        });
+
+        // Ensure no NaN values sneak in
+        const safeSalesData = salesData.map(val => Number.isNaN(val) ? 0 : val);
+
+        console.log(`Debug YTD Final Payload [Length: ${dataLength}]:`, {
+            labels,
+            salesData,
+            pendingData,
+            shippedData,
+            deliveredData
         });
 
         const config: ChartConfiguration = {
@@ -667,10 +1019,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                     {
                         type: 'line',
                         label: 'Net Sales ($)',
-                        data: salesData,
+                        data: safeSalesData,
                         borderColor: '#2dd4bf', // teal-400
                         backgroundColor: '#2dd4bf',
                         tension: 0.4,
+                        spanGaps: true,
                         yAxisID: 'y1',
                         borderWidth: 3,
                         pointBackgroundColor: '#2dd4bf',
@@ -746,7 +1099,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                                     label += ': ';
                                 }
                                 if (context.dataset.type === 'line') {
-                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed.y);
+                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed.y || 0);
                                 } else {
                                     label += context.parsed.y;
                                 }
@@ -773,6 +1126,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                         display: true,
                         position: 'right',
                         beginAtZero: true,
+                        min: 0,
+                        suggestedMax: safeSalesData.length > 0 ? (Math.max(...safeSalesData) * 1.25) + 50 : 1000,
                         grid: { drawOnChartArea: false },
                         ticks: {
                             callback: function(value) {

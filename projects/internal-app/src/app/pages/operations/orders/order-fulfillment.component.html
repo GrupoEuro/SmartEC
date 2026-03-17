@@ -90,7 +90,7 @@
                 <span *ngIf="order()!.shippingAddress?.colonia">{{ order()!.shippingAddress.colonia }}<br></span>
                 {{ order()!.shippingAddress?.city }}, {{ order()!.shippingAddress?.state }}<br>
                 {{ order()!.shippingAddress?.zipCode }}<br>
-                {{ order()!.shippingAddress?.country }}
+                {{ $any(order())?.shippingAddress?.country }}
             </address>
             <!-- Delivery references -->
             <div class="mt-3 pt-3 border-t border-zinc-700/50 border-dashed text-sm text-zinc-400"
@@ -216,116 +216,6 @@
         </div>
     </div>
     <!-- End Channel Information -->
-
-    <!-- Channel Badge -->
-    <div class="flex justify-between items-center">
-        <span class="text-sm text-zinc-400">Channel:</span>
-        <span class="channel-badge" [ngClass]="getChannelBadgeConfig(getLegacyChannel(order()!)).class">
-            <app-icon [name]="getChannelBadgeConfig(getLegacyChannel(order()!)).icon" [size]="14"></app-icon>
-            {{ getChannelBadgeConfig(getLegacyChannel(order()!)).label }}
-        </span>
-    </div>
-
-    <!-- External Order ID (for marketplace orders) -->
-    <div class="flex justify-between items-center text-sm" *ngIf="order()!.externalOrderId">
-        <span class="text-zinc-400">External ID:</span>
-        <span class="font-mono font-medium text-zinc-200 text-right">{{ order()!.externalOrderId
-            }}</span>
-    </div>
-
-    <!-- Fulfillment Location -->
-    <div class="flex justify-between items-center text-sm">
-        <span class="text-zinc-400">Fulfillment:</span>
-        <span class="font-medium text-zinc-200 text-right">
-            <span class="px-2 py-1 rounded text-xs font-semibold uppercase" [ngClass]="{
-                                'bg-blue-900/30 text-blue-400 border border-blue-800/50': getFulfillmentLocation() === 'MAIN',
-                                'bg-orange-900/30 text-orange-400 border border-orange-800/50': getFulfillmentLocation() === 'AMAZON_FBA',
-                                'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50': getFulfillmentLocation() === 'MELI_FULL'
-                            }">
-                {{ getFulfillmentLocation() }}
-            </span>
-        </span>
-    </div>
-
-    <!-- ON_BEHALF specific metadata -->
-    <div *ngIf="order()!.sourceChannel === 'on_behalf' && order()!.metadata" class="pt-3 border-t border-zinc-700/50">
-        <div class="flex justify-between items-center text-sm mb-2">
-            <span class="text-zinc-400">Source:</span>
-            <span class="font-medium text-zinc-200 text-right capitalize">{{ order()!.metadata?.source
-                ||
-                'Phone' }}</span>
-        </div>
-        <div class="flex justify-between items-center text-sm" *ngIf="order()!.metadata?.enteredBy">
-            <span class="text-zinc-400">Entered By:</span>
-            <span class="font-medium text-zinc-200 text-right">{{ order()!.metadata?.enteredBy }}</span>
-        </div>
-    </div>
-
-    <!-- MeLi Invoice / Fiscal Data -->
-    <div *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.meliInvoice"
-        class="pt-3 border-t border-zinc-700/50">
-        <div class="text-xs text-zinc-500 uppercase font-semibold mb-2">Datos de Facturación</div>
-        <div class="flex justify-between items-center text-sm mb-1">
-            <span class="text-zinc-400">Nombre:</span>
-            <span class="text-zinc-200 text-right font-medium">{{ $any(order())!.meliInvoice.name || '—'
-                }}</span>
-        </div>
-        <div class="flex justify-between items-center text-sm mb-1">
-            <span class="text-zinc-400">RFC:</span>
-            <span class="font-mono text-xs font-bold text-right"
-                [class.text-amber-400]="$any(order())!.meliInvoice.isGenericRfc"
-                [class.text-emerald-400]="!$any(order())!.meliInvoice.isGenericRfc">
-                {{ $any(order())!.meliInvoice.rfc || '—' }}
-                <span *ngIf="$any(order())!.meliInvoice.isGenericRfc" class="ml-1 text-amber-500/60">genérico</span>
-            </span>
-        </div>
-        <div class="flex justify-between items-center text-sm mb-1" *ngIf="$any(order())!.meliInvoice.taxpayerType">
-            <span class="text-zinc-400">Tipo:</span>
-            <span class="text-zinc-200 text-right">{{ $any(order())!.meliInvoice.taxpayerType }}</span>
-        </div>
-        <div class="flex justify-between items-center text-sm mb-1" *ngIf="$any(order())!.meliInvoice.cfdiUse">
-            <span class="text-zinc-400">Uso CFDI:</span>
-            <span class="font-mono text-xs text-zinc-200 text-right">{{
-                $any(order())!.meliInvoice.cfdiUse
-                }}</span>
-        </div>
-        <div class="flex justify-between items-start text-sm" *ngIf="$any(order())!.meliInvoice.billingAddress">
-            <span class="text-zinc-400">Dir. fiscal:</span>
-            <span class="text-zinc-300 text-right text-xs ml-2 leading-relaxed">
-                {{ $any(order())!.meliInvoice.billingAddress.street }} {{
-                $any(order())!.meliInvoice.billingAddress.exteriorNumber }},
-                {{ $any(order())!.meliInvoice.billingAddress.city }},
-                C.P. {{ $any(order())!.meliInvoice.billingAddress.zipCode }},
-                {{ $any(order())!.meliInvoice.billingAddress.state }}
-            </span>
-        </div>
-    </div>
-    <!-- Marketplace specific metadata -->
-    <div *ngIf="(order()!.sourceChannel === 'amazon' || order()!.sourceChannel === 'mercadolibre') && order()!.externalOrderId"
-        class="pt-3 border-t border-zinc-700/50">
-        <div class="text-xs text-zinc-500 uppercase font-semibold mb-2">Marketplace Info</div>
-        <div class="flex justify-between items-center text-sm">
-            <span class="text-zinc-400">Marketplace ID:</span>
-            <span class="font-mono text-xs text-zinc-200 text-right">{{ order()!.externalOrderId
-                }}</span>
-        </div>
-        <!-- MeLi: View on MercadoLibre link -->
-        <div class="flex justify-between items-center text-sm mt-2" *ngIf="order()!.sourceChannel === 'mercadolibre'">
-            <span class="text-zinc-400">Ver en:</span>
-            <a [href]="getMeliOrderUrl()" target="_blank"
-                class="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-300 font-semibold text-xs transition-colors">
-                <app-icon name="external-link" [size]="12"></app-icon>
-                MercadoLibre
-            </a>
-        </div>
-        <!-- MeLi: Shipping ID -->
-        <div class="flex justify-between items-center text-sm mt-2"
-            *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.shippingId">
-            <span class="text-zinc-400">Shipping ID:</span>
-            <span class="font-mono text-xs text-zinc-200">{{ $any(order())?.shippingId }}</span>
-        </div>
-    </div>
-</div>
 
 
 <!-- Payment & Tracking -->

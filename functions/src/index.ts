@@ -268,7 +268,7 @@ export const skydropxGetRates = functions.https.onCall(async (data, context) => 
         parcel: { weight: number; height: number; width: number; length: number };
     };
     if (!parcel) throw new functions.https.HttpsError('invalid-argument', 'parcel required.');
-    if (!orderId && !addressTo) throw new functions.https.HttpsError('invalid-argument', 'orderId or addressTo required.');
+    if (!orderId && !addressTo?.zip) throw new functions.https.HttpsError('invalid-argument', 'orderId or addressTo with a zip code required.');
 
     let finalAddressTo = addressTo;
 

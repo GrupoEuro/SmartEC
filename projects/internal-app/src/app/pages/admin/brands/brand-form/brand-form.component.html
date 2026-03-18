@@ -61,31 +61,42 @@
                 <div class="form-group logo-upload-group">
                     <label>{{ 'ADMIN.BRANDS.FORM.LOGO' | translate }}</label>
 
-                    <div class="image-upload-section">
-                        <!-- Preview -->
-                        <div *ngIf="previewUrl" class="image-preview">
-                            <img [src]="previewUrl" alt="Logo preview">
-                            <button type="button" class="btn-remove-image" (click)="removeImage()">
-                                <app-icon name="trash-2" [size]="16"></app-icon>
-                            </button>
-                        </div>
+                    <div class="image-actions">
+                        <button type="button" class="btn-upload" (click)="fileInput.click()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
+                        </button>
 
-                        <!-- Upload Buttons -->
-                        <!-- Upload Buttons -->
-                        <div class="upload-actions" *ngIf="!previewUrl">
-                            <button type="button" class="btn-upload" (click)="fileInput.click()">
-                                <input #fileInput type="file" id="logoInput" (change)="onFileSelected($event)"
-                                    accept="image/*" class="file-input">
-                                <app-icon name="upload-cloud" [size]="24"></app-icon>
-                                <span>{{ 'ADMIN.BRANDS.FORM.UPLOAD_IMAGE' | translate }}</span>
-                            </button>
+                        <button type="button" class="btn-library" (click)="openMediaPicker()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            <span>Select from Library</span>
+                        </button>
+                    </div>
 
-                            <button type="button" class="btn-library" (click)="openMediaPicker()">
-                                <app-icon name="image" [size]="20"></app-icon>
-                                <span>Select from Library</span>
+                    <div class="images-grid" *ngIf="previewUrl">
+                        <div class="image-card">
+                            <div class="image-container-16x9">
+                                <img [src]="previewUrl" alt="Logo preview">
+                            </div>
+
+                            <button type="button" class="btn-remove-card" (click)="removeImage()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
                             </button>
                         </div>
                     </div>
+
+                    <input #fileInput type="file" id="logoInput" (change)="onFileSelected($event)" accept="image/*" class="file-input" style="display: none;">
                 </div>
 
                 <!-- Organization & Status (Right Col) -->

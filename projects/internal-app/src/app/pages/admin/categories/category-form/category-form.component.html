@@ -78,33 +78,43 @@
                 <div class="form-group">
                     <label>{{ 'ADMIN.CATEGORIES.FORM.IMAGE' | translate }}</label>
 
-                    <div class="image-upload-section">
-                        <!-- Preview -->
-                        <div class="image-preview" *ngIf="imagePreview">
-                            <img [src]="imagePreview" alt="Category Preview">
-                            <button type="button" class="btn-remove-image" (click)="removeImage()">
-                                <app-icon name="trash-2" [size]="16"></app-icon>
-                            </button>
-                        </div>
+                    <div class="image-actions">
+                        <button type="button" class="btn-upload" (click)="fileInput.click()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <span>{{ 'ADMIN.CATEGORIES.FORM.UPLOAD_IMAGE' | translate }}</span>
+                        </button>
 
-                        <!-- Upload Buttons -->
-                        <div class="upload-actions" *ngIf="!imagePreview">
-                            <div class="upload-area" (click)="fileInput.click()">
-                                <input #fileInput type="file" (change)="onImageSelected($event)" accept="image/*"
-                                    class="file-input">
-                                <div class="upload-label">
-                                    <span class="upload-icon">☁️</span>
-                                    <span>{{ 'ADMIN.CATEGORIES.FORM.UPLOAD_IMAGE' | translate }}</span>
-                                </div>
+                        <button type="button" class="btn-library" (click)="openMediaLibrary()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            <span>Select from Library</span>
+                        </button>
+                    </div>
+
+                    <div class="images-grid" *ngIf="imagePreview">
+                        <div class="image-card">
+                            <div class="image-container-16x9">
+                                <img [src]="imagePreview" alt="Category Preview">
                             </div>
 
-                            <button type="button" class="btn-library" (click)="openMediaLibrary()">
-                                <app-icon name="image" [size]="20"></app-icon>
-                                <span>Select from Library</span>
+                            <button type="button" class="btn-remove-card" (click)="removeImage()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
                             </button>
                         </div>
                     </div>
                 </div>
+
+                <input #fileInput type="file" (change)="onImageSelected($event)" accept="image/*" class="file-input" style="display: none;">
 
                 <div class="form-group">
                     <div class="form-group">

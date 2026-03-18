@@ -8,6 +8,8 @@ export interface Coupon {
     type: DiscountType;
     value: number; // Percentage (0-100) or Fixed Amount
     description?: string;
+    redirectUrl?: string; // Custom URL to redirect to upon scanning
+    qrLogoUrl?: string; // Optional logo for the center of the QR code
 
     // Constraints
     minPurchaseAmount?: number;
@@ -15,6 +17,7 @@ export interface Coupon {
     endDate?: Timestamp | Date;
     usageLimit: number; // Max total global uses (0 = unlimited)
     usageCount: number; // Current total uses
+    scanCount?: number; // Total number of times the QR was scanned
 
     isActive: boolean;
     createdAt: Timestamp | Date;

@@ -1342,6 +1342,8 @@
     },
     "COUPONS": {
       "TITLE": "Coupons",
+      "NEW_TITLE": "New Coupon",
+      "EDIT_TITLE": "Edit Coupon",
       "ADD_NEW": "Add New Coupon",
       "SEARCH_PLACEHOLDER": "Search coupons...",
       "EMPTY_MSG": "No coupons found",
@@ -1375,7 +1377,26 @@
         "END_DATE": "End Date",
         "END_DATE_HINT": "Leave empty for no expiry",
         "DATE_ERROR": "End date must be after start date",
-        "GENERATE": "Generate Random Code"
+        "GENERATE": "Generate Random Code",
+        "REDIRECT_URL": "Destination Redirect URL",
+        "REDIRECT_URL_OPTIONAL": "(Optional)",
+        "REDIRECT_URL_PLACEHOLDER": "https://importadoraeuro.com/sale",
+        "REDIRECT_URL_HINT": "If provided, scanning the QR will temporarily redirect to this URL instead of the homepage.",
+        "ACTIVE_VISIBLE": "Active (Visible)",
+        "SECTION_TRACKING_QR": "Tracking QR Code",
+        "QR_CODE_LOGO": "QR Code Logo",
+        "UPLOADING": "Uploading",
+        "REMOVE_LOGO": "Remove Logo",
+        "QR_CENTER_LOGO": "QR Center Logo",
+        "DIRECT_UPLOAD": "Direct Upload",
+        "PICK_FROM_LIBRARY": "Pick from Library",
+        "TRACKED_VIA": "Tracked via:",
+        "REDIRECTS_TO": "Redirects to:",
+        "DOWNLOAD_PNG": "Download PNG",
+        "QR_GENERATION_FAILED": "QR Generation Failed:",
+        "BTN_UPDATE": "Update Coupon",
+        "BTN_CREATE": "Create Coupon",
+        "BTN_SAVING": "Saving..."
       }
     },
     "CATEGORIES": {

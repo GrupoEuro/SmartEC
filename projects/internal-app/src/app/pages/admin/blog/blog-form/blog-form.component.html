@@ -1,117 +1,185 @@
-<app-admin-page-header [iconName]="isEditing ? 'edit' : 'plus'"
-    [title]="isEditing ? ('ADMIN.BLOG.EDIT_TITLE' | translate) : ('ADMIN.BLOG.NEW_TITLE' | translate)"
-    [showSaveCancel]="true" [hasUnsavedChanges]="postForm.dirty" [isFormInvalid]="postForm.invalid"
-    [isSaving]="isSubmitting" (onSave)="onSubmit()" (onCancel)="onCancel()">
+<app-admin-page-header icon="📝" [title]="isEditing ? ('ADMIN.BLOG.FORM.TITLE_EDIT' | translate) : ('ADMIN.BLOG.FORM.TITLE_ADD' | translate)">
+    <button type="button" class="btn-secondary" (click)="onCancel()">
+        {{ 'ADMIN.COMMON.CANCEL' | translate }}
+    </button>
 </app-admin-page-header>
 
-<div class="admin-form-container">
-    <form [formGroup]="postForm" (ngSubmit)="onSubmit()" class="admin-form-glass">
+<div class="form-container">
+    <form [formGroup]="postForm" (ngSubmit)="onSubmit()">
 
         <!-- Main Content Section -->
-        <div class="form-section">
+        <section class="form-section">
             <h3 class="section-title">
                 <app-icon name="file-text" [size]="20"></app-icon>
                 {{ 'ADMIN.BLOG.FORM.SECTION_GENERAL' | translate }}
             </h3>
 
-            <div class="form-grid">
-                <div class="form-group span-2">
+            <div class="form-row cols-2">
+                <div class="form-group">
                     <label>{{ 'ADMIN.BLOG.FORM.TITLE' | translate }}</label>
-                    <div class="input-with-icon">
-                        <input type="text" formControlName="title" (change)="generateSlug()" class="form-control">
-                    </div>
-                </div>
-
-                <div class="form-group span-2">
-                    <label>{{ 'ADMIN.BLOG.FORM.SLUG' | translate }}</label>
-                    <div class="input-with-icon">
-                        <app-icon name="link" [size]="16" class="field-icon"></app-icon>
-                        <input type="text" formControlName="slug" class="form-control">
-                    </div>
+                    <input type="text" formControlName="title" (change)="generateSlug()" class="form-control">
                 </div>
 
                 <div class="form-group">
-                    <label>{{ 'ADMIN.BLOG.FORM.CATEGORY' | translate }}</label>
-                    <div class="select-wrapper">
-                        <select formControlName="category" class="form-control">
-                            <option value="Mantenimiento">{{ 'ADMIN.BLOG.CATEGORIES.MAINTENANCE' | translate }}</option>
-                            <option value="Novedades">{{ 'ADMIN.BLOG.CATEGORIES.NEWS' | translate }}</option>
-                            <option value="Consejos">{{ 'ADMIN.BLOG.CATEGORIES.TIPS' | translate }}</option>
-                            <option value="Tecnología">{{ 'ADMIN.BLOG.CATEGORIES.TECH' | translate }}</option>
-                        </select>
-                        <app-icon name="chevron-down" [size]="16" class="select-icon"></app-icon>
+                    <label>{{ 'ADMIN.BLOG.FORM.SLUG' | translate }}</label>
+                    <div class="input-with-icon">
+                        <app-icon name="link" [size]="16" class="field-icon"></app-icon>
+                        <input type="text" formControlName="slug" class="form-control" style="padding-left: 2.75rem;">
                     </div>
+                </div>
+            </div>
+
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.BLOG.FORM.CATEGORY' | translate }}</label>
+                    <select formControlName="category" class="form-control">
+                        <option value="Mantenimiento">{{ 'ADMIN.BLOG.CATEGORIES.MAINTENANCE' | translate }}</option>
+                        <option value="Novedades">{{ 'ADMIN.BLOG.CATEGORIES.NEWS' | translate }}</option>
+                        <option value="Consejos">{{ 'ADMIN.BLOG.CATEGORIES.TIPS' | translate }}</option>
+                        <option value="Tecnología">{{ 'ADMIN.BLOG.CATEGORIES.TECH' | translate }}</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label>{{ 'ADMIN.BLOG.FORM.READ_TIME' | translate }}</label>
                     <div class="input-with-icon">
                         <app-icon name="clock" [size]="16" class="field-icon"></app-icon>
-                        <input type="number" formControlName="readTime" class="form-control">
+                        <input type="number" formControlName="readTime" class="form-control" style="padding-left: 2.75rem;">
                     </div>
                 </div>
+            </div>
 
-                <div class="form-group span-2">
+            <div class="form-row">
+                <div class="form-group">
                     <label>{{ 'ADMIN.BLOG.FORM.TAGS' | translate }}</label>
                     <div class="input-with-icon">
                         <app-icon name="tag" [size]="16" class="field-icon"></app-icon>
                         <input type="text" formControlName="tags" class="form-control"
-                            placeholder="e.g. tires, maintenance, safety">
+                            placeholder="e.g. tires, maintenance, safety" style="padding-left: 2.75rem;">
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Content Section -->
-        <div class="form-section">
+        <section class="form-section">
             <h3 class="section-title">
                 <app-icon name="align-left" [size]="20"></app-icon>
                 Content
             </h3>
 
-            <div class="form-group">
+            <div class="form-group mb-6">
                 <label>{{ 'ADMIN.BLOG.FORM.EXCERPT' | translate }}</label>
                 <textarea formControlName="excerpt" rows="3" class="form-control"></textarea>
             </div>
 
             <div class="form-group">
                 <label>{{ 'ADMIN.BLOG.FORM.CONTENT' | translate }}</label>
-                <textarea formControlName="content" rows="15" class="form-control content-editor"></textarea>
-                <small class="hint-text">
+                <textarea formControlName="content" rows="15" class="form-control content-editor" style="font-family: monospace; font-size: 0.9rem;"></textarea>
+                <small class="form-hint mt-2">
                     <app-icon name="info" [size]="14"></app-icon>
                     {{ 'ADMIN.BLOG.FORM.HTML_HINT' | translate }}
                 </small>
             </div>
-        </div>
+        </section>
 
         <!-- Media Section -->
-        <div class="form-section">
+        <section class="form-section">
             <h3 class="section-title">
                 <app-icon name="image" [size]="20"></app-icon>
                 Media
             </h3>
 
-            <div class="form-group">
+            <div class="form-group pb-8">
                 <label>{{ 'ADMIN.BLOG.FORM.COVER_IMAGE' | translate }}</label>
 
-                <div class="file-upload-zone" (click)="fileInput.click()" [class.has-file]="previewUrl">
-                    <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
+                <div class="image-actions mb-4">
+                    <button type="button" class="btn-upload" (click)="fileInput.click()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <span>Upload Image</span>
+                    </button>
 
-                    <div class="upload-placeholder" *ngIf="!previewUrl">
-                        <app-icon name="upload-cloud" [size]="32"></app-icon>
-                        <span>Click to upload cover image</span>
-                    </div>
+                    <button type="button" class="btn-library" (click)="openMediaLibrary()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span>Choose from Library</span>
+                    </button>
+                </div>
 
-                    <div class="image-preview-wrapper" *ngIf="previewUrl">
-                        <img [src]="previewUrl" alt="Preview" class="cover-preview">
-                        <div class="preview-overlay">
-                            <app-icon name="edit" [size]="24"></app-icon>
-                            <span>Change Image</span>
+                @if (previewUrl) {
+                <div class="images-grid">
+                    <div class="image-card" style="max-width: 600px;">
+                        <div class="image-container-16x9">
+                            <img [src]="previewUrl" alt="Preview">
                         </div>
+
+                        <button type="button" class="btn-remove-card" (click)="removeImage()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
+                }
+
+                <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" class="file-input" style="display: none;">
             </div>
+        </section>
+
+        <!-- Submit Actions -->
+        <div class="submit-actions">
+            <!-- Error Message Display -->
+            <div class="submit-error-message" *ngIf="submitState === 'error'">
+                <app-icon name="alert-circle" [size]="16" class="text-danger"></app-icon>
+                <span class="text-danger text-sm">Error saving blog post</span>
+            </div>
+
+            <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="submitState === 'saving'">
+                {{ 'ADMIN.COMMON.CANCEL' | translate }}
+            </button>
+
+            <button type="submit" class="btn btn-primary" [disabled]="postForm.invalid || submitState === 'saving'" [ngClass]="{
+                    'loading': submitState === 'saving',
+                    'success': submitState === 'success',
+                    'error': submitState === 'error'
+                }">
+
+                <!-- Idle State -->
+                <span *ngIf="submitState === 'idle'">
+                    {{ isEditing ? ('ADMIN.COMMON.SAVE' | translate) : ('ADMIN.COMMON.SAVE' | translate) }}
+                </span>
+
+                <!-- Saving State -->
+                <span *ngIf="submitState === 'saving'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="loader" [size]="16" class="animate-spin"></app-icon>
+                    {{ 'ADMIN.COMMON.SAVING' | translate }}...
+                </span>
+
+                <!-- Success State -->
+                <span *ngIf="submitState === 'success'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="check" [size]="16"></app-icon>
+                    Saved!
+                </span>
+
+                <!-- Error State -->
+                <span *ngIf="submitState === 'error'" class="btn-state-content flex items-center gap-2">
+                    <app-icon name="x" [size]="16"></app-icon>
+                    Failed
+                </span>
+            </button>
         </div>
 
     </form>
 </div>
+
+<app-media-picker-dialog *ngIf="showMediaPicker" (assetSelected)="onMediaAssetSelected($event)"
+    (close)="closeMediaPicker()">
+</app-media-picker-dialog>

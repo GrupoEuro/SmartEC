@@ -152,6 +152,19 @@ service cloud.firestore {
     match /coupons/{document} {
       allow read: if true;
       allow write: if isManager();
+
+      // Allow public to increment scanCount
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount'])
+                    && (
+                      (!('scanCount' in resource.data) && request.resource.data.scanCount == 1) ||
+                      (request.resource.data.scanCount == resource.data.scanCount + 1)
+                    );
+
+      // Allow anyone to log a scan
+      match /scans/{scanId} {
+        allow create: if true;
+        allow read: if isManager();
+      }
     }
 
     match /productKits/{document} {

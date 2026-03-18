@@ -1,122 +1,209 @@
-<app-admin-page-header icon="🎟️"
+<app-admin-page-header [iconName]="isEditMode ? 'edit' : 'plus'"
     [title]="(isEditMode ? 'ADMIN.COUPONS.EDIT_TITLE' : 'ADMIN.COUPONS.NEW_TITLE') | translate"
-    [subtitle]="(isEditMode ? 'ADMIN.COUPONS.EDIT_SUBTITLE' : 'ADMIN.COUPONS.NEW_SUBTITLE') | translate"
-    [showSaveCancel]="true" [isSaving]="isSaving" [isFormInvalid]="couponForm.invalid"
-    [hasUnsavedChanges]="couponForm.dirty" (onSave)="onSubmit()" (onCancel)="onCancel()">
+    [showSaveCancel]="false">
 </app-admin-page-header>
 
 <div class="form-container">
-    <form [formGroup]="couponForm" class="coupon-form">
+    <form [formGroup]="couponForm" (ngSubmit)="onSubmit()">
 
-        <!-- Basic Info Section -->
-        <!-- Basic Info Section -->
-        <!-- Basic Info Section -->
-        <div class="form-section">
-            <div class="section-header">
-                <h3><span class="section-icon">📝</span> {{ 'ADMIN.COUPONS.FORM.SECTION_BASIC' | translate }}</h3>
-                <div class="status-toggle-wrapper">
-                    <app-toggle-switch [control]="$any(couponForm.get('isActive'))"
-                        [label]="couponForm.get('isActive')?.value ? ('ADMIN.STATUS.ACTIVE' | translate) : ('ADMIN.STATUS.INACTIVE' | translate)">
-                    </app-toggle-switch>
-                </div>
-            </div>
+        <!-- Basic Information Section -->
+        <section class="form-section">
+            <h3 class="section-title">
+                <span class="section-icon">🏷️</span>
+                {{ 'ADMIN.COUPONS.FORM.SECTION_BASIC' | translate }}
+            </h3>
 
-            <div class="form-row">
-                <div class="form-group code-group">
+            <div class="form-row cols-2">
+                <div class="form-group">
                     <label>{{ 'ADMIN.COUPONS.FORM.CODE' | translate }} <span class="required">*</span></label>
-                    <div class="input-group-append">
-                        <input type="text" formControlName="code" class="form-control code-input"
-                            [placeholder]="'ADMIN.COUPONS.FORM.CODE_PLACEHOLDER' | translate"
-                            [class.error]="couponForm.get('code')?.touched && couponForm.get('code')?.invalid">
-                        <button type="button" class="btn-generate" (click)="generateCode()"
-                            [title]="'ADMIN.COUPONS.FORM.GENERATE' | translate">
-                            🎲
-                        </button>
+                    <div class="input-with-icon" style="display: flex; gap: 8px;">
+                        <input type="text" formControlName="code" class="form-control" [placeholder]="'ADMIN.COUPONS.FORM.CODE_PLACEHOLDER' | translate" style="text-transform: uppercase;">
+                        <button type="button" class="btn btn-secondary" (click)="generateCode()" style="white-space: nowrap;">🎲 {{ 'ADMIN.COUPONS.FORM.GENERATE' | translate }}</button>
                     </div>
-                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.CODE_HINT' | translate }}</small>
-                    <div class="error-msg"
-                        *ngIf="couponForm.get('code')?.hasError('required') && couponForm.get('code')?.touched">
+                    <div class="error" *ngIf="couponForm.get('code')?.invalid && couponForm.get('code')?.touched">
                         {{ 'ADMIN.COUPONS.FORM.CODE_REQUIRED' | translate }}
                     </div>
-                    <div class="error-msg" *ngIf="couponForm.get('code')?.hasError('notUnique')">
-                        {{ 'ADMIN.COUPONS.FORM.CODE_EXISTS' | translate }}
-                    </div>
                 </div>
 
-                <div class="form-group description-group">
+                <div class="form-group">
                     <label>{{ 'ADMIN.COUPONS.FORM.DESCRIPTION' | translate }}</label>
-                    <textarea formControlName="description" class="form-control" rows="2"
-                        [placeholder]="'ADMIN.COUPONS.FORM.DESCRIPTION_PLACEHOLDER' | translate"></textarea>
-                </div>
-
-                <div class="form-group type-group">
-                    <label>{{ 'ADMIN.COUPONS.FORM.TYPE' | translate }}</label>
-                    <div class="type-selector">
-                        <label class="radio-label">
-                            <input type="radio" formControlName="type" value="percentage">
-                            <span>{{ 'ADMIN.COUPONS.FORM.TYPE_PERCENTAGE' | translate }}</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" formControlName="type" value="fixed_amount">
-                            <span>{{ 'ADMIN.COUPONS.FORM.TYPE_FIXED' | translate }}</span>
-                        </label>
+                    <div class="input-with-icon">
+                        <input type="text" formControlName="description" class="form-control" [placeholder]="'ADMIN.COUPONS.FORM.DESCRIPTION_PLACEHOLDER' | translate">
                     </div>
                 </div>
             </div>
-
-            <div class="form-group value-group">
-                <label>{{ 'ADMIN.COUPONS.FORM.VALUE' | translate }} <span class="required">*</span></label>
-                <div class="input-with-suffix">
-                    <input type="number" formControlName="value" class="form-control" min="0">
-                    <span class="suffix">{{ couponForm.get('type')?.value === 'percentage' ? '%' : 'MXN' }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Rules & Limits -->
-        <div class="form-section">
-            <h3><span class="section-icon">⚖️</span> {{ 'ADMIN.COUPONS.FORM.SECTION_RULES' | translate }}</h3>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE' | translate }}</label>
-                    <div class="input-with-prefix">
-                        <span class="prefix">$</span>
-                        <input type="number" formControlName="minPurchaseAmount" class="form-control" min="0">
+                    <label>{{ 'ADMIN.COUPONS.FORM.REDIRECT_URL' | translate }} <span class="form-hint" style="display:inline;">{{ 'ADMIN.COUPONS.FORM.REDIRECT_URL_OPTIONAL' | translate }}</span></label>
+                    <div class="input-with-icon">
+                        <input type="url" formControlName="redirectUrl" class="form-control" [placeholder]="'ADMIN.COUPONS.FORM.REDIRECT_URL_PLACEHOLDER' | translate">
                     </div>
-                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE_HINT' | translate }}</small>
+                    <small class="form-hint">{{ 'ADMIN.COUPONS.FORM.REDIRECT_URL_HINT' | translate }}</small>
+                </div>
+            </div>
+
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.TYPE' | translate }}</label>
+                    <div class="select-wrapper">
+                        <select formControlName="type" class="form-control">
+                            <option value="percentage">{{ 'ADMIN.COUPONS.FORM.TYPE_PERCENTAGE' | translate }}</option>
+                            <option value="fixed_amount">{{ 'ADMIN.COUPONS.FORM.TYPE_FIXED' | translate }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.VALUE' | translate }} <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                        <input type="number" formControlName="value" min="0" class="form-control">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <app-toggle-switch [control]="$any(couponForm.get('isActive'))" [label]="'ADMIN.COUPONS.FORM.ACTIVE_VISIBLE' | translate"></app-toggle-switch>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rules & Limits -->
+        <section class="form-section">
+            <h3 class="section-title">
+                <span class="section-icon">⚙️</span>
+                {{ 'ADMIN.COUPONS.FORM.SECTION_RULES' | translate }}
+            </h3>
+            
+            <div class="form-row cols-2">
+                <div class="form-group">
+                    <label>{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE' | translate }}</label>
+                    <div class="input-with-icon">
+                        <input type="number" formControlName="minPurchaseAmount" min="0" class="form-control">
+                    </div>
+                    <small class="form-hint">{{ 'ADMIN.COUPONS.FORM.MIN_PURCHASE_HINT' | translate }}</small>
                 </div>
 
                 <div class="form-group">
                     <label>{{ 'ADMIN.COUPONS.FORM.USAGE_LIMIT' | translate }}</label>
-                    <input type="number" formControlName="usageLimit" class="form-control" min="0">
-                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.USAGE_LIMIT_HINT' | translate }}</small>
+                    <div class="input-with-icon">
+                        <input type="number" formControlName="usageLimit" min="0" class="form-control">
+                    </div>
+                    <small class="form-hint">{{ 'ADMIN.COUPONS.FORM.USAGE_LIMIT_HINT' | translate }}</small>
                 </div>
             </div>
-        </div>
-
-        <!-- Schedule -->
-        <div class="form-section">
-            <h3><span class="section-icon">📅</span> {{ 'ADMIN.COUPONS.FORM.SECTION_SCHEDULE' | translate }}</h3>
-
-            <div class="form-row">
+            
+            <div class="form-row cols-2">
                 <div class="form-group">
                     <label>{{ 'ADMIN.COUPONS.FORM.START_DATE' | translate }} <span class="required">*</span></label>
-                    <input type="date" formControlName="startDate" class="form-control">
+                    <div class="input-with-icon">
+                        <input type="date" formControlName="startDate" class="form-control">
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>{{ 'ADMIN.COUPONS.FORM.END_DATE' | translate }}</label>
-                    <input type="date" formControlName="endDate" class="form-control">
-                    <small class="hint">{{ 'ADMIN.COUPONS.FORM.END_DATE_HINT' | translate }}</small>
+                    <div class="input-with-icon">
+                        <input type="date" formControlName="endDate" class="form-control">
+                    </div>
+                    <small class="form-hint">{{ 'ADMIN.COUPONS.FORM.END_DATE_HINT' | translate }}</small>
                 </div>
             </div>
+        </section>
 
-            <div class="error-banner" *ngIf="couponForm.hasError('dateRangeInvalid')">
-                {{ 'ADMIN.COUPONS.FORM.DATE_ERROR' | translate }}
+        <!-- QR Tracking Code -->
+        <section class="form-section" *ngIf="qrImageDataUrl || qrError">
+            <h3 class="section-title">
+                <span class="section-icon">📱</span>
+                {{ 'ADMIN.COUPONS.FORM.SECTION_TRACKING_QR' | translate }}
+            </h3>
+            
+            <div class="form-row cols-2" *ngIf="qrImageDataUrl">
+                <div class="form-group">
+                    <label class="text-sm font-medium text-slate-300 mb-2 block">{{ 'ADMIN.COUPONS.FORM.QR_CODE_LOGO' | translate }}</label>
+                    <div class="relative w-full aspect-square max-h-[160px] rounded-xl overflow-hidden border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-900/50 transition-all flex flex-col items-center justify-center group">
+                        
+                        <!-- Uploading State Overlay -->
+                        <div *ngIf="isUploadingLogo" class="absolute inset-0 bg-zinc-900/90 z-20 flex flex-col items-center justify-center p-4">
+                            <div class="w-full bg-zinc-800 rounded-full h-2 mb-2 overflow-hidden">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" [style.width.%]="uploadProgress"></div>
+                            </div>
+                            <span class="text-xs text-blue-400 font-medium animate-pulse">{{ 'ADMIN.COUPONS.FORM.UPLOADING' | translate }} {{uploadProgress}}%...</span>
+                        </div>
+
+                        <!-- Preview -->
+                        <div *ngIf="couponForm.get('qrLogoUrl')?.value" class="absolute inset-0 w-full h-full p-2 bg-zinc-900/80">
+                            <img [src]="couponForm.get('qrLogoUrl')?.value" alt="QR Logo Preview" class="w-full h-full object-contain">
+                            <button type="button" (click)="removeLogo(); $event.stopPropagation()" [title]="'ADMIN.COUPONS.FORM.REMOVE_LOGO' | translate" class="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center transition-colors shadow-lg z-10">✕</button>
+                        </div>
+                        
+                        <!-- Actions Trigger (when empty) -->
+                        <div *ngIf="!couponForm.get('qrLogoUrl')?.value" class="flex flex-col items-center justify-center p-4 text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-500 group-hover:text-blue-400 transition-colors mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="text-xs font-semibold text-slate-300 mb-2">{{ 'ADMIN.COUPONS.FORM.QR_CENTER_LOGO' | translate }}</span>
+                            
+                            <div class="flex flex-col gap-2 w-full mt-1">
+                                <!-- Option 1: Direct File Input -->
+                                <label class="btn btn-primary cursor-pointer w-full !py-1.5 !text-xs justify-center m-0 relative overflow-hidden">
+                                    <input type="file" class="absolute inset-0 opacity-0 cursor-pointer w-full" accept="image/png, image/jpeg, image/svg+xml" (change)="onDirectUpload($event)" [disabled]="isUploadingLogo" />
+                                    <span>⇧ {{ 'ADMIN.COUPONS.FORM.DIRECT_UPLOAD' | translate }}</span>
+                                </label>
+                                
+                                <!-- Option 2: Media Library Picker Dialog -->
+                                <button type="button" class="btn btn-secondary w-full !py-1.5 !text-xs justify-center" (click)="openMediaPicker()">
+                                    📚 {{ 'ADMIN.COUPONS.FORM.PICK_FROM_LIBRARY' | translate }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group flex flex-col items-center justify-center gap-4 py-2">
+                    <div class="bg-white p-3 rounded-lg shadow-md border border-zinc-200">
+                        <img [src]="qrImageDataUrl" alt="Coupon QR Code" class="w-[140px] h-[140px] block">
+                    </div>
+                    <div class="text-center w-full">
+                        <p class="text-xs text-slate-400 mb-3 break-all font-mono">
+                            {{ 'ADMIN.COUPONS.FORM.TRACKED_VIA' | translate }}<br><strong class="text-blue-400">{{ qrTrackingUrl }}</strong>
+                            <ng-container *ngIf="couponForm.get('redirectUrl')?.value">
+                                <br><br>{{ 'ADMIN.COUPONS.FORM.REDIRECTS_TO' | translate }}<br><strong class="text-emerald-400">{{ couponForm.get('redirectUrl')?.value }}</strong>
+                            </ng-container>
+                        </p>
+                        <button type="button" class="btn btn-primary w-full justify-center flex items-center" (click)="downloadQR()">
+                            <app-icon name="download" [size]="16" class="mr-2"></app-icon> {{ 'ADMIN.COUPONS.FORM.DOWNLOAD_PNG' | translate }}
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
+            
+            <div class="form-row" *ngIf="qrError">
+                <div class="form-group" style="padding: 1rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; color: #ef4444;">
+                    ⚠ {{ 'ADMIN.COUPONS.FORM.QR_GENERATION_FAILED' | translate }} {{ qrError }}
+                </div>
+            </div>
+        </section>
 
+        <!-- Submit Actions -->
+        <div class="submit-actions">
+            <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="isSaving">
+                {{ 'ADMIN.COMMON.CANCEL' | translate }}
+            </button>
+
+            <button type="submit" class="btn btn-primary" [disabled]="couponForm.invalid || isSaving">
+                <span *ngIf="!isSaving">{{ isEditMode ? ('ADMIN.COUPONS.FORM.BTN_UPDATE' | translate) : ('ADMIN.COUPONS.FORM.BTN_CREATE' | translate) }}</span>
+                <span *ngIf="isSaving" class="btn-state-content">{{ 'ADMIN.COUPONS.FORM.BTN_SAVING' | translate }}</span>
+            </button>
+        </div>
 
     </form>
 </div>
+
+<!-- Media Picker Dialog for Logo -->
+<app-media-picker-dialog 
+    *ngIf="isMediaPickerOpen"
+    (close)="isMediaPickerOpen = false"
+    (assetSelected)="onMediaSelected($event)">
+</app-media-picker-dialog>

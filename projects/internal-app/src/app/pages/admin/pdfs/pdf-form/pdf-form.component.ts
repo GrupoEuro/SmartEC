@@ -7,6 +7,8 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PdfService } from '../../../../core/services/pdf.service';
 import { PdfUtilService } from '../../../../core/services/pdf-util.service'; // Added import
 import { PDF, PDFFormData } from '../../../../core/models/pdf.model';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { MediaAsset } from '../../../../core/models/media.model';
 import { take } from 'rxjs/operators';
 
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
@@ -15,7 +17,7 @@ import { AppIconComponent } from '../../../../shared/components/app-icon/app-ico
 @Component({
     selector: 'app-pdf-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, AppIconComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, AppIconComponent, MediaPickerDialogComponent],
     templateUrl: './pdf-form.component.html',
     styleUrls: ['./pdf-form.component.css', '../../shared/admin-forms.css']
 })
@@ -150,6 +152,29 @@ export class PdfFormComponent implements OnInit {
         }
     }
 
+    removeThumbnail() {
+        this.selectedThumbnailFile = null;
+        this.thumbnailPreviewUrl = null;
+        this.pdfForm.markAsDirty();
+    }
+
+    showMediaPicker = false;
+
+    openMediaLibrary() {
+        this.showMediaPicker = true;
+    }
+
+    onMediaAssetSelected(asset: MediaAsset) {
+        this.thumbnailPreviewUrl = asset.publicUrl;
+        this.selectedThumbnailFile = null;
+        this.pdfForm.markAsDirty();
+        this.showMediaPicker = false;
+    }
+
+    closeMediaPicker() {
+        this.showMediaPicker = false;
+    }
+
     async onSubmit() {
         if (this.pdfForm.invalid) {
             alert('Please fill in all required fields');
@@ -162,7 +187,11 @@ export class PdfFormComponent implements OnInit {
         }
 
         this.isSubmitting = true;
-        const formValue: PDFFormData = this.pdfForm.value;
+        const formValue: any = this.pdfForm.value;
+
+        if (!this.selectedThumbnailFile && this.thumbnailPreviewUrl) {
+            formValue.thumbnailUrl = this.thumbnailPreviewUrl;
+        }
 
         try {
             if (this.isEditing && this.currentPdfId) {

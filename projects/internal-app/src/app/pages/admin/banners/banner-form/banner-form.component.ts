@@ -8,11 +8,13 @@ import { take } from 'rxjs/operators';
 import { TranslateModule } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { MediaAsset } from '../../../../core/models/media.model';
 
 @Component({
   selector: 'app-banner-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, MediaPickerDialogComponent],
   templateUrl: './banner-form.component.html',
   styleUrl: './banner-form.component.css'
 })
@@ -79,9 +81,32 @@ export class BannerFormComponent implements OnInit {
     }
   }
 
+  removeImage() {
+    this.selectedFile = null;
+    this.previewUrl = null;
+    this.bannerForm.markAsDirty();
+  }
+
+  showMediaPicker = false;
+
+  openMediaLibrary() {
+    this.showMediaPicker = true;
+  }
+
+  onMediaAssetSelected(asset: MediaAsset) {
+    this.previewUrl = asset.publicUrl;
+    this.selectedFile = null;
+    this.bannerForm.markAsDirty();
+    this.showMediaPicker = false;
+  }
+
+  closeMediaPicker() {
+    this.showMediaPicker = false;
+  }
+
   async onSubmit() {
     if (this.bannerForm.invalid) return;
-    if (!this.selectedFile && !this.isEditing) {
+    if (!this.selectedFile && !this.previewUrl && !this.isEditing) {
       alert('Please select an image');
       return;
     }
@@ -95,16 +120,17 @@ export class BannerFormComponent implements OnInit {
           ...this.currentBanner,
           ...formValue
         };
+        if (!this.selectedFile && this.previewUrl && this.previewUrl !== this.currentBanner.imageUrl) {
+            updatedBanner.imageUrl = this.previewUrl;
+        }
         await this.bannerService.updateBanner(this.currentBannerId, updatedBanner, this.selectedFile || undefined);
       } else {
         const newBanner: Banner = {
           ...formValue,
-          imageUrl: '',
+          imageUrl: this.previewUrl || '',
           imagePath: ''
         };
-        if (this.selectedFile) {
-          await this.bannerService.createBanner(newBanner, this.selectedFile);
-        }
+        await this.bannerService.createBanner(newBanner, this.selectedFile || undefined as any);
       }
       this.router.navigate(['/admin/banners']);
     } catch (error) {

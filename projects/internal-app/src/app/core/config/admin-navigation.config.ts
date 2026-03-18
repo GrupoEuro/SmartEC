@@ -127,7 +127,7 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 id: 'coupons',
                 title: 'ADMIN.SIDEBAR.COUPONS',
                 icon: 'gift',
-                route: '/admin/marketing/coupons'
+                route: '/admin/coupons'
             },
             {
                 id: 'campaigns',

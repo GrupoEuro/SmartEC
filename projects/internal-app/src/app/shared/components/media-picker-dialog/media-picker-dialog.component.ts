@@ -64,7 +64,8 @@ export class MediaPickerDialogComponent {
   onUploadSuccess(assets: MediaAsset[]) {
     this.showUpload.set(false);
     if (assets && assets.length > 0) {
-      this.selectAsset(assets[0]); // Auto-select but wait for confirmation
+      this.selectAsset(assets[0]); // Auto-select
+      this.confirmSelection(); // Automatically trigger output and modal close
     }
     this.filter$.next(this.filter$.value); // Refresh
   }

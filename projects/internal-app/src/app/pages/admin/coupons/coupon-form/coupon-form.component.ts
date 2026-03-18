@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import * as QRCode from 'qrcode';
 import { CouponService } from '../../../../core/services/coupon.service';
 import { Coupon, DiscountType } from '../../../../core/models/coupon.model';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -10,18 +11,23 @@ import { ApprovalWorkflowService } from '../../../../core/services/approval-work
 import { CouponApprovalData } from '../../../../core/models/approval-request.model';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { Timestamp } from '@angular/fire/firestore';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { MediaAsset } from '../../../../core/models/media.model';
+import { MediaService } from '../../../../core/services/media.service';
 
 @Component({
     selector: 'app-coupon-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, ToggleSwitchComponent, AppIconComponent, MediaPickerDialogComponent],
     templateUrl: './coupon-form.component.html',
     styleUrls: ['./coupon-form.component.css']
 })
 export class CouponFormComponent implements OnInit {
     private fb = inject(FormBuilder);
     private couponService = inject(CouponService);
+    private mediaService = inject(MediaService);
     private approvalService = inject(ApprovalWorkflowService);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
@@ -32,6 +38,12 @@ export class CouponFormComponent implements OnInit {
     couponId: string | null = null;
     isLoading = false;
     isSaving = false;
+    qrImageDataUrl: string | null = null;
+    qrTrackingUrl: string | null = null;
+    qrError: string | null = null;
+    isMediaPickerOpen = false;
+    isUploadingLogo = false;
+    uploadProgress = 0;
 
     constructor() {
         this.couponForm = this.fb.group({
@@ -43,7 +55,9 @@ export class CouponFormComponent implements OnInit {
             startDate: [this.formatDate(new Date()), Validators.required],
             endDate: [''],
             usageLimit: [0, [Validators.min(0)]],
-            isActive: [true]
+            isActive: [true],
+            redirectUrl: [''],
+            qrLogoUrl: ['']
         }, { validators: this.dateRangeValidator });
     }
 
@@ -85,8 +99,39 @@ export class CouponFormComponent implements OnInit {
             startDate: this.formatDate(coupon.startDate),
             endDate: coupon.endDate ? this.formatDate(coupon.endDate) : '',
             usageLimit: coupon.usageLimit,
-            isActive: coupon.isActive
+            isActive: coupon.isActive,
+            redirectUrl: coupon.redirectUrl || '',
+            qrLogoUrl: coupon.qrLogoUrl || ''
         });
+        
+        // Generate QR code for existing coupon
+        this.generateQRCodeFor(coupon.code);
+    }
+
+    async generateQRCodeFor(code: string) {
+        try {
+            this.qrError = null;
+            if (!code) {
+                this.qrError = 'Code is empty';
+                return;
+            }
+            
+            const logoUrl = this.couponForm.get('qrLogoUrl')?.value;
+            this.qrTrackingUrl = `https://importadoraeuro.com/q/${code}`;
+            
+            this.qrImageDataUrl = await this.couponService.generateCompositeQR(code, logoUrl);
+        } catch (err: any) {
+            console.error('Failed to generate QR code', err);
+            this.qrError = err.message || String(err);
+        }
+    }
+    
+    downloadQR() {
+        if (!this.qrImageDataUrl) return;
+        const a = document.createElement('a');
+        a.href = this.qrImageDataUrl;
+        a.download = `QR_${this.couponForm.get('code')?.value || 'Coupon'}.png`;
+        a.click();
     }
 
     async onSubmit() {
@@ -103,7 +148,9 @@ export class CouponFormComponent implements OnInit {
             minPurchaseAmount: Number(formValue.minPurchaseAmount),
             startDate: new Date(formValue.startDate),
             usageLimit: Number(formValue.usageLimit),
-            isActive: formValue.isActive
+            isActive: formValue.isActive,
+            redirectUrl: formValue.redirectUrl,
+            qrLogoUrl: formValue.qrLogoUrl
         };
 
         if (formValue.endDate) {
@@ -209,5 +256,54 @@ export class CouponFormComponent implements OnInit {
             result += characters.charAt(Math.floor(Math.random() * characters.length));
         }
         this.couponForm.patchValue({ code: result });
+        this.generateQRCodeFor(result);
+    }
+
+    openMediaPicker() {
+        this.isMediaPickerOpen = true;
+    }
+
+    onMediaSelected(asset: MediaAsset) {
+        this.couponForm.patchValue({ qrLogoUrl: asset.publicUrl });
+        this.isMediaPickerOpen = false;
+        if (this.couponForm.get('code')?.value) {
+            this.generateQRCodeFor(this.couponForm.get('code')?.value);
+        }
+    }
+
+    removeLogo() {
+        this.couponForm.patchValue({ qrLogoUrl: '' });
+        if (this.couponForm.get('code')?.value) {
+            this.generateQRCodeFor(this.couponForm.get('code')?.value);
+        }
+    }
+
+    onDirectUpload(event: any) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        this.isUploadingLogo = true;
+        this.uploadProgress = 0;
+
+        // Upload and save directly to media library using the service
+        this.mediaService.uploadFile(file, 'site-assets', ['qr-logo']).subscribe({
+            next: (state) => {
+                this.uploadProgress = Math.round(state.progress);
+                if (state.asset) {
+                    this.couponForm.patchValue({ qrLogoUrl: state.asset.publicUrl });
+                    if (this.couponForm.get('code')?.value) {
+                        this.generateQRCodeFor(this.couponForm.get('code')?.value);
+                    }
+                }
+            },
+            error: (err) => {
+                console.error('Direct upload failed', err);
+                this.toast.error('Failed to upload image. Try selecting from library.');
+                this.isUploadingLogo = false;
+            },
+            complete: () => {
+                this.isUploadingLogo = false;
+            }
+        });
     }
 }

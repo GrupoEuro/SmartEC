@@ -84,12 +84,12 @@
                     class="block font-semibold text-zinc-100 mb-1">
                     Recibe: {{ $any(order())!.shippingAddress.recipientName }}
                 </span>
-                {{ order()!.shippingAddress?.street }} {{ order()!.shippingAddress?.exteriorNumber }}
-                <span *ngIf="order()!.shippingAddress?.interiorNumber">Int {{ order()!.shippingAddress.interiorNumber
+                {{ order()!.shippingAddress.street }} {{ order()!.shippingAddress.exteriorNumber }}
+                <span *ngIf="order()!.shippingAddress.interiorNumber">Int {{ order()!.shippingAddress.interiorNumber
                     }}</span><br>
-                <span *ngIf="order()!.shippingAddress?.colonia">{{ order()!.shippingAddress.colonia }}<br></span>
-                {{ order()!.shippingAddress?.city }}, {{ order()!.shippingAddress?.state }}<br>
-                {{ order()!.shippingAddress?.zipCode }}<br>
+                <span *ngIf="order()!.shippingAddress.colonia">{{ order()!.shippingAddress.colonia }}<br></span>
+                {{ order()!.shippingAddress.city }}, {{ order()!.shippingAddress.state }}<br>
+                {{ order()!.shippingAddress.zipCode }}<br>
                 {{ $any(order())?.shippingAddress?.country }}
             </address>
             <!-- Delivery references -->

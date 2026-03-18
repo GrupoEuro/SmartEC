@@ -143,6 +143,40 @@ export class CouponService {
     }
 
     /**
+     * Increment scan count for a coupon
+     */
+    async incrementScanCount(code: string): Promise<string | null> {
+        try {
+            const q = query(this.couponsCollection, where('code', '==', code.toUpperCase()));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                console.warn(`QR scan attempted for unknown coupon code: ${code}`);
+                return null;
+            }
+
+            const docRef = snapshot.docs[0].ref;
+            const data = snapshot.docs[0].data() as Coupon;
+            
+            await updateDoc(docRef, {
+                scanCount: increment(1)
+            });
+
+            // Log scan event
+            const scansCollection = collection(docRef, 'scans');
+            await addDoc(scansCollection, {
+                scannedAt: Timestamp.now(),
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown'
+            });
+            
+            return data.redirectUrl || null;
+        } catch (error) {
+            console.error('Error incrementing scan count:', error);
+            return null;
+        }
+    }
+
+    /**
      * Update a coupon
      */
     async updateCoupon(id: string, data: Partial<Coupon>): Promise<void> {

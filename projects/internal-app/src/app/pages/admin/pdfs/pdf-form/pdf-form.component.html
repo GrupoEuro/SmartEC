@@ -120,24 +120,50 @@
         <!-- Thumbnail Upload -->
         <div class="form-section">
             <h2 class="section-title">🖼️ Thumbnail (Optional)</h2>
-            <div class="form-group">
-                <div class="upload-area" (click)="thumbInput.click()">
-                    <div class="upload-icon">🖼️</div>
-                    <div class="upload-label">
-                        <strong>{{ selectedThumbnailFile ? selectedThumbnailFile.name : 'Click to upload thumbnail'
-                            }}</strong>
-                        <span class="file-hint">Optional - Recommended size: 400x300px</span>
-                    </div>
+            <div class="form-group pt-2">
+                <div class="image-actions mb-4">
+                    <button type="button" class="btn-upload" (click)="thumbInput.click()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <span>Upload Thumbnail</span>
+                    </button>
+
+                    <button type="button" class="btn-library" (click)="openMediaLibrary()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span>Choose from Library</span>
+                    </button>
                 </div>
-                <input #thumbInput type="file" id="thumbnail" accept="image/*" (change)="onThumbnailSelected($event)"
-                    class="file-input">
 
                 @if (thumbnailPreviewUrl) {
-                <div class="thumbnail-preview mt-4">
-                    <img [src]="thumbnailPreviewUrl" alt="Thumbnail preview">
+                <div class="images-grid">
+                    <div class="image-card">
+                        <div class="image-container-16x9">
+                            <img [src]="thumbnailPreviewUrl" alt="Thumbnail preview">
+                        </div>
+
+                        <button type="button" class="btn-remove-card" (click)="removeThumbnail()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 }
+
+                <input #thumbInput type="file" id="thumbnail" accept="image/*" (change)="onThumbnailSelected($event)" style="display: none;">
             </div>
         </div>
     </form>
 </div>
+
+<app-media-picker-dialog *ngIf="showMediaPicker" (assetSelected)="onMediaAssetSelected($event)"
+    (close)="closeMediaPicker()">
+</app-media-picker-dialog>

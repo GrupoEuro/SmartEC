@@ -1393,6 +1393,8 @@
       },
       "COUPONS": {
         "TITLE": "Cupones",
+        "NEW_TITLE": "Nuevo Cupón",
+        "EDIT_TITLE": "Editar Cupón",
         "ADD_NEW": "Agregar Nuevo Cupón",
         "SEARCH_PLACEHOLDER": "Buscar cupones...",
         "EMPTY_MSG": "No se encontraron cupones",
@@ -1426,7 +1428,26 @@
           "END_DATE": "Fecha de Fin",
           "END_DATE_HINT": "Dejar vacío para sin caducidad",
           "DATE_ERROR": "La fecha de fin debe ser posterior a la de inicio",
-          "GENERATE": "Generar Código Aleatorio"
+          "GENERATE": "Generar Código Aleatorio",
+          "REDIRECT_URL": "URL de Redirección de Destino",
+          "REDIRECT_URL_OPTIONAL": "(Opcional)",
+          "REDIRECT_URL_PLACEHOLDER": "https://importadoraeuro.com/oferta",
+          "REDIRECT_URL_HINT": "Si se proporciona, escanear el QR redirigirá temporalmente a esta URL en lugar de la página de inicio.",
+          "ACTIVE_VISIBLE": "Activo (Visible)",
+          "SECTION_TRACKING_QR": "Código QR de Seguimiento",
+          "QR_CODE_LOGO": "Logotipo del Código QR",
+          "UPLOADING": "Subiendo",
+          "REMOVE_LOGO": "Eliminar Logotipo",
+          "QR_CENTER_LOGO": "Logotipo Central del QR",
+          "DIRECT_UPLOAD": "Subida Directa",
+          "PICK_FROM_LIBRARY": "Elegir de la Biblioteca",
+          "TRACKED_VIA": "Rastreado a través de:",
+          "REDIRECTS_TO": "Redirige a:",
+          "DOWNLOAD_PNG": "Descargar PNG",
+          "QR_GENERATION_FAILED": "Falla en la Generación del QR:",
+          "BTN_UPDATE": "Actualizar Cupón",
+          "BTN_CREATE": "Crear Cupón",
+          "BTN_SAVING": "Guardando..."
         }
       },
       "CATEGORIES": {

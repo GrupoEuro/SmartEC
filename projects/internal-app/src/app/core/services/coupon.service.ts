@@ -17,6 +17,7 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, map, from } from 'rxjs';
 import { Coupon } from '../models/coupon.model';
+import * as QRCode from 'qrcode';
 
 @Injectable({
     providedIn: 'root'
@@ -197,5 +198,64 @@ export class CouponService {
             createdAt: coupon.createdAt?.toDate ? coupon.createdAt.toDate() : (coupon.createdAt || new Date()),
             updatedAt: coupon.updatedAt?.toDate ? coupon.updatedAt.toDate() : (coupon.updatedAt || new Date())
         };
+    }
+
+    /**
+     * Generates a composite QR code data URL including an optional centered logo.
+     */
+    async generateCompositeQR(code: string, logoUrl?: string): Promise<string> {
+        const trackingUrl = `https://importadoraeuro.com/q/${code}`;
+        
+        // Ensure qrcode is properly imported for browser environments
+        const qrModule: any = QRCode;
+        const toDataURL = qrModule.toDataURL || qrModule.default?.toDataURL;
+        if (typeof toDataURL !== 'function') {
+           throw new Error('QRCode.toDataURL is not a function. Check import scheme.');
+        }
+
+        const qrDataUrl = await toDataURL(trackingUrl, {
+            errorCorrectionLevel: 'H', // High error correction to allow for logo overlay (~30%)
+            margin: 1,
+            width: 300,
+            color: { dark: '#000000ff', light: '#ffffffff' }
+        });
+
+        if (!logoUrl) return qrDataUrl;
+
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(qrDataUrl);
+
+            const qrImage = new Image();
+            qrImage.crossOrigin = "Anonymous";
+            qrImage.onload = () => {
+                ctx.drawImage(qrImage, 0, 0);
+
+                const logo = new Image();
+                logo.crossOrigin = "Anonymous";
+                logo.onload = () => {
+                    // Draw logo in center (25% size)
+                    const logoSize = 300 * 0.25;
+                    const offset = (300 - logoSize) / 2;
+                    
+                    // Add white background pad for logo
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(offset - 4, offset - 4, logoSize + 8, logoSize + 8);
+                    
+                    ctx.drawImage(logo, offset, offset, logoSize, logoSize);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                logo.onerror = () => {
+                    console.warn('Failed to load QR logo, returning plain QR code.');
+                    resolve(qrDataUrl);
+                };
+                logo.src = logoUrl;
+            };
+            qrImage.onerror = () => reject(new Error('Failed to load QR image for compositing'));
+            qrImage.src = qrDataUrl;
+        });
     }
 }

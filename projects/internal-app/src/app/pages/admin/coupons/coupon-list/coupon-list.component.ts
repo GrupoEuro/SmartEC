@@ -3,18 +3,20 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import * as QRCode from 'qrcode';
 import { CouponService } from '../../../../core/services/coupon.service';
 import { Coupon } from '../../../../core/models/coupon.model';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { PaginationComponent } from '../../shared/pagination/pagination.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { map } from 'rxjs';
 
 @Component({
     selector: 'app-coupon-list',
     standalone: true,
-    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent],
+    imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent, AppIconComponent],
     templateUrl: './coupon-list.component.html',
     styleUrls: ['./coupon-list.component.css']
 })
@@ -153,6 +155,19 @@ export class CouponListComponent implements OnInit {
         } catch (error) {
             console.error('Error deleting coupon:', error);
             this.toast.error('Failed to delete coupon');
+        }
+    }
+
+    async downloadQR(coupon: Coupon) {
+        try {
+            const qrImageDataUrl = await this.couponService.generateCompositeQR(coupon.code, coupon.qrLogoUrl);
+            const a = document.createElement('a');
+            a.href = qrImageDataUrl;
+            a.download = `QR_${coupon.code}.png`;
+            a.click();
+        } catch (err) {
+            console.error('Failed to generate composite QR code', err);
+            this.toast.error('Failed to generate QR code');
         }
     }
 

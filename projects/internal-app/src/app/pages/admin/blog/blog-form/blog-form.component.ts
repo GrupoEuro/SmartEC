@@ -9,13 +9,15 @@ import { take } from 'rxjs/operators';
 import { TranslateModule } from '@ngx-translate/core';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
+import { MediaPickerDialogComponent } from '../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
+import { MediaAsset } from '../../../../core/models/media.model';
 
 // Sanitized: Verified imports and route configuration
 
 @Component({
   selector: 'app-blog-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, MediaPickerDialogComponent],
   templateUrl: './blog-form.component.html',
   styleUrls: ['./blog-form.component.css', '../../shared/admin-forms.css']
 })
@@ -27,7 +29,7 @@ export class BlogFormComponent implements OnInit {
 
   postForm: FormGroup;
   isEditing = false;
-  isSubmitting = false;
+  submitState: 'idle' | 'saving' | 'success' | 'error' = 'idle';
   previewUrl: string | null = null;
   selectedFile: File | null = null;
   currentPostId: string | null = null;
@@ -97,14 +99,37 @@ export class BlogFormComponent implements OnInit {
     }
   }
 
+  removeImage() {
+    this.selectedFile = null;
+    this.previewUrl = null;
+    this.postForm.markAsDirty();
+  }
+
+  showMediaPicker = false;
+
+  openMediaLibrary() {
+    this.showMediaPicker = true;
+  }
+
+  onMediaAssetSelected(asset: MediaAsset) {
+    this.previewUrl = asset.publicUrl;
+    this.selectedFile = null;
+    this.postForm.markAsDirty();
+    this.showMediaPicker = false;
+  }
+
+  closeMediaPicker() {
+    this.showMediaPicker = false;
+  }
+
   async onSubmit() {
     if (this.postForm.invalid) return;
-    if (!this.selectedFile && !this.isEditing) {
+    if (!this.selectedFile && !this.previewUrl && !this.isEditing) {
       alert('Please select a cover image');
       return;
     }
 
-    this.isSubmitting = true;
+    this.submitState = 'saving';
     const val = this.postForm.value;
 
     // Process tags
@@ -132,19 +157,22 @@ export class BlogFormComponent implements OnInit {
         if (this.currentPost) {
           postData.coverImage = this.currentPost.coverImage;
         }
+
+        if (!this.selectedFile && this.previewUrl && this.previewUrl !== this.currentPost?.coverImage) {
+            postData.coverImage = this.previewUrl;
+        }
         await this.blogService.updatePost(this.currentPostId, postData, this.selectedFile || undefined);
       } else {
         // New post
+        postData.coverImage = this.previewUrl || '';
         // @ts-ignore - Ignoring TS strict checks for id as it's generated
-        await this.blogService.createPost(postData as BlogPost, this.selectedFile!);
+        await this.blogService.createPost(postData as BlogPost, this.selectedFile || undefined as any);
       }
-      this.router.navigate(['/admin/blog']);
-      this.router.navigate(['/admin/blog']);
+      this.submitState = 'success';
+      setTimeout(() => this.router.navigate(['/admin/blog']), 800);
     } catch (error) {
       console.error('Error saving post:', error);
-      alert('Error saving post');
-    } finally {
-      this.isSubmitting = false;
+      this.submitState = 'error';
     }
   }
 

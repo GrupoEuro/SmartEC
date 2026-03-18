@@ -62,6 +62,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/public/document-viewer/document-viewer.component').then(m => m.DocumentViewerComponent)
     },
     {
+        path: 'q/:code',
+        loadComponent: () => import('./pages/public/qr-tracking/qr-tracking.component').then(m => m.QrTrackingComponent)
+    },
+    {
         path: '**',
         loadComponent: () => import('./pages/not-found/not-found.component').then(m => m.NotFoundComponent)
     }

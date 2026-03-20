@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, AfterViewInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, AfterViewInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -138,6 +138,30 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         shippedToday: 0,
         monthlySales: 0,
         monthlyPiecesSold: 0
+    });
+
+    /** End-of-month projection: (MTD sales / days elapsed) × total days in month.
+     *  Only shown when timeframe is MTD and we are mid-month (day > 1). */
+    mtdProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const now = new Date();
+        const dayOfMonth = now.getDate();
+        if (dayOfMonth <= 1) return null;
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const mtdSales = this.stats().monthlySales;
+        if (mtdSales <= 0) return null;
+        return (mtdSales / dayOfMonth) * totalDays;
+    });
+
+    mtdPiecesProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const now = new Date();
+        const dayOfMonth = now.getDate();
+        if (dayOfMonth <= 1) return null;
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const mtdPieces = this.stats().monthlyPiecesSold;
+        if (mtdPieces <= 0) return null;
+        return Math.round((mtdPieces / dayOfMonth) * totalDays);
     });
 
     slaStats = signal<SLAStats>({

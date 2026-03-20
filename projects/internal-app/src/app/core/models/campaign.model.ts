@@ -7,9 +7,19 @@ export interface ThemeConfig {
     primaryColor: string;
     secondaryColor: string;
     accentColor: string;
-    backgroundColor: string; // e.g. dark for halloween
-    patternOverlay?: string; // URL to SVG pattern
+    backgroundColor: string;
+    patternOverlay?: string;
     fontFamily?: string;
+}
+
+export interface CampaignSlide {
+    imageUrl: string;           // Public download URL
+    imageStoragePath: string;   // Storage path for deletion
+    ctaUrl?: string;            // Internal path e.g. /catalog
+    ctaLabel?: string;          // Button label e.g. "Ver más"
+    order: number;              // Sort order (0-based)
+    active: boolean;            // Whether to show this slide
+    clickCount: number;         // Analytics: how many CTA clicks
 }
 
 export interface Campaign {
@@ -19,15 +29,15 @@ export interface Campaign {
     startDate: Timestamp;
     endDate: Timestamp;
     isActive: boolean;
-    priority: number; // 1-10, higher overrides lower (e.g. Black Friday overrides Autumn)
+    priority: number; // 1-10, higher overrides lower
 
     // Visual Overrides
     themeId: WebsiteTheme;
-    heroBannerId?: string; // Link to Banner collection
+    slides: CampaignSlide[];    // Hero carousel slides (replaces heroBannerId)
 
     // Promo Logic
-    promoStripText?: string; // "Use code SCARY20 for 20% off"
-    activeCouponId?: string; // Auto-apply this coupon
+    promoStripText?: string;
+    activeCouponId?: string;
 
     // Metadata
     createdAt: Timestamp;

@@ -26,8 +26,8 @@
   flex: 1;
   position: relative;
   background-image: 
-    linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0) 50%, rgba(47, 43, 94, 0.4)),
-    url('https://images.unsplash.com/photo-1542282088-fe8426682b8f?q=80&w=1470&auto=format&fit=crop');
+    linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.1) 50%, rgba(47, 43, 94, 0.5)),
+    url('https://images.pexels.com/photos/1149831/pexels-photo-1149831.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
   background-size: cover;
   background-position: center;
   padding: 40px;

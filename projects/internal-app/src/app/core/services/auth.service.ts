@@ -4,7 +4,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
-import { Observable, of, switchMap, firstValueFrom } from 'rxjs';
+import { Observable, of, switchMap, firstValueFrom, BehaviorSubject, filter, take } from 'rxjs';
 import { AdminLogService } from './admin-log.service';
 import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
@@ -34,9 +34,17 @@ export class AuthService {
   // Full User Profile from Firestore
   userProfile$: Observable<UserProfile | null>;
 
+  // Emits true once Firebase Auth has resolved its initial state (incl. redirect result)
+  private _authReady = new BehaviorSubject<boolean>(false);
+  readonly authReady$ = this._authReady.asObservable().pipe(filter(v => v), take(1));
+
   // Inspector Signals
   readonly currentUser = signal<User | null>(null);
   readonly currentProfile = signal<UserProfile | null>(null);
+
+  // Prevents the background userProfile$ subscription from overwriting the signal
+  // after handleLoginSuccess has already set it (guards the redirect flow race condition)
+  private _loginHandled = false;
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -47,7 +55,13 @@ export class AuthService {
         switchMap(firebaseUser => {
           this.currentUser.set(firebaseUser); // Update Inspector
           if (!firebaseUser) {
-            this.currentProfile.set(null); // Update Inspector
+            // Only null-out profile signal if handleLoginSuccess hasn't claimed it
+            if (!this._loginHandled) {
+              console.log('[AUTH-DEBUG] BG-SUB: onAuthStateChanged → null user, clearing profile signal');
+              this.currentProfile.set(null);
+            } else {
+              console.log('[AUTH-DEBUG] BG-SUB: onAuthStateChanged → null user but _loginHandled=true, SKIPPING null-out');
+            }
             return of(null);
           }
           const userDocRef = doc(this.firestore, 'users', firebaseUser.uid);
@@ -58,11 +72,14 @@ export class AuthService {
               .then(snapshot => {
                 if (snapshot.exists()) {
                   const profile = snapshot.data() as UserProfile;
+                  // Always update when we get a real profile (keep signals fresh for refresh)
                   this.currentProfile.set(profile); // Update Inspector
                   observer.next(profile);
                 } else {
                   console.log('Auth Debug: No profile document found');
-                  this.currentProfile.set(null); // Update Inspector
+                  if (!this._loginHandled) {
+                    this.currentProfile.set(null); // Update Inspector
+                  }
                   observer.next(null);
                 }
                 observer.complete();
@@ -92,20 +109,32 @@ export class AuthService {
       })
     });
 
-    // START SUBSCRIPTION to keep signals updated!
+    // Background subscription keeps signals updated for persistent sessions
     if (isPlatformBrowser(this.platformId)) {
       this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
     }
-  }
+    // signInWithPopup handles its own credential return — no redirect to wait for.
+    // Mark auth ready immediately so guards don't block on non-existent redirect.
+    if (isPlatformBrowser(this.platformId)) {
+      console.log('[AUTH-DEBUG] No redirect flow: _authReady.next(true) immediately');
+      this._authReady.next(true);
+    }
+  }  // end constructor
 
   async loginWithGoogle() {
     if (!isPlatformBrowser(this.platformId)) return;
-
     try {
       const provider = new GoogleAuthProvider();
-      const credential = await signInWithPopup(this.auth, provider);
-      await this.handleLoginSuccess(credential.user);
+      console.log('[AUTH-DEBUG] loginWithGoogle: calling signInWithPopup...');
+      const result = await signInWithPopup(this.auth, provider);
+      console.log('[AUTH-DEBUG] loginWithGoogle: popup result uid=', result.user?.uid);
+      await this.handleLoginSuccess(result.user);
     } catch (error: any) {
+      // Silently ignore popup-closed — user just cancelled, not an error
+      if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+        console.log('[AUTH-DEBUG] loginWithGoogle: popup closed by user (not an error)');
+        return;
+      }
       this.handleAuthError(error, 'Google Login');
     }
   }
@@ -163,7 +192,13 @@ export class AuthService {
   }
 
   private async handleLoginSuccess(firebaseUser: User) {
+    console.log('[AUTH-DEBUG] handleLoginSuccess START uid:', firebaseUser.uid, 'email:', firebaseUser.email);
+    // Block the background userProfile$ subscription from nulling out the profile signal
+    // during this login flow (it fires with null temporarily during redirect resolution)
+    this._loginHandled = true;
+
     let profile = await this.syncUserProfile(firebaseUser);
+    console.log('[AUTH-DEBUG] syncUserProfile result:', profile?.email, 'role:', profile?.role);
 
     // ORPHAN RECOVERY: If Auth exists but Firestore profile is missing, create it.
     if (!profile) {
@@ -192,8 +227,8 @@ export class AuthService {
     }
 
     // SECURITY: Block customers from accessing the internal app.
-    // If the user is registered as a customer email, deny access entirely.
     if (!INTERNAL_STAFF_ROLES.includes(profile.role)) {
+      console.warn('[AUTH-DEBUG] BLOCKED: role is', profile.role, '- not in INTERNAL_STAFF_ROLES. Signing out.');
       this.toast.error('Access denied. This portal is for internal staff only.');
       await this.logService.log('UNAUTHORIZED', 'AUTH', `Customer attempted internal app login: ${profile.email} (role: ${profile.role})`);
       await signOut(this.auth);
@@ -201,6 +236,7 @@ export class AuthService {
     }
 
     if (!profile.isActive) {
+      console.warn('[AUTH-DEBUG] BLOCKED: account isActive=false. Signing out.');
       this.toast.error('Your account has been deactivated. Contact an administrator.');
       await signOut(this.auth);
       return;
@@ -209,7 +245,17 @@ export class AuthService {
     await this.logService.log('LOGIN', 'AUTH', `User logged in: ${profile.email} (${profile.role})`);
     const name = profile.displayName || profile.email.split('@')[0];
     this.toast.success(`Welcome back, ${name}!`);
+
+    console.log('[AUTH-DEBUG] PRE-NAVIGATE: setting currentUser signal =', firebaseUser.uid);
+    this.currentUser.set(firebaseUser);
+    console.log('[AUTH-DEBUG] PRE-NAVIGATE: setting currentProfile signal =', profile.email, profile.role);
+    this.currentProfile.set(profile);
+    console.log('[AUTH-DEBUG] PRE-NAVIGATE: _authReady.next(true)');
+    this._authReady.next(true);
+
+    console.log('[AUTH-DEBUG] Calling router.navigate(["/portal"])');
     this.router.navigate(['/portal']);
+    console.log('[AUTH-DEBUG] router.navigate CALLED (promise pending)');
   }
 
   private handleAuthError(error: any, context: string) {

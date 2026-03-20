@@ -1,0 +1,234 @@
+<div class="campaign-form-layout">
+
+  <!-- LEFT: Form -->
+  <div class="form-column">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+      <a routerLink="/admin/marketing/campaigns">Campaigns</a>
+      <span>/</span>
+      <span>{{ isEditMode() ? 'Edit' : 'New' }} Campaign</span>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="save()">
+
+      <!-- Section: Basic Info -->
+      <div class="form-section">
+        <h3 class="section-title">Campaign Info</h3>
+        <div class="field-grid">
+          <div class="field-group full-width">
+            <label>Campaign Name *</label>
+            <input formControlName="name" type="text" placeholder="e.g., Black Friday 2025" class="input">
+          </div>
+          <div class="field-group">
+            <label>Priority (1–10)</label>
+            <input formControlName="priority" type="number" min="1" max="10" class="input">
+            <p class="hint">10 = Highest. Overrides lower-priority active campaigns.</p>
+          </div>
+          <div class="field-group">
+            <label>Status</label>
+            <label class="toggle-row">
+              <input type="checkbox" formControlName="isActive">
+              <span>Campaign is Active</span>
+            </label>
+          </div>
+          <div class="field-group full-width">
+            <label>Description (internal)</label>
+            <textarea formControlName="description" rows="2" class="input"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Schedule -->
+      <div class="form-section">
+        <h3 class="section-title">Schedule</h3>
+        <div class="field-grid">
+          <div class="field-group">
+            <label>Start Date & Time *</label>
+            <input formControlName="startDate" type="datetime-local" class="input">
+          </div>
+          <div class="field-group">
+            <label>End Date & Time *</label>
+            <input formControlName="endDate" type="datetime-local" class="input">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Hero Carousel Slides -->
+      <div class="form-section">
+        <div class="section-header-row">
+          <h3 class="section-title">Hero Carousel Slides</h3>
+          <button type="button" class="btn-add-slide" (click)="openMediaPickerForNew()">
+            <span class="material-icons">add_photo_alternate</span>
+            Add Slide
+          </button>
+        </div>
+        <p class="hint">Slides are shown in the hero carousel when this campaign is active. At least one slide required to display the carousel.</p>
+
+        @if (slides().length === 0) {
+          <div class="empty-slides">
+            <span class="material-icons">image_not_supported</span>
+            <p>No slides yet. Click "Add Slide" to pick an image from the Media Library.</p>
+          </div>
+        }
+
+        @for (slide of slides(); track slide.order; let i = $index) {
+          <div class="slide-card" [class.slide-inactive]="!slide.active">
+            <!-- Slide Image Thumbnail -->
+            <div class="slide-thumb">
+              <img [src]="slide.imageUrl" [alt]="'Slide ' + (i + 1)">
+              <button type="button" class="thumb-replace" (click)="openMediaPickerForEdit(i)" title="Replace image">
+                <span class="material-icons">swap_horiz</span>
+              </button>
+            </div>
+
+            <!-- Slide Fields -->
+            <div class="slide-fields">
+              <div class="slide-row">
+                <div class="field-group">
+                  <label>CTA URL <span class="optional">optional</span></label>
+                  <input type="text"
+                    [value]="slide.ctaUrl || ''"
+                    (input)="updateSlideField(i, 'ctaUrl', $any($event.target).value)"
+                    placeholder="/catalog or /product/llantas-205"
+                    class="input input-sm">
+                </div>
+                <div class="field-group">
+                  <label>CTA Label <span class="optional">optional</span></label>
+                  <input type="text"
+                    [value]="slide.ctaLabel || ''"
+                    (input)="updateSlideField(i, 'ctaLabel', $any($event.target).value)"
+                    placeholder="Ver más"
+                    class="input input-sm">
+                </div>
+              </div>
+              <div class="slide-meta">
+                <label class="toggle-row small">
+                  <input type="checkbox"
+                    [checked]="slide.active"
+                    (change)="updateSlideField(i, 'active', $any($event.target).checked)">
+                  <span>Active</span>
+                </label>
+                <span class="click-count">
+                  <span class="material-icons">touch_app</span>
+                  {{ slide.clickCount || 0 }} clicks
+                </span>
+              </div>
+            </div>
+
+            <!-- Slide Actions -->
+            <div class="slide-actions">
+              <button type="button" class="slide-action-btn" (click)="moveSlide(i, 'up')" [disabled]="i === 0" title="Move up">
+                <span class="material-icons">arrow_upward</span>
+              </button>
+              <button type="button" class="slide-action-btn" (click)="moveSlide(i, 'down')" [disabled]="i === slides().length - 1" title="Move down">
+                <span class="material-icons">arrow_downward</span>
+              </button>
+              <button type="button" class="slide-action-btn danger" (click)="removeSlide(i)" title="Remove slide">
+                <span class="material-icons">delete</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Section: Website Theme -->
+      <div class="form-section">
+        <h3 class="section-title">Website Theme</h3>
+        <div class="theme-grid">
+          @for (theme of themes; track theme.id) {
+            <label class="theme-option">
+              <input type="radio" formControlName="themeId" [value]="theme.id" class="sr-only">
+              <div class="theme-swatch"
+                [class.selected]="form.get('themeId')?.value === theme.id"
+                [style.background]="theme.backgroundColor"
+                [style.border-color]="theme.primaryColor">
+                <span [style.color]="theme.primaryColor">Aa</span>
+              </div>
+              <span class="theme-label">{{ theme.id }}</span>
+            </label>
+          }
+        </div>
+      </div>
+
+      <!-- Section: Promo -->
+      <div class="form-section">
+        <h3 class="section-title">Promo Strip</h3>
+        <div class="field-group full-width">
+          <label>Promo Strip Text</label>
+          <input formControlName="promoStripText" type="text" placeholder="📦 Envío gratis en compras +$1,500" class="input">
+          <p class="hint">Shown in the top announcement bar while this campaign is active.</p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <a routerLink="/admin/marketing/campaigns" class="btn-cancel">Cancel</a>
+        <button type="submit" [disabled]="form.invalid || loading()" class="btn-save">
+          @if (loading()) {
+            <span class="material-icons spin">autorenew</span> Saving...
+          } @else {
+            <span class="material-icons">save</span> Save Campaign
+          }
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- RIGHT: Live Preview -->
+  <div class="preview-column">
+    <div class="preview-sticky">
+      <h4 class="preview-title">
+        <span class="material-icons">preview</span>
+        Carousel Preview
+      </h4>
+
+      <div class="preview-hero">
+        @if (activePreviewSlides.length === 0) {
+          <div class="preview-empty">
+            <span class="material-icons">panorama</span>
+            <p>No active slides.<br>Hero will be hidden.</p>
+          </div>
+        } @else {
+          <div class="preview-slide">
+            <img [src]="activePreviewSlides[previewIndex()].imageUrl" class="preview-img" alt="Slide preview">
+            @if (activePreviewSlides[previewIndex()].ctaUrl) {
+              <div class="preview-cta">
+                <span>{{ activePreviewSlides[previewIndex()].ctaLabel || 'Ver más →' }}</span>
+              </div>
+            }
+            @if (activePreviewSlides.length > 1) {
+              <div class="preview-nav">
+                <button type="button" (click)="prevPreview()">‹</button>
+                <span>{{ previewIndex() + 1 }} / {{ activePreviewSlides.length }}</span>
+                <button type="button" (click)="nextPreview()">›</button>
+              </div>
+            }
+          </div>
+          <div class="preview-dots">
+            @for (s of activePreviewSlides; track $index) {
+              <span class="preview-dot" [class.active]="$index === previewIndex()" (click)="previewIndex.set($index)"></span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="preview-info">
+        <p><strong>Active slides:</strong> {{ activePreviewSlides.length }} / {{ slides().length }}</p>
+        @if (form.get('promoStripText')?.value) {
+          <div class="preview-strip">{{ form.get('promoStripText')?.value }}</div>
+        }
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Media Picker Dialog -->
+@if (showMediaPicker()) {
+  <app-media-picker-dialog
+    (assetSelected)="onMediaSelected($event)"
+    (close)="showMediaPicker.set(false)">
+  </app-media-picker-dialog>
+}

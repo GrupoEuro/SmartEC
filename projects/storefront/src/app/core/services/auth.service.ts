@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID, signal, DestroyRef, Injector } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
-import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
+import { Auth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { Observable, of, switchMap, firstValueFrom, BehaviorSubject } from 'rxjs';
@@ -50,21 +50,11 @@ export class AuthService {
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      // Lazy init Firebase Auth off the critical rendering path via Interaction
-      const initAuthAndFirestore = () => {
-        this.initAuth();
-        this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
-        // Clean up listeners
-        ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
-          document.removeEventListener(e, initAuthAndFirestore);
-        });
-      };
-
-      ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
-        document.addEventListener(e, initAuthAndFirestore, { passive: true, once: true });
-      });
+      // Eagerly init Auth so redirect result can be captured on page load
+      this.initAuth();
 
       // Sync logic: Use getDoc instead of docData to avoid type mismatch
+      // MUST be assigned before subscription below
       this.userProfile$ = this.user$.pipe(
         switchMap(firebaseUser => {
           this.currentUser.set(firebaseUser); // Update Inspector
@@ -98,6 +88,20 @@ export class AuthService {
         })
       );
 
+      // Subscribe to keep signals updated
+      this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+
+      // Handle redirect result after Google sign-in (fires on page load after redirect back)
+      getRedirectResult(this.auth).then(async result => {
+        if (result?.user) {
+          await this.handleLoginSuccess(result.user);
+        }
+      }).catch(err => {
+        if (err?.code !== 'auth/no-auth-event') {
+          this.handleAuthError(err, 'Google Login');
+        }
+      });
+
     } else {
       this.userProfile$ = of(null);
     }
@@ -122,11 +126,9 @@ export class AuthService {
 
   async loginWithGoogle() {
     if (!isPlatformBrowser(this.platformId)) return;
-
     try {
       const provider = new GoogleAuthProvider();
-      const credential = await signInWithPopup(this.auth, provider);
-      await this.handleLoginSuccess(credential.user);
+      await signInWithRedirect(this.auth, provider);
     } catch (error: any) {
       this.handleAuthError(error, 'Google Login');
     }

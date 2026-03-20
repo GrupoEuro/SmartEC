@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { UserProfile } from '../../../core/models/user.model';
@@ -80,14 +81,26 @@ export class PortalLauncherComponent implements OnInit {
     ];
 
     async ngOnInit() {
-        // 1. Get User Profile
-        const profile = await this.auth.getCurrentUser();
+        console.log('[AUTH-DEBUG] PortalLauncher.ngOnInit START');
+        // 1. Get User Profile — use signal (set by handleLoginSuccess before navigation)
+        let profile = this.auth.currentProfile();
+        console.log('[AUTH-DEBUG] PortalLauncher signal fast-path:', profile?.email ?? 'NULL');
+
+        // Fallback: direct URL entry — wait for auth to settle then check signal
+        if (!profile) {
+            console.log('[AUTH-DEBUG] PortalLauncher: no signal, waiting authReady$...');
+            await firstValueFrom(this.auth.authReady$);
+            profile = this.auth.currentProfile();
+            console.log('[AUTH-DEBUG] PortalLauncher after authReady$:', profile?.email ?? 'NULL');
+        }
 
         if (!profile) {
+            console.warn('[AUTH-DEBUG] PortalLauncher: profile still NULL → navigating to /admin/login');
             this.router.navigate(['/admin/login']);
             return;
         }
 
+        console.log('[AUTH-DEBUG] PortalLauncher: profile OK, role=', profile.role);
         this.currentUser.set(profile);
 
         // 2. Filter Portals based on Role
@@ -96,25 +109,17 @@ export class PortalLauncherComponent implements OnInit {
             portal.roles.includes(userRole)
         );
 
+        console.log('[AUTH-DEBUG] PortalLauncher: allowedPortals count=', allowedPortals.length);
         this.availablePortals.set(allowedPortals);
         this.loading.set(false);
 
         // 3. Smart Redirect Logic
-        // If user only has ONE portal (and it's not just "Help"), auto-redirect.
-        // We typically don't want to trap them in Help, but if that's all they have, so be it.
-        // Refinement: If they have exactly 1 portal, go there.
-
-        // EXCEPTION: Super Admins or multi-role users might want the choice.
-        // But if length is 1, they have no choice.
         if (allowedPortals.length === 1) {
-            // Auto-redirecting to portal
             this.router.navigate([allowedPortals[0].route]);
         }
 
-        // 3b. If NO portals? (Shouldn't happen if Role checks work, but safety net)
         if (allowedPortals.length === 0) {
-            // Maybe show a "Contact Admin" state or redirect home
-            console.warn('Portal Launcher: No portals available for this role.');
+            console.warn('[AUTH-DEBUG] PortalLauncher: No portals available for role:', userRole);
         }
     }
 

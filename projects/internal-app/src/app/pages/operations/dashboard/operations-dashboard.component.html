@@ -103,7 +103,15 @@
             </div>
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">
                 {{ 'OPERATIONS.DASHBOARD.METRICS.SALES' | translate: { timeframe: timeframe() } }}</div>
+            @if (mtdProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <app-icon name="trending-up" [size]="14" class="text-teal-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-teal-300">{{ formatCurrency(mtdProjection()!) }}</span>
+            </div>
+            }
         </div>
+
 
         <!-- Monthly Pieces Sold -->
         <div
@@ -116,6 +124,13 @@
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
                 'OPERATIONS.DASHBOARD.METRICS.PIECES_SOLD' | translate: { timeframe: timeframe() } }}
             </div>
+            @if (mtdPiecesProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <app-icon name="trending-up" [size]="14" class="text-indigo-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-indigo-300">{{ mtdPiecesProjection() }} pzs.</span>
+            </div>
+            }
         </div>
     </div>
     }

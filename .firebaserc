@@ -7,6 +7,9 @@
       "hosting": {
         "internal": [
           "app-importadora-euro"
+        ],
+        "storefront": [
+          "tiendapraxis"
         ]
       }
     }

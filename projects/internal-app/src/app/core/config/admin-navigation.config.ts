@@ -92,12 +92,7 @@ export const ADMIN_NAVIGATION: NavItem[] = [
         title: 'ADMIN.SIDEBAR.SECTION_CONTENT',
         icon: 'folder',
         children: [
-            {
-                id: 'banners',
-                title: 'ADMIN.SIDEBAR.BANNERS',
-                icon: 'layers',
-                route: '/admin/banners'
-            },
+
             {
                 id: 'blog',
                 title: 'ADMIN.SIDEBAR.BLOG',

@@ -5,122 +5,17 @@ import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { Firestore, doc, getDoc, setDoc, addDoc, collection, Timestamp } from '@angular/fire/firestore';
 import { ThemeService } from '../../../../../core/services/theme.service';
 import { AuthService } from '../../../../../core/services/auth.service';
-import { WebsiteTheme } from '../../../../../core/models/campaign.model';
+import { WebsiteTheme, CampaignSlide } from '../../../../../core/models/campaign.model';
+import { MediaAsset } from '../../../../../core/models/media.model';
 import { AppIconComponent } from '../../../../../shared/components/app-icon/app-icon.component';
+import { MediaPickerDialogComponent } from '../../../../../shared/components/media-picker-dialog/media-picker-dialog.component';
 
 @Component({
     selector: 'app-campaign-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink, AppIconComponent],
-    template: `
-    <div class="p-6 max-w-4xl mx-auto">
-      <!-- Breadcrumb -->
-      <div class="mb-6 flex items-center gap-2 text-sm text-slate-500">
-        <a routerLink="/admin/marketing/campaigns" class="hover:text-blue-600">Calendar</a>
-        <span>/</span>
-        <span class="text-slate-800 font-medium">{{ isEditMode() ? 'Edit' : 'New' }} Campaign</span>
-      </div>
-
-      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <form [formGroup]="form" (ngSubmit)="save()" class="p-6 space-y-8">
-            
-            <!-- Section 1: Basic Info -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white border-b border-slate-100 pb-2">Basic Details</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Campaign Name</label>
-                        <input formControlName="name" type="text" placeholder="e.g., Halloween Sale 2025" 
-                            class="w-full h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Priority (High Overrides Low)</label>
-                        <input formControlName="priority" type="number" min="1" max="10" 
-                            class="w-full h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                        <p class="text-xs text-slate-400">10 = Highest. Use for big overrides like "Black Friday".</p>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Description (Internal)</label>
-                    <textarea formControlName="description" rows="2" 
-                        class="w-full p-4 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
-                </div>
-
-                <div class="flex items-center gap-4">
-                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" formControlName="isActive" class="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300">
-                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Campaign is Active</span>
-                     </label>
-                </div>
-            </div>
-
-            <!-- Section 2: Scheduling -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white border-b border-slate-100 pb-2">Schedule</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Start Date & Time</label>
-                        <input formControlName="startDate" type="datetime-local" 
-                            class="w-full h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                    
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">End Date & Time</label>
-                        <input formControlName="endDate" type="datetime-local" 
-                            class="w-full h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-900 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 3: Visual Takeover -->
-            <div class="space-y-4">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white border-b border-slate-100 pb-2">Visual Takeover</h3>
-                
-                <div class="space-y-4">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">Website Theme</label>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        @for (theme of themes; track theme.id) {
-                            <label class="relative cursor-pointer group">
-                                <input type="radio" formControlName="themeId" [value]="theme.id" class="peer sr-only">
-                                <div class="p-3 rounded-xl border-2 peer-checked:border-blue-500 peer-checked:ring-2 peer-checked:ring-blue-200 border-slate-200 hover:border-blue-300 transition-all text-center">
-                                    <div class="w-full h-12 rounded-lg mb-2 flex items-center justify-center text-xs font-bold shadow-sm"
-                                         [style.background]="theme.backgroundColor"
-                                         [style.color]="theme.primaryColor"
-                                         [style.border-color]="theme.primaryColor">
-                                         Aa
-                                    </div>
-                                    <span class="text-sm font-medium block capitalize">{{ theme.id }}</span>
-                                </div>
-                            </label>
-                        }
-                    </div>
-                    <p class="text-xs text-slate-500">Select a theme to preview how the website colors will adapt.</p>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <button type="button" routerLink="/admin/marketing/campaigns" class="px-6 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 font-medium transition-colors">
-                    Cancel
-                </button>
-                <button type="submit" [disabled]="form.invalid || loading()" 
-                    class="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-600/20 transition-all flex items-center gap-2">
-                    @if (loading()) {
-                        <app-icon name="loader" class="animate-spin"></app-icon>
-                        Saving...
-                    } @else {
-                        Save Campaign
-                    }
-                </button>
-            </div>
-        </form>
-      </div>
-    </div>
-  `
+    imports: [CommonModule, ReactiveFormsModule, RouterLink, AppIconComponent, MediaPickerDialogComponent],
+    templateUrl: './campaign-form.component.html',
+    styleUrl: './campaign-form.component.css'
 })
 export class CampaignFormComponent implements OnInit {
     private fb = inject(FormBuilder);
@@ -137,6 +32,14 @@ export class CampaignFormComponent implements OnInit {
     isEditMode = signal(false);
     campaignId: string | null = null;
 
+    // Slides state
+    slides = signal<CampaignSlide[]>([]);
+    showMediaPicker = signal(false);
+    editingSlideIndex = signal<number | null>(null); // null = adding new, number = replacing
+
+    // Preview
+    previewIndex = signal(0);
+
     ngOnInit() {
         this.initForm();
         this.checkEditMode();
@@ -151,7 +54,6 @@ export class CampaignFormComponent implements OnInit {
             startDate: ['', Validators.required],
             endDate: ['', Validators.required],
             themeId: ['default', Validators.required],
-            heroBannerId: [null],
             promoStripText: [''],
             activeCouponId: [null]
         });
@@ -169,8 +71,6 @@ export class CampaignFormComponent implements OnInit {
                 const snapshot = await getDoc(docRef);
                 if (snapshot.exists()) {
                     const data = snapshot.data();
-
-                    // Convert Timestamps to datetime-local string format (YYYY-MM-DDTHH:mm)
                     const start = data['startDate'] ? new Date(data['startDate'].toDate()) : new Date();
                     const end = data['endDate'] ? new Date(data['endDate'].toDate()) : new Date();
 
@@ -178,10 +78,20 @@ export class CampaignFormComponent implements OnInit {
                     end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
 
                     this.form.patchValue({
-                        ...data,
+                        name: data['name'],
+                        description: data['description'],
+                        priority: data['priority'],
+                        isActive: data['isActive'],
                         startDate: start.toISOString().slice(0, 16),
-                        endDate: end.toISOString().slice(0, 16)
+                        endDate: end.toISOString().slice(0, 16),
+                        themeId: data['themeId'],
+                        promoStripText: data['promoStripText'],
+                        activeCouponId: data['activeCouponId']
                     });
+
+                    // Load existing slides
+                    const existingSlides: CampaignSlide[] = data['slides'] || [];
+                    this.slides.set(existingSlides.sort((a, b) => a.order - b.order));
                 }
             } catch (err) {
                 console.error('Error fetching campaign', err);
@@ -191,16 +101,102 @@ export class CampaignFormComponent implements OnInit {
         }
     }
 
+    // ── Slide Management ─────────────────────────────────────────────────────
+
+    openMediaPickerForNew() {
+        this.editingSlideIndex.set(null);
+        this.showMediaPicker.set(true);
+    }
+
+    openMediaPickerForEdit(index: number) {
+        this.editingSlideIndex.set(index);
+        this.showMediaPicker.set(true);
+    }
+
+    onMediaSelected(asset: MediaAsset) {
+        this.showMediaPicker.set(false);
+        const editIdx = this.editingSlideIndex();
+
+        if (editIdx !== null) {
+            // Replace image on existing slide
+            this.slides.update(slides => slides.map((s, i) =>
+                i === editIdx
+                    ? { ...s, imageUrl: asset.publicUrl, imageStoragePath: asset.storagePath }
+                    : s
+            ));
+        } else {
+            // Add new slide
+            const newSlide: CampaignSlide = {
+                imageUrl: asset.publicUrl,
+                imageStoragePath: asset.storagePath,
+                ctaUrl: '',
+                ctaLabel: '',
+                order: this.slides().length,
+                active: true,
+                clickCount: 0
+            };
+            this.slides.update(s => [...s, newSlide]);
+            this.previewIndex.set(this.slides().length - 1);
+        }
+        this.editingSlideIndex.set(null);
+    }
+
+    updateSlideField(index: number, field: keyof CampaignSlide, value: any) {
+        this.slides.update(slides => slides.map((s, i) =>
+            i === index ? { ...s, [field]: value } : s
+        ));
+    }
+
+    moveSlide(index: number, direction: 'up' | 'down') {
+        const arr = [...this.slides()];
+        const target = direction === 'up' ? index - 1 : index + 1;
+        if (target < 0 || target >= arr.length) return;
+        [arr[index], arr[target]] = [arr[target], arr[index]];
+        // Re-assign order values
+        const reordered = arr.map((s, i) => ({ ...s, order: i }));
+        this.slides.set(reordered);
+        this.previewIndex.set(target);
+    }
+
+    removeSlide(index: number) {
+        this.slides.update(slides => {
+            const filtered = slides.filter((_, i) => i !== index);
+            return filtered.map((s, i) => ({ ...s, order: i }));
+        });
+        this.previewIndex.set(0);
+    }
+
+    // ── Preview ──────────────────────────────────────────────────────────────
+
+    get activePreviewSlides() {
+        return this.slides().filter(s => s.active);
+    }
+
+    prevPreview() {
+        const len = this.activePreviewSlides.length;
+        if (!len) return;
+        this.previewIndex.update(i => (i - 1 + len) % len);
+    }
+
+    nextPreview() {
+        const len = this.activePreviewSlides.length;
+        if (!len) return;
+        this.previewIndex.update(i => (i + 1) % len);
+    }
+
+    // ── Save ─────────────────────────────────────────────────────────────────
+
     async save() {
         if (this.form.invalid) return;
         this.loading.set(true);
 
         try {
             const val = this.form.value;
-            const payload = {
+            const payload: any = {
                 ...val,
                 startDate: Timestamp.fromDate(new Date(val.startDate)),
                 endDate: Timestamp.fromDate(new Date(val.endDate)),
+                slides: this.slides(),
                 updatedAt: Timestamp.now()
             };
 
@@ -208,10 +204,8 @@ export class CampaignFormComponent implements OnInit {
                 await setDoc(doc(this.firestore, 'campaigns', this.campaignId), payload, { merge: true });
             } else {
                 payload.createdAt = Timestamp.now();
-
                 const user = this.authService.currentUser();
                 payload.createdBy = user ? (user.uid || user.email || 'admin') : 'admin';
-
                 await addDoc(collection(this.firestore, 'campaigns'), payload);
             }
 

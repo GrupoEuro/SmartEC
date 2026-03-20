@@ -379,10 +379,22 @@ export class MediaLibraryComponent implements OnInit {
   }
 
   onUploadSuccess(assets: MediaAsset | MediaAsset[]) {
-    // Reload to show new assets at top
-    // Ideally we just prepend, but for simplicity we reload
-    this.updateFilter();
-    this.isUploadOpen.set(false);
+    const newAssets = Array.isArray(assets) ? assets : [assets];
+    const count = newAssets.length;
+    this.toast.success(
+      this.translate.instant('ADMIN.MEDIA_LIBRARY.MESSAGES.UPLOAD_SUCCESS', { count }) ||
+      `${count} archivo(s) subido(s) correctamente`
+    );
+
+    // Optimistic update: push new assets to the top of the grid immediately
+    // This ensures they appear even if the Firestore query hasn't indexed them yet
+    this.assets.update(current => [...newAssets, ...current]);
+
+    // Also trigger a real reload after delay to sync with server state
+    setTimeout(() => {
+      this.isUploadOpen.set(false);
+      this.updateFilter();
+    }, 1500);
   }
 
   toggleUpload() {

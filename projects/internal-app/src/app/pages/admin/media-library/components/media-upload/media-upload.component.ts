@@ -98,54 +98,40 @@ export class MediaUploadComponent {
     const filesToUpload = this.pendingFiles().filter(f => f.status === 'pending' || f.status === 'error');
     if (filesToUpload.length === 0) return;
 
+    // Mark all pending/error files as 'uploading'
     this.pendingFiles.update(files => files.map(f =>
       (f.status === 'pending' || f.status === 'error') ? { ...f, status: 'uploading', progress: 0 } : f
     ));
 
     const completedAssets: MediaAsset[] = [];
 
-    // Process sequentially to allow cancellation logic later if needed
-    // note: we modify mutable objects in the signal array for progress updates, which is okay for individual props, 
-    // but better to re-emit signal for reactivity.
-
-    // We need to map the index to the original array to update progress correctly
-    const currentFiles = [...this.pendingFiles()];
-
-    for (let i = 0; i < currentFiles.length; i++) {
-      const pf = currentFiles[i];
-      if (pf.status !== 'uploading') continue;
-
-      // Convert tags string to array
+    for (const pf of filesToUpload) {
+      // Capture the file object for stable identity inside the closure
+      const fileRef = pf.file;
       const tagArray = pf.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
 
       await new Promise<void>((resolve) => {
-        this.mediaService.uploadFile(pf.file, this.selectedCategory, tagArray, this.targetFolderId).subscribe({
+        this.mediaService.uploadFile(fileRef, this.selectedCategory, tagArray, this.targetFolderId).subscribe({
           next: (event) => {
             this.pendingFiles.update(files => {
-              const newFiles = [...files];
-              // Find the correct index in the *current* signal array, as it might have changed
-              const idx = newFiles.findIndex(f => f.file === pf.file);
-              if (idx !== -1) {
-                newFiles[idx] = { ...newFiles[idx], progress: Math.round(event.progress) };
+              const updated = files.map(f => {
+                if (f.file !== fileRef) return f;
+                const next = { ...f, progress: Math.round(event.progress) };
                 if (event.asset) {
-                  newFiles[idx].status = 'success';
+                  next.status = 'success' as const;
                   completedAssets.push(event.asset);
                 }
-              }
-              return newFiles;
+                return next;
+              });
+              return updated;
             });
           },
           error: (err) => {
             console.error('Upload error', err);
-            this.pendingFiles.update(files => {
-              const newFiles = [...files];
-              const idx = newFiles.findIndex(f => f.file === pf.file);
-              if (idx !== -1) {
-                newFiles[idx] = { ...newFiles[idx], status: 'error', progress: 0 };
-              }
-              return newFiles;
-            });
-            resolve(); // Continue to next even on error
+            this.pendingFiles.update(files =>
+              files.map(f => f.file === fileRef ? { ...f, status: 'error' as const, progress: 0 } : f)
+            );
+            resolve();
           },
           complete: () => resolve()
         });
@@ -154,8 +140,6 @@ export class MediaUploadComponent {
 
     if (completedAssets.length > 0) {
       this.uploadComplete.emit(completedAssets);
-
-      // Remove success files after short delay
       setTimeout(() => {
         this.pendingFiles.update(files => files.filter(f => f.status !== 'success'));
       }, 1500);

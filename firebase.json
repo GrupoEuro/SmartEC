@@ -12,7 +12,7 @@
     "hosting": [
         {
             "target": "storefront",
-            "public": "dist/importadora-euro/browser",
+            "public": "dist/storefront/browser",
             "cleanUrls": true,
             "trailingSlash": false,
             "ignore": [

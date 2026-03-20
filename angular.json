@@ -27,7 +27,20 @@
             "styles": [
               "projects/internal-app/src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "html2canvas",
+              "cytoscape-fcose",
+              "@braintree/sanitize-url",
+              "dayjs",
+              "cytoscape-cose-bilkent",
+              "canvg",
+              "raf",
+              "rgbcolor",
+              "qrcode",
+              "crypto-js",
+              "vscode-jsonrpc"
+            ]
           },
           "configurations": {
             "production": {
@@ -39,8 +52,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "10kb",
-                  "maximumError": "20kb"
+                  "maximumWarning": "40kb",
+                  "maximumError": "60kb"
                 }
               ],
               "outputHashing": "all"
@@ -213,12 +226,16 @@
                 "fonts": {
                   "inline": true
                 }
-              }
+              },
+              "ssr": false,
+              "prerender": false
             },
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "ssr": false,
+              "prerender": false
             }
           },
           "defaultConfiguration": "production"

@@ -2,7 +2,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
 import { Auth, signOut } from '@angular/fire/auth';
 import { AuthService } from '../services/auth.service';
-import { map, take } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import { ToastService } from '../services/toast.service';
 
 // Roles that are allowed to access the internal admin panel
@@ -14,8 +14,9 @@ export const adminGuard: CanActivateFn = (route, state) => {
   const auth = inject(Auth);
   const toast = inject(ToastService);
 
-  return authService.userProfile$.pipe(
-    take(1),
+  // Wait for Firebase Auth to fully resolve (including redirect result) before checking
+  return authService.authReady$.pipe(
+    switchMap(() => authService.userProfile$),
     map(profile => {
       // 1. Not logged in
       if (!profile) {

@@ -24,18 +24,6 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
-                path: 'banners',
-                loadComponent: () => import('./banners/banner-list/banner-list.component').then(m => m.BannerListComponent)
-            },
-            {
-                path: 'banners/new',
-                loadComponent: () => import('./banners/banner-form/banner-form.component').then(m => m.BannerFormComponent)
-            },
-            {
-                path: 'banners/edit/:id',
-                loadComponent: () => import('./banners/banner-form/banner-form.component').then(m => m.BannerFormComponent)
-            },
-            {
                 path: 'orders',
                 loadComponent: () => import('./orders/order-list/order-list.component').then(m => m.OrderListComponent)
             },

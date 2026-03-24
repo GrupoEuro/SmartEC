@@ -8,9 +8,27 @@
             <div class="spacer"></div>
 
             <div class="header-actions-group">
-                <button (click)="toggleLanguage()" class="lang-btn-header">
-                    {{ languageService.currentLang() === 'es' ? 'EN' : 'ES' }}
-                </button>
+
+                <!-- Language Switcher -->
+                <div class="lang-switcher-wrapper" [class.open]="isLangMenuOpen" (clickoutside)="isLangMenuOpen=false">
+                    <button class="lang-btn-header" (click)="isLangMenuOpen = !isLangMenuOpen">
+                        <span class="lang-flag">{{ languageService.currentLang() === 'es' ? '🇲🇽' : '🇺🇸' }}</span>
+                        <span class="lang-code">{{ languageService.currentLang() === 'es' ? 'ES' : 'EN' }}</span>
+                        <span class="lang-caret">▾</span>
+                    </button>
+                    @if (isLangMenuOpen) {
+                    <div class="lang-dropdown">
+                        <button class="lang-option" [class.active]="languageService.currentLang() === 'es'"
+                            (click)="setLanguage('es'); isLangMenuOpen=false">
+                            <span>🇲🇽</span> Español
+                        </button>
+                        <button class="lang-option" [class.active]="languageService.currentLang() === 'en'"
+                            (click)="setLanguage('en'); isLangMenuOpen=false">
+                            <span>🇺🇸</span> English
+                        </button>
+                    </div>
+                    }
+                </div>
 
                 @if (user$ | async; as user) {
                 <div class="user-menu-container">
@@ -38,12 +56,18 @@
                             <span class="d-email">{{ user.email }}</span>
                         </div>
                         <div class="dropdown-divider"></div>
-                        <a routerLink="/" class="dropdown-item">
-                            <span class="icon">🏠</span>
-                            {{ 'ADMIN.GO_HOME' | translate }}
+                        <a href="https://www.importadoraeuro.com" target="_blank" rel="noopener" class="dropdown-item">
+                            <span class="icon"><app-icon name="globe" [size]="15"></app-icon></span>
+                            {{ 'ADMIN.GO_TO_WEBSITE' | translate }}
+                            <span class="ext-icon">↗</span>
                         </a>
-                        <button (click)="logout()" class="dropdown-item">
-                            <span class="icon">🚪</span>
+                        <a routerLink="/portal" class="dropdown-item" (click)="isUserMenuOpen = false">
+                            <span class="icon"><app-icon name="layout-dashboard" [size]="15"></app-icon></span>
+                            {{ 'ADMIN.GO_TO_PORTAL' | translate }}
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <button (click)="logout()" class="dropdown-item logout-item">
+                            <span class="icon"><app-icon name="log-out" [size]="15"></app-icon></span>
                             {{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}
                         </button>
                     </div>

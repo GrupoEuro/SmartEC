@@ -27,7 +27,7 @@
   position: relative;
   background-image: 
     linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.1) 50%, rgba(47, 43, 94, 0.5)),
-    url('https://images.pexels.com/photos/1149831/pexels-photo-1149831.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+    url('/assets/images/login-hero-car.webp');
   background-size: cover;
   background-position: center;
   padding: 40px;

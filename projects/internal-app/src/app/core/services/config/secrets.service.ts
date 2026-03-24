@@ -33,6 +33,7 @@ export interface IntegrationConfig {
     };
     skydropx?: {
         apiKey: string;
+        apiSecret: string;
         connected: boolean;
     };
 }
@@ -54,7 +55,7 @@ export class SecretsService {
             meli: { appId: '', clientSecret: '', redirectUri: window.location.origin + '/admin/settings/integrations/callback', connected: false },
             amazon: { clientId: '', clientSecret: '', refreshToken: '', region: 'na', connected: false },
             mercadopago: { accessToken: '', publicKey: '', connected: false },
-            skydropx: { apiKey: '', connected: false }
+            skydropx: { apiKey: '', apiSecret: '', connected: false }
         };
     }
 

@@ -105,17 +105,25 @@
         <div class="v-divider"></div>
 
         <!-- Language Switcher -->
-        <!-- Language Switcher -->
-        <button (click)="toggleLanguage()" class="lang-btn glass-btn" [title]="'Switch Language'">
-            <div class="lang-content" *ngIf="languageService.currentLang() === 'es'">
-                <span class="flag-icon">🇲🇽</span>
-                <span class="lang-code">ES</span>
+        <div class="lang-switcher-wrapper" [class.open]="isLangMenuOpen">
+            <button class="lang-btn glass-btn" (click)="isLangMenuOpen = !isLangMenuOpen">
+                <span class="flag-icon">{{ languageService.currentLang() === 'es' ? '🇲🇽' : '🇺🇸' }}</span>
+                <span class="lang-code">{{ languageService.currentLang() === 'es' ? 'ES' : 'EN' }}</span>
+                <span style="font-size:0.6rem;opacity:0.5;margin-left:2px">▾</span>
+            </button>
+            @if (isLangMenuOpen) {
+            <div class="lang-dropdown custom-dropdown" style="min-width:140px">
+                <button class="dropdown-option" [class.selected]="languageService.currentLang() === 'es'"
+                    (click)="setLanguage('es'); isLangMenuOpen=false">
+                    🇲🇽 Español
+                </button>
+                <button class="dropdown-option" [class.selected]="languageService.currentLang() === 'en'"
+                    (click)="setLanguage('en'); isLangMenuOpen=false">
+                    🇺🇸 English
+                </button>
             </div>
-            <div class="lang-content" *ngIf="languageService.currentLang() === 'en'">
-                <span class="flag-icon">🇺🇸</span>
-                <span class="lang-code">EN</span>
-            </div>
-        </button>
+            }
+        </div>
 
         <!-- Notification Bell -->
         <app-notification-bell></app-notification-bell>
@@ -141,10 +149,16 @@
                         <span class="u-email">{{ user.email }}</span>
                     </div>
                     <div class="dropdown-divider"></div>
-                    <a routerLink="/" class="dropdown-option">
-                        <app-icon name="home" [size]="16" class="opt-icon"></app-icon>
-                        {{ 'ADMIN.GO_HOME' | translate }}
+                    <a href="https://www.importadoraeuro.com" target="_blank" rel="noopener" class="dropdown-option">
+                        <app-icon name="globe" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.GO_TO_WEBSITE' | translate }}
+                        <span style="margin-left:auto;font-size:0.75rem;opacity:0.45">↗</span>
                     </a>
+                    <a routerLink="/portal" class="dropdown-option">
+                        <app-icon name="layout-dashboard" [size]="16" class="opt-icon"></app-icon>
+                        {{ 'ADMIN.GO_TO_PORTAL' | translate }}
+                    </a>
+                    <div class="dropdown-divider"></div>
                     <button (click)="logout()" class="dropdown-option text-red-400">
                         <app-icon name="log-out" [size]="16" class="opt-icon"></app-icon>
                         {{ 'ADMIN.SIDEBAR.LOGOUT' | translate }}
@@ -153,4 +167,5 @@
             </div>
         </div>
     </div>
+
 </header>

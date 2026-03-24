@@ -10,7 +10,6 @@ import { Product } from '../../../../core/models/product.model';
 import { KitService } from '../../../../core/services/kit.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { ToastService } from '../../../../core/services/toast.service';
-import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.component';
 
 @Component({
@@ -20,13 +19,15 @@ import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch.
         CommonModule,
         ReactiveFormsModule,
         TranslateModule,
-        AdminPageHeaderComponent,
         ToggleSwitchComponent
     ],
     templateUrl: './kit-form.component.html',
     styleUrls: ['./kit-form.component.css']
 })
 export class KitFormComponent implements OnInit {
+    // Expose Math for template (qty +/- controls)
+    Math = Math;
+
     private fb = inject(FormBuilder);
     private route = inject(ActivatedRoute);
     private router = inject(Router);

@@ -81,26 +81,20 @@ export class PortalLauncherComponent implements OnInit {
     ];
 
     async ngOnInit() {
-        console.log('[AUTH-DEBUG] PortalLauncher.ngOnInit START');
         // 1. Get User Profile — use signal (set by handleLoginSuccess before navigation)
         let profile = this.auth.currentProfile();
-        console.log('[AUTH-DEBUG] PortalLauncher signal fast-path:', profile?.email ?? 'NULL');
 
         // Fallback: direct URL entry — wait for auth to settle then check signal
         if (!profile) {
-            console.log('[AUTH-DEBUG] PortalLauncher: no signal, waiting authReady$...');
             await firstValueFrom(this.auth.authReady$);
             profile = this.auth.currentProfile();
-            console.log('[AUTH-DEBUG] PortalLauncher after authReady$:', profile?.email ?? 'NULL');
         }
 
         if (!profile) {
-            console.warn('[AUTH-DEBUG] PortalLauncher: profile still NULL → navigating to /admin/login');
             this.router.navigate(['/admin/login']);
             return;
         }
 
-        console.log('[AUTH-DEBUG] PortalLauncher: profile OK, role=', profile.role);
         this.currentUser.set(profile);
 
         // 2. Filter Portals based on Role
@@ -109,7 +103,6 @@ export class PortalLauncherComponent implements OnInit {
             portal.roles.includes(userRole)
         );
 
-        console.log('[AUTH-DEBUG] PortalLauncher: allowedPortals count=', allowedPortals.length);
         this.availablePortals.set(allowedPortals);
         this.loading.set(false);
 
@@ -119,7 +112,6 @@ export class PortalLauncherComponent implements OnInit {
         }
 
         if (allowedPortals.length === 0) {
-            console.warn('[AUTH-DEBUG] PortalLauncher: No portals available for role:', userRole);
         }
     }
 

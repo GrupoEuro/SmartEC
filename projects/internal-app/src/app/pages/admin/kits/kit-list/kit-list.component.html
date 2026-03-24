@@ -1,212 +1,200 @@
-<app-admin-page-header icon="🎁" [title]="'ADMIN.KITS.TITLE' | translate"
-    [subtitle]="'ADMIN.KITS.SUBTITLE' | translate">
-    <button class="btn-primary" (click)="createKit()">
-        {{ 'ADMIN.KITS.BTN_NEW' | translate }}
-    </button>
-</app-admin-page-header>
+<div class="kits-dashboard-layout">
 
-<div class="list-container">
-    <!-- Top Bar: Search, Filters and Export -->
-    <div class="filters-bar">
-        <div class="search-and-filters">
+    <!-- Command Header -->
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-section">
+                <h1 class="page-title">{{ 'ADMIN.KITS.TITLE' | translate }}</h1>
+                <span class="product-badge">{{ paginationConfig.totalItems }}</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button class="btn-ghost" (click)="handleExport()" title="Export kits">
+                <span class="icon">📤</span>
+                <span class="text">Export</span>
+            </button>
+            <button class="btn-primary-action" (click)="createKit()">
+                <span class="icon">➕</span>
+                <span class="text">{{ 'ADMIN.KITS.BTN_NEW' | translate }}</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="kits-grid-view">
+
+        <!-- Toolbar -->
+        <div class="table-toolbar">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" [formControl]="searchControl"
-                    [placeholder]="'ADMIN.KITS.SEARCH_PLACEHOLDER' | translate" class="search-input">
+                    [placeholder]="'ADMIN.KITS.SEARCH_PLACEHOLDER' | translate">
             </div>
 
-            <!-- Status Filter Tabs -->
-            <div class="status-tabs">
+            <!-- Status filter tabs as pills -->
+            <div class="status-pill-group">
                 @for (tab of statusTabs(); track tab.id) {
-                <button class="status-tab" [class.active]="selectedStatus() === tab.id"
+                <button class="status-pill" [class.active]="selectedStatus() === tab.id"
                     (click)="setStatusFilter(tab.id)">
-                    <span class="tab-label">{{ tab.label | translate }}</span>
-                    <span class="tab-count">{{ tab.count }}</span>
+                    {{ tab.label | translate }}
+                    <span class="pill-count">{{ tab.count }}</span>
                 </button>
                 }
             </div>
 
-            <!-- Clear Filters -->
-            @if (searchControl.value || selectedStatus() !== 'all' || selectedActiveStatus() !== 'all') {
+            @if (searchControl.value || selectedStatus() !== 'all') {
             <button class="btn-clear-filters" (click)="clearFilters()">
                 {{ 'ADMIN.PRODUCTS.CLEAR_FILTERS' | translate }}
             </button>
             }
         </div>
 
-        <!-- Export Button -->
-        <button class="btn-primary small icon" (click)="handleExport()"
-            [title]="'ADMIN.PRODUCTS.EXPORT_CSV' | translate">
-            📥 {{ 'ADMIN.PRODUCTS.EXPORT_CSV' | translate }}
-        </button>
-    </div>
-
-    <!-- Bulk Actions Toolbar -->
-    @if (selectedCount > 0) {
-    <div class="bulk-actions-toolbar">
-        <span class="selected-count">
-            {{ selectedCount }} {{ selectedCount === 1 ? 'kit' : 'kits' }} selected
-        </span>
-        <div class="bulk-actions">
-            <button class="btn-bulk btn-publish" (click)="bulkUpdateStatus('published')">
-                ✅ Publish Selected
-            </button>
-            <button class="btn-bulk btn-draft" (click)="bulkUpdateStatus('draft')">
-                📝 Mark as Draft
-            </button>
-            <button class="btn-bulk btn-delete" (click)="bulkDelete()">
-                🗑️ Delete Selected
-            </button>
+        <!-- Floating Bulk Actions -->
+        @if (selectedCount > 0) {
+        <div class="bulk-actions-barglass">
+            <span class="selected-text">{{ selectedCount }} {{ selectedCount === 1 ? 'kit' : 'kits' }} selected</span>
+            <div class="actions">
+                <button (click)="bulkUpdateStatus('published')">✅ Publish</button>
+                <button (click)="bulkUpdateStatus('draft')">📝 Draft</button>
+                <button class="danger" (click)="bulkDelete()">🗑️ Delete</button>
+            </div>
         </div>
-    </div>
-    }
-
-    <!-- Loading State -->
-    @if (isLoading()) {
-    <div class="loading-state">
-        <div class="spinner"></div>
-        <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
-    </div>
-    } @else if (displayedKits.length > 0) {
-    <!-- Table -->
-    <div class="table-responsive">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th class="col-checkbox">
-                        <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll($event)"
-                            [title]="selectAll ? 'Deselect All' : 'Select All'">
-                    </th>
-                    <th>{{ 'ADMIN.KITS.TABLE.IMAGE' | translate }}</th>
-                    <th class="sortable" (click)="onSortChange('name')">
-                        {{ 'ADMIN.KITS.TABLE.NAME' | translate }}
-                        <span class="sort-indicator" *ngIf="sortField === 'name'">
-                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                    </th>
-                    <th class="sortable" (click)="onSortChange('sku')">
-                        {{ 'ADMIN.KITS.TABLE.SKU' | translate }}
-                        <span class="sort-indicator" *ngIf="sortField === 'sku'">
-                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                    </th>
-                    <th>{{ 'ADMIN.KITS.TABLE.COMPONENTS' | translate }}</th>
-                    <th class="text-right sortable" (click)="onSortChange('price')">
-                        {{ 'ADMIN.KITS.TABLE.PRICE' | translate }}
-                        <span class="sort-indicator" *ngIf="sortField === 'price'">
-                            {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                    </th>
-                    <th class="text-right">{{ 'ADMIN.KITS.TABLE.SAVINGS' | translate }}</th>
-                    <th>{{ 'ADMIN.KITS.TABLE.STATUS' | translate }}</th>
-                    <th class="actions-col">{{ 'ADMIN.KITS.TABLE.ACTIONS' | translate }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (kit of displayedKits; track kit.id) {
-                <tr [class.selected]="isSelected(kit.id!)">
-                    <!-- Checkbox -->
-                    <td class="col-checkbox">
-                        <input type="checkbox" [checked]="isSelected(kit.id!)" (change)="toggleSelect(kit.id!)">
-                    </td>
-
-                    <!-- Image -->
-                    <td>
-                        <div class="product-image">
-                            <img *ngIf="kit.image" [src]="kit.image" [alt]="kit.name.es">
-                            <span *ngIf="!kit.image" class="no-image">🎁</span>
-                        </div>
-                    </td>
-
-                    <!-- Name -->
-                    <td>
-                        <div class="kit-info">
-                            <div class="kit-name">{{ kit.name.es }}</div>
-                            <div class="kit-name-en" *ngIf="kit.name.en">{{ kit.name.en }}</div>
-                        </div>
-                    </td>
-
-                    <!-- SKU -->
-                    <td>
-                        <span class="sku-code">{{ kit.sku }}</span>
-                    </td>
-
-                    <!-- Components -->
-                    <td>
-                        <span class="badge badge-neutral">
-                            {{ getComponentCount(kit) }} {{ getComponentCount(kit) === 1 ? ('ADMIN.KITS.COMPONENT_UNIT'
-                            | translate) : ('ADMIN.KITS.COMPONENT_UNITS' | translate) }}
-                        </span>
-                    </td>
-
-                    <!-- Price -->
-                    <td class="text-right">
-                        <div class="price-info">
-                            <div class="current-price">{{ kit.price | currency }}</div>
-                            <div class="compare-price" *ngIf="kit.compareAtPrice">
-                                <s>{{ kit.compareAtPrice | currency }}</s>
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Savings -->
-                    <td class="text-right">
-                        <span class="badge badge-success" *ngIf="getSavingsPercentage(kit) > 0">
-                            {{ getSavingsPercentage(kit) }}% OFF
-                        </span>
-                        <span *ngIf="getSavingsPercentage(kit) === 0">-</span>
-                    </td>
-
-                    <!-- Status -->
-                    <td>
-                        <span class="badge" [ngClass]="{
-                            'badge-active': kit.active && kit.publishStatus === 'published',
-                            'badge-draft': kit.publishStatus === 'draft',
-                            'badge-inactive': !kit.active || kit.publishStatus === 'archived'
-                        }">
-                            <span *ngIf="kit.active && kit.publishStatus === 'published'">✓ {{
-                                'ADMIN.KITS.FORM.PUBLISHED' | translate }}</span>
-                            <span *ngIf="kit.publishStatus === 'draft'">📝 {{ 'ADMIN.KITS.FORM.DRAFT' | translate
-                                }}</span>
-                            <span *ngIf="!kit.active || kit.publishStatus === 'archived'">📦 {{
-                                'ADMIN.KITS.FORM.ARCHIVED' | translate }}</span>
-                        </span>
-                    </td>
-
-                    <!-- Actions -->
-                    <td class="actions-cell">
-                        <button class="btn-icon" (click)="editKit(kit)" title="Edit">
-                            ✏️
-                        </button>
-                        <button class="btn-icon btn-danger" (click)="deleteKit(kit)" title="Delete">
-                            🗑️
-                        </button>
-                    </td>
-                </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination -->
-    <app-pagination [config]="paginationConfig" [translationPrefix]="'ADMIN.KITS'" (pageChange)="onPageChange($event)"
-        (itemsPerPageChange)="onItemsPerPageChange($event)">
-    </app-pagination>
-    } @else {
-    <!-- Empty State -->
-    <div class="empty-state">
-        <span class="empty-icon">🎁</span>
-        <h3>{{ 'ADMIN.KITS.ERROR_LOAD' | translate }}</h3>
-        <p>{{ 'ADMIN.KITS.SUBTITLE' | translate }}</p>
-        @if (searchControl.value || selectedStatus() !== 'all') {
-        <button class="btn-clear-filters" (click)="clearFilters()">
-            {{ 'ADMIN.PRODUCTS.CLEAR_FILTERS' | translate }}
-        </button>
-        } @else {
-        <button class="btn-primary" (click)="createKit()">
-            {{ 'ADMIN.KITS.BTN_NEW' | translate }}
-        </button>
         }
-    </div>
-    }
+
+        <!-- Loading -->
+        @if (isLoading()) {
+        <div class="glass-loader">
+            <div class="spinner"></div>
+            {{ 'ADMIN.COMMON.LOADING' | translate }}
+        </div>
+        } @else if (displayedKits.length > 0) {
+
+        <div class="table-glass-container">
+            <table class="rich-table">
+                <thead>
+                    <tr>
+                        <th class="w-12">
+                            <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll($event)"
+                                title="Select All">
+                        </th>
+                        <th class="w-16">Image</th>
+                        <th class="sortable" (click)="onSortChange('name')">
+                            Combo Details
+                            <span *ngIf="sortField === 'name'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th class="sortable" (click)="onSortChange('sku')">
+                            SKU
+                            <span *ngIf="sortField === 'sku'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th>Components</th>
+                        <th class="sortable text-right" (click)="onSortChange('price')">
+                            Price
+                            <span *ngIf="sortField === 'price'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
+                        </th>
+                        <th class="text-center">Savings</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (kit of displayedKits; track kit.id) {
+                    <tr [class.selected]="isSelected(kit.id!)">
+                        <td>
+                            <input type="checkbox" [checked]="isSelected(kit.id!)" (change)="toggleSelect(kit.id!)">
+                        </td>
+                        <td>
+                            <div class="img-thumbnail">
+                                <img *ngIf="kit.image" [src]="kit.image" [alt]="kit.name.es">
+                                <div *ngIf="!kit.image" class="img-placeholder">🎁</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-identity">
+                                <span class="product-name" (click)="editKit(kit)">{{ kit.name.es }}</span>
+                                <span class="product-sku" *ngIf="kit.name.en">{{ kit.name.en }}</span>
+                                <div class="badges-row">
+                                    <span class="mini-badge kit">KIT</span>
+                                    <span class="mini-badge featured" *ngIf="kit.featured">⭐ Featured</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="product-sku">{{ kit.sku }}</span>
+                        </td>
+                        <td>
+                            <div class="stock-pill neutral">
+                                <span class="dot"></span>
+                                <span class="status-text">
+                                    {{ getComponentCount(kit) }} {{ getComponentCount(kit) === 1 ?
+                                    ('ADMIN.KITS.COMPONENT_UNIT' | translate) : ('ADMIN.KITS.COMPONENT_UNITS' |
+                                    translate) }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <div class="price-stack">
+                                <span class="current-price">{{ kit.price | currency }}</span>
+                                <span class="compare-price" *ngIf="kit.compareAtPrice">
+                                    {{ kit.compareAtPrice | currency }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div *ngIf="getSavingsPercentage(kit) > 0" class="stock-pill success">
+                                <span class="dot"></span>
+                                <span class="status-text">{{ getSavingsPercentage(kit) }}% OFF</span>
+                            </div>
+                            <span *ngIf="getSavingsPercentage(kit) === 0" class="no-savings">—</span>
+                        </td>
+                        <td>
+                            <div class="stock-pill"
+                                [class.success]="kit.active && kit.publishStatus === 'published'"
+                                [class.warning]="kit.publishStatus === 'draft'"
+                                [class.neutral]="!kit.active || kit.publishStatus === 'archived'">
+                                <span class="dot"></span>
+                                <span class="status-text">
+                                    <span *ngIf="kit.active && kit.publishStatus === 'published'">{{ 'ADMIN.KITS.FORM.PUBLISHED' | translate }}</span>
+                                    <span *ngIf="kit.publishStatus === 'draft'">{{ 'ADMIN.KITS.FORM.DRAFT' | translate }}</span>
+                                    <span *ngIf="!kit.active || kit.publishStatus === 'archived'">{{ 'ADMIN.KITS.FORM.ARCHIVED' | translate }}</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="btn-icon-ghost" (click)="editKit(kit)" title="Edit">✏️</button>
+                                <button class="btn-icon-ghost danger" (click)="deleteKit(kit)" title="Delete">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+            <app-pagination [config]="paginationConfig" [translationPrefix]="'ADMIN.KITS'"
+                (pageChange)="onPageChange($event)"
+                (itemsPerPageChange)="onItemsPerPageChange($event)">
+            </app-pagination>
+        </div>
+
+        } @else {
+        <!-- Empty State -->
+        <div class="empty-state-glass">
+            <span class="empty-icon">🎁</span>
+            <h3>{{ searchControl.value || selectedStatus() !== 'all' ? 'No combos match your filters' : 'ADMIN.KITS.SUBTITLE' | translate }}</h3>
+            <p>Combos let you bundle products together at a special price.</p>
+            @if (searchControl.value || selectedStatus() !== 'all') {
+            <button class="btn-ghost" (click)="clearFilters()">Clear Filters</button>
+            } @else {
+            <button class="btn-primary-action" (click)="createKit()">
+                <span class="icon">➕</span>
+                <span class="text">{{ 'ADMIN.KITS.BTN_NEW' | translate }}</span>
+            </button>
+            }
+        </div>
+        }
+
+    </main>
 </div>

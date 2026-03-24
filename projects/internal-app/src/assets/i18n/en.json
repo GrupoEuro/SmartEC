@@ -1142,7 +1142,8 @@
         "SYNC_START": "Scan Firebase Storage for missing files? This may take a while.",
         "SYNC_SUCCESS": "Sync Complete: Scanned {scanned}, Recovered {recovered}, Errors {errors}",
         "RECALCULATE_CONFIRM": "Recalculate Storage Stats? This scans all assets.",
-        "ONLY_IMAGES_EDIT": "Only images can be edited"
+        "ONLY_IMAGES_EDIT": "Only images can be edited",
+        "UPLOAD_SUCCESS": "Files uploaded successfully"
       }
     },
     "CATALOG": {
@@ -1183,6 +1184,8 @@
       }
     },
     "GO_HOME": "Go to Website",
+    "GO_TO_WEBSITE": "Go to Website",
+    "GO_TO_PORTAL": "Go to Portal",
     "STATUS": {
       "ALL": "All",
       "ACTIVE": "Active",
@@ -1198,6 +1201,7 @@
       "SECTION_ECOMMERCE": "E-Commerce",
       "PRODUCT_TYPES": "Product Types",
       "PRODUCTS": "Products",
+      "KITS": "Combos & Kits",
       "CATEGORIES": "Categories",
       "BRANDS": "Brands",
       "SECTION_CATALOG": "Catalog",
@@ -1337,7 +1341,9 @@
         "TAGS": "Tags",
         "READ_TIME": "Read Time",
         "HTML_HINT": "HTML content supported",
-        "SECTION_GENERAL": "Section General"
+        "SECTION_GENERAL": "Section General",
+        "TITLE_ADD": "Add Post",
+        "TITLE_EDIT": "Edit Post"
       }
     },
     "COUPONS": {
@@ -3514,7 +3520,8 @@
     "FIELD_MIN": "{{field}} must be at least {{min}}",
     "FIELD_MAX": "{{field}} must be at most {{max}}",
     "FIELD_EMAIL": "{{field}} must be a valid email address",
-    "FIELD_PATTERN": "{{field}} has an invalid format"
+    "FIELD_PATTERN": "{{field}} has an invalid format",
+    "REQUIRED_FIELDS_INFO": "Fields marked with * are required."
   },
   "GLOSSARY": {
     "TERMS": {

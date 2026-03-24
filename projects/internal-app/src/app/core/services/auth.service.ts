@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID, signal, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
-import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
+import { Auth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDoc } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { Observable, of, switchMap, firstValueFrom, BehaviorSubject, filter, take } from 'rxjs';
@@ -57,10 +57,8 @@ export class AuthService {
           if (!firebaseUser) {
             // Only null-out profile signal if handleLoginSuccess hasn't claimed it
             if (!this._loginHandled) {
-              console.log('[AUTH-DEBUG] BG-SUB: onAuthStateChanged → null user, clearing profile signal');
               this.currentProfile.set(null);
             } else {
-              console.log('[AUTH-DEBUG] BG-SUB: onAuthStateChanged → null user but _loginHandled=true, SKIPPING null-out');
             }
             return of(null);
           }
@@ -113,11 +111,43 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       this.userProfile$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
     }
-    // signInWithPopup handles its own credential return — no redirect to wait for.
-    // Mark auth ready immediately so guards don't block on non-existent redirect.
+    // Wait for Firebase to resolve its initial auth state before signaling guards.
+    // IMPORTANT: getRedirectResult() must be started IMMEDIATELY at init time, in parallel
+    // with onAuthStateChanged. If called inside the onAuthStateChanged callback, it may
+    // return null because the SDK hasn't finished reading the redirect result from storage yet.
     if (isPlatformBrowser(this.platformId)) {
-      console.log('[AUTH-DEBUG] No redirect flow: _authReady.next(true) immediately');
-      this._authReady.next(true);
+      import('@angular/fire/auth').then(({ onAuthStateChanged, getRedirectResult }) => {
+
+        // Start getRedirectResult immediately — reads the pending OAuth result from storage.
+        const redirectResultPromise = getRedirectResult(this.auth)
+          .then(async (result) => {
+            if (result?.user) {
+              await this.handleLoginSuccess(result.user);
+              return true; // handleLoginSuccess calls _authReady.next(true)
+            }
+            return false;
+          })
+          .catch((err: any) => {
+            if (err?.code !== 'auth/no-auth-event') {
+            } else {
+            }
+            return false;
+          });
+
+        let firstEmission = true;
+        onAuthStateChanged(this.auth, async (firebaseUser) => {
+          if (firstEmission) {
+            firstEmission = false;
+
+            // Wait for getRedirectResult to settle BEFORE signaling authReady.
+            // If a redirect login just happened, handleLoginSuccess() already signals ready.
+            const redirectHandled = await redirectResultPromise;
+            if (!redirectHandled) {
+              this._authReady.next(true);
+            }
+          }
+        });
+      });
     }
   }  // end constructor
 
@@ -125,19 +155,16 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) return;
     try {
       const provider = new GoogleAuthProvider();
-      console.log('[AUTH-DEBUG] loginWithGoogle: calling signInWithPopup...');
       const result = await signInWithPopup(this.auth, provider);
-      console.log('[AUTH-DEBUG] loginWithGoogle: popup result uid=', result.user?.uid);
       await this.handleLoginSuccess(result.user);
     } catch (error: any) {
-      // Silently ignore popup-closed — user just cancelled, not an error
       if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
-        console.log('[AUTH-DEBUG] loginWithGoogle: popup closed by user (not an error)');
         return;
       }
       this.handleAuthError(error, 'Google Login');
     }
   }
+
 
   async loginWithEmail(email: string, pass: string) {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -192,13 +219,11 @@ export class AuthService {
   }
 
   private async handleLoginSuccess(firebaseUser: User) {
-    console.log('[AUTH-DEBUG] handleLoginSuccess START uid:', firebaseUser.uid, 'email:', firebaseUser.email);
     // Block the background userProfile$ subscription from nulling out the profile signal
     // during this login flow (it fires with null temporarily during redirect resolution)
     this._loginHandled = true;
 
     let profile = await this.syncUserProfile(firebaseUser);
-    console.log('[AUTH-DEBUG] syncUserProfile result:', profile?.email, 'role:', profile?.role);
 
     // ORPHAN RECOVERY: If Auth exists but Firestore profile is missing, create it.
     if (!profile) {
@@ -228,7 +253,6 @@ export class AuthService {
 
     // SECURITY: Block customers from accessing the internal app.
     if (!INTERNAL_STAFF_ROLES.includes(profile.role)) {
-      console.warn('[AUTH-DEBUG] BLOCKED: role is', profile.role, '- not in INTERNAL_STAFF_ROLES. Signing out.');
       this.toast.error('Access denied. This portal is for internal staff only.');
       await this.logService.log('UNAUTHORIZED', 'AUTH', `Customer attempted internal app login: ${profile.email} (role: ${profile.role})`);
       await signOut(this.auth);
@@ -236,7 +260,6 @@ export class AuthService {
     }
 
     if (!profile.isActive) {
-      console.warn('[AUTH-DEBUG] BLOCKED: account isActive=false. Signing out.');
       this.toast.error('Your account has been deactivated. Contact an administrator.');
       await signOut(this.auth);
       return;
@@ -246,16 +269,11 @@ export class AuthService {
     const name = profile.displayName || profile.email.split('@')[0];
     this.toast.success(`Welcome back, ${name}!`);
 
-    console.log('[AUTH-DEBUG] PRE-NAVIGATE: setting currentUser signal =', firebaseUser.uid);
     this.currentUser.set(firebaseUser);
-    console.log('[AUTH-DEBUG] PRE-NAVIGATE: setting currentProfile signal =', profile.email, profile.role);
     this.currentProfile.set(profile);
-    console.log('[AUTH-DEBUG] PRE-NAVIGATE: _authReady.next(true)');
     this._authReady.next(true);
 
-    console.log('[AUTH-DEBUG] Calling router.navigate(["/portal"])');
     this.router.navigate(['/portal']);
-    console.log('[AUTH-DEBUG] router.navigate CALLED (promise pending)');
   }
 
   private handleAuthError(error: any, context: string) {

@@ -1,89 +1,231 @@
-<app-admin-page-header icon="🎁"
-    [title]="(isEditMode ? 'ADMIN.KITS.FORM.TITLE_EDIT' : 'ADMIN.KITS.FORM.TITLE_NEW') | translate"
-    [subtitle]="(isEditMode ? ('ADMIN.KITS.FORM.SUBTITLE_EDIT' | translate) : ('ADMIN.KITS.FORM.SUBTITLE_NEW' | translate))">
-    <button type="button" class="btn-cancel" (click)="cancel()" [disabled]="isSaving()">
-        {{ 'ADMIN.COMMON.CANCEL' | translate }}
-    </button>
-    <button type="submit" form="kitForm" class="btn-save" [disabled]="!canSave() || isSaving()">
-        <span *ngIf="!isSaving()">
-            💾 {{ isEditMode ? ('ADMIN.COMMON.UPDATE' | translate) : ('ADMIN.COMMON.CREATE' | translate) }}
-        </span>
-        <span *ngIf="isSaving()">
-            {{ 'ADMIN.COMMON.SAVING' | translate }}...
-        </span>
-    </button>
-</app-admin-page-header>
+<!-- Sticky Save Header -->
+<header class="form-command-header">
+    <div class="header-left">
+        <button type="button" class="btn-back" (click)="cancel()">← Back to Combos</button>
+        <div class="header-title-section">
+            <h1 class="page-title">
+                {{ (isEditMode ? 'ADMIN.KITS.FORM.TITLE_EDIT' : 'ADMIN.KITS.FORM.TITLE_NEW') | translate }}
+            </h1>
+            <span class="kit-badge">🎁 KIT</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <button type="button" class="btn-ghost" (click)="cancel()" [disabled]="isSaving()">
+            {{ 'ADMIN.COMMON.CANCEL' | translate }}
+        </button>
+        <button type="submit" form="kitForm" class="btn-save-action" [disabled]="!canSave() || isSaving()">
+            <span *ngIf="!isSaving()">
+                💾 {{ isEditMode ? ('ADMIN.COMMON.UPDATE' | translate) : ('ADMIN.COMMON.CREATE' | translate) }}
+            </span>
+            <span *ngIf="isSaving()">{{ 'ADMIN.COMMON.SAVING' | translate }}...</span>
+        </button>
+    </div>
+</header>
 
 <div class="form-container">
     <form [formGroup]="kitForm" (ngSubmit)="onSubmit()" id="kitForm">
 
-        <!-- Basic Information -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <span class="section-icon">📦</span>
-                {{ 'ADMIN.KITS.FORM.TAB_BASIC' | translate }}
-            </h3>
+        <!-- Two-column layout: main + sidebar -->
+        <div class="form-layout">
 
-            <div class="form-row" formGroupName="name">
-                <div class="form-group">
-                    <label for="nameEs">
-                        {{ 'ADMIN.KITS.FORM.NAME_ES' | translate }} *
-                        <span class="help-icon" title="Nombre del kit en Español">ℹ️</span>
-                    </label>
-                    <input type="text" id="nameEs" formControlName="es" class="form-control"
-                        [placeholder]="'ADMIN.KITS.FORM.NAME_ES_PLACEHOLDER' | translate">
-                    <div class="error"
-                        *ngIf="kitForm.get('name')?.get('es')?.invalid && kitForm.get('name')?.get('es')?.touched">
-                        {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+            <!-- LEFT: Main Content -->
+            <div class="form-main">
+
+                <!-- Basic Info -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <span class="section-icon">📦</span>
+                        {{ 'ADMIN.KITS.FORM.TAB_BASIC' | translate }}
+                    </h3>
+
+                    <div class="form-row cols-2" formGroupName="name">
+                        <div class="form-group">
+                            <label for="nameEs">{{ 'ADMIN.KITS.FORM.NAME_ES' | translate }} <span class="required">*</span></label>
+                            <input type="text" id="nameEs" formControlName="es" class="form-control"
+                                [placeholder]="'ADMIN.KITS.FORM.NAME_ES_PLACEHOLDER' | translate">
+                            <div class="error" *ngIf="kitForm.get('name')?.get('es')?.invalid && kitForm.get('name')?.get('es')?.touched">
+                                {{ 'ADMIN.COMMON.FIELD_REQUIRED' | translate }}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="nameEn">{{ 'ADMIN.KITS.FORM.NAME_EN' | translate }}</label>
+                            <input type="text" id="nameEn" formControlName="en" class="form-control"
+                                [placeholder]="'ADMIN.KITS.FORM.NAME_EN_PLACEHOLDER' | translate">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sku">{{ 'ADMIN.KITS.FORM.SKU' | translate }} <span class="required">*</span></label>
+                        <input type="text" id="sku" formControlName="sku" class="form-control"
+                            [placeholder]="'ADMIN.KITS.FORM.SKU_PLACEHOLDER' | translate">
+                        <small class="form-hint">{{ 'ADMIN.KITS.FORM.SKU_HINT' | translate }}</small>
+                    </div>
+
+                    <div class="form-row cols-2">
+                        <div class="form-group">
+                            <label for="descEs">{{ 'ADMIN.KITS.FORM.DESC_ES' | translate }}</label>
+                            <textarea id="descEs" formGroupName="description" formControlName="es" class="form-control" rows="3"
+                                [placeholder]="'ADMIN.KITS.FORM.DESC_ES_PLACEHOLDER' | translate"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="descEn">{{ 'ADMIN.KITS.FORM.DESC_EN' | translate }}</label>
+                            <textarea id="descEn" formGroupName="description" formControlName="en" class="form-control" rows="3"
+                                [placeholder]="'ADMIN.KITS.FORM.DESC_EN_PLACEHOLDER' | translate"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="image">{{ 'ADMIN.KITS.FORM.IMAGE' | translate }}</label>
+                        <input type="text" id="image" formControlName="image" class="form-control"
+                            [placeholder]="'ADMIN.KITS.FORM.IMAGE_PLACEHOLDER' | translate">
+                        <small class="form-hint">{{ 'ADMIN.KITS.FORM.IMAGE_HINT' | translate }}</small>
+                        <!-- Image preview -->
+                        <div class="image-preview" *ngIf="kitForm.get('image')?.value">
+                            <img [src]="kitForm.get('image')?.value" alt="Kit preview">
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="nameEn">
-                        {{ 'ADMIN.KITS.FORM.NAME_EN' | translate }}
-                        <span class="help-icon" title="Kit name in English">ℹ️</span>
-                    </label>
-                    <input type="text" id="nameEn" formControlName="en" class="form-control"
-                        [placeholder]="'ADMIN.KITS.FORM.NAME_EN_PLACEHOLDER' | translate">
+
+                <!-- Components Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <span class="section-icon">🧩</span>
+                            {{ 'ADMIN.KITS.FORM.TAB_COMPONENTS' | translate }}
+                            <span class="component-count-badge">{{ components.length }}</span>
+                        </h3>
+                        <button type="button" class="btn-add-component" (click)="showProductPicker.set(true)">
+                            ➕ {{ 'ADMIN.KITS.FORM.ADD_COMPONENT' | translate }}
+                        </button>
+                    </div>
+
+                    <div class="components-list" formArrayName="components">
+                        <div *ngFor="let comp of components.controls; let i = index" [formGroupName]="i" class="component-card">
+                            <div class="component-image-wrap">
+                                <img [src]="comp.value.productImage || ''" [alt]="comp.value.productName" class="component-image"
+                                    *ngIf="comp.value.productImage">
+                                <div *ngIf="!comp.value.productImage" class="component-img-placeholder">📦</div>
+                            </div>
+                            <div class="component-info">
+                                <div class="component-name">{{ comp.value.productName }}</div>
+                                <div class="component-sku">SKU: {{ comp.value.sku }}</div>
+                                <div class="component-price" *ngIf="comp.value.unitPrice">{{ comp.value.unitPrice | currency }} each</div>
+                            </div>
+                            <div class="component-qty-wrap">
+                                <label>{{ 'ADMIN.KITS.FORM.COMPONENT_QTY' | translate }}</label>
+                                <div class="qty-controls">
+                                    <button type="button" class="qty-btn" (click)="comp.get('quantity')?.setValue(Math.max(1, comp.value.quantity - 1))">−</button>
+                                    <input type="number" formControlName="quantity" class="qty-input" min="1">
+                                    <button type="button" class="qty-btn" (click)="comp.get('quantity')?.setValue(comp.value.quantity + 1)">+</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-remove-component" (click)="removeComponent(i)" title="Remove">✕</button>
+                        </div>
+
+                        <div *ngIf="components.length === 0" class="empty-components">
+                            <span class="empty-icon">🧩</span>
+                            <p>{{ 'ADMIN.KITS.FORM.NO_COMPONENTS' | translate }}</p>
+                            <small>{{ 'ADMIN.KITS.FORM.NO_COMPONENTS_HINT' | translate }}</small>
+                            <button type="button" class="btn-add-component" (click)="showProductPicker.set(true)">
+                                ➕ {{ 'ADMIN.KITS.FORM.ADD_COMPONENT' | translate }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="sku">
-                    {{ 'ADMIN.KITS.FORM.SKU' | translate }} *
-                    <span class="help-icon" title="Unique kit identifier">ℹ️</span>
-                </label>
-                <input type="text" id="sku" formControlName="sku" class="form-control"
-                    [placeholder]="'ADMIN.KITS.FORM.SKU_PLACEHOLDER' | translate">
-                <small class="form-hint">{{ 'ADMIN.KITS.FORM.SKU_HINT' | translate }}</small>
-            </div>
+                <!-- Pricing Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <span class="section-icon">💰</span>
+                        {{ 'ADMIN.KITS.FORM.TAB_PRICING' | translate }}
+                    </h3>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="descEs">{{ 'ADMIN.KITS.FORM.DESC_ES' | translate }}</label>
-                    <textarea id="descEs" formGroupName="description" formControlName="es" class="form-control" rows="3"
-                        [placeholder]="'ADMIN.KITS.FORM.DESC_ES_PLACEHOLDER' | translate"></textarea>
+                    <!-- Pricing Summary Card -->
+                    <div class="pricing-summary-card">
+                        <div class="pricing-stat">
+                            <span class="pricing-label">{{ 'ADMIN.KITS.FORM.COMPONENTS_TOTAL' | translate }}</span>
+                            <span class="pricing-value">{{ totalComponentPrice() | currency }}</span>
+                        </div>
+                        <div class="pricing-stat">
+                            <span class="pricing-label">{{ 'ADMIN.KITS.FORM.KIT_PRICE' | translate }}</span>
+                            <span class="pricing-value highlight">{{ kitForm.get('price')?.value | currency }}</span>
+                        </div>
+                        <div class="pricing-stat savings" *ngIf="savingsAmount() > 0">
+                            <span class="pricing-label">💰 Savings</span>
+                            <span class="pricing-value savings-value">
+                                {{ savingsAmount() | currency }} ({{ getSavingsPercentage() }}% OFF)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-row cols-2">
+                        <div class="form-group">
+                            <label for="price">{{ 'ADMIN.KITS.FORM.KIT_PRICE' | translate }} (MXN) <span class="required">*</span></label>
+                            <div class="input-with-prefix">
+                                <span class="currency-prefix">$</span>
+                                <input type="number" id="price" formControlName="price" class="form-control with-prefix" min="0" step="0.01" placeholder="0.00">
+                                <span class="currency-suffix">MXN</span>
+                            </div>
+                            <small class="form-hint">{{ 'ADMIN.KITS.FORM.KIT_PRICE_HINT' | translate }}</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="compareAtPrice">{{ 'ADMIN.KITS.FORM.COMPARE_PRICE' | translate }} (MXN)</label>
+                            <div class="input-with-prefix">
+                                <span class="currency-prefix">$</span>
+                                <input type="number" id="compareAtPrice" formControlName="compareAtPrice" class="form-control with-prefix" min="0" step="0.01" placeholder="0.00">
+                                <span class="currency-suffix">MXN</span>
+                            </div>
+                            <small class="form-hint">{{ 'ADMIN.KITS.FORM.COMPARE_PRICE_HINT' | translate }}</small>
+                        </div>
+                    </div>
+
+                    <div class="savings-alert" *ngIf="savingsAmount() > 0">
+                        <span class="savings-alert-icon">🎉</span>
+                        <div>
+                            <strong>{{ 'ADMIN.KITS.FORM.SAVINGS_ALERT_TITLE' | translate }}</strong>
+                            <p>{{ 'ADMIN.KITS.FORM.SAVINGS_ALERT_TEXT' | translate:{ amount: (savingsAmount() | currency), percentage: getSavingsPercentage() } }}</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="descEn">{{ 'ADMIN.KITS.FORM.DESC_EN' | translate }}</label>
-                    <textarea id="descEn" formGroupName="description" formControlName="en" class="form-control" rows="3"
-                        [placeholder]="'ADMIN.KITS.FORM.DESC_EN_PLACEHOLDER' | translate"></textarea>
+
+                <!-- SEO Section -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <span class="section-icon">🔍</span>
+                        {{ 'ADMIN.KITS.FORM.TAB_SEO' | translate }}
+                    </h3>
+                    <div formGroupName="seo">
+                        <div class="form-group">
+                            <label for="metaTitle">{{ 'ADMIN.KITS.FORM.META_TITLE' | translate }}</label>
+                            <input type="text" id="metaTitle" formControlName="metaTitle" class="form-control" maxlength="70"
+                                [placeholder]="'ADMIN.KITS.FORM.META_TITLE_PLACEHOLDER' | translate">
+                            <small class="form-hint">{{ 'ADMIN.KITS.FORM.META_TITLE_HINT' | translate }}</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="metaDescription">{{ 'ADMIN.KITS.FORM.META_DESCRIPTION' | translate }}</label>
+                            <textarea id="metaDescription" formControlName="metaDescription" class="form-control" rows="3" maxlength="170"
+                                [placeholder]="'ADMIN.KITS.FORM.META_DESC_PLACEHOLDER' | translate"></textarea>
+                            <small class="form-hint">{{ 'ADMIN.KITS.FORM.META_DESC_HINT' | translate }}</small>
+                        </div>
+                    </div>
                 </div>
+
             </div>
 
-            <div class="form-group">
-                <label for="image">{{ 'ADMIN.KITS.FORM.IMAGE' | translate }}</label>
-                <input type="text" id="image" formControlName="image" class="form-control"
-                    [placeholder]="'ADMIN.KITS.FORM.IMAGE_PLACEHOLDER' | translate">
-                <small class="form-hint">{{ 'ADMIN.KITS.FORM.IMAGE_HINT' | translate }}</small>
-            </div>
+            <!-- RIGHT: Sidebar -->
+            <div class="form-sidebar">
 
-            <!-- Visibility Settings Card -->
-            <div class="toggle-group-card">
-                <h4 class="card-title">
-                    <span class="card-icon">🎯</span>
-                    {{ 'ADMIN.KITS.FORM.VISIBILITY_SETTINGS' | translate }}
-                </h4>
-                <div class="toggle-switches-group">
+                <!-- Status Card -->
+                <div class="sidebar-card">
+                    <h4 class="sidebar-card-title">🎯 Publish Settings</h4>
+                    <div class="form-group">
+                        <label for="publishStatus">{{ 'ADMIN.KITS.FORM.PUBLISH_STATUS' | translate }}</label>
+                        <select id="publishStatus" formControlName="publishStatus" class="form-control">
+                            <option value="draft">📝 {{ 'ADMIN.KITS.FORM.DRAFT' | translate }}</option>
+                            <option value="published">✅ {{ 'ADMIN.KITS.FORM.PUBLISHED' | translate }}</option>
+                            <option value="archived">📦 {{ 'ADMIN.KITS.FORM.ARCHIVED' | translate }}</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <app-toggle-switch [control]="$any(kitForm.get('featured'))"
                             [label]="'ADMIN.KITS.FORM.FEATURED' | translate" icon="⭐"
@@ -97,178 +239,60 @@
                         </app-toggle-switch>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="publishStatus">{{ 'ADMIN.KITS.FORM.PUBLISH_STATUS' | translate }}</label>
-                <select id="publishStatus" formControlName="publishStatus" class="form-control">
-                    <option value="draft">📝 {{ 'ADMIN.KITS.FORM.DRAFT' | translate }}</option>
-                    <option value="published">✅ {{ 'ADMIN.KITS.FORM.PUBLISHED' | translate }}</option>
-                    <option value="archived">📦 {{ 'ADMIN.KITS.FORM.ARCHIVED' | translate }}</option>
-                </select>
+                <!-- Kit Preview Card -->
+                <div class="sidebar-card kit-preview-card" *ngIf="components.length > 0">
+                    <h4 class="sidebar-card-title">👁️ Preview</h4>
+                    <div class="preview-image" *ngIf="kitForm.get('image')?.value">
+                        <img [src]="kitForm.get('image')?.value" alt="Kit">
+                    </div>
+                    <div class="preview-name">{{ kitForm.get('name')?.get('es')?.value || 'Untitled Kit' }}</div>
+                    <div class="preview-items">
+                        <span class="preview-item-count">🧩 {{ components.length }} product{{components.length !== 1 ? 's' : ''}} included</span>
+                    </div>
+                    <div class="preview-price" *ngIf="kitForm.get('price')?.value">
+                        <span class="preview-kit-price">{{ kitForm.get('price')?.value | currency }}</span>
+                        <span class="preview-savings" *ngIf="savingsAmount() > 0">Save {{ getSavingsPercentage() }}%</span>
+                    </div>
+                </div>
+
             </div>
         </div>
-
-        <!-- Components Section -->
-        <div class="form-section">
-            <div class="section-header">
-                <h3 class="section-title">
-                    <span class="section-icon">🧩</span>
-                    {{ 'ADMIN.KITS.FORM.TAB_COMPONENTS' | translate }}
-                    <span class="component-count">({{ components.length }})</span>
-                </h3>
-                <button type="button" class="btn-add-feature" (click)="showProductPicker.set(true)">
-                    + {{ 'ADMIN.KITS.FORM.ADD_COMPONENT' | translate }}
-                </button>
-            </div>
-
-            <!-- Components List -->
-            <div class="components-list" formArrayName="components">
-                <div *ngFor="let comp of components.controls; let i = index" [formGroupName]="i" class="component-item">
-                    <img [src]="comp.value.productImage" [alt]="comp.value.productName" class="component-image">
-                    <div class="component-info">
-                        <div class="component-name">{{ comp.value.productName }}</div>
-                        <div class="component-sku">SKU: {{ comp.value.sku }}</div>
-                    </div>
-                    <div class="component-quantity">
-                        <label>{{ 'ADMIN.KITS.FORM.COMPONENT_QTY' | translate }}</label>
-                        <input type="number" formControlName="quantity" class="qty-input" min="1">
-                    </div>
-                    <button type="button" class="btn-remove" (click)="removeComponent(i)" title="Remove">
-                        ✕
-                    </button>
-                </div>
-
-                <div *ngIf="components.length === 0" class="empty-components">
-                    <span class="empty-icon">📦</span>
-                    <p>{{ 'ADMIN.KITS.FORM.NO_COMPONENTS' | translate }}</p>
-                    <small>{{ 'ADMIN.KITS.FORM.NO_COMPONENTS_HINT' | translate }}</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pricing Section -->
-        <div class="form-section">
-            <h3 class="section-title">
-                <span class="section-icon">💰</span>
-                {{ 'ADMIN.KITS.FORM.TAB_PRICING' | translate }}
-            </h3>
-
-            <div class="pricing-summary">
-                <div class="pricing-row">
-                    <span>{{ 'ADMIN.KITS.FORM.COMPONENTS_TOTAL' | translate }}:</span>
-                    <strong>{{ totalComponentPrice() | currency }}</strong>
-                </div>
-                <div class="pricing-row">
-                    <span>{{ 'ADMIN.KITS.FORM.KIT_PRICE' | translate }}:</span>
-                    <strong>{{ kitForm.get('price')?.value | currency }}</strong>
-                </div>
-                <div class="pricing-row savings" *ngIf="savingsAmount() > 0">
-                    <span>💰 {{ 'ADMIN.KITS.FORM.SAVINGS_AUTO' | translate }}:</span>
-                    <strong class="savings-value">
-                        {{ savingsAmount() | currency }} ({{ getSavingsPercentage() }}%)
-                    </strong>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="price">
-                        {{ 'ADMIN.KITS.FORM.KIT_PRICE' | translate }} (MXN) *
-                        <span class="help-icon" title="Precio final del kit">ℹ️</span>
-                    </label>
-                    <div class="input-with-prefix">
-                        <span class="currency-prefix">$</span>
-                        <input type="number" id="price" formControlName="price" class="form-control with-prefix" min="0"
-                            step="0.01" placeholder="0.00">
-                        <span class="currency-suffix">MXN</span>
-                    </div>
-                    <small class="form-hint">{{ 'ADMIN.KITS.FORM.KIT_PRICE_HINT' | translate }}</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="compareAtPrice">
-                        {{ 'ADMIN.KITS.FORM.COMPARE_PRICE' | translate }} (MXN)
-                        <span class="help-icon" title="Precio original para mostrar descuento">ℹ️</span>
-                    </label>
-                    <div class="input-with-prefix">
-                        <span class="currency-prefix">$</span>
-                        <input type="number" id="compareAtPrice" formControlName="compareAtPrice"
-                            class="form-control with-prefix" min="0" step="0.01" placeholder="0.00">
-                        <span class="currency-suffix">MXN</span>
-                    </div>
-                    <small class="form-hint">{{ 'ADMIN.KITS.FORM.COMPARE_PRICE_HINT' | translate }}</small>
-                </div>
-            </div>
-
-            <!-- Savings Alert -->
-            <div class="stock-success" *ngIf="savingsAmount() > 0">
-                <div class="success-header">
-                    <span class="success-icon">💰</span>
-                    <strong>{{ 'ADMIN.KITS.FORM.SAVINGS_ALERT_TITLE' | translate }}</strong>
-                </div>
-                <p class="success-text">
-                    {{ 'ADMIN.KITS.FORM.SAVINGS_ALERT_TEXT' | translate:{ amount: (savingsAmount() | currency),
-                    percentage: getSavingsPercentage() } }}
-                </p>
-            </div>
-        </div>
-
-        <!-- SEO Section -->
-        <div class="form-section seo-section">
-            <h3 class="section-title">
-                <span class="section-icon">🔍</span>
-                {{ 'ADMIN.KITS.FORM.TAB_SEO' | translate }}
-            </h3>
-
-            <div formGroupName="seo">
-                <div class="form-group">
-                    <label for="metaTitle">
-                        {{ 'ADMIN.KITS.FORM.META_TITLE' | translate }}
-                        <span class="help-icon" [title]="'ADMIN.KITS.FORM.META_TITLE_HELP' | translate">ℹ️</span>
-                    </label>
-                    <input type="text" id="metaTitle" formControlName="metaTitle" class="form-control" maxlength="70"
-                        [placeholder]="'ADMIN.KITS.FORM.META_TITLE_PLACEHOLDER' | translate">
-                    <small class="form-hint">{{ 'ADMIN.KITS.FORM.META_TITLE_HINT' | translate }}</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="metaDescription">
-                        {{ 'ADMIN.KITS.FORM.META_DESCRIPTION' | translate }}
-                        <span class="help-icon" [title]="'ADMIN.KITS.FORM.META_DESC_HELP' | translate">ℹ️</span>
-                    </label>
-                    <textarea id="metaDescription" formControlName="metaDescription" class="form-control" rows="3"
-                        maxlength="170" [placeholder]="'ADMIN.KITS.FORM.META_DESC_PLACEHOLDER' | translate"></textarea>
-                    <small class="form-hint">{{ 'ADMIN.KITS.FORM.META_DESC_HINT' | translate }}</small>
-                </div>
-            </div>
-        </div>
-
     </form>
 </div>
 
 <!-- Product Picker Modal -->
 <div class="modal-overlay" *ngIf="showProductPicker()" (click)="showProductPicker.set(false)">
-    <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-glass" (click)="$event.stopPropagation()">
         <div class="modal-header">
-            <h3>{{ 'ADMIN.KITS.FORM.ADD_COMPONENT' | translate }}</h3>
-            <button class="btn-close" (click)="showProductPicker.set(false)">×</button>
+            <div class="modal-title">
+                <span>🧩</span>
+                <h3>{{ 'ADMIN.KITS.FORM.ADD_COMPONENT' | translate }}</h3>
+            </div>
+            <button class="modal-close" (click)="showProductPicker.set(false)">✕</button>
         </div>
         <div class="modal-body">
-            <input type="text" class="search-input" [placeholder]="'ADMIN.KITS.FORM.SEARCH_PRODUCTS' | translate"
-                [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)">
-
-            <div class="product-list">
-                <div *ngFor="let product of filteredProducts()" class="product-item" (click)="addProduct(product)">
-                    <img [src]="product.images.main" [alt]="product.name.es" class="product-thumb">
-                    <div class="product-details">
-                        <div class="product-name">{{ product.name.es }}</div>
-                        <div class="product-sku">{{ product.sku }}</div>
+            <div class="modal-search">
+                <span class="modal-search-icon">🔍</span>
+                <input type="text" class="modal-search-input"
+                    [placeholder]="'ADMIN.KITS.FORM.SEARCH_PRODUCTS' | translate"
+                    [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)">
+            </div>
+            <div class="modal-product-list">
+                <div *ngFor="let product of filteredProducts()" class="modal-product-item" (click)="addProduct(product)">
+                    <div class="modal-product-img">
+                        <img *ngIf="product.images?.main" [src]="product.images.main" [alt]="product.name.es">
+                        <span *ngIf="!product.images?.main">📦</span>
                     </div>
-                    <div class="product-price">{{ product.price | currency }}</div>
+                    <div class="modal-product-info">
+                        <div class="modal-product-name">{{ product.name.es }}</div>
+                        <div class="modal-product-sku">{{ product.sku }}</div>
+                    </div>
+                    <div class="modal-product-price">{{ product.price | currency }}</div>
+                    <div class="modal-product-add">＋</div>
                 </div>
-
-                <div *ngIf="filteredProducts().length === 0" class="empty-products">
+                <div *ngIf="filteredProducts().length === 0" class="modal-empty">
+                    <span>😕</span>
                     <p>{{ 'ADMIN.KITS.FORM.NO_PRODUCTS_FOUND' | translate }}</p>
                 </div>
             </div>

@@ -18,6 +18,7 @@ import { OPERATIONS_NAVIGATION_CONFIG } from '../../../core/config/operations-na
 export class OperationsLayoutComponent {
     isSidebarCollapsed = signal(false);
     isUserMenuOpen = false;
+    isLangMenuOpen = false;
 
     user$ = this.authService.user$;
     userProfile$ = this.authService.userProfile$;
@@ -91,6 +92,11 @@ export class OperationsLayoutComponent {
     toggleLanguage() {
         const newLang = this.languageService.currentLang() === 'es' ? 'en' : 'es';
         this.languageService.setLanguage(newLang);
+    }
+
+    setLanguage(lang: 'en' | 'es') {
+        this.languageService.setLanguage(lang);
+        this.isLangMenuOpen = false;
     }
 
     getUserInitials(name: string | null | undefined): string {

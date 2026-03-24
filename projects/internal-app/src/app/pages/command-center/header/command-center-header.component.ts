@@ -37,6 +37,7 @@ export class CommandCenterHeaderComponent implements OnInit {
     // UI State
     isUserMenuOpen = signal(false);
     isPeriodSelectorOpen = signal(false);
+    isLangMenuOpen = false;
     breadcrumbs = signal<{ label: string, url: string }[]>([]);
 
     // Custom Date State
@@ -100,6 +101,11 @@ export class CommandCenterHeaderComponent implements OnInit {
     // Actions
     toggleLanguage() {
         this.languageService.toggleLanguage();
+    }
+
+    setLanguage(lang: 'en' | 'es') {
+        this.languageService.setLanguage(lang);
+        this.isLangMenuOpen = false;
     }
 
     toggleUserMenu() {

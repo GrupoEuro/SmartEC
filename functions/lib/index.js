@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxGetRates = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
+exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -149,30 +149,131 @@ exports.backfillUserClaims = functions.https.onCall(async (data, context) => {
 //   SKYDROPX_ORIGIN_COUNTRY    = MX
 //
 // ─────────────────────────────────────────────────────────────────────────────
-const SKYDROPX_BASE = 'https://api.skydropx.com/v1';
+const SKYDROPX_BASE = 'https://pro.skydropx.com/api/v1';
+const SKYDROPX_OAUTH_URL = 'https://pro.skydropx.com/api/v1/oauth/token';
+/**
+ * Reads apiKey (client_id) and apiSecret (client_secret) from Firestore,
+ * performs the OAuth2 client_credentials grant to obtain a Bearer access token,
+ * and returns Authorization headers ready for any Skydropx PRO API call.
+ *
+ * Skydropx PRO authentication (since Jan 2025):
+ *   POST /api/v1/oauth/token
+ *   Content-Type: application/x-www-form-urlencoded
+ *   Body: grant_type=client_credentials&client_id=API_KEY&client_secret=API_SECRET
+ *   → returns { access_token, token_type, ... }
+ */
 async function skydropxHeaders() {
     var _a;
     let apiKey = process.env.SKYDROPX_API_KEY;
+    let apiSecret = process.env.SKYDROPX_API_SECRET;
     try {
         const integrationsDoc = await db.collection('config').doc('integrations').get();
         if (integrationsDoc.exists) {
-            const skydropxConfig = ((_a = integrationsDoc.data()) === null || _a === void 0 ? void 0 : _a.skydropx) || {};
-            if (skydropxConfig.apiKey) {
-                apiKey = skydropxConfig.apiKey;
-            }
+            const sky = ((_a = integrationsDoc.data()) === null || _a === void 0 ? void 0 : _a.skydropx) || {};
+            if (sky.apiKey)
+                apiKey = sky.apiKey;
+            if (sky.apiSecret)
+                apiSecret = sky.apiSecret;
         }
     }
     catch (err) {
-        console.warn('Could not read SkyDropX API key from config/integrations', err);
+        console.warn('[SkyDropX] Could not read credentials from Firestore:', err);
     }
     if (!apiKey)
-        throw new functions.https.HttpsError('internal', 'SkyDropX API key not configured.');
+        throw new functions.https.HttpsError('internal', 'SkyDropX API key (client_id) not configured.');
+    if (!apiSecret)
+        throw new functions.https.HttpsError('internal', 'SkyDropX API secret (client_secret) not configured.');
+    // Exchange client credentials for a Bearer access token
+    const tokenRes = await fetch(SKYDROPX_OAUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: apiKey,
+            client_secret: apiSecret,
+        }).toString(),
+    });
+    const tokenText = await tokenRes.text();
+    let tokenData;
+    try {
+        tokenData = JSON.parse(tokenText);
+    }
+    catch (_b) {
+        throw new functions.https.HttpsError('internal', `SkyDropX OAuth error: ${tokenText}`);
+    }
+    if (!tokenRes.ok || !tokenData.access_token) {
+        const msg = (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error_description) || (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error) || tokenText || `HTTP ${tokenRes.status}`;
+        throw new functions.https.HttpsError('unauthenticated', `SkyDropX auth failed: ${msg}`);
+    }
     return {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     };
 }
+// ── 0. Test Connection ─────────────────────────────────────────────────────────
+// Validates stored credentials by performing the OAuth2 token exchange.
+// If a valid access_token comes back, credentials are correct.
+// (Skydropx PRO has no /carriers endpoint — token exchange alone proves auth.)
+exports.skydropxTestConnection = functions.https.onCall(async (data, context) => {
+    var _a;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    let apiKey = process.env.SKYDROPX_API_KEY;
+    let apiSecret = process.env.SKYDROPX_API_SECRET;
+    try {
+        const integrationsDoc = await db.collection('config').doc('integrations').get();
+        if (integrationsDoc.exists) {
+            const sky = ((_a = integrationsDoc.data()) === null || _a === void 0 ? void 0 : _a.skydropx) || {};
+            console.log('[SkyDropX] Firestore skydropx keys present:', Object.keys(sky));
+            if (sky.apiKey)
+                apiKey = sky.apiKey;
+            if (sky.apiSecret)
+                apiSecret = sky.apiSecret;
+        }
+        else {
+            console.warn('[SkyDropX] config/integrations doc does not exist');
+        }
+    }
+    catch (err) {
+        console.warn('[SkyDropX] Could not read from Firestore:', err);
+    }
+    console.log(`[SkyDropX] Credential check — apiKey: ${!!apiKey}, apiSecret: ${!!apiSecret}`);
+    if (!apiKey || !apiSecret) {
+        return { success: false, message: 'API Key and Secret are required. Please save them first.' };
+    }
+    try {
+        const tokenRes = await fetch(SKYDROPX_OAUTH_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                grant_type: 'client_credentials',
+                client_id: apiKey,
+                client_secret: apiSecret,
+            }).toString(),
+        });
+        const tokenText = await tokenRes.text();
+        console.log(`[SkyDropX] OAuth status: ${tokenRes.status}, body: ${tokenText.substring(0, 300)}`);
+        let tokenData;
+        try {
+            tokenData = JSON.parse(tokenText);
+        }
+        catch (_b) {
+            tokenData = null;
+        }
+        if (tokenRes.ok && (tokenData === null || tokenData === void 0 ? void 0 : tokenData.access_token)) {
+            return { success: true, message: 'Credentials verified — Skydropx PRO connection successful.' };
+        }
+        else {
+            const msg = (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error_description) || (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error) || tokenText || `HTTP ${tokenRes.status}`;
+            return { success: false, message: `Auth failed: ${msg}` };
+        }
+    }
+    catch (err) {
+        console.error('[SkyDropX] TestConnection fetch error:', err.message);
+        throw new functions.https.HttpsError('internal', err.message || 'Connection test failed.');
+    }
+});
 /**
  * Builds the origin address for SkyDropX.
  * Priority:
@@ -486,13 +587,13 @@ exports.meliCallback = functions.https.onRequest(async (req, res) => {
     }
 });
 // 3. Refresh Token (Scheduled Cron Job - Every 4 hours)
-exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').onRun(async (context) => {
+exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').onRun(async (_ctx) => {
     console.log('[Meli] Running scheduled token refresh...');
     try {
         const config = await getMeliConfig();
         if (!config.refreshToken) {
             console.log('[Meli] No refresh token available. Skipping.');
-            return null;
+            return;
         }
         const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
             method: 'POST',
@@ -510,13 +611,12 @@ exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').o
         const tokenData = await tokenRes.json();
         if (!tokenRes.ok) {
             console.error('[Meli] Scheduled refresh failed:', tokenData);
-            // Optionally flag connected as false if refresh fails permanently
             if (tokenData.error === 'invalid_grant') {
                 await db.collection('config').doc('integrations').set({
                     meli: { connected: false }
                 }, { merge: true });
             }
-            return null;
+            return;
         }
         const expiresAt = Date.now() + (tokenData.expires_in * 1000);
         await db.collection('config').doc('integrations').set({
@@ -528,11 +628,9 @@ exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').o
             }
         }, { merge: true });
         console.log('[Meli] Successfully refreshed tokens automatically.');
-        return null;
     }
     catch (err) {
         console.error('[Meli] Scheduled refresh error:', err);
-        return null;
     }
 });
 // Helper: Parse and construct Eurollantas Order object from a Meli Order, Ship Data, and Billing Info
@@ -1048,7 +1146,7 @@ exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => 
     }
 });
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
-exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (context) => {
+exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (_ctx) => {
     var _a, _b;
     try {
         const configDoc = await db.collection('config').doc('integrations').get();

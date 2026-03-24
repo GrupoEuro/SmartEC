@@ -111,11 +111,25 @@
 
             <div class="header-actions-group">
                 <!-- Language Switcher -->
-                <button (click)="toggleLanguage()"
-                    class="flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white hover:border-zinc-600 transition-all font-bold text-xs shadow-sm"
-                    [title]="'Switch Language' | translate">
-                    {{ languageService.currentLang() === 'es' ? 'EN' : 'ES' }}
-                </button>
+                <div class="lang-switcher-wrapper" [class.open]="isLangMenuOpen">
+                    <button class="lang-btn-ops" (click)="isLangMenuOpen = !isLangMenuOpen">
+                        <span>{{ languageService.currentLang() === 'es' ? '🇲🇽' : '🇺🇸' }}</span>
+                        <span class="lang-code-ops">{{ languageService.currentLang() === 'es' ? 'ES' : 'EN' }}</span>
+                        <span style="font-size:0.6rem;opacity:0.6">▾</span>
+                    </button>
+                    @if (isLangMenuOpen) {
+                    <div class="lang-dropdown-ops">
+                        <button class="lang-opt-ops" [class.active]="languageService.currentLang() === 'es'"
+                            (click)="setLanguage('es'); isLangMenuOpen=false">
+                            🇲🇽 Español
+                        </button>
+                        <button class="lang-opt-ops" [class.active]="languageService.currentLang() === 'en'"
+                            (click)="setLanguage('en'); isLangMenuOpen=false">
+                            🇺🇸 English
+                        </button>
+                    </div>
+                    }
+                </div>
 
                 @if (user$ | async; as user) {
                 <div class="user-menu-container">
@@ -143,10 +157,18 @@
                             <span class="d-email text-zinc-400">{{ user.email }}</span>
                         </div>
                         <div class="dropdown-divider bg-zinc-700"></div>
-                        <a routerLink="/" class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white">
-                            <span class="icon"><app-icon name="home" [size]="16"></app-icon></span>
-                            {{ 'OPERATIONS.GO_HOME' | translate }}
+                        <a href="https://www.importadoraeuro.com" target="_blank" rel="noopener"
+                            class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white">
+                            <span class="icon"><app-icon name="globe" [size]="16"></app-icon></span>
+                            {{ 'ADMIN.GO_TO_WEBSITE' | translate }}
+                            <span style="margin-left:auto;font-size:0.75rem;opacity:0.5">↗</span>
                         </a>
+                        <a routerLink="/portal" class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white"
+                            (click)="isUserMenuOpen = false">
+                            <span class="icon"><app-icon name="layout-dashboard" [size]="16"></app-icon></span>
+                            {{ 'ADMIN.GO_TO_PORTAL' | translate }}
+                        </a>
+                        <div class="dropdown-divider bg-zinc-700"></div>
                         <button (click)="logout()" class="dropdown-item hover:bg-red-900/20 text-red-400">
                             <span class="icon"><app-icon name="log-out" [size]="16"></app-icon></span>
                             {{ 'OPERATIONS.LOGOUT' | translate }}

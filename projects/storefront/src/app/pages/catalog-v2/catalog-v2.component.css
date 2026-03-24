@@ -768,3 +768,109 @@ a.product-info {
     border-color: var(--theme-primary);
     box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 }
+
+/* ==========================================================================
+   COMBOS / KITS SECTION
+   ========================================================================== */
+.combos-section {
+    margin-top: 3rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--theme-border-soft);
+}
+
+.combos-header {
+    margin-bottom: 2rem;
+}
+
+.combos-title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.combos-icon { font-size: 2.2rem; }
+
+.combos-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--theme-text-primary);
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.5px;
+}
+
+.combos-subtitle {
+    font-size: 0.9rem;
+    color: var(--theme-text-muted);
+    margin: 0;
+}
+
+.combos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+/* KIT Badge */
+.badge-kit {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+/* Savings Badge */
+.badge-savings {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Combo card accent border on hover */
+.combo-card:hover {
+    border-color: rgba(139, 92, 246, 0.5) !important;
+    box-shadow: 0 16px 40px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* Items count line */
+.combo-items-count {
+    font-size: 0.8rem;
+    color: #a78bfa;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Included items chips */
+.combo-includes {
+    margin-top: 0.5rem;
+}
+
+.combo-includes-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--theme-text-muted);
+    margin-bottom: 0.4rem;
+}
+
+.combo-includes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.combo-item-chip {
+    display: inline-block;
+    padding: 3px 8px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    color: var(--theme-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.combo-item-chip.more {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--theme-text-muted);
+    font-style: italic;
+}

@@ -257,7 +257,75 @@
 
             </div>
 
-            <!-- Pagination -->
+            <!-- ===== COMBOS SECTION ===== -->
+            <div class="combos-section" *ngIf="showCombos">
+                <div class="combos-header">
+                    <div class="combos-title-group">
+                        <span class="combos-icon">🎁</span>
+                        <div>
+                            <h2 class="combos-title">Combos &amp; Kits</h2>
+                            <p class="combos-subtitle">Bundle products — save more buying together</p>
+                        </div>
+                    </div>
+                </div>
+
+                <ng-container *ngIf="activeKits$ | async as kits">
+                    <div class="combos-grid">
+                        <div *ngFor="let kit of kits" class="product-card combo-card">
+                            <!-- Badges -->
+                            <div class="product-badges">
+                                <span class="badge badge-kit">KIT</span>
+                                <span class="badge badge-savings" *ngIf="getKitSavings(kit) > 0">
+                                    −{{ getKitSavings(kit) }}%
+                                </span>
+                            </div>
+
+                            <!-- Image -->
+                            <div class="product-image">
+                                <img [src]="kit.image || 'assets/images/euro-logo-new.png'"
+                                    [alt]="kit.name.es" loading="lazy"
+                                    (error)="$any($event.target).src='assets/images/euro-logo-new.png'">
+                            </div>
+
+                            <!-- Info -->
+                            <div class="product-info">
+                                <div class="product-brand">Combo</div>
+                                <h3 class="product-name">
+                                    {{ languageService.currentLang() === 'en' ? kit.name.en : kit.name.es }}
+                                </h3>
+                                <p class="combo-items-count">🧩 {{ kit.components.length }} productos incluidos</p>
+
+                                <div class="product-price">
+                                    <span *ngIf="kit.compareAtPrice && kit.compareAtPrice > kit.price" class="original-price">
+                                        {{ kit.compareAtPrice | currency:'MXN':'symbol-narrow':'1.2-2' }}
+                                    </span>
+                                    <div class="price-row">
+                                        <span class="current-price">{{ kit.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+                                        <span class="price-suffix">MXN</span>
+                                    </div>
+                                    <span class="tax-info">IVA incluido</span>
+                                </div>
+
+                                <div class="combo-includes" *ngIf="kit.components.length > 0">
+                                    <div class="combo-includes-label">Incluye:</div>
+                                    <div class="combo-includes-list">
+                                        <span *ngFor="let comp of kit.components.slice(0, 3)" class="combo-item-chip">
+                                            {{ comp.quantity }}× {{ comp.productName | slice:0:22 }}{{ (comp.productName?.length || 0) > 22 ? '...' : '' }}
+                                        </span>
+                                        <span *ngIf="kit.components.length > 3" class="combo-item-chip more">
+                                            +{{ kit.components.length - 3 }} más
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button class="btn-add-cart-card">Ver Combo</button>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
+
             <div *ngIf="totalPages > 1" class="pagination">
                 <button class="page-btn" [disabled]="currentPage === 1"
                     (click)="onPageChange(currentPage - 1)">‹</button>

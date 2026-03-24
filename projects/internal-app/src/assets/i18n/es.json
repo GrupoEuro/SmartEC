@@ -224,7 +224,7 @@
       "EXPORT": "Exportar CSV",
       "VIEW_DATA": "Ver Datos",
       "HIDE_DATA": "Ocultar Datos",
-      "CONTACT": "Contact"
+      "CONTACT": "Contacto"
     },
     "TOASTS": {
       "APPROVAL_SUCCESS": "Solicitud aprobada exitosamente",
@@ -264,9 +264,9 @@
       "ACTIVE": "Activo",
       "STATUS_SECTION": "Estado y Visibilidad",
       "INACTIVE": "Inactivo",
-      "LOW_STOCK": "Low Stock",
+      "LOW_STOCK": "Stock Bajo",
       "OUT_OF_STOCK": "Out Of Stock",
-      "STOCK_STATUS": "Stock Status",
+      "STOCK_STATUS": "Estado de Stock",
       "GOOD_STANDING": "Good Standing"
     },
     "LABELS": {
@@ -284,12 +284,12 @@
       "LOADING": "Cargando métricas...",
       "LOADING_SYSTEM": "Cargando sistema...",
       "LOADING_DATA_FOR": "Cargando datos para",
-      "PROCESSING": "Processing",
-      "SELECT_DATE_RANGE": "Select Date Range",
-      "SELECT_DATE_RANGE_DESC": "Select Date Range Desc",
-      "REFRESH": "Refresh",
-      "VS_LAST_PERIOD": "Vs Last Period",
-      "EMPTY_PRODUCTS_MESSAGE": "Empty Products Message"
+      "PROCESSING": "Procesando",
+      "SELECT_DATE_RANGE": "Seleccionar Rango de Fechas",
+      "SELECT_DATE_RANGE_DESC": "Elige el intervalo de fechas para el análisis",
+      "REFRESH": "Actualizar",
+      "VS_LAST_PERIOD": "vs período anterior",
+      "EMPTY_PRODUCTS_MESSAGE": "No hay productos disponibles"
     },
     "DESCRIPTIONS": {
       "CATALOG": "Gestionar inventario, precios y existencias.",
@@ -322,9 +322,9 @@
       "TOP_PRODUCTS": "Productos Más Rentables",
       "CATEGORY_PERFORMANCE": "Rendimiento por Categoría",
       "PRODUCT_STRATEGY": "Matriz de Estrategia de Producto",
-      "LAST_7_DAYS": "Last 7 days",
-      "LAST_30_DAYS": "Last 30 Days",
-      "ORDER_DISTRIBUTION": "Order Distribution",
+      "LAST_7_DAYS": "Últimos 7 días",
+      "LAST_30_DAYS": "Últimos 30 días",
+      "ORDER_DISTRIBUTION": "Distribución de Pedidos",
       "TOP_3_BY_REVENUE": "Top 3 por Ingresos",
       "CUSTOMER_COMPOSITION": "Composición de Clientes"
     },
@@ -536,8 +536,8 @@
           "EFFICIENCY_GOOD": "Control moderado, hay espacio de mejora",
           "EFFICIENCY_FAIR": "Gastos operativos altos respecto a ingresos",
           "EFFICIENCY_LOW": "Gastos excesivos - optimización urgente",
-          "CURRENT": "Current",
-          "TARGET": "Target"
+          "CURRENT": "Actual",
+          "TARGET": "Meta"
         }
       },
       "RECOMMENDATIONS": {
@@ -1044,6 +1044,7 @@
         "DISTRIBUTORS": "Distribuidores",
         "CUSTOMERS": "Clientes",
         "PRODUCTS": "Productos",
+        "KITS": "Combos y Kits",
         "CATEGORIES": "Categorías",
         "BRANDS": "Marcas",
         "SECTION_CATALOG": "Catálogo",
@@ -1279,6 +1280,8 @@
         }
       },
       "GO_HOME": "Ir al Sitio Web",
+      "GO_TO_WEBSITE": "Ir al Sitio Web",
+      "GO_TO_PORTAL": "Ir al Portal",
       "STATUS": {
         "ALL": "Todos",
         "ACTIVE": "Activo",
@@ -3914,10 +3917,10 @@
       "SUBTITLE": "Análisis de comportamiento y valor de clientes",
       "KPI": {
         "NEW_CUSTOMERS": "New Customers",
-        "ACTIVE_GROWTH": "Active Growth",
+        "ACTIVE_GROWTH": "Crecimiento Activo",
         "AVG_CLV": "Avg Clv",
         "LTV_DESC": "Ltv Desc",
-        "CHURN_RATE": "Churn Rate",
+        "CHURN_RATE": "Tasa de Abandono",
         "CHURN_DESC": "Churn Desc",
         "AT_RISK_VALUE": "At Risk Value",
         "POTENTIAL_LOSS": "Potential Loss"
@@ -3927,9 +3930,9 @@
         "SUBTITLE": "Recencia vs Frecuencia vs Valor Monetario",
         "TABLE": {
           "CUSTOMER": "Cliente",
-          "SEGMENT": "Segment",
-          "DAYS_SINCE": "Days Since",
-          "ORDERS": "Orders",
+          "SEGMENT": "Segmento",
+          "DAYS_SINCE": "Días Desde",
+          "ORDERS": "Pedidos",
           "LTV": "Ltv"
         }
       },
@@ -3939,18 +3942,18 @@
         "INFO_DESC": "Info Desc",
         "LEGEND": "Legend",
         "TABLE": {
-          "COHORT": "Cohort",
-          "USERS": "Users",
-          "MONTH": "Month"
+          "COHORT": "Cohorte",
+          "USERS": "Usuarios",
+          "MONTH": "Mes"
         }
       },
       "AT_RISK": {
         "TITLE": "Clientes de Alto Valor en Riesgo",
         "TABLE": {
-          "TOTAL_SPENT": "Total Spent",
-          "LAST_ORDER": "Last Order",
-          "RISK_SCORE": "Risk Score",
-          "ACTION": "Action"
+          "TOTAL_SPENT": "Total Gastado",
+          "LAST_ORDER": "Último Pedido",
+          "RISK_SCORE": "Puntuación de Riesgo",
+          "ACTION": "Acción"
         }
       },
       "CHARTS": {
@@ -4130,7 +4133,9 @@
       "NO_RESULTS": "No se encontraron resultados con los filtros seleccionados",
       "TITLE": "Gestión de Pedidos",
       "MY_ORDERS": "Mis Pedidos",
-      "HELP": "Ayuda"
+      "HELP": "Ayuda",
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} pedidos"
     },
     "CUSTOMERS": {
       "RETRY": "Reintentar",
@@ -4161,8 +4166,8 @@
       "NO_ORDERS": "Sin pedidos",
       "VIEW_FULL_DETAILS": "Ver Detalles Completos",
       "COUNT_LABEL": "clientes",
-      "ITEMS_PER_PAGE": "Elementos por página",
-      "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos"
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} clientes"
     },
     "INVENTORY": {
       "LOOKUP": "Búsqueda",
@@ -4173,7 +4178,9 @@
         "RUNNING_BAL": "Saldo Actual",
         "NO_HISTORY": "Sin Historial",
         "NO_HISTORY_DESC": "No hay movimientos"
-      }
+      },
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} productos"
     },
     "PROMOTIONS": {
       "ACTIVE": "Activo",
@@ -4191,8 +4198,8 @@
       "TITLE": "Promociones y Cupones",
       "SEARCH_PLACEHOLDER": "Buscar promociones...",
       "COUNT_LABEL": "promociones",
-      "ITEMS_PER_PAGE": "Elementos por página",
-      "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos"
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} promociones"
     },
     "TITLE": "Operaciones",
     "LOGOUT": "Cerrar Sesión",
@@ -4201,15 +4208,15 @@
       "SUBTITLE": "Gestión de órdenes de compra e inventario entrante",
       "NEW_PO": "New Po",
       "PO_NUMBER": "Po Number",
-      "SUPPLIER": "Supplier",
+      "SUPPLIER": "Proveedor",
       "DATE": "Fecha",
       "STATUS": "Estado",
       "TOTAL": "Total",
-      "ITEMS": "Items",
+      "ITEMS": "Artículos",
       "ACTIONS": "Acciones",
       "NO_POS": "No Pos",
       "TITLE": "Adquisiciones",
-      "VIEW_DETAILS": "View Details"
+      "VIEW_DETAILS": "Ver Detalles"
     },
     "SIDEBAR": {
       "TITLE": "Operaciones",
@@ -4273,7 +4280,11 @@
       "TITLE": "Productos",
       "BTN_ADD": "Agregar Producto",
       "ITEMS_PER_PAGE": "Elementos por página",
-      "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos"
+      "SHOWING_ITEMS": "Mostrando {{start}} a {{end}} de {{total}} elementos",
+      "EDIT_SUBTITLE": "Actualiza los detalles e inventario del producto",
+      "EDIT_TITLE": "Editar Producto",
+      "NEW_SUBTITLE": "Crea un nuevo producto en el catálogo",
+      "NEW_TITLE": "Agregar Producto"
     },
     "GO_HOME": "Ir al Inicio",
     "SIDEBAR": {
@@ -4312,7 +4323,8 @@
       "GENERAL": "General",
       "ROLES": "Roles y Permisos",
       "WAREHOUSES": "Almacenes",
-      "MEDIA": "Medios"
+      "MEDIA": "Medios",
+      "KITS": "Kits"
     },
     "BANNERS": {
       "FORM": {
@@ -4332,7 +4344,11 @@
       "TH_ORDER": "Orden",
       "TH_STATUS": "Estado",
       "TH_ACTIONS": "Acciones",
-      "EMPTY": "No hay banners. Agrega uno para comenzar."
+      "EMPTY": "No hay banners. Agrega uno para comenzar.",
+      "EDIT_TITLE": "Editar Banner",
+      "NEW_TITLE": "Nuevo Banner",
+      "STATUS_ACTIVE": "Activo",
+      "STATUS_INACTIVE": "Inactivo"
     },
     "COMMON": {
       "EDIT": "Editar",
@@ -4351,20 +4367,25 @@
       "ALL_STATUSES": "Todos los Estados",
       "ACTIVE": "Activo",
       "INACTIVE": "Inactivo",
-      "MANAGE": "Administrar"
+      "MANAGE": "Administrar",
+      "CHANGES_DISCARDED": "Cambios descartados",
+      "CREATE": "Crear",
+      "UPDATE": "Actualizar"
     },
     "BLOG": {
       "FORM": {
         "SECTION_GENERAL": "Información General",
         "TITLE": "Título",
-        "SLUG": "Slug",
+        "SLUG": "Slug (URL)",
         "CATEGORY": "Categoría",
         "READ_TIME": "Tiempo de Lectura (min)",
         "TAGS": "Etiquetas",
         "EXCERPT": "Extracto",
         "CONTENT": "Contenido",
         "HTML_HINT": "Puedes usar HTML para formatear el contenido",
-        "COVER_IMAGE": "Imagen de Portada"
+        "COVER_IMAGE": "Imagen de Portada",
+        "TITLE_ADD": "Nueva Publicación",
+        "TITLE_EDIT": "Editar Publicación"
       },
       "CATEGORIES": {
         "MAINTENANCE": "Mantenimiento",
@@ -4415,7 +4436,11 @@
       "TH_WEBSITE": "Sitio Web",
       "TH_STATUS": "Estado",
       "EMPTY": "No hay marcas registradas aún.",
-      "SEARCH_PLACEHOLDER": "Buscar marcas..."
+      "SEARCH_PLACEHOLDER": "Buscar marcas...",
+      "EDIT_SUBTITLE": "Actualiza los detalles de esta marca",
+      "EDIT_TITLE": "Editar Marca",
+      "NEW_SUBTITLE": "Completa los datos para crear una nueva marca",
+      "NEW_TITLE": "Nueva Marca"
     },
     "STATUS": {
       "ALL": "Todos",
@@ -4461,7 +4486,11 @@
       "TH_ORDER": "Orden",
       "TH_STATUS": "Estado",
       "EMPTY": "No hay categorías registradas.",
-      "SEARCH_PLACEHOLDER": "Buscar categorías..."
+      "SEARCH_PLACEHOLDER": "Buscar categorías...",
+      "EDIT_SUBTITLE": "Actualiza los detalles de esta categoría",
+      "EDIT_TITLE": "Editar Categoría",
+      "NEW_SUBTITLE": "Completa los datos para crear una nueva categoría",
+      "NEW_TITLE": "Nueva Categoría"
     },
     "COUPONS": {
       "TITLE": "Cupones",
@@ -4580,7 +4609,12 @@
         "SUBTOTAL": "Subtotal",
         "SHIPPING": "Envío",
         "DISCOUNT": "Descuento",
-        "NOTE_PLACEHOLDER": "Agregar nota interna al pedido..."
+        "NOTE_PLACEHOLDER": "Agregar nota interna al pedido...",
+        "CANCEL_CONFIRM": "¿Cancelar este pedido?",
+        "UPDATING": "Actualizando...",
+        "BTN_UPDATE": "Actualizar",
+        "FREE": "Gratis",
+        "NOT_SPECIFIED": "N/A"
       },
       "TITLE": "Pedidos",
       "STATUS": {
@@ -4641,75 +4675,122 @@
         "STATE": "Estado",
         "VOLUME": "Volumen de Compra"
       },
-      "SEARCH_PLACEHOLDER": "Buscar distribuidores..."
+      "SEARCH_PLACEHOLDER": "Buscar distribuidores...",
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} distribuidores"
     },
     "KITS": {
-      "FORM": {
-        "TAB_BASIC": "Tab Basic",
-        "NAME_ES": "Name Es",
-        "NAME_EN": "Name En",
-        "SKU": "Sku",
-        "SKU_HINT": "Sku Hint",
-        "DESC_ES": "Desc Es",
-        "DESC_EN": "Desc En",
-        "IMAGE": "Image",
-        "IMAGE_HINT": "Image Hint",
-        "VISIBILITY_SETTINGS": "Visibility Settings",
-        "PUBLISH_STATUS": "Publish Status",
-        "DRAFT": "Draft",
-        "PUBLISHED": "Published",
-        "ARCHIVED": "Archived",
-        "TAB_COMPONENTS": "Tab Components",
-        "ADD_COMPONENT": "Add Component",
-        "COMPONENT_QTY": "Component Qty",
-        "NO_COMPONENTS": "No Components",
-        "NO_COMPONENTS_HINT": "No Components Hint",
-        "TAB_PRICING": "Tab Pricing",
-        "COMPONENTS_TOTAL": "Components Total",
-        "KIT_PRICE": "Kit Price",
-        "SAVINGS_AUTO": "Savings Auto",
-        "KIT_PRICE_HINT": "Kit Price Hint",
-        "COMPARE_PRICE": "Compare Price",
-        "COMPARE_PRICE_HINT": "Compare Price Hint",
-        "SAVINGS_ALERT_TITLE": "Savings Alert Title",
-        "TAB_SEO": "Tab Seo",
-        "META_TITLE": "Meta Title",
-        "META_TITLE_HINT": "Meta Title Hint",
-        "META_DESCRIPTION": "Meta Description",
-        "META_DESC_HINT": "Meta Desc Hint",
-        "NO_PRODUCTS_FOUND": "No Products Found",
-        "NAME_ES_PLACEHOLDER": "Nombre en español",
-        "NAME_EN_PLACEHOLDER": "Nombre en inglés",
-        "SKU_PLACEHOLDER": "Código SKU",
-        "DESC_ES_PLACEHOLDER": "Descripción en español",
-        "DESC_EN_PLACEHOLDER": "Descripción en inglés",
-        "IMAGE_PLACEHOLDER": "URL de imagen",
-        "FEATURED": "Featured",
-        "FEATURED_HINT": "Featured Hint",
+      "TITLE": "Kits de Productos",
+      "SUBTITLE": "Gestión de paquetes y combos de productos",
+      "DESCRIPTION": "Gestiona los kits de productos de la tienda",
+      "BTN_NEW": "+ Nuevo Kit",
+      "SEARCH_PLACEHOLDER": "Buscar kits...",
+      "EDIT_TITLE": "Editar Kit",
+      "EDIT_SUBTITLE": "Actualiza los detalles de este kit",
+      "NEW_TITLE": "Nuevo Kit",
+      "NEW_SUBTITLE": "Completa los datos para crear un nuevo kit",
+      "EMPTY": "No hay kits creados aún",
+      "EMPTY_DESC": "Crea tu primer kit de productos para comenzar",
+      "PRICE": "Precio",
+      "COMPONENT_UNIT": "unidad",
+      "COMPONENT_UNITS": "unidades",
+      "ITEMS_PER_PAGE": "Por página",
+      "SHOWING_ITEMS": "Mostrando {{start}}–{{end}} de {{total}} kits",
+      "ERROR_LOAD": "Error al cargar los kits",
+      "DELETE_CONFIRM": "¿Eliminar este kit?",
+      "DELETE_WARNING": "Esta acción no se puede deshacer.",
+      "SUCCESS_DELETE": "Kit eliminado correctamente",
+      "STATUS": {
+        "ALL": "Todos",
         "ACTIVE": "Activo",
-        "ACTIVE_HINT": "Active Hint",
-        "META_TITLE_HELP": "Meta Title Help",
-        "META_TITLE_PLACEHOLDER": "Título meta",
-        "META_DESC_HELP": "Meta Desc Help",
-        "META_DESC_PLACEHOLDER": "Descripción meta",
-        "SEARCH_PRODUCTS": "Search Products",
-        "SAVINGS_ALERT_TEXT": "Savings Alert Text"
+        "INACTIVE": "Inactivo"
       },
-      "BTN_NEW": "Btn New",
       "TABLE": {
-        "IMAGE": "Image",
+        "IMAGE": "Imagen",
         "NAME": "Nombre",
-        "SKU": "Sku",
-        "COMPONENTS": "Components",
+        "SKU": "SKU",
+        "COMPONENTS": "Componentes",
         "PRICE": "Precio",
-        "SAVINGS": "Savings",
+        "SAVINGS": "Ahorro",
         "STATUS": "Estado",
         "ACTIONS": "Acciones"
       },
-      "ERROR_LOAD": "Error Load",
-      "SUBTITLE": "Gestión de paquetes y combos de productos",
-      "TITLE": "Kits de Productos",
-      "SEARCH_PLACEHOLDER": "Buscar kits..."
+      "FORM": {
+        "TAB_BASIC": "Información Básica",
+        "TAB_COMPONENTS": "Componentes",
+        "TAB_PRICING": "Precio",
+        "TAB_SEO": "SEO",
+        "NAME_ES": "Nombre (Español)",
+        "NAME_EN": "Nombre (Inglés)",
+        "NAME_ES_PLACEHOLDER": "Nombre en español",
+        "NAME_EN_PLACEHOLDER": "Nombre en inglés",
+        "SKU": "SKU del Kit",
+        "SKU_HINT": "Identificador único del kit",
+        "SKU_PLACEHOLDER": "Ej. KIT-001",
+        "DESC_ES": "Descripción (Español)",
+        "DESC_EN": "Descripción (Inglés)",
+        "DESC_ES_PLACEHOLDER": "Descripción en español",
+        "DESC_EN_PLACEHOLDER": "Descripción en inglés",
+        "IMAGE": "Imagen del Kit",
+        "IMAGE_HINT": "URL de la imagen principal",
+        "IMAGE_PLACEHOLDER": "URL de imagen",
+        "VISIBILITY_SETTINGS": "Configuración de Visibilidad",
+        "PUBLISH_STATUS": "Estado de Publicación",
+        "DRAFT": "Borrador",
+        "PUBLISHED": "Publicado",
+        "ARCHIVED": "Archivado",
+        "FEATURED": "Destacado",
+        "FEATURED_HINT": "Mostrar en secciones destacadas",
+        "ACTIVE": "Activo",
+        "ACTIVE_HINT": "El kit estará disponible en la tienda",
+        "ADD_COMPONENT": "Agregar Componente",
+        "COMPONENT_QTY": "Cantidad",
+        "NO_COMPONENTS": "Sin componentes",
+        "NO_COMPONENTS_HINT": "Agrega productos para crear el kit",
+        "SEARCH_PRODUCTS": "Buscar productos...",
+        "NO_PRODUCTS_FOUND": "No se encontraron productos",
+        "COMPONENTS_TOTAL": "Total de Componentes",
+        "KIT_PRICE": "Precio del Kit",
+        "KIT_PRICE_HINT": "Define el precio final del kit",
+        "COMPARE_PRICE": "Precio de Comparación",
+        "COMPARE_PRICE_HINT": "Precio original antes del descuento",
+        "SAVINGS_AUTO": "Ahorro calculado automáticamente",
+        "SAVINGS_ALERT_TITLE": "¡Gran Descuento!",
+        "SAVINGS_ALERT_TEXT": "Este kit ofrece un descuento significativo sobre el precio individual.",
+        "META_TITLE": "Título SEO",
+        "META_TITLE_HINT": "Título para motores de búsqueda (máx. 60 caracteres)",
+        "META_TITLE_HELP": "Se muestra en los resultados de búsqueda",
+        "META_TITLE_PLACEHOLDER": "Título meta",
+        "META_DESCRIPTION": "Descripción SEO",
+        "META_DESC_HINT": "Descripción para buscadores (máx. 160 caracteres)",
+        "META_DESC_HELP": "Breve resumen para los buscadores",
+        "META_DESC_PLACEHOLDER": "Descripción meta",
+        "ADD_PRODUCT": "Agregar Producto",
+        "BASE_PRICE": "Precio Base",
+        "CALCULATED_PRICE": "Precio Calculado",
+        "DISCOUNT": "Descuento",
+        "DISCOUNT_TYPE": "Tipo de Descuento",
+        "DISCOUNT_TYPE_FIXED": "Monto Fijo",
+        "DISCOUNT_TYPE_PERCENT": "Porcentaje",
+        "DISCOUNT_VALUE": "Valor del Descuento",
+        "FINAL_PRICE": "Precio Final",
+        "IS_ACTIVE": "Kit Activo",
+        "IS_FEATURED": "Kit Destacado",
+        "ITEMS": "Productos del Kit",
+        "NAME": "Nombre del Kit",
+        "NAME_PLACEHOLDER": "Ej. Kit Verano Premium",
+        "PRICE_SUMMARY": "Resumen de Precio",
+        "PRODUCT": "Producto",
+        "PRODUCT_PLACEHOLDER": "Buscar producto...",
+        "QUANTITY": "Cantidad",
+        "REMOVE_ITEM": "Eliminar",
+        "SAVINGS": "Ahorro",
+        "SUBTITLE": "Subtítulo",
+        "SUBTITLE_PLACEHOLDER": "Breve descripción del kit"
+      },
+      "SUCCESS_UPDATE": "Kit actualizado correctamente",
+      "ERROR_SAVE": "Error al guardar el kit",
+      "SUCCESS_CREATE": "Kit creado correctamente"
     },
     "LOGS": {
       "TITLE": "Registros de Actividad",
@@ -4786,7 +4867,8 @@
         "SYNC_START": "¿Escanear Firebase Storage en busca de archivos faltantes? Esto puede tardar un tiempo.",
         "SYNC_SUCCESS": "Sincronización Completa: Escaneados {scanned}, Recuperados {recovered}, Errores {errors}",
         "RECALCULATE_CONFIRM": "¿Recalcular estadísticas de almacenamiento? Esto escanea todos los activos.",
-        "ONLY_IMAGES_EDIT": "Solo se pueden editar imágenes"
+        "ONLY_IMAGES_EDIT": "Solo se pueden editar imágenes",
+        "UPLOAD_SUCCESS": "Archivos subidos correctamente"
       },
       "SEARCH_PLACEHOLDER": "Buscar archivos..."
     },
@@ -4804,7 +4886,9 @@
       "ACCESS_PUBLIC": "Público",
       "ACCESS_LOGIN": "Requiere Inicio de Sesión",
       "ACCESS_PRIVATE": "Solo Personal Interno",
-      "EMPTY": "No hay documentos PDF publicados aún."
+      "EMPTY": "No hay documentos PDF publicados aún.",
+      "STATUS_ACTIVE": "Activo",
+      "STATUS_INACTIVE": "Inactivo"
     },
     "USERS": {
       "TITLE": "Gestión de Usuarios",
@@ -4828,7 +4912,12 @@
       "INVITE_TITLE": "Invitar Nuevo Usuario",
       "EMAIL": "Correo Electrónico",
       "ROLE": "Rol",
-      "SEARCH_PLACEHOLDER": "Buscar usuarios..."
+      "SEARCH_PLACEHOLDER": "Buscar usuarios...",
+      "ACTIONS": {
+        "ACTIVATE": "Activar Usuario",
+        "DEACTIVATE": "Desactivar Usuario"
+      },
+      "SEND_INVITE": "Enviar Invitación"
     },
     "WAREHOUSES": {
       "TITLE": "Almacenes",
@@ -4841,29 +4930,40 @@
       }
     },
     "CATALOG": {
-      "FILTERS": "Filters",
-      "CATEGORIES": "Categories",
-      "ALL_CATEGORIES": "All Categories",
-      "PRICE_RANGE": "Price Range",
-      "BRANDS": "Brands",
-      "TIRE_SIZE": "Size",
-      "WIDTH": "Width",
-      "ASPECT_RATIO": "Profile",
+      "FILTERS": "Filtros",
+      "CATEGORIES": "Categorías",
+      "ALL_CATEGORIES": "Todas las categorías",
+      "PRICE_RANGE": "Rango de Precio",
+      "BRANDS": "Marcas",
+      "TIRE_SIZE": "Medida",
+      "WIDTH": "Ancho",
+      "ASPECT_RATIO": "Perfil",
       "DIAMETER": "Rim",
-      "CLEAR_FILTERS": "Clear Filters",
-      "PRODUCTS_FOUND": "Products Found",
+      "CLEAR_FILTERS": "Limpiar Filtros",
+      "PRODUCTS_FOUND": "Productos encontrados",
       "SORT": {
-        "FEATURED": "Featured",
-        "PRICE_LOW": "Price: Low to High",
-        "PRICE_HIGH": "Price: High to Low",
-        "NEWEST": "Newest"
+        "FEATURED": "Destacados",
+        "PRICE_LOW": "Precio: Menor a Mayor",
+        "PRICE_HIGH": "Precio: Mayor a Menor",
+        "NEWEST": "Más Recientes"
       },
-      "NO_PRODUCTS": "No products found",
-      "TRY_ADJUSTING_FILTERS": "Try adjusting your search filters",
-      "ADD_TO_CART": "Add to Cart",
-      "VIEW_DETAILS": "View Details",
-      "SEARCH_PLACEHOLDER": "Search products..."
-    }
+      "NO_PRODUCTS": "Sin productos encontrados",
+      "TRY_ADJUSTING_FILTERS": "Intenta ajustar los filtros de búsqueda",
+      "ADD_TO_CART": "Agregar al Carrito",
+      "VIEW_DETAILS": "Ver Detalles",
+      "SEARCH_PLACEHOLDER": "Buscar productos..."
+    },
+    "SEO_PREVIEW": {
+      "DESCRIPTION": "Descripción",
+      "DESCRIPTION_TOO_LONG": "La descripción es demasiado larga",
+      "LOOKS_GOOD": "¡Se ve bien!",
+      "PLACEHOLDER_DESCRIPTION": "Descripción de la Página",
+      "PLACEHOLDER_TITLE": "Título de la Página",
+      "TITLE": "Vista Previa en Buscadores",
+      "TITLE_TOO_LONG": "El título es demasiado largo"
+    },
+    "GO_TO_PORTAL": "Ir al Portal",
+    "GO_TO_WEBSITE": "Ir al Sitio Web"
   },
   "PRICING_STRATEGY": {
     "DASHBOARD": {
@@ -4959,7 +5059,11 @@
         "EXAMPLE_6": "Example 6"
       },
       "ACTIONS": {
-        "CANCEL": "Cancelar"
+        "CANCEL": "Cancelar",
+        "CREATE": "Crear Tipo de Producto",
+        "SAVE": "Guardar Cambios",
+        "SAVED": "¡Guardado!",
+        "SAVING": "Guardando..."
       },
       "HELP": {
         "FIELD_KEY": "Field Key",
@@ -4971,7 +5075,9 @@
         "SEARCHABLE": "Searchable",
         "FILTERABLE": "Filterable"
       },
-      "DUPLICATE_WARNING": "Duplicate Warning"
+      "DUPLICATE_WARNING": "Duplicate Warning",
+      "ACTIVE": "Activo",
+      "HIDDEN": "Oculto"
     },
     "TITLE": "Tipos de Producto",
     "SUBTITLE": "Gestión de plantillas de tipos de producto y sus especificaciones",
@@ -4983,7 +5089,9 @@
       "VIEW": "View",
       "DUPLICATE": "Duplicate",
       "EDIT": "Editar",
-      "DELETE": "Eliminar"
+      "DELETE": "Eliminar",
+      "HIDE": "Ocultar",
+      "SHOW": "Mostrar"
     },
     "CUSTOM_TYPES": "Custom Types",
     "CUSTOM_DESCRIPTION": "Custom Description",
@@ -5040,7 +5148,9 @@
       "LINKEDIN_PLACEHOLDER": "URL de LinkedIn",
       "TWITTER_PLACEHOLDER": "URL de Twitter",
       "YOUTUBE_PLACEHOLDER": "URL de YouTube",
-      "TIKTOK_PLACEHOLDER": "URL de TikTok"
+      "TIKTOK_PLACEHOLDER": "URL de TikTok",
+      "ALL_HIDDEN": "Todas las redes sociales están ocultas.",
+      "ALL_SHOWN": "Todas las redes sociales están visibles."
     },
     "HOURS": {
       "TITLE": "Horario de Atención",
@@ -5057,7 +5167,15 @@
       "INVALID_TIME_RANGE": "Invalid Time Range",
       "PREVIEW_TITLE": "Preview Title",
       "PREVIEW_SUBTITLE": "Preview Subtitle",
-      "CLOSED": "Closed"
+      "CLOSED": "Closed",
+      "APPLIED_TO_ALL": "Horario aplicado a todos los días",
+      "COPIED_TO_WEEKDAYS": "Horario copiado de lunes a días de semana",
+      "INVALID_FORMAT": "Formato inválido. Usa HH:MM - HH:MM",
+      "NOT_SET": "No configurado",
+      "PRESET_APPLIED": "Horario predefinido aplicado exitosamente",
+      "RESET_CONFIRM": "¿Restablecer el horario a los valores predeterminados?",
+      "RESET_SUCCESS": "Horario restablecido",
+      "SET_ALL_SAME_PROMPT": "Ingresa el horario (ej. 09:00 - 18:00):"
     },
     "FEATURES": {
       "TITLE": "Características y Extras",
@@ -5080,7 +5198,10 @@
       "OG_IMAGE_PLACEHOLDER": "URL de imagen Open Graph"
     },
     "TITLE": "Configuración del Sitio Web",
-    "SUBTITLE": "Configurar opciones generales e información de contacto"
+    "SUBTITLE": "Configurar opciones generales e información de contacto",
+    "COPIED": "Copiado al portapapeles",
+    "COPY_FAILED": "Error al copiar",
+    "SUCCESS": "Configuración guardada exitosamente"
   },
   "SETTINGS": {
     "AUTO_SAVING": "Auto Saving",
@@ -5496,7 +5617,9 @@
     }
   },
   "VALIDATION": {
-    "FIELD_PATTERN": "{{field}} has an invalid format"
+    "FIELD_PATTERN": "{{field}} has an invalid format",
+    "REQUIRED_FIELDS_INFO": "Los campos marcados con * son obligatorios.",
+    "SUMMARY_TITLE": "Por favor corrige los siguientes errores:"
   },
   "LEGAL": {
     "PRIVACY": {

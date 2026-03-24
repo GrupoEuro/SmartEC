@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, combineLatest, BehaviorSubject } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ProductService, CategoryService, CartService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy } from '@lib/core';
+import { ProductService, CategoryService, CartService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy, KitService, ProductKit } from '@lib/core';
+
 import { MetaService } from '../../core/services/meta.service';
 
 import { SkeletonProductCardComponent } from '../../shared/components/skeleton-product-card/skeleton-product-card.component';
@@ -42,14 +43,18 @@ export class CatalogV2Component implements OnInit {
     private metaService = inject(MetaService);
     private cartService = inject(CartService);
     private cartAnimation = inject(CartAnimationService);
+    private kitService = inject(KitService);
     public languageService = inject(LanguageService);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+
 
     // Observables
     products$!: Observable<Product[]>;
     categories$!: Observable<Category[]>;
     filteredProducts$!: Observable<Product[]>;
+    activeKits$!: Observable<ProductKit[]>;
+    showCombos = false;
 
     // State
     viewMode: 'grid' | 'list' = 'grid';
@@ -80,11 +85,25 @@ export class CatalogV2Component implements OnInit {
         this.setupSearch();
         this.loadFiltersFromURL();
         this.loadProducts();
+        this.loadKits();
         this.updateSEO();
     }
 
     loadCategories() {
         this.categories$ = this.categoryService.getActiveCategories();
+    }
+
+    loadKits() {
+        this.activeKits$ = this.kitService.getActiveKits();
+        this.activeKits$.subscribe(kits => {
+            this.showCombos = kits.length > 0;
+        });
+    }
+
+    getKitSavings(kit: ProductKit): number {
+        const total = kit.components.reduce((s, c) => s + (c.unitPrice * c.quantity), 0);
+        if (total === 0) return 0;
+        return Math.round(((total - kit.price) / total) * 100);
     }
 
     loadProducts() {

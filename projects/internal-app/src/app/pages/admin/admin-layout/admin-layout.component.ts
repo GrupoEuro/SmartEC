@@ -33,6 +33,7 @@ export class AdminLayoutComponent {
 
   isSidebarCollapsed = false;
   isUserMenuOpen = false;
+  isLangMenuOpen = false;
 
   constructor() {
     this.initSidebarState();
@@ -92,6 +93,11 @@ export class AdminLayoutComponent {
 
   toggleLanguage() {
     this.languageService.toggleLanguage();
+  }
+
+  setLanguage(lang: 'en' | 'es') {
+    this.languageService.setLanguage(lang);
+    this.isLangMenuOpen = false;
   }
 
   async logout() {

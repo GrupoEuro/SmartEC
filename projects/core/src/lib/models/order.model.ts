@@ -14,7 +14,15 @@ export interface OrderItem {
     // Snapshot of product details at time of purchase
     brand?: string;
     category?: string;
+    // Shipping dimensions snapshot (from product catalog)
+    weight?: number;        // kg per unit
+    dimensions?: {
+        length: number;     // cm
+        width: number;      // cm
+        height: number;     // cm
+    };
 }
+
 
 export interface ShippingAddress {
     street: string;

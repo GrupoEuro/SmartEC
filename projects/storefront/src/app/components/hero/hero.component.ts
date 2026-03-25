@@ -47,7 +47,7 @@ export class HeroComponent implements OnInit, OnDestroy {
 
     slides: HeroSlide[] = [];
     currentIndex = 0;
-    hasActiveCampaign = false;
+    hasActiveCampaign = false;       // default hero shows until campaign is confirmed
     activeCampaignId: string | null = null;
 
     private autoplayTimer: any;
@@ -73,42 +73,58 @@ export class HeroComponent implements OnInit, OnDestroy {
             limit(1)
         );
 
-        this.unsubscribe = onSnapshot(q, (snapshot) => {
-            if (snapshot.empty) {
-                // No active campaign → hide hero
+        this.unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                if (snapshot.empty) {
+                    // No active campaign → fall back to default hero
+                    this.hasActiveCampaign = false;
+                    this.slides = [];
+                    this.stopAutoplay();
+                    return;
+                }
+
+                const campaignDoc = snapshot.docs[0];
+                this.activeCampaignId = campaignDoc.id;
+
+                const data = campaignDoc.data();
+                const allSlides: any[] = data['slides'] || [];
+
+                const mapped = allSlides
+                    .filter((s: any) => s.active)
+                    .sort((a: any, b: any) => a.order - b.order)
+                    .map((s: any, i: number) => ({
+                        index: i,
+                        imageUrl: s.imageUrl,
+                        ctaUrl: s.ctaUrl || undefined,
+                        ctaLabel: s.ctaLabel || undefined,
+                        active: s.active
+                    }));
+
+                if (mapped.length === 0) {
+                    // Campaign exists but has no active slides → show default hero
+                    this.hasActiveCampaign = false;
+                    this.slides = [];
+                    return;
+                }
+
+                this.slides = mapped;
+                this.hasActiveCampaign = true;
+
+                if (this.currentIndex >= this.slides.length) {
+                    this.currentIndex = 0;
+                }
+                if (this.slides.length > 1) {
+                    this.restartAutoplay();
+                }
+            },
+            (err) => {
+                // Firestore error (missing index, permissions, etc.) — show default hero
+                console.warn('[Hero] Campaign query failed, showing default hero:', err.message);
                 this.hasActiveCampaign = false;
                 this.slides = [];
-                this.stopAutoplay();
-                return;
             }
-
-            const campaignDoc = snapshot.docs[0];
-            this.activeCampaignId = campaignDoc.id;
-            this.hasActiveCampaign = true;
-
-            const data = campaignDoc.data();
-            const allSlides: any[] = data['slides'] || [];
-
-            this.slides = allSlides
-                .filter((s: any) => s.active)
-                .sort((a: any, b: any) => a.order - b.order)
-                .map((s: any, i: number) => ({
-                    index: i,
-                    imageUrl: s.imageUrl,
-                    ctaUrl: s.ctaUrl || undefined,
-                    ctaLabel: s.ctaLabel || undefined,
-                    active: s.active
-                }));
-
-            // Clamp index in case slides decreased
-            if (this.currentIndex >= this.slides.length) {
-                this.currentIndex = 0;
-            }
-
-            if (this.slides.length > 1) {
-                this.restartAutoplay();
-            }
-        });
+        );
     }
 
     onSlideClick(slide: HeroSlide) {

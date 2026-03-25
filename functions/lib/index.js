@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
+exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -152,15 +152,8 @@ exports.backfillUserClaims = functions.https.onCall(async (data, context) => {
 const SKYDROPX_BASE = 'https://pro.skydropx.com/api/v1';
 const SKYDROPX_OAUTH_URL = 'https://pro.skydropx.com/api/v1/oauth/token';
 /**
- * Reads apiKey (client_id) and apiSecret (client_secret) from Firestore,
- * performs the OAuth2 client_credentials grant to obtain a Bearer access token,
- * and returns Authorization headers ready for any Skydropx PRO API call.
- *
- * Skydropx PRO authentication (since Jan 2025):
- *   POST /api/v1/oauth/token
- *   Content-Type: application/x-www-form-urlencoded
- *   Body: grant_type=client_credentials&client_id=API_KEY&client_secret=API_SECRET
- *   → returns { access_token, token_type, ... }
+ * Reads credentials from Firestore and returns OAuth Bearer headers.
+ * PRO API uses: Authorization: Bearer {access_token} via client_credentials OAuth.
  */
 async function skydropxHeaders() {
     var _a;
@@ -180,9 +173,9 @@ async function skydropxHeaders() {
         console.warn('[SkyDropX] Could not read credentials from Firestore:', err);
     }
     if (!apiKey)
-        throw new functions.https.HttpsError('internal', 'SkyDropX API key (client_id) not configured.');
+        throw new functions.https.HttpsError('internal', 'SkyDropX API key not configured.');
     if (!apiSecret)
-        throw new functions.https.HttpsError('internal', 'SkyDropX API secret (client_secret) not configured.');
+        throw new functions.https.HttpsError('internal', 'SkyDropX API secret not configured.');
     // Exchange client credentials for a Bearer access token
     const tokenRes = await fetch(SKYDROPX_OAUTH_URL, {
         method: 'POST',
@@ -199,12 +192,13 @@ async function skydropxHeaders() {
         tokenData = JSON.parse(tokenText);
     }
     catch (_b) {
-        throw new functions.https.HttpsError('internal', `SkyDropX OAuth error: ${tokenText}`);
+        tokenData = null;
     }
-    if (!tokenRes.ok || !tokenData.access_token) {
+    if (!tokenRes.ok || !(tokenData === null || tokenData === void 0 ? void 0 : tokenData.access_token)) {
         const msg = (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error_description) || (tokenData === null || tokenData === void 0 ? void 0 : tokenData.error) || tokenText || `HTTP ${tokenRes.status}`;
         throw new functions.https.HttpsError('unauthenticated', `SkyDropX auth failed: ${msg}`);
     }
+    console.log('[SkyDropX] OAuth token obtained, expires_in:', tokenData.expires_in);
     return {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
@@ -331,98 +325,333 @@ async function originAddress() {
         company: companyName,
         phone,
         email,
-        address1: `${street} ${number}`,
-        address2: colonia,
+        street1: `${street} ${number}`,
+        street2: colonia,
         city,
         province,
-        zip,
-        country_code: process.env.SKYDROPX_ORIGIN_COUNTRY || 'MX',
+        zip_code: zip,
+        country: process.env.SKYDROPX_ORIGIN_COUNTRY || 'MX',
     };
 }
-// ── 1. Get Shipping Rates ──────────────────────────────────────────────────────
-// Calls POST /quotations, waits 2.5s for async processing, then fetches rates.
+// ── 1. Get Shipping Rates ─────────────────────────────────────────────────────
+// OAuth Bearer + pro.skydropx.com/api/v1/quotations
+// Body: { zip_from, zip_to (strings), parcel: { weight, height, width, length } as strings }
 exports.skydropxGetRates = functions.https.onCall(async (data, context) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g;
     if (!context.auth)
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
-    const { orderId, parcel, addressTo } = data;
+    const { orderId, zipTo, parcel } = data;
     if (!parcel)
-        throw new functions.https.HttpsError('invalid-argument', 'parcel required.');
-    if (!orderId && !(addressTo === null || addressTo === void 0 ? void 0 : addressTo.zip))
-        throw new functions.https.HttpsError('invalid-argument', 'orderId or addressTo with a zip code required.');
-    let finalAddressTo = addressTo;
-    if (orderId && !finalAddressTo) {
+        throw new functions.https.HttpsError('invalid-argument', 'parcel is required.');
+    let destinationZip = zipTo;
+    if (!destinationZip && orderId) {
         const orderDoc = await db.collection('orders').doc(orderId).get();
         if (!orderDoc.exists)
             throw new functions.https.HttpsError('not-found', 'Order not found.');
-        const order = orderDoc.data();
-        const addr = order.shippingAddress;
-        finalAddressTo = {
-            name: ((_a = order.customer) === null || _a === void 0 ? void 0 : _a.name) || 'Cliente',
-            phone: ((_b = order.customer) === null || _b === void 0 ? void 0 : _b.phone) || '',
-            email: ((_c = order.customer) === null || _c === void 0 ? void 0 : _c.email) || '',
-            address1: `${addr.street} ${addr.exteriorNumber}`,
-            address2: addr.colonia || '',
-            city: addr.city,
-            province: addr.state,
-            zip: addr.zipCode,
-            country_code: 'MX',
-        };
+        destinationZip = (_b = (_a = orderDoc.data()) === null || _a === void 0 ? void 0 : _a.shippingAddress) === null || _b === void 0 ? void 0 : _b.zipCode;
     }
-    const body = {
-        address_from: await originAddress(),
-        address_to: finalAddressTo,
-        parcel: {
-            mass_unit: 'kg',
-            distance_unit: 'cm',
-            weight: parcel.weight || 5,
-            height: parcel.height || 30,
-            width: parcel.width || 30,
-            length: parcel.length || 20,
-        },
-    };
+    if (!destinationZip || destinationZip.length < 4) {
+        throw new functions.https.HttpsError('invalid-argument', 'A valid destination zip code (zipTo) is required.');
+    }
+    let originZip = process.env.SKYDROPX_ORIGIN_ZIPCODE || '78140';
     try {
-        // Create quotation
-        const quoteRes = await fetch(`${SKYDROPX_BASE}/quotations`, {
-            method: 'POST',
-            headers: await skydropxHeaders(),
-            body: JSON.stringify(body),
+        const shippingDoc = await db.collection('config').doc('shipping').get();
+        if (shippingDoc.exists) {
+            const z = (_d = (_c = shippingDoc.data()) === null || _c === void 0 ? void 0 : _c.origin) === null || _d === void 0 ? void 0 : _d.zip;
+            if (z)
+                originZip = z;
+        }
+    }
+    catch (_h) {
+        console.warn('[SkyDropX] Could not read origin zip, using default.');
+    }
+    const headers = await skydropxHeaders();
+    // Look up destination zip for correct area_level info (Skydropx validates zip matches state)
+    let destLevel1 = 'México';
+    let destLevel2 = String(destinationZip);
+    let destLevel3 = 'Centro';
+    try {
+        const zipRes = await fetch(`https://api.zippopotam.us/mx/${destinationZip}`);
+        if (zipRes.ok) {
+            const zipData = await zipRes.json();
+            if (((_e = zipData.places) === null || _e === void 0 ? void 0 : _e.length) > 0) {
+                const place = zipData.places[0];
+                destLevel1 = place.state || destLevel1;
+                destLevel2 = place['place name'] || destLevel2;
+                destLevel3 = place['place name'] || destLevel3;
+            }
+        }
+    }
+    catch (_j) {
+        console.warn('[SkyDropX] Could not look up destination zip, using fallback.');
+    }
+    // Official Skydropx PRO quotation body — Rails API requires quotation:{} root wrapper
+    const quotationPayload = {
+        address_from: { country_code: 'MX', postal_code: originZip, area_level1: 'San Luis Potosí', area_level2: 'San Luis Potosí', area_level3: 'Centro' },
+        address_to: { country_code: 'MX', postal_code: String(destinationZip), area_level1: destLevel1, area_level2: destLevel2, area_level3: destLevel3 },
+        parcels: [{
+                weight: Math.max(1, Math.round(parcel.weight || 5)),
+                height: Math.max(1, Math.round(parcel.height || 30)),
+                width: Math.max(1, Math.round(parcel.width || 30)),
+                length: Math.max(1, Math.round(parcel.length || 20)),
+            }],
+        package_protected: false,
+        declared_value: 0,
+        declared_amount: 0,
+        requested_carriers: [],
+    };
+    const body = { quotation: quotationPayload };
+    console.log('[SkyDropX] Quotation — URL: POST', `${SKYDROPX_BASE}/quotations`);
+    console.log('[SkyDropX] Body:', JSON.stringify(body));
+    try {
+        const createRes = await fetch(`${SKYDROPX_BASE}/quotations`, {
+            method: 'POST', headers, body: JSON.stringify(body),
         });
-        const quoteJson = await quoteRes.json();
-        if (!quoteRes.ok)
-            throw new Error(`Quotation failed: ${JSON.stringify(quoteJson)}`);
-        const quotationId = (_d = quoteJson.data) === null || _d === void 0 ? void 0 : _d.id;
+        const createText = await createRes.text();
+        console.log(`[SkyDropX] Create response ${createRes.status}:`, createText.substring(0, 500));
+        if (!createRes.ok) {
+            throw new Error(`Quotation failed (${createRes.status}): ${createText}\n--- SENT BODY ---\n${JSON.stringify(body, null, 2)}`);
+        }
+        const createJson = JSON.parse(createText);
+        const quotationId = createJson.id;
         if (!quotationId)
-            throw new Error('No quotation ID returned from SkyDropX.');
-        // SkyDropX processes rates asynchronously — poll after short wait
-        await new Promise(r => setTimeout(r, 2500));
-        const ratesRes = await fetch(`${SKYDROPX_BASE}/quotations/${quotationId}`, {
-            headers: await skydropxHeaders(),
-        });
-        const ratesJson = await ratesRes.json();
-        // Rates come as JSON:API `included` array
-        const included = ratesJson.included || [];
-        const rates = included
-            .filter((r) => r.type === 'rates')
-            .map((r) => {
-            var _a, _b, _c, _d, _e, _f, _g;
-            return ({
-                rateId: r.id,
-                carrier: ((_a = r.attributes) === null || _a === void 0 ? void 0 : _a.carrier) || '',
-                serviceName: ((_b = r.attributes) === null || _b === void 0 ? void 0 : _b.service_level_name) || ((_c = r.attributes) === null || _c === void 0 ? void 0 : _c.service_name) || '',
-                price: parseFloat(((_d = r.attributes) === null || _d === void 0 ? void 0 : _d.amount) || '0'),
-                currency: ((_e = r.attributes) === null || _e === void 0 ? void 0 : _e.currency) || 'MXN',
-                estimatedDays: (_g = (_f = r.attributes) === null || _f === void 0 ? void 0 : _f.estimated_days) !== null && _g !== void 0 ? _g : null,
-            });
-        })
-            .sort((a, b) => a.price - b.price); // cheapest first
-        return { quotationId, rates };
+            throw new Error('No quotation ID returned from API.');
+        // PRO API is async — poll until is_completed: true (max 18 seconds)
+        const completed = await pollQuotation(quotationId, headers);
+        console.log(`[SkyDropX] Quotation ${quotationId} completed. Rates: ${(_g = (_f = completed.rates) === null || _f === void 0 ? void 0 : _f.length) !== null && _g !== void 0 ? _g : 0}`);
+        const rates = extractRates(completed);
+        console.log(`[SkyDropX] Parsed ${rates.length} priced rate(s)`);
+        return { rates };
     }
     catch (err) {
         console.error('[SkyDropX] GetRates error:', err.message);
         throw new functions.https.HttpsError('internal', `SkyDropX rate error: ${err.message}`);
     }
 });
+/**
+ * Polls GET /quotations/{id} until is_completed:true or max attempts reached.
+ * Skydropx PRO API is async — the POST creates the job, GET returns results.
+ */
+async function pollQuotation(quotationId, headers, maxAttempts = 12, intervalMs = 1500) {
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        await sleep(intervalMs);
+        const res = await fetch(`${SKYDROPX_BASE}/quotations/${quotationId}`, { headers });
+        const text = await res.text();
+        if (!res.ok)
+            throw new Error(`Poll failed (${res.status}): ${text}`);
+        const json = JSON.parse(text);
+        const hasPrice = Array.isArray(json.rates) && json.rates.some((r) => r.total || r.amount);
+        console.log(`[SkyDropX] Poll ${attempt}/${maxAttempts}: is_completed=${json.is_completed}, priced=${hasPrice}`);
+        if (json.is_completed || hasPrice)
+            return json;
+    }
+    throw new Error(`Quotation ${quotationId} timed out after ${maxAttempts * intervalMs / 1000}s`);
+}
+// ── 1b. Raw API Test (Debug) v5 ─────────────────────────────────────────────
+// NEVER throws. Returns all 3 steps raw.
+exports.skydropxRawTest = functions.https.onCall(async (data, context) => {
+    var _a, _b, _c, _d;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    const BUILD_VERSION = '2026-03-25-v7';
+    const result = { version: BUILD_VERSION, step1_credentials: null, step2_oauth: null, step3_quotation: null };
+    // Step 1: Read credentials from Firestore
+    let apiKey = process.env.SKYDROPX_API_KEY || null;
+    let apiSecret = process.env.SKYDROPX_API_SECRET || null;
+    try {
+        const fsDoc = await db.collection('config').doc('integrations').get();
+        if (fsDoc.exists) {
+            const sky = ((_a = fsDoc.data()) === null || _a === void 0 ? void 0 : _a.skydropx) || {};
+            if (sky.apiKey)
+                apiKey = sky.apiKey;
+            if (sky.apiSecret)
+                apiSecret = sky.apiSecret;
+        }
+        result.step1_credentials = {
+            docExists: fsDoc.exists,
+            hasApiKey: !!apiKey,
+            apiKeyFirst8: apiKey ? apiKey.substring(0, 8) + '...' : null,
+            hasApiSecret: !!apiSecret,
+        };
+    }
+    catch (e) {
+        result.step1_credentials = { error: e.message };
+    }
+    // Step 2: OAuth token exchange
+    let bearerToken = null;
+    if (apiKey && apiSecret) {
+        try {
+            const tokenRes = await fetch(SKYDROPX_OAUTH_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ grant_type: 'client_credentials', client_id: apiKey, client_secret: apiSecret }).toString(),
+            });
+            const tokenText = await tokenRes.text();
+            let tokenJson = null;
+            try {
+                tokenJson = JSON.parse(tokenText);
+            }
+            catch (_e) {
+                tokenJson = tokenText;
+            }
+            result.step2_oauth = { status: tokenRes.status, body: tokenJson };
+            if (tokenRes.ok && (tokenJson === null || tokenJson === void 0 ? void 0 : tokenJson.access_token))
+                bearerToken = tokenJson.access_token;
+        }
+        catch (e) {
+            result.step2_oauth = { error: e.message };
+        }
+    }
+    else {
+        result.step2_oauth = { skipped: 'Missing apiKey or apiSecret' };
+    }
+    // Step 3: Quotation — PRO API with ALL required fields (per official docs)
+    if (bearerToken) {
+        const zip_from = '78140';
+        // Use a well-known zip as default to avoid address mismatch errors
+        // 64000 = Monterrey, Nuevo León (Monterrey Centro)
+        const zip_to = String((data === null || data === void 0 ? void 0 : data.zipTo) || '64000');
+        const p = (data === null || data === void 0 ? void 0 : data.parcel) || { weight: 5, height: 30, width: 30, length: 20 };
+        // Lookup zip_to area info (required to match SEPOMEX data)
+        let destLevel1 = 'Nuevo León';
+        let destLevel2 = 'Monterrey';
+        let destLevel3 = 'Monterrey Centro';
+        try {
+            const zipRes = await fetch(`https://api.zippopotam.us/mx/${zip_to}`);
+            if (zipRes.ok) {
+                const zipData = await zipRes.json();
+                if (((_b = zipData.places) === null || _b === void 0 ? void 0 : _b.length) > 0) {
+                    const place = zipData.places[0];
+                    destLevel1 = place.state || destLevel1;
+                    destLevel2 = place['place name'] || destLevel2;
+                    destLevel3 = place['place name'] || destLevel3;
+                }
+            }
+        }
+        catch ( /* use defaults */_f) { /* use defaults */ }
+        // Official Skydropx PRO quotation body — Rails API requires quotation:{} root wrapper
+        const quotationPayload = {
+            address_from: {
+                country_code: 'MX',
+                postal_code: zip_from,
+                area_level1: 'San Luis Potosí',
+                area_level2: 'San Luis Potosí',
+                area_level3: 'Centro',
+            },
+            address_to: {
+                country_code: 'MX',
+                postal_code: zip_to,
+                area_level1: destLevel1,
+                area_level2: destLevel2,
+                area_level3: destLevel3,
+            },
+            parcels: [{
+                    weight: Math.max(1, Math.round(p.weight || 5)),
+                    height: Math.max(1, Math.round(p.height || 30)),
+                    width: Math.max(1, Math.round(p.width || 30)),
+                    length: Math.max(1, Math.round(p.length || 20)),
+                }],
+            package_protected: false,
+            declared_value: 0,
+            declared_amount: 0,
+            requested_carriers: [],
+        };
+        const body = { quotation: quotationPayload };
+        result.step3_quotation = Object.assign(Object.assign({}, result.step3_quotation), { sentBody: body });
+        try {
+            const createRes = await fetch(`${SKYDROPX_BASE}/quotations`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${bearerToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const createText = await createRes.text();
+            let createJson = null;
+            try {
+                createJson = JSON.parse(createText);
+            }
+            catch (_g) {
+                createJson = createText;
+            }
+            if (createRes.ok && (createJson === null || createJson === void 0 ? void 0 : createJson.id)) {
+                // Poll until completed
+                const authHeaders = { 'Authorization': `Bearer ${bearerToken}`, 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                try {
+                    const completed = await pollQuotation(createJson.id, authHeaders);
+                    result.step3_quotation = {
+                        url: `${SKYDROPX_BASE}/quotations`,
+                        status: createRes.status,
+                        quotationId: createJson.id,
+                        sentBody: body,
+                        response: completed,
+                    };
+                }
+                catch (pollErr) {
+                    result.step3_quotation = {
+                        url: `${SKYDROPX_BASE}/quotations`,
+                        status: createRes.status,
+                        quotationId: createJson.id,
+                        sentBody: body,
+                        initialResponse: createJson,
+                        pollError: pollErr.message,
+                    };
+                }
+            }
+            else {
+                result.step3_quotation = { url: `${SKYDROPX_BASE}/quotations`, status: createRes.status, sentBody: body, response: createJson };
+            }
+        }
+        catch (e) {
+            result.step3_quotation = { error: e.message, sentBody: body };
+        }
+    }
+    else {
+        result.step3_quotation = { skipped: 'No OAuth token — check steps 1 & 2' };
+    }
+    console.log('[SkyDropX] RawTest v5:', JSON.stringify({ version: BUILD_VERSION, s1: result.step1_credentials, s2: (_c = result.step2_oauth) === null || _c === void 0 ? void 0 : _c.status, s3: (_d = result.step3_quotation) === null || _d === void 0 ? void 0 : _d.status }));
+    return result;
+});
+/**
+ * Extracts and normalises rate objects from Skydropx PRO API response.
+ *
+ * PRO API: POST /api/v1/quotations
+ * Response structure (per official docs, 2025):
+ * {
+ *   id: string,
+ *   is_completed: boolean,
+ *   quotation_scope: { carriers_scoped_to: string },
+ *   rates: [
+ *     { id, success, provider_name, provider_display_name, provider_service_name,
+ *       provider_service_code, status, currency_code, amount, total, days, ... }
+ *   ]
+ * }
+ * Use `total` as the final price (includes all fees), fall back to `amount`.
+ */
+function extractRates(json) {
+    // PRO response: rates is a direct array inside the response object
+    const ratesArr = Array.isArray(json.rates) ? json.rates
+        : Array.isArray(json.data) ? json.data
+            : Array.isArray(json) ? json
+                : [];
+    return ratesArr
+        .filter((r) => r && r.id && (r.total !== undefined || r.amount !== undefined))
+        .map((r) => {
+        var _a, _b, _c;
+        const price = parseFloat(String((_b = (_a = r.total) !== null && _a !== void 0 ? _a : r.amount) !== null && _b !== void 0 ? _b : '0'));
+        return {
+            rateId: r.id,
+            carrier: r.provider_name || r.provider_display_name || '',
+            serviceName: r.provider_service_name || r.provider_service_code || '',
+            price,
+            currency: r.currency_code || 'MXN',
+            estimatedDays: (_c = r.days) !== null && _c !== void 0 ? _c : null,
+            status: r.status || '',
+            success: r.success !== false,
+        };
+    })
+        .filter((r) => r.price > 0 && r.success)
+        .sort((a, b) => a.price - b.price);
+}
 // ── 2. Create Shipment + Generate Label (one step) ────────────────────────────
 // Creates a shipment with the selected rate, then auto-updates Firestore order
 // with trackingNumber, carrier, shippingLabelUrl, and sets status = 'shipped'.
@@ -1326,7 +1555,7 @@ async function processAndSaveMeliOrderFromData(mo, token, headers) {
     await orderRef.set(newOrder, { merge: true });
     console.log(`[Meli Webhook] Saved order ML-${mo.id} (pack_id: ${mo.pack_id || 'n/a'})`);
 }
-exports.getMeliRawOrderDebug = functions.runWith({ timeoutSeconds: 500 }).https.onRequest(async (req, res) => {
+exports.getMeliRawOrderDebug = functions.https.onRequest(async (req, res) => {
     var _a;
     try {
         const configDoc = await db.collection('config').doc('integrations').get();

@@ -314,7 +314,10 @@ export class OrderBuilderComponent implements OnInit {
                 quantity: 1,
                 subtotal: product.price,
                 brand: product.brand,
-                category: product.categoryId
+                category: product.categoryId,
+                // Snapshot shipping data for parcel calculation
+                weight: (product as any).weight ?? undefined,
+                dimensions: (product as any).dimensions ?? undefined,
             };
             this.cartItems.update(items => [...items, newItem]);
         }
@@ -339,30 +342,57 @@ export class OrderBuilderComponent implements OnInit {
     fetchShippingRates() {
         const addr = this.shippingAddress();
         const zip = addr?.zipCode || this.quoteZipCode();
-        
+
         if (!zip || zip.length < 5) {
             this.toast.error('Enter a valid 5-digit ZIP code to calculate shipping.');
             return;
         }
 
+        const items = this.cartItems();
+        if (items.length === 0) {
+            this.toast.error('Add at least one product to calculate shipping.');
+            return;
+        }
+
         this.isLoadingRates.set(true);
 
-        const totalQty = this.cartItems().reduce((acc, item) => acc + item.quantity, 0);
-        const parcel = { weight: Math.max(1, totalQty * 10), height: 30, width: 30, length: 20 };
+        // ── Aggregate real parcel from cart items ────────────────────────────
+        // Weight   : sum of (qty × product weight per unit), fallback 5 kg/item
+        // Height   : sum of (qty × product height), tires stack vertically, fallback 20 cm
+        // Length   : max product length (tires are side by side only 1 deep), fallback 65 cm
+        // Width    : max product width, fallback 65 cm
+        let totalWeight = 0;
+        let totalHeight = 0;
+        let maxLength = 0;
+        let maxWidth = 0;
+        let anyDimensionsMissing = false;
 
-        const addressTo = {
-            name: this.customer()?.displayName || this.customer()?.email || 'N/A',
-            phone: this.customer()?.phone || '0000000000',
-            email: this.customer()?.email || 'quote@example.com',
-            address1: addr ? `${addr.street} ${addr.exteriorNumber}` : 'N/A',
-            address2: addr?.colonia || 'N/A',
-            city: addr?.city || 'N/A',
-            province: addr?.state || 'N/A',
-            zip: zip,
-            country_code: 'MX' 
+        for (const item of items) {
+            const w = item.weight ?? null;
+            const d = item.dimensions ?? null;
+
+            if (w === null || d === null) anyDimensionsMissing = true;
+
+            totalWeight += item.quantity * (w ?? 5);          // 5 kg fallback
+            totalHeight += item.quantity * (d?.height ?? 20); // 20 cm fallback
+            maxLength = Math.max(maxLength, d?.length ?? 65); // 65 cm fallback
+            maxWidth  = Math.max(maxWidth,  d?.width  ?? 65); // 65 cm fallback
+        }
+
+        if (anyDimensionsMissing) {
+            this.toast.info('Some products are missing shipping dimensions — using estimates. Update products in Admin → Catalog for accurate quotes.');
+        }
+
+        const parcel = {
+            weight: Math.max(1, Math.round(totalWeight)),
+            height: Math.max(1, Math.round(totalHeight)),
+            length: Math.max(1, Math.round(maxLength)),
+            width:  Math.max(1, Math.round(maxWidth)),
         };
 
-        this.skydropxService.getRates({ addressTo, parcel }).subscribe({
+        console.log('[OrderBuilder] Parcel for Skydropx:', parcel);
+
+        this.skydropxService.getRates({ zipTo: zip, parcel }).subscribe({
             next: (res) => {
                 this.shippingRates.set(res.rates || []);
                 this.isLoadingRates.set(false);

@@ -232,6 +232,12 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
             stockQuantity: [0, [Validators.required, Validators.min(0)]],
             inStock: [true],
 
+            // Shipping Dimensions (used by Skydropx for rate quotes)
+            weight: [null, [Validators.min(0.1)]],         // kg per unit
+            dimensionLength: [null, [Validators.min(1)]],  // cm
+            dimensionWidth:  [null, [Validators.min(1)]],  // cm
+            dimensionHeight: [null, [Validators.min(1)]],  // cm
+
             // Marketing
             tags: [''],
             featured: [false],
@@ -394,6 +400,11 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
                     compareAtPrice: product.compareAtPrice || null,
                     stockQuantity: product.stockQuantity || 0,
                     inStock: product.inStock ?? true,
+                    // Shipping dimensions
+                    weight: (product as any).weight ?? null,
+                    dimensionLength: (product as any).dimensions?.length ?? null,
+                    dimensionWidth:  (product as any).dimensions?.width  ?? null,
+                    dimensionHeight: (product as any).dimensions?.height ?? null,
                     tags: product.tags?.join(', ') || '',
                     featured: product.featured ?? false,
                     newArrival: product.newArrival ?? false,
@@ -619,6 +630,13 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
                 compareAtPrice: formValue.compareAtPrice,
                 inStock: formValue.inStock,
                 stockQuantity: formValue.stockQuantity,
+                // Shipping dimensions
+                weight: formValue.weight ?? null,
+                dimensions: (formValue.dimensionLength || formValue.dimensionWidth || formValue.dimensionHeight) ? {
+                    length: formValue.dimensionLength || 0,
+                    width:  formValue.dimensionWidth  || 0,
+                    height: formValue.dimensionHeight || 0,
+                } : null,
                 tags: formValue.tags ? formValue.tags.split(',').map((t: string) => t.trim()) : [],
                 featured: formValue.featured,
                 newArrival: formValue.newArrival,

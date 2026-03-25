@@ -292,7 +292,7 @@
                  </div>
              </div>
 
-             <div class="flex gap-3 mt-6 flex-wrap">
+              <div class="flex gap-3 mt-6 flex-wrap items-center">
                  <button (click)="testSkydropxConnection()" [disabled]="!skydropxApiKey || !skydropxApiSecret || isTestingSkydropx"
                     class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded text-sm transition flex items-center gap-2">
                     <i class="fas" [class.fa-plug]="!isTestingSkydropx" [class.fa-spinner]="isTestingSkydropx" [class.fa-spin]="isTestingSkydropx"></i>
@@ -302,7 +302,13 @@
                     <i class="fas" [class.fa-save]="!isSavingSkydropx" [class.fa-spinner]="isSavingSkydropx" [class.fa-spin]="isSavingSkydropx"></i>
                     {{ isSavingSkydropx ? 'Saving...' : 'Save Keys & Address' }}
                  </button>
-             </div>
+                 <a routerLink="/admin/integrations/skydropx-debug"
+                    class="ml-auto px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded text-sm font-bold transition flex items-center gap-2 no-underline shadow-lg shadow-indigo-500/20">
+                    <i class="fas fa-flask"></i>
+                    Rate Debugger
+                    <i class="fas fa-arrow-right text-xs opacity-70"></i>
+                 </a>
+              </div>
         </div>
 
       </div>

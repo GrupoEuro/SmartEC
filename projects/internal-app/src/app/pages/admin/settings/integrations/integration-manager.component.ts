@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { SecretsService, IntegrationConfig } from '../../../../core/services/config/secrets.service';
 import { MeliService } from '../../../../core/services/meli.service';
@@ -12,7 +12,7 @@ import { SettingsService, ShippingSettings } from '../../../../core/services/set
 @Component({
     selector: 'app-integration-manager',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, RouterLink],
     templateUrl: './integration-manager.component.html',
     styleUrls: ['./integration-manager.component.css']
 })

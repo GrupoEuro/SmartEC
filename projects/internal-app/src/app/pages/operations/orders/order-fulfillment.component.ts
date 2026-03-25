@@ -336,12 +336,19 @@ export class OrderFulfillmentComponent implements OnInit {
         const order = this.order();
         if (!order?.id) return;
 
+        // Extract destination zip from the order's shipping address
+        const zipTo: string | undefined = (order as any).shippingAddress?.zipCode;
+        if (!zipTo) {
+            this.toast.error('This order has no shipping address zip code. Cannot fetch rates.');
+            return;
+        }
+
         this.isLoadingRates.set(true);
         this.rates.set([]);
         this.selectedRateId.set(null);
 
         this.skydropx.getRates({
-            orderId: order.id,
+            zipTo,
             parcel: {
                 weight: this.parcelWeight,
                 height: this.parcelHeight,

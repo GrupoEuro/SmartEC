@@ -57,8 +57,8 @@ export class SkydropxService {
      * Get real-time shipping rate quotes for an order.
      * Calls skydropxGetRates Cloud Function.
      */
-    getRates(params: { orderId?: string; addressTo?: any; parcel: ShippingParcel }): Observable<RatesResult> {
-        const fn = httpsCallable<{ orderId?: string; addressTo?: any; parcel: ShippingParcel }, RatesResult>(
+    getRates(params: { orderId?: string; zipTo?: string; parcel: ShippingParcel }): Observable<RatesResult> {
+        const fn = httpsCallable<{ orderId?: string; zipTo?: string; parcel: ShippingParcel }, RatesResult>(
             this.fns, 'skydropxGetRates'
         );
         return from(fn(params).then(r => r.data));

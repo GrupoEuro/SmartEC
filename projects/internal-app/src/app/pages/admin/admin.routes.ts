@@ -195,6 +195,12 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
+                path: 'integrations/skydropx-debug',
+                loadComponent: () => import('./settings/integrations/skydropx-debug/skydropx-debug.component').then(m => m.SkydropxDebugComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
+            },
+            {
                 path: 'integrations/products',
                 loadComponent: () => import('./settings/integrations/product-link/product-link.component').then(m => m.ProductLinkComponent),
                 canActivate: [roleGuard],

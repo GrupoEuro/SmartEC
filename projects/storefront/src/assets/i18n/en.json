@@ -77,6 +77,7 @@
     "PHONE": "Phone Number",
     "CONTINUE_SHIPPING": "Continue to Shipping",
     "CONTINUE_PAYMENT": "Continue to Payment",
+    "CONTINUE_SHIPPING_OPTION": "Choose Shipping Method",
     "PAY_NOW": "Pay Now",
     "GUEST_LOGIN_HINT": "Continue as Guest or Login for a faster experience.",
     "EMAIL": "Email Address",

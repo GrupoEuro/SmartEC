@@ -1,96 +1,90 @@
-import { Component, Inject, OnInit, signal, effect, PLATFORM_ID } from '@angular/core';
+import { Component, inject, OnInit, PLATFORM_ID, Inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { PromotionEngineService } from '../../core/services/promotion-engine.service';
 
 @Component({
     selector: 'app-exit-intent',
     standalone: true,
     imports: [CommonModule],
     template: `
-    @if (isOpen()) {
-        <div class="fixed inset-0 z-[2000] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <!-- Backdrop -->
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="close()"></div>
-            
-            <!-- Modal -->
-            <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-slate-700">
-                <button (click)="close()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+    @if (engine.isOpen() && engine.activePromotion()) {
+        <div class="promo-overlay" (click)="engine.close()">
+            <div class="promo-modal" [style.background]="engine.activePromotion()!.bgColor" (click)="$event.stopPropagation()">
+                <button class="promo-close" (click)="engine.close()">✕</button>
 
-                <div class="mb-6 flex justify-center">
-                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-3xl">
-                        🎁
+                <div class="promo-emoji">{{ engine.activePromotion()!.emoji }}</div>
+                <h2 class="promo-headline">{{ engine.t(engine.activePromotion()!.headline) }}</h2>
+                <p class="promo-body">{{ engine.t(engine.activePromotion()!.body) }}</p>
+
+                @if (engine.activePromotion()!.couponCode) {
+                    <div class="promo-coupon-box">
+                        <code class="promo-code">{{ engine.activePromotion()!.couponCode }}</code>
+                        <button class="promo-copy" (click)="engine.copyCode()">
+                            {{ engine.copied() ? '✓ Copiado' : 'Copiar' }}
+                        </button>
                     </div>
-                </div>
+                }
 
-                <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Wait! Don't Go Empty Handed</h2>
-                <p class="text-slate-600 dark:text-slate-400 mb-6">
-                    Before you leave, here's a special gift. Use code <span class="font-bold text-blue-600">SAVE5</span> for 5% off your order today.
-                </p>
-
-                <div class="bg-slate-100 dark:bg-slate-900 p-4 rounded-lg mb-6 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-between">
-                    <code class="font-mono text-lg font-bold text-blue-600">SAVE5</code>
-                    <button (click)="copyCode()" class="text-sm font-medium text-slate-500 hover:text-slate-800 underline">
-                        {{ copied() ? 'Copied!' : 'Copy Code' }}
+                <div class="promo-actions">
+                    <button class="promo-cta" (click)="engine.onCtaClick()">
+                        {{ engine.t(engine.activePromotion()!.ctaLabel) }}
                     </button>
-                </div>
-
-                <div class="space-y-3">
-                    <button (click)="close()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-blue-600/20">
-                        Apply Discount & Continue Shopping
-                    </button>
-                    <button (click)="close()" class="w-full text-slate-400 hover:text-slate-600 text-sm font-medium">
-                        No thanks, I hate saving money
-                    </button>
+                    <button class="promo-dismiss" (click)="engine.close()">No, gracias</button>
                 </div>
             </div>
         </div>
     }
-  `
+    `,
+    styles: [`
+        .promo-overlay {
+            position: fixed; inset: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+            background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease;
+        }
+        .promo-modal {
+            position: relative; border-radius: 20px; padding: 40px 32px; max-width: 420px; width: 100%;
+            text-align: center; border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+            animation: zoomIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .promo-close {
+            position: absolute; top: 14px; right: 16px; background: none; border: none;
+            color: rgba(255,255,255,0.5); font-size: 1.1rem; cursor: pointer; padding: 4px 8px;
+            border-radius: 6px; transition: color 0.2s, background 0.2s;
+        }
+        .promo-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        .promo-emoji { font-size: 3rem; margin-bottom: 16px; display: block; }
+        .promo-headline { font-size: 1.4rem; font-weight: 800; color: #fff; margin: 0 0 10px; }
+        .promo-body { font-size: 0.95rem; color: rgba(255,255,255,0.7); margin: 0 0 24px; line-height: 1.6; }
+        .promo-coupon-box {
+            background: rgba(0,0,0,0.25); border: 1.5px dashed rgba(255,255,255,0.2);
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .promo-code { font-size: 1.1rem; font-weight: 800; color: #67e8f9; font-family: monospace; letter-spacing: 2px; }
+        .promo-copy { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff;
+            padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+        .promo-copy:hover { background: rgba(255,255,255,0.15); }
+        .promo-actions { display: flex; flex-direction: column; gap: 10px; }
+        .promo-cta { background: #00acd8; color: #fff; border: none; border-radius: 12px; padding: 14px;
+            font-weight: 800; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+        .promo-cta:hover { background: #0095c4; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,172,216,0.4); }
+        .promo-dismiss { background: none; border: none; color: rgba(255,255,255,0.35); font-size: 0.8rem; cursor: pointer;
+            padding: 4px; transition: color 0.2s; }
+        .promo-dismiss:hover { color: rgba(255,255,255,0.6); }
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn  { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+    `]
 })
 export class ExitIntentComponent implements OnInit {
-    isOpen = signal(false);
-    copied = signal(false);
+    engine = inject(PromotionEngineService);
 
-    constructor(@Inject(PLATFORM_ID) private platformId: Object) { }
+    constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
-            this.initExitListener();
+            this.engine.init();
         }
-    }
-
-    private initExitListener() {
-        // Only verify showing once per session
-        if (sessionStorage.getItem('exit_intent_shown')) {
-            return;
-        }
-
-        const handler = (e: MouseEvent) => {
-            if (e.clientY <= 0) {
-                // Mouse left top of viewport
-                this.showPopup();
-                document.removeEventListener('mouseleave', handler);
-            }
-        };
-
-        document.addEventListener('mouseleave', handler);
-    }
-
-    private showPopup() {
-        this.isOpen.set(true);
-        sessionStorage.setItem('exit_intent_shown', 'true');
-    }
-
-    close() {
-        this.isOpen.set(false);
-    }
-
-    copyCode() {
-        navigator.clipboard.writeText('SAVE5');
-        this.copied.set(true);
-        setTimeout(() => this.copied.set(false), 2000);
     }
 }

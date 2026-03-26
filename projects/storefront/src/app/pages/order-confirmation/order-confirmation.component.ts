@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { CartService } from '@lib/core';
 
 @Component({
     selector: 'app-order-confirmation',
@@ -10,13 +11,12 @@ import { RouterLink } from '@angular/router';
     styleUrls: ['./order-confirmation.component.css']
 })
 export class OrderConfirmationComponent {
-    // Logic to clear cart on init
     cartService = inject(CartService);
+    orderId: string | null = null;
 
-    constructor() {
-        // Clear cart
-        // this.cartService.clearCart(); 
-        // Commenting out clearCart for now to avoid losing state during dev testing
+    constructor(private router: Router) {
+        const nav = this.router.getCurrentNavigation();
+        this.orderId = nav?.extras?.state?.['orderId'] ?? null;
+        this.cartService.clearCart();
     }
 }
-import { CartService } from '@lib/core';

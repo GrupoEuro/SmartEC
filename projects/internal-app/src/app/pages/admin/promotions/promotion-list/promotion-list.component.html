@@ -1,0 +1,139 @@
+<div class="product-dashboard-layout">
+    <header class="command-header">
+        <div class="header-left">
+            <div class="header-title-section">
+                <h1 class="page-title">🎯 Promotions</h1>
+                <span class="product-badge" *ngIf="filteredPromotions.length > 0">{{ filteredPromotions.length }}</span>
+            </div>
+        </div>
+        <div class="header-right" style="display:flex;gap:12px;align-items:center;">
+            <button class="btn-primary-action" routerLink="/admin/promotions/new">
+                <span class="icon">➕</span>
+                <span class="text">New Promotion</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="dashboard-content">
+        <main class="product-grid-view">
+
+            <!-- Toolbar -->
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" [formControl]="searchControl" placeholder="Search by name or coupon code…">
+                </div>
+                <select class="filter-select" [formControl]="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="scheduled">Scheduled</option>
+                </select>
+                <select class="filter-select" [formControl]="triggerFilter">
+                    <option value="all">All Triggers</option>
+                    <option value="exit_intent">Exit Intent</option>
+                    <option value="welcome_user">Welcome User</option>
+                    <option value="timed_delay">Timed Delay</option>
+                    <option value="scroll_depth">Scroll Depth</option>
+                    <option value="seasonal">Seasonal</option>
+                </select>
+                <button *ngIf="hasActiveFilters" class="btn-clear-filters" (click)="clearFilters()">Clear Filters</button>
+            </div>
+
+            <!-- Table -->
+            <div class="table-glass-container">
+                <table class="rich-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" (click)="sort('name')">
+                                Name <span *ngIf="sortColumn==='name'">{{ sortDirection==='asc'?'▲':'▼' }}</span>
+                            </th>
+                            <th class="sortable" (click)="sort('trigger')">
+                                Trigger <span *ngIf="sortColumn==='trigger'">{{ sortDirection==='asc'?'▲':'▼' }}</span>
+                            </th>
+                            <th>Coupon Code</th>
+                            <th class="sortable text-center" (click)="sort('priority')">
+                                Priority <span *ngIf="sortColumn==='priority'">{{ sortDirection==='asc'?'▲':'▼' }}</span>
+                            </th>
+                            <th class="text-center">Shown / CTR</th>
+                            <th class="sortable" (click)="sort('status')">
+                                Status <span *ngIf="sortColumn==='status'">{{ sortDirection==='asc'?'▲':'▼' }}</span>
+                            </th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Loading -->
+                        <tr *ngIf="isLoading">
+                            <td colspan="7" class="loading-state">
+                                <div class="empty-state-content">
+                                    <app-icon name="loader" [size]="48" class="text-muted spinning"></app-icon>
+                                    <p>Loading promotions…</p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Empty -->
+                        <tr *ngIf="!isLoading && filteredPromotions.length === 0">
+                            <td colspan="7" class="loading-state">
+                                <div class="empty-state-content">
+                                    <span class="empty-icon">🎯</span>
+                                    <p>No promotions found. <a routerLink="/admin/promotions/new">Create your first one</a>.</p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Rows -->
+                        <tr *ngFor="let p of pagedPromotions" class="table-row-hover">
+                            <td>
+                                <div class="promotion-name-cell">
+                                    <span class="promo-emoji">{{ p.emoji }}</span>
+                                    <div>
+                                        <div class="promo-name">{{ p.name }}</div>
+                                        <div class="promo-headline text-muted">{{ p.headline }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="trigger-tag">{{ triggerLabels[p.trigger] }}</span>
+                            </td>
+                            <td>
+                                <code *ngIf="p.couponCode" class="coupon-code-tag">{{ p.couponCode }}</code>
+                                <span *ngIf="!p.couponCode" class="text-muted">—</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="priority-badge">{{ p.priority }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span>{{ p.totalShown | number }}</span>
+                                <span class="ctr-label">{{ ctrPercent(p) }}</span>
+                            </td>
+                            <td>
+                                <span class="status-badge" [class]="statusColors[p.status]">
+                                    {{ p.status | titlecase }}
+                                </span>
+                            </td>
+                            <td class="text-right">
+                                <div class="actions-cluster">
+                                    <button class="btn-icon-action" title="Toggle" (click)="toggleStatus(p)">
+                                        {{ p.status === 'active' ? '⏸' : '▶️' }}
+                                    </button>
+                                    <button class="btn-icon-action" title="Edit" [routerLink]="['/admin/promotions/edit', p.id]">✏️</button>
+                                    <button class="btn-icon-action danger" title="Delete" (click)="deletePromotion(p)">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <app-pagination
+                *ngIf="filteredPromotions.length > pageSize"
+                [config]="{ currentPage: currentPage, itemsPerPage: pageSize, totalItems: filteredPromotions.length }"
+                (pageChange)="currentPage = $event">
+            </app-pagination>
+
+        </main>
+    </div>
+</div>

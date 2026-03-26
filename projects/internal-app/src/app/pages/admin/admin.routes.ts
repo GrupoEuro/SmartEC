@@ -154,6 +154,18 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent)
             },
             {
+                path: 'promotions',
+                loadComponent: () => import('./promotions/promotion-list/promotion-list.component').then(m => m.PromotionListComponent)
+            },
+            {
+                path: 'promotions/new',
+                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent)
+            },
+            {
+                path: 'promotions/edit/:id',
+                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent)
+            },
+            {
                 path: 'staff',
                 loadComponent: () => import('./system/staff/staff-list/staff-list.component').then(m => m.StaffListComponent),
                 canActivate: [roleGuard],

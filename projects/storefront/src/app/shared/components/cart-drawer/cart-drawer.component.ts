@@ -64,7 +64,7 @@ import { CartService } from '../../../core/services/cart.service';
                                             <img [src]="item.product.images.main || 'assets/placeholder_tire.png'" alt="Product">
                                         </div>
                                         <div class="item-details">
-                                            <h4>{{ item.product.name.en }}</h4>
+                                            <h4>{{ translate.currentLang === 'es' ? (item.product.name.es || item.product.name.en) : (item.product.name.en || item.product.name.es) }}</h4>
                                             <div class="item-meta">
                                                 <span class="price">{{ item.product.price | currency }}</span>
                                             </div>

@@ -131,6 +131,12 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 route: '/admin/coupons'
             },
             {
+                id: 'promotions',
+                title: 'ADMIN.SIDEBAR.PROMOTIONS',
+                icon: 'zap',
+                route: '/admin/promotions'
+            },
+            {
                 id: 'campaigns',
                 title: 'ADMIN.SIDEBAR.CAMPAIGNS',
                 icon: 'target',

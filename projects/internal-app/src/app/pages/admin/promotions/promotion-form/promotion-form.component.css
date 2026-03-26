@@ -1,0 +1,185 @@
+/* ============================================================
+   PROMOTION FORM — Single-column form + fixed preview panel
+   ============================================================ */
+
+:host { display: block; }
+
+.loading-overlay {
+    display: flex; align-items: center; justify-content: center;
+    padding: 6rem; color: #94a3b8;
+}
+
+/* ── FIXED PREVIEW PANEL — always visible top-right of viewport ── */
+.preview-fixed {
+    position: fixed;
+    top: var(--preview-top, 170px); /* set dynamically by alignPreview() in component */
+    right: 20px;
+    width: 360px;
+    z-index: 500;
+    background: #1e293b;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.15);
+}
+
+.preview-fixed-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-size: 0.82rem; font-weight: 700; color: #f1f5f9;
+    background: rgba(59,130,246,0.08);
+}
+
+.lang-toggle { display: flex; gap: 4px; }
+.lang-toggle button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(59,130,246,0.2);
+    color: #94a3b8; padding: 3px 10px; border-radius: 6px;
+    font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: all 0.15s;
+}
+.lang-toggle button.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+.preview-popup {
+    padding: 28px 22px 24px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    transition: background 0.3s;
+    min-height: 200px;
+    position: relative;
+}
+/* Fake close button — shows it's a popup */
+.preview-popup::before {
+    content: '✕';
+    position: absolute; top: 10px; right: 12px;
+    font-size: 0.7rem; color: rgba(255,255,255,0.25);
+    font-weight: 700;
+}
+.p-emoji { font-size: 2.8rem; line-height: 1; }
+.p-headline {
+    font-size: 1.05rem; font-weight: 800; color: #fff; margin: 0;
+    line-height: 1.3;
+}
+.p-body {
+    font-size: 0.8rem; color: rgba(255,255,255,0.65); margin: 0;
+    line-height: 1.55; max-width: 280px;
+}
+.p-coupon {
+    background: rgba(0,0,0,0.3); border: 1.5px dashed rgba(255,255,255,0.18);
+    border-radius: 8px; padding: 8px 14px; width: 100%; box-sizing: border-box;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.p-coupon code {
+    font-family: monospace; font-weight: 800; color: #67e8f9;
+    font-size: 0.95rem; letter-spacing: 3px;
+}
+.p-coupon span { font-size: 0.68rem; color: rgba(255,255,255,0.35); white-space: nowrap; }
+.p-cta {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 11px 18px; font-weight: 700; font-size: 0.85rem;
+    width: 100%; cursor: default; margin-top: 4px;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+}
+.p-dismiss {
+    font-size: 0.7rem; color: rgba(255,255,255,0.25); text-align: center;
+    margin-top: -4px;
+}
+.p-dismiss::after { content: 'No, gracias'; }
+
+/* ── FORM WRAP — single column, padded right to avoid overlap ── */
+.form-wrap {
+    padding: 1.5rem 2rem;
+    padding-right: 400px;   /* leaves room for the 360px fixed panel + margin */
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+    .preview-fixed { position: static; width: 100%; border-radius: 12px; }
+    .form-wrap { padding-right: 2rem; }
+}
+
+/* ── Sections ── */
+.form-section {
+    background: #1e293b;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.section-title {
+    font-size: 0.9rem; font-weight: 700; color: #f1f5f9;
+    margin: 0 0 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.section-icon { font-size: 1rem; }
+
+.form-row { margin-bottom: 0.75rem; }
+.form-row.cols-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+}
+
+.form-group {
+    display: flex; flex-direction: column; gap: 0.35rem;
+}
+.form-group label {
+    font-size: 0.78rem; font-weight: 600; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+/* ── Inputs — mirror admin .form-control ── */
+.form-control {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    color: #f1f5f9; padding: 0.6rem 0.9rem;
+    font-size: 0.9rem; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%; box-sizing: border-box; font-family: inherit;
+}
+.form-control:focus {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+.form-control::placeholder { color: #475569; }
+select.form-control option { background: #1e293b; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+.emoji-input { font-size: 1.4rem; text-align: center; }
+.form-hint { font-size: 0.75rem; color: #64748b; margin-top: 2px; display: block; }
+
+.check-label {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.875rem; color: #94a3b8; cursor: pointer; padding: 0.4rem 0;
+}
+.check-label input { accent-color: #3b82f6; width: 15px; height: 15px; }
+
+.color-row { display: flex; align-items: center; gap: 0.5rem; }
+.color-picker {
+    width: 42px; height: 38px;
+    border: 1px solid rgba(59,130,246,0.2); border-radius: 8px;
+    background: transparent; cursor: pointer; padding: 2px; flex-shrink: 0;
+}
+
+/* ── Bilingual blocks ── */
+.bilingual-block { margin-bottom: 1.1rem; }
+.bilingual-label {
+    font-size: 0.75rem; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.5rem;
+}
+.bilingual-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(59,130,246,0.12);
+    border-radius: 10px; padding: 0.75rem;
+}
+.bilingual-grid .form-group { margin: 0; }
+
+.lang-badge {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;
+    margin-right: 4px; vertical-align: middle;
+}
+.lang-badge.es { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+.lang-badge.en { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }

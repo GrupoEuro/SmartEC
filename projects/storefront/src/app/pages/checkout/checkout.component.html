@@ -6,7 +6,7 @@
 
             <!-- STEP 1: IDENTITY -->
             <div class="step-card" [class.active]="currentStep() === 1" [class.completed]="currentStep() > 1">
-                <div class="step-header" (click)="setStep(1)">
+                <div class="step-header" (click)="currentStep() > 1 ? goToStep(1) : null">
                     <div class="step-indicator">
                         <span *ngIf="currentStep() === 1">1</span>
                         <span *ngIf="currentStep() > 1">✓</span>
@@ -31,7 +31,7 @@
                     </div>
 
                     <div class="auth-options">
-                        <button class="btn-primary" [disabled]="emailControl.invalid" (click)="nextStep()">
+                        <button class="btn-primary" [disabled]="emailControl.invalid" (click)="goToStep(2)">
                             {{ 'CHECKOUT.CONTINUE_SHIPPING' | translate }}
                         </button>
 
@@ -58,7 +58,7 @@
 
             <!-- STEP 2: SHIPPING -->
             <div class="step-card" [class.active]="currentStep() === 2" [class.completed]="currentStep() > 2">
-                <div class="step-header" (click)="currentStep() > 2 ? setStep(2) : null">
+                <div class="step-header" (click)="currentStep() > 2 ? goToStep(2) : null">
                     <div class="step-indicator">
                         <span *ngIf="currentStep() <= 2">2</span>
                         <span *ngIf="currentStep() > 2">✓</span>
@@ -129,25 +129,83 @@
                         </div>
                     </form>
 
-                    <button class="btn-primary" [disabled]="shippingForm.invalid" (click)="nextStep()">
-                        {{ 'CHECKOUT.CONTINUE_PAYMENT' | translate }}
+                    <button class="btn-primary" [disabled]="shippingForm.invalid" (click)="continueFromAddress()">
+                        {{ 'CHECKOUT.CONTINUE_SHIPPING_OPTION' | translate }}
                     </button>
                 </div>
             </div>
 
-            <!-- STEP 3: PAYMENT -->
-            <div class="step-card" [class.active]="currentStep() === 3">
-                <div class="step-header">
-                    <div class="step-indicator">3</div>
-                    <h3>{{ 'CHECKOUT.PAYMENT' | translate }}</h3>
+            <!-- STEP 3: SHIPPING METHOD -->
+            <div class="step-card" [class.active]="currentStep() === 3" [class.completed]="currentStep() > 3">
+                <div class="step-header" (click)="currentStep() > 3 ? goToStep(3) : null">
+                    <div class="step-indicator">
+                        <span *ngIf="currentStep() <= 3">3</span>
+                        <span *ngIf="currentStep() > 3">✓</span>
+                    </div>
+                    <div class="step-title-group">
+                        <h3>Método de Envío</h3>
+                        <p *ngIf="currentStep() > 3 && selectedRate()" class="step-summary">
+                            {{ selectedRate()?.carrier }} — {{ selectedRate()?.price | currency }}
+                        </p>
+                    </div>
                 </div>
 
                 <div class="step-content" [@expandCollapse]="currentStep() === 3 ? 'expanded' : 'collapsed'">
+
+                    <!-- Loading -->
+                    <div *ngIf="loadingRates()" class="rates-loading">
+                        <div class="spinner"></div>
+                        <p>Calculando opciones de envío…</p>
+                    </div>
+
+                    <!-- Error -->
+                    <div *ngIf="ratesError() && !loadingRates()" class="rates-error">
+                        ⚠️ {{ ratesError() }}
+                        <button class="btn-retry" (click)="loadShippingRates()">Reintentar</button>
+                    </div>
+
+                    <!-- Rates Table -->
+                    <div *ngIf="!loadingRates() && shippingRates().length > 0" class="rates-list">
+                        <div class="rate-option"
+                             *ngFor="let rate of shippingRates(); let i = index"
+                             [class.selected]="selectedRate()?.rateId === rate.rateId"
+                             (click)="selectRate(rate)">
+                            <div class="rate-radio">
+                                <div class="radio-circle" [class.checked]="selectedRate()?.rateId === rate.rateId"></div>
+                            </div>
+                            <div class="carrier-badge" [style.background]="carrierColor(rate.carrier)">
+                                {{ rate.carrier.substring(0,2).toUpperCase() }}
+                            </div>
+                            <div class="rate-info">
+                                <span class="rate-carrier">{{ rate.carrier }}</span>
+                                <span class="rate-service">{{ rate.serviceName }}</span>
+                                <span *ngIf="rate.estimatedDays" class="rate-days">{{ rate.estimatedDays }} día{{ rate.estimatedDays === 1 ? '' : 's' }}</span>
+                            </div>
+                            <div class="rate-price">
+                                {{ rate.price | currency }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary"
+                            [disabled]="!selectedRate() || loadingRates()"
+                            (click)="goToStep(4)">
+                        Continuar al Pago
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 4: PAYMENT -->
+            <div class="step-card" [class.active]="currentStep() === 4">
+                <div class="step-header">
+                    <div class="step-indicator">4</div>
+                    <h3>{{ 'CHECKOUT.PAYMENT' | translate }}</h3>
+                </div>
+
+                <div class="step-content" [@expandCollapse]="currentStep() === 4 ? 'expanded' : 'collapsed'">
                     <div class="payment-section" [formGroup]="paymentForm">
                         <div class="trust-banner">
-                            <div class="secure-badge">
-                                🛡️ {{ 'CHECKOUT.SECURE_SSL' | translate }}
-                            </div>
+                            <div class="secure-badge">🛡️ {{ 'CHECKOUT.SECURE_SSL' | translate }}</div>
                             <div class="payment-logos-row">
                                 <div class="mp-logo-group">
                                     <span class="mp-text">Mercado Pago</span>
@@ -166,7 +224,6 @@
                                 <div id="form-checkout__cardNumber" class="secure-input-container"></div>
                             </div>
                         </div>
-
                         <div class="form-row">
                             <div class="form-group secure-field-group">
                                 <label>{{ 'CHECKOUT.EXPIRATION' | translate }}</label>
@@ -177,31 +234,33 @@
                                 <div id="form-checkout__securityCode" class="secure-input-container"></div>
                             </div>
                         </div>
-
                         <div class="form-row">
                             <div class="form-group full-width">
                                 <input type="text" formControlName="cardHolder" class="form-input" placeholder=" ">
                                 <label class="floating-label">{{ 'CHECKOUT.CARD_HOLDER' | translate }}</label>
                             </div>
                         </div>
-
                         <div class="form-row">
                             <div class="form-group full-width">
-                                <input type="text" formControlName="identificationNumber" class="form-input"
-                                    placeholder=" ">
+                                <input type="text" formControlName="identificationNumber" class="form-input" placeholder=" ">
                                 <label class="floating-label">{{ 'CHECKOUT.DNI_INE' | translate }}</label>
                             </div>
                         </div>
 
-                        <div id="wallet_container"></div>
+                        <!-- Payment Error -->
+                        <div *ngIf="paymentError()" class="payment-error-banner">
+                            ❌ {{ paymentError() }}
+                        </div>
 
-                        <button class="btn-pay" (click)="processPayment()">
-                            {{ 'CHECKOUT.PAY_BUTTON' | translate: { amount: (cartService.cartSubtotal() | currency) } }}
+                        <button class="btn-pay" [disabled]="paymentProcessing()" (click)="processPayment()">
+                            <span *ngIf="!paymentProcessing()">
+                                {{ 'CHECKOUT.PAY_BUTTON' | translate: { amount: (orderTotal | currency) } }}
+                            </span>
+                            <span *ngIf="paymentProcessing()">⏳ Procesando…</span>
                         </button>
 
                         <p class="terms-text text-muted">
-                            {{ 'CHECKOUT.TERMS_AGREEMENT' | translate }} {{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate
-                            }}
+                            {{ 'CHECKOUT.TERMS_AGREEMENT' | translate }} {{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate }}
                         </p>
                     </div>
                 </div>
@@ -221,7 +280,7 @@
                             <span class="qty-badge">{{ item.quantity }}</span>
                         </div>
                         <div class="item-info">
-                            <p class="name">{{ item.product.name.en }}</p>
+                            <p class="name">{{ item.product.name.es || item.product.name.en }}</p>
                             <p class="price">{{ item.product.price | currency }}</p>
                         </div>
                     </div>
@@ -235,16 +294,18 @@
                     </div>
                     <div class="row">
                         <span>{{ 'CHECKOUT.SHIPPING_COST' | translate }}</span>
-                        @if (cartService.amountToFreeShipping() <= 0) { <span class="highlight-green">{{ 'CHECKOUT.FREE'
-                            | translate }}</span>
-                            } @else {
+                        @if (selectedRate()) {
+                            <span class="highlight-green">{{ selectedRate()!.price | currency }}</span>
+                        } @else if (cartService.amountToFreeShipping() <= 0) {
+                            <span class="highlight-green">Gratis</span>
+                        } @else {
                             <span class="text-muted">{{ 'CHECKOUT.CALCULATED_NEXT' | translate }}</span>
-                            }
+                        }
                     </div>
                     <div class="divider"></div>
                     <div class="row total">
                         <span>{{ 'CHECKOUT.TOTAL' | translate }}</span>
-                        <span class="total-amount">{{ cartService.cartSubtotal() | currency }}</span>
+                        <span class="total-amount">{{ orderTotal | currency }}</span>
                     </div>
                 </div>
             </div>

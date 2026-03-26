@@ -1,0 +1,205 @@
+<!-- Standard admin header -->
+<app-admin-page-header
+    iconName="zap"
+    [title]="pageTitle"
+    [showSaveCancel]="true"
+    [isSaving]="isSaving"
+    [isFormInvalid]="form.invalid"
+    (onSave)="onSubmit()"
+    (onCancel)="onCancel()">
+</app-admin-page-header>
+
+<div *ngIf="isLoading" class="loading-overlay">Loading…</div>
+
+<!-- FIXED preview panel — always visible top-right of viewport -->
+<div class="preview-fixed" *ngIf="!isLoading" [formGroup]="form">
+    <div class="preview-fixed-header">
+        <span>👁 Live Preview</span>
+        <div class="lang-toggle">
+            <button type="button" [class.active]="previewLang==='es'" (click)="previewLang='es'">ES</button>
+            <button type="button" [class.active]="previewLang==='en'" (click)="previewLang='en'">EN</button>
+        </div>
+    </div>
+    <div class="preview-popup" [style.background]="form.get('bgColor')?.value || '#1e293b'">
+        <div class="p-emoji">{{ form.get('emoji')?.value || '🎁' }}</div>
+        <div class="p-headline">{{ form.get('headline')?.get(previewLang)?.value || 'Your headline here' }}</div>
+        <div class="p-body">{{ form.get('body')?.get(previewLang)?.value || 'Your message here…' }}</div>
+        <div class="p-coupon" *ngIf="form.get('couponCode')?.value">
+            <code>{{ form.get('couponCode')?.value }}</code>
+            <span>Copiar</span>
+        </div>
+        <button type="button" class="p-cta">{{ form.get('ctaLabel')?.get(previewLang)?.value || 'Apply' }}</button>
+        <div class="p-dismiss"></div>
+    </div>
+</div>
+
+<!-- Form — single column, padded right to avoid overlap with fixed panel -->
+<div class="form-wrap" [formGroup]="form" *ngIf="!isLoading">
+
+    <!-- Basic Info -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">📋</span> Basic Info</h3>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Internal Name *</label>
+                <input formControlName="name" class="form-control" placeholder="e.g. Summer Exit Popup">
+            </div>
+            <div class="form-group">
+                <label>Status *</label>
+                <select formControlName="status" class="form-control">
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="scheduled">Scheduled</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Priority (higher fires first)</label>
+                <input type="number" formControlName="priority" class="form-control" min="0">
+            </div>
+            <div class="form-group">
+                <label>Max Shows Per User <small>(0 = always)</small></label>
+                <input type="number" formControlName="maxShowsPerUser" class="form-control" min="0">
+            </div>
+        </div>
+    </section>
+
+    <!-- Popup Display -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">🎨</span> Popup Display</h3>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Emoji / Icon</label>
+                <input formControlName="emoji" class="form-control emoji-input" placeholder="🎁" maxlength="4">
+            </div>
+            <div class="form-group">
+                <label>Background Color</label>
+                <div class="color-row">
+                    <input type="color" formControlName="bgColor" class="color-picker">
+                    <input formControlName="bgColor" class="form-control" placeholder="#1e293b">
+                </div>
+            </div>
+        </div>
+
+        <div class="bilingual-block">
+            <div class="bilingual-label">Headline *</div>
+            <div class="bilingual-grid" formGroupName="headline">
+                <div class="form-group">
+                    <label><span class="lang-badge es">ES</span> Español</label>
+                    <input formControlName="es" class="form-control" placeholder="¡Espera! No te vayas con las manos vacías">
+                </div>
+                <div class="form-group">
+                    <label><span class="lang-badge en">EN</span> English</label>
+                    <input formControlName="en" class="form-control" placeholder="Wait! Don't leave empty-handed">
+                </div>
+            </div>
+        </div>
+
+        <div class="bilingual-block">
+            <div class="bilingual-label">Body Text *</div>
+            <div class="bilingual-grid" formGroupName="body">
+                <div class="form-group">
+                    <label><span class="lang-badge es">ES</span> Español</label>
+                    <textarea formControlName="es" class="form-control" rows="3" placeholder="Usa el código para obtener descuento..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><span class="lang-badge en">EN</span> English</label>
+                    <textarea formControlName="en" class="form-control" rows="3" placeholder="Use code to get a discount..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="bilingual-block">
+            <div class="bilingual-label">CTA Button *</div>
+            <div class="bilingual-grid" formGroupName="ctaLabel">
+                <div class="form-group">
+                    <label><span class="lang-badge es">ES</span> Español</label>
+                    <input formControlName="es" class="form-control" placeholder="Aplicar y Seguir Comprando">
+                </div>
+                <div class="form-group">
+                    <label><span class="lang-badge en">EN</span> English</label>
+                    <input formControlName="en" class="form-control" placeholder="Apply & Continue Shopping">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trigger -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">🎯</span> Trigger</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Trigger Type *</label>
+                <select formControlName="trigger" class="form-control">
+                    <option value="exit_intent">🚪 Exit Intent (mouse leaves viewport)</option>
+                    <option value="welcome_user">👋 Welcome User (first visit)</option>
+                    <option value="timed_delay">⏱ Timed Delay (after N seconds)</option>
+                    <option value="scroll_depth">📜 Scroll Depth (after N% scroll)</option>
+                    <option value="seasonal">🗓 Seasonal (date range only)</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row" *ngIf="trigger === 'timed_delay'">
+            <div class="form-group">
+                <label>Delay (milliseconds)</label>
+                <input type="number" formControlName="triggerDelay" class="form-control" min="500" step="500">
+                <small class="form-hint">e.g. 5000 = show after 5 seconds</small>
+            </div>
+        </div>
+        <div class="form-row" *ngIf="trigger === 'scroll_depth'">
+            <div class="form-group">
+                <label>Scroll Threshold (%)</label>
+                <input type="number" formControlName="scrollThreshold" class="form-control" min="1" max="100">
+                <small class="form-hint">e.g. 50 = show when user scrolled 50% of the page</small>
+            </div>
+        </div>
+    </section>
+
+    <!-- Audience -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">👥</span> Audience Rules</h3>
+        <div class="form-group">
+            <label class="check-label">
+                <input type="checkbox" formControlName="audienceNewOnly">
+                Show to new visitors only (first visit)
+            </label>
+            <label class="check-label">
+                <input type="checkbox" formControlName="audienceCartOnly">
+                Show only when cart has items
+            </label>
+        </div>
+    </section>
+
+    <!-- Coupon -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">🏷</span> Coupon Code (optional)</h3>
+        <div class="form-group">
+            <label>Link to Coupon</label>
+            <select formControlName="couponCode" class="form-control">
+                <option value="">— No coupon (informational popup) —</option>
+                <option *ngFor="let c of availableCoupons" [value]="c.code">
+                    {{ c.code }} — {{ c.type === 'percentage' ? c.value + '%' : '$' + c.value }} off
+                </option>
+            </select>
+            <small class="form-hint">Coupon code will be shown and copyable inside the popup.</small>
+        </div>
+    </section>
+
+    <!-- Schedule -->
+    <section class="form-section">
+        <h3 class="section-title"><span class="section-icon">📅</span> Schedule (optional)</h3>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" formControlName="startDate" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" formControlName="endDate" class="form-control">
+            </div>
+        </div>
+        <small class="form-hint">Leave empty for no date restriction.</small>
+    </section>
+
+</div><!-- /form-wrap -->

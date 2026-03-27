@@ -107,7 +107,10 @@
     "BUY_AGAIN": "Buy Again",
     "MANAGE_LOCATIONS": "Manage shipping locations",
     "EDIT_PROFILE": "Edit login & name",
-    "SECURE_SSL": "Secure SSL Payment"
+    "SECURE_SSL": "Secure SSL Payment",
+    "SHIPPING_METHOD": "Shipping Method",
+    "CALCULATING_RATES": "Calculating shipping options…",
+    "RETRY": "Retry"
   },
   "CATALOG_QUICK_VIEW_BTN": "Quick View",
   "HERO": {
@@ -563,7 +566,14 @@
     "INACTIVE": "Inactive",
     "EXPORT": "Export",
     "VIEW": "View",
-    "REQUIRED": "Required"
+    "REQUIRED": "Required",
+    "ORDER_NUMBER": "Order #"
+  },
+  "ORDER_CONFIRMATION": {
+    "TITLE": "Order Confirmed! 🎉",
+    "EMAIL_SENT": "We've sent a confirmation email to",
+    "RETURN_HOME": "Return to Home",
+    "TRACK_ORDER": "Track My Order"
   },
   "PRODUCT_DETAIL": {
     "BREADCRUMB_HOME": "Home",

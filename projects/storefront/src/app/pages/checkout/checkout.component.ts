@@ -1,12 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { trigger, transition, style, animate, state } from '@angular/animations';
 import { CartService } from '@lib/core';
 import { AuthService } from '@lib/core';
 import { MercadoPagoService } from '../../core/services/mercadopago.service';
+import { ShippingConfigService } from '../../core/services/shipping-config.service';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Firestore, collection, addDoc, serverTimestamp } from '@angular/fire/firestore';
 
@@ -33,14 +34,16 @@ interface ShippingRate {
         ])
     ]
 })
-export class CheckoutComponent {
-    fb           = inject(FormBuilder);
-    cartService  = inject(CartService);
-    authService  = inject(AuthService);
-    mpService    = inject(MercadoPagoService);
-    router       = inject(Router);
-    functions    = inject(Functions);
-    firestore    = inject(Firestore);
+export class CheckoutComponent implements OnInit {
+    fb              = inject(FormBuilder);
+    cartService     = inject(CartService);
+    authService     = inject(AuthService);
+    mpService       = inject(MercadoPagoService);
+    shippingConfig  = inject(ShippingConfigService);
+    translate       = inject(TranslateService);
+    router          = inject(Router);
+    functions       = inject(Functions);
+    firestore       = inject(Firestore);
 
     // Steps: 1=Identity, 2=Address, 3=Shipping, 4=Payment
     currentStep = signal(1);
@@ -80,6 +83,11 @@ export class CheckoutComponent {
         if (user) this.emailControl.setValue(user.email || '');
     }
 
+    async ngOnInit() {
+        // Load shipping rules once — instant for preset mode, no Skydropx call needed
+        await this.shippingConfig.load();
+    }
+
     // ── Navigation ────────────────────────────────────────────────────────────
 
     goToStep(step: number) {
@@ -116,14 +124,33 @@ export class CheckoutComponent {
         this.ratesError.set(null);
         this.selectedRate.set(null);
         this.shippingRates.set([]);
+
         try {
-            const zip     = this.shippingForm.value.zip || '';
-            const parcels = this.buildParcel();
-            const fn      = httpsCallable<any, { rates: ShippingRate[] }>(this.functions, 'skydropxGetRates');
-            const res     = await fn({ zipTo: zip, parcel: parcels });
-            const rates   = res.data?.rates ?? [];
-            this.shippingRates.set(rates);
-            if (rates.length === 0) this.ratesError.set('No hay opciones de envío disponibles para este código postal.');
+            const mode = this.shippingConfig.mode;
+
+            if (mode === 'preset') {
+                // Instant — no network call. Rates come from admin config.
+                const subtotal = this.cartService.cartSubtotal();
+                const lang     = this.translate.currentLang || this.translate.defaultLang || 'es';
+                const rates    = this.shippingConfig.buildPresetRates(subtotal, lang);
+                this.shippingRates.set(rates as any);
+                if (rates.length === 1) {
+                    // Auto-select single option (e.g. free shipping)
+                    this.selectedRate.set(rates[0] as any);
+                }
+                if (rates.length === 0) {
+                    this.ratesError.set('No hay opciones de envío configuradas.');
+                }
+            } else {
+                // Live mode: query Skydropx via Cloud Function
+                const zip     = this.shippingForm.value.zip || '';
+                const parcels = this.buildParcel();
+                const fn      = httpsCallable<any, { rates: ShippingRate[] }>(this.functions, 'skydropxGetRates');
+                const res     = await fn({ zipTo: zip, parcel: parcels });
+                const rates   = res.data?.rates ?? [];
+                this.shippingRates.set(rates);
+                if (rates.length === 0) this.ratesError.set('No hay opciones de envío disponibles para este código postal.');
+            }
         } catch (e: any) {
             this.ratesError.set('No se pudieron cargar las opciones de envío. Verifica el código postal.');
             console.error('[Checkout] Rates error:', e);
@@ -223,7 +250,7 @@ export class CheckoutComponent {
             });
 
             // 4. Navigate to confirmation
-            this.router.navigate(['/order-confirmation'], { state: { orderId } });
+            this.router.navigate(['/order-confirmation'], { state: { orderId, email } });
 
         } catch (err: any) {
             console.error('[Checkout] Payment error:', err);

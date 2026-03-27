@@ -1,4 +1,7 @@
 import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { CartService } from '@lib/core';
 
 export const routes: Routes = [
     { path: '', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
@@ -10,7 +13,12 @@ export const routes: Routes = [
     {
         path: 'checkout',
         loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent),
-        title: 'NAVBAR.CHECKOUT'
+        title: 'NAVBAR.CHECKOUT',
+        canActivate: [() => {
+            const cartService = inject(CartService);
+            const router = inject(Router);
+            return cartService.cartCount() > 0 ? true : router.createUrlTree(['/catalog']);
+        }]
     },
     {
         path: 'order-confirmation',

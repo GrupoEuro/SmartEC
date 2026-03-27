@@ -3905,7 +3905,8 @@
       "SOCIAL": "Social Media",
       "HOURS": "Business Hours",
       "FEATURES": "Features",
-      "SEO": "SEO & Metadata"
+      "SEO": "SEO & Metadata",
+      "SHIPPING": "Shipping Rules"
     },
     "GENERAL": {
       "TITLE": "General Information",
@@ -4005,6 +4006,25 @@
       "META_DESC_PLACEHOLDER": "A brief description of your site for search engines...",
       "OG_IMAGE": "Social Media Image (OG Image)",
       "OG_IMAGE_PLACEHOLDER": "Image URL (https://...)"
+    },
+    "SHIPPING": {
+      "TITLE": "Shipping Rules",
+      "MODE_HINT": "Choose how shipping options are presented to customers at checkout.",
+      "MODE_PRESET": "Curated Rates (Recommended)",
+      "MODE_PRESET_HINT": "Show 1-2 fixed rate options you define. Instant, no API call.",
+      "MODE_LIVE": "Live Skydropx Rates",
+      "MODE_LIVE_HINT": "Show all available carriers from Skydropx in real time. Best if your team picks the carrier after purchase.",
+      "FREE_SHIPPING": "Free Shipping",
+      "FREE_SHIPPING_HINT": "Customers automatically qualify when their cart reaches the threshold below.",
+      "FREE_THRESHOLD": "Order minimum for free shipping",
+      "FREE_THRESHOLD_HINT": "The cart progress bar in the drawer will also use this value.",
+      "STANDARD_RATE": "Standard Delivery",
+      "EXPRESS_RATE": "Express Delivery",
+      "LABEL_ES": "Label (Spanish)",
+      "LABEL_EN": "Label (English)",
+      "PRICE_MXN": "Price",
+      "MAX_DAYS": "Max Delivery Days",
+      "DAYS": "days"
     },
     "SUCCESS": "Settings saved successfully",
     "COPIED": "Copied to clipboard",

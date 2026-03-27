@@ -150,7 +150,10 @@
     "BUY_AGAIN": "Comprar de nuevo",
     "MANAGE_LOCATIONS": "Administrar direcciones",
     "EDIT_PROFILE": "Editar perfil",
-    "SECURE_SSL": "Pago Seguro SSL"
+    "SECURE_SSL": "Pago Seguro SSL",
+    "SHIPPING_METHOD": "Método de Envío",
+    "CALCULATING_RATES": "Calculando opciones de envío…",
+    "RETRY": "Reintentar"
   },
   "CATALOG_QUICK_VIEW_BTN": "Vista Rápida",
   "COMMON": {
@@ -196,7 +199,14 @@
     "ACTIVE": "Activo",
     "INACTIVE": "Inactivo",
     "EXPORT": "Exportar",
-    "VIEW": "Ver"
+    "VIEW": "Ver",
+    "ORDER_NUMBER": "Pedido #"
+  },
+  "ORDER_CONFIRMATION": {
+    "TITLE": "¡Orden Confirmada! 🎉",
+    "EMAIL_SENT": "Hemos enviado un correo de confirmación a",
+    "RETURN_HOME": "Volver al Inicio",
+    "TRACK_ORDER": "Rastrear Mi Orden"
   },
   "CLIENTS": {
     "OVERLINE": "Nuestros Clientes",

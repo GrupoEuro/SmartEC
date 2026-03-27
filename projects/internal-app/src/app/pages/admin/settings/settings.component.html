@@ -32,6 +32,10 @@
                 <app-icon name="search" [size]="18"></app-icon>
                 <span>{{ 'WEBSITE_SETTINGS.TABS.SEO' | translate }}</span>
             </button>
+            <button type="button" class="tab-link" [class.active]="activeTab === 'shipping'" (click)="setActiveTab('shipping')">
+                <app-icon name="truck" [size]="18"></app-icon>
+                <span>{{ 'WEBSITE_SETTINGS.TABS.SHIPPING' | translate }}</span>
+            </button>
         </div>
 
         <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()" class="admin-form">
@@ -606,6 +610,179 @@
                         </label>
                         <input type="text" formControlName="ogImage" class="form-control"
                             [placeholder]="'WEBSITE_SETTINGS.SEO.OG_IMAGE_PLACEHOLDER' | translate">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping Rules Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'shipping'" formGroupName="shipping">
+                <div class="form-section" formGroupName="rules">
+
+                    <!-- Section: Rate Mode -->
+                    <h3 class="section-title">
+                        <app-icon name="truck" [size]="24" class="text-blue-500"></app-icon>
+                        {{ 'WEBSITE_SETTINGS.SHIPPING.TITLE' | translate }}
+                    </h3>
+
+                    <div class="feature-card mb-8">
+                        <p class="text-sm text-[var(--admin-text-secondary)] mb-4">
+                            {{ 'WEBSITE_SETTINGS.SHIPPING.MODE_HINT' | translate }}
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Preset Mode -->
+                            <label class="cursor-pointer flex items-start gap-3 p-4 rounded-xl border-2 transition-all"
+                                [ngClass]="{
+                                    'border-blue-500 bg-blue-500/5': settingsForm.get('shipping.rules.mode')?.value === 'preset',
+                                    'border-white/10': settingsForm.get('shipping.rules.mode')?.value !== 'preset'
+                                }">
+                                <input type="radio" formControlName="mode" value="preset" class="mt-1">
+                                <div>
+                                    <p class="font-semibold">{{ 'WEBSITE_SETTINGS.SHIPPING.MODE_PRESET' | translate }}</p>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mt-1">
+                                        {{ 'WEBSITE_SETTINGS.SHIPPING.MODE_PRESET_HINT' | translate }}
+                                    </p>
+                                </div>
+                            </label>
+                            <!-- Live Mode -->
+                            <label class="cursor-pointer flex items-start gap-3 p-4 rounded-xl border-2 transition-all"
+                                [ngClass]="{
+                                    'border-blue-500 bg-blue-500/5': settingsForm.get('shipping.rules.mode')?.value === 'live',
+                                    'border-white/10': settingsForm.get('shipping.rules.mode')?.value !== 'live'
+                                }">
+                                <input type="radio" formControlName="mode" value="live" class="mt-1">
+                                <div>
+                                    <p class="font-semibold">{{ 'WEBSITE_SETTINGS.SHIPPING.MODE_LIVE' | translate }}</p>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mt-1">
+                                        {{ 'WEBSITE_SETTINGS.SHIPPING.MODE_LIVE_HINT' | translate }}
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Section: Free Shipping -->
+                    <div class="form-section mb-6" formGroupName="freeShipping">
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-green-500/10 text-green-500">
+                                    <app-icon name="gift" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('shipping.rules.freeShipping.enabled'))"
+                                        [label]="'WEBSITE_SETTINGS.SHIPPING.FREE_SHIPPING' | translate">
+                                    </app-toggle-switch>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mt-2">
+                                        {{ 'WEBSITE_SETTINGS.SHIPPING.FREE_SHIPPING_HINT' | translate }}
+                                    </p>
+                                    <div class="mt-4" *ngIf="settingsForm.get('shipping.rules.freeShipping.enabled')?.value">
+                                        <label class="block mb-2 font-medium text-sm">
+                                            {{ 'WEBSITE_SETTINGS.SHIPPING.FREE_THRESHOLD' | translate }}
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[var(--admin-text-secondary)] font-medium">$</span>
+                                            <input type="number" formControlName="threshold" min="0" class="form-control w-48"
+                                                placeholder="5000">
+                                            <span class="text-[var(--admin-text-secondary)] text-sm">MXN</span>
+                                        </div>
+                                        <small class="form-hint">{{ 'WEBSITE_SETTINGS.SHIPPING.FREE_THRESHOLD_HINT' | translate }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Standard Rate -->
+                    <div class="form-section mb-6" formGroupName="standardRate">
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-blue-500/10 text-blue-500">
+                                    <app-icon name="package" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('shipping.rules.standardRate.enabled'))"
+                                        [label]="'WEBSITE_SETTINGS.SHIPPING.STANDARD_RATE' | translate">
+                                    </app-toggle-switch>
+                                    <div class="mt-4" *ngIf="settingsForm.get('shipping.rules.standardRate.enabled')?.value">
+                                        <div class="form-row cols-2 mb-4">
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.LABEL_ES' | translate }}</label>
+                                                <input type="text" formControlName="labelEs" class="form-control"
+                                                    placeholder="Envío Estándar (3-5 días)">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.LABEL_EN' | translate }}</label>
+                                                <input type="text" formControlName="labelEn" class="form-control"
+                                                    placeholder="Standard Shipping (3-5 days)">
+                                            </div>
+                                        </div>
+                                        <div class="form-row cols-2">
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.PRICE_MXN' | translate }}</label>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[var(--admin-text-secondary)]">$</span>
+                                                    <input type="number" formControlName="price" min="0" class="form-control w-32">
+                                                    <span class="text-sm text-[var(--admin-text-secondary)]">MXN</span>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.MAX_DAYS' | translate }}</label>
+                                                <div class="flex items-center gap-2">
+                                                    <input type="number" formControlName="maxDays" min="1" class="form-control w-24">
+                                                    <span class="text-sm text-[var(--admin-text-secondary)]">{{ 'WEBSITE_SETTINGS.SHIPPING.DAYS' | translate }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Express Rate -->
+                    <div class="form-section" formGroupName="expressRate">
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-orange-500/10 text-orange-500">
+                                    <app-icon name="zap" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <app-toggle-switch [control]="$any(settingsForm.get('shipping.rules.expressRate.enabled'))"
+                                        [label]="'WEBSITE_SETTINGS.SHIPPING.EXPRESS_RATE' | translate">
+                                    </app-toggle-switch>
+                                    <div class="mt-4" *ngIf="settingsForm.get('shipping.rules.expressRate.enabled')?.value">
+                                        <div class="form-row cols-2 mb-4">
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.LABEL_ES' | translate }}</label>
+                                                <input type="text" formControlName="labelEs" class="form-control"
+                                                    placeholder="Envío Express (1-2 días)">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.LABEL_EN' | translate }}</label>
+                                                <input type="text" formControlName="labelEn" class="form-control"
+                                                    placeholder="Express Shipping (1-2 days)">
+                                            </div>
+                                        </div>
+                                        <div class="form-row cols-2">
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.PRICE_MXN' | translate }}</label>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[var(--admin-text-secondary)]">$</span>
+                                                    <input type="number" formControlName="price" min="0" class="form-control w-32">
+                                                    <span class="text-sm text-[var(--admin-text-secondary)]">MXN</span>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="text-sm mb-1 block">{{ 'WEBSITE_SETTINGS.SHIPPING.MAX_DAYS' | translate }}</label>
+                                                <div class="flex items-center gap-2">
+                                                    <input type="number" formControlName="maxDays" min="1" class="form-control w-24">
+                                                    <span class="text-sm text-[var(--admin-text-secondary)]">{{ 'WEBSITE_SETTINGS.SHIPPING.DAYS' | translate }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

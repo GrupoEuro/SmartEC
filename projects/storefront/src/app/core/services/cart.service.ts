@@ -1,26 +1,20 @@
-import { Injectable, signal, computed, effect, inject, PLATFORM_ID, Injector } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CartItem, CartState } from '../models/cart.model';
 import { Product } from '../models/product.model';
 import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
+import { ShippingConfigService } from './shipping-config.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
-    private injector = inject(Injector);
-    private _firestore: Firestore | null = null;
+    private firestore = inject(Firestore);
     private authService = inject(AuthService);
     private platformId = inject(PLATFORM_ID);
-
-    private get firestore(): Firestore {
-        if (!this._firestore) {
-            this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
-        }
-        return this._firestore!;
-    }
+    private shippingConfig = inject(ShippingConfigService);
 
     // State Signals
     private cartState = signal<CartState>(this.loadFromStorage());
@@ -44,9 +38,10 @@ export class CartService {
         }, 0)
     );
 
-    readonly freeShippingThreshold = 5000; // Example: $5,000 MXN
+    /** Dynamic free-shipping threshold — reads from admin Firestore config when available */
+    readonly freeShippingThreshold = computed(() => this.shippingConfig.freeThreshold);
     readonly amountToFreeShipping = computed(() => {
-        const remaining = this.freeShippingThreshold - this.cartSubtotal();
+        const remaining = this.freeShippingThreshold() - this.cartSubtotal();
         return remaining > 0 ? remaining : 0;
     });
 

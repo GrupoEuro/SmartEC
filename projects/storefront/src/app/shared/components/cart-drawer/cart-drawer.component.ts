@@ -66,7 +66,8 @@ import { CartService } from '../../../core/services/cart.service';
                                         <div class="item-details">
                                             <h4>{{ translate.currentLang === 'es' ? (item.product.name.es || item.product.name.en) : (item.product.name.en || item.product.name.es) }}</h4>
                                             <div class="item-meta">
-                                                <span class="price">{{ item.product.price | currency }}</span>
+                                                <span class="unit-price">{{ item.product.price | currency }} × {{ item.quantity }}</span>
+                                                <span class="price">{{ (item.product.price * item.quantity) | currency }}</span>
                                             </div>
                                             <div class="quantity-controls">
                                                 <button (click)="updateQty(item.product.id, item.quantity - 1)">-</button>
@@ -258,7 +259,12 @@ import { CartService } from '../../../core/services/cart.service';
             color: var(--text-primary);
             line-height: 1.4;
         }
-        .item-meta { display: flex; justify-content: space-between; align-items: center; }
+        .item-meta { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; }
+        .unit-price {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            width: 100%;
+        }
         .price { 
             font-weight: 800; 
             color: var(--text-primary); 
@@ -414,7 +420,7 @@ export class CartDrawerComponent {
     }
 
     get shippingProgress() {
-        const threshold = this.cartService.freeShippingThreshold;
+        const threshold = this.cartService.freeShippingThreshold();
         const current = this.cartService.cartSubtotal();
         return Math.min(100, (current / threshold) * 100);
     }

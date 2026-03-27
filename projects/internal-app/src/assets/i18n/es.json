@@ -5105,9 +5105,10 @@
     "TABS": {
       "GENERAL": "General",
       "SOCIAL": "Social",
-      "HOURS": "Hours",
-      "FEATURES": "Features",
-      "SEO": "Seo"
+      "HOURS": "Horario",
+      "FEATURES": "Funciones",
+      "SEO": "SEO",
+      "SHIPPING": "Envíos"
     },
     "GENERAL": {
       "TITLE": "Información General",
@@ -5196,6 +5197,25 @@
       "OG_IMAGE": "Og Image",
       "META_DESC_PLACEHOLDER": "Descripción meta para SEO",
       "OG_IMAGE_PLACEHOLDER": "URL de imagen Open Graph"
+    },
+    "SHIPPING": {
+      "TITLE": "Reglas de Envío",
+      "MODE_HINT": "Elige cómo se presentan las opciones de envío a los clientes en el checkout.",
+      "MODE_PRESET": "Tarifas Curadas (Recomendado)",
+      "MODE_PRESET_HINT": "Muestra 1-2 opciones fijas que tú defines. Instantáneo, sin llamada a la API.",
+      "MODE_LIVE": "Tarifas en Tiempo Real (Skydropx)",
+      "MODE_LIVE_HINT": "Muestra todos los carriers disponibles en tiempo real. Útil si tu equipo escoge el carrier después de la compra.",
+      "FREE_SHIPPING": "Envío Gratis",
+      "FREE_SHIPPING_HINT": "Los clientes califican automáticamente cuando su carrito alcanza el mínimo configurado.",
+      "FREE_THRESHOLD": "Mínimo de compra para envío gratis",
+      "FREE_THRESHOLD_HINT": "La barra de progreso del carrito también usará este valor.",
+      "STANDARD_RATE": "Envío Estándar",
+      "EXPRESS_RATE": "Envío Express",
+      "LABEL_ES": "Etiqueta (Español)",
+      "LABEL_EN": "Etiqueta (Inglés)",
+      "PRICE_MXN": "Precio",
+      "MAX_DAYS": "Días máx. de entrega",
+      "DAYS": "días"
     },
     "TITLE": "Configuración del Sitio Web",
     "SUBTITLE": "Configurar opciones generales e información de contacto",

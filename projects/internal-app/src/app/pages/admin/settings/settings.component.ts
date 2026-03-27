@@ -27,7 +27,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     settingsForm: FormGroup;
     isLoading = true;
     isSaving = false;
-    activeTab: 'general' | 'social' | 'features' | 'hours' | 'seo' = 'general';
+    activeTab: 'general' | 'social' | 'features' | 'hours' | 'seo' | 'shipping' = 'general';
     daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
     // Character counters
@@ -81,6 +81,38 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 metaTitle: ['{{page_title}} | {{site_name}}'],
                 metaDescription: [''],
                 ogImage: ['']
+            }),
+            shipping: this.fb.group({
+                origin: this.fb.group({
+                    street:   [''],
+                    number:   [''],
+                    colonia:  [''],
+                    city:     [''],
+                    province: [''],
+                    zip:      [''],
+                    country:  ['MX']
+                }),
+                rules: this.fb.group({
+                    mode:          ['preset'],
+                    freeShipping:  this.fb.group({
+                        enabled:   [true],
+                        threshold: [5000, [Validators.required, Validators.min(0)]]
+                    }),
+                    standardRate: this.fb.group({
+                        enabled:  [true],
+                        labelEs:  ['Envío Estándar (3-5 días)'],
+                        labelEn:  ['Standard Shipping (3-5 days)'],
+                        price:    [150, [Validators.required, Validators.min(0)]],
+                        maxDays:  [5,   [Validators.required, Validators.min(1)]]
+                    }),
+                    expressRate: this.fb.group({
+                        enabled:  [false],
+                        labelEs:  ['Envío Express (1-2 días)'],
+                        labelEn:  ['Express Shipping (1-2 days)'],
+                        price:    [280, [Validators.required, Validators.min(0)]],
+                        maxDays:  [2,   [Validators.required, Validators.min(1)]]
+                    })
+                })
             })
         });
     }
@@ -115,7 +147,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         });
     }
 
-    setActiveTab(tab: 'general' | 'social' | 'features' | 'hours' | 'seo') {
+    setActiveTab(tab: 'general' | 'social' | 'features' | 'hours' | 'seo' | 'shipping') {
         this.activeTab = tab;
     }
 

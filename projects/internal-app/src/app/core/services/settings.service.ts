@@ -43,7 +43,28 @@ export interface ShippingSettings {
         province: string;
         zip: string;
         country: string;
-    }
+    };
+    rules?: {
+        mode: 'preset' | 'live';
+        freeShipping: {
+            enabled: boolean;
+            threshold: number;
+        };
+        standardRate: {
+            enabled: boolean;
+            labelEs: string;
+            labelEn: string;
+            price: number;
+            maxDays: number;
+        };
+        expressRate: {
+            enabled: boolean;
+            labelEs: string;
+            labelEn: string;
+            price: number;
+            maxDays: number;
+        };
+    };
 }
 
 export interface WebsiteSettings {
@@ -125,6 +146,12 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
             province: 'San Luis Potosí',
             zip: '78140',
             country: 'MX'
+        },
+        rules: {
+            mode: 'preset' as const,
+            freeShipping: { enabled: true, threshold: 5000 },
+            standardRate: { enabled: true, labelEs: 'Envío Estándar (3-5 días)', labelEn: 'Standard Shipping (3-5 days)', price: 150, maxDays: 5 },
+            expressRate: { enabled: false, labelEs: 'Envío Express (1-2 días)', labelEn: 'Express Shipping (1-2 days)', price: 280, maxDays: 2 }
         }
     }
 };
@@ -155,7 +182,10 @@ export class SettingsService {
                 businessHours: { ...DEFAULT_SETTINGS.businessHours, ...data['businessHours'] },
                 features: { ...DEFAULT_SETTINGS.features, ...data['features'] },
                 seo: { ...DEFAULT_SETTINGS.seo, ...data['seo'] },
-                shipping: { ...DEFAULT_SETTINGS.shipping, ...shipData['shipping'], ...(shipData['origin'] ? { origin: shipData['origin'] } : {}) }
+                shipping: {
+                    origin: { ...DEFAULT_SETTINGS.shipping.origin, ...(shipData['origin'] || {}) },
+                    rules:  { ...DEFAULT_SETTINGS.shipping.rules,  ...(shipData['rules']  || {}) }
+                }
             });
             observer.complete();
         }).catch(err => {
@@ -167,16 +197,19 @@ export class SettingsService {
 
     async updateSettings(settings: Partial<WebsiteSettings>): Promise<void> {
         const { shipping, ...websiteConfig } = settings;
-        
+
         const promises = [];
         if (Object.keys(websiteConfig).length > 0) {
             promises.push(setDoc(this.configDocRef, websiteConfig, { merge: true }));
         }
         if (shipping) {
-            // Note: Cloud function expects { origin: {...} } at root of config/shipping
-            promises.push(setDoc(this.shippingDocRef, { origin: shipping.origin, updatedAt: new Date().toISOString() }, { merge: true }));
+            // Persist both origin (for Cloud Function) and rules (for storefront checkout)
+            const shipPayload: any = { updatedAt: new Date().toISOString() };
+            if (shipping.origin) shipPayload.origin = shipping.origin;
+            if (shipping.rules)  shipPayload.rules  = shipping.rules;
+            promises.push(setDoc(this.shippingDocRef, shipPayload, { merge: true }));
         }
-        
+
         await Promise.all(promises);
     }
 }

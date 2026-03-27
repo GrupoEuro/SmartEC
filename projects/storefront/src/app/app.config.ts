@@ -1,4 +1,5 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, APP_INITIALIZER } from '@angular/core';
+import { ShippingConfigService } from './core/services/shipping-config.service';
 import { provideImageLoader } from './core/services/config/image-loader.config';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
@@ -46,7 +47,13 @@ export const appConfig: ApplicationConfig = {
     { provide: 'STORAGE', useExisting: Storage },
     { provide: 'FUNCTIONS', useExisting: Functions },
     provideImageLoader(),
-    provideAnimationsAsync()
+    provideAnimationsAsync(),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (svc: ShippingConfigService) => () => svc.load(),
+      deps: [ShippingConfigService],
+      multi: true
+    }
   ]
 };
 

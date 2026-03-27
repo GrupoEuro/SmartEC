@@ -101,6 +101,7 @@
     "SHIPPING_COST": "Shipping",
     "FREE": "Free",
     "CALCULATED_NEXT": "Calculated at next step",
+    "FREE_SHIPPING_QUALIFIED": "🎉 Your order qualifies for free shipping!",
     "TOTAL": "Total",
     "TRACK": "Track",
     "RETURN": "Return",

@@ -145,7 +145,9 @@
                     <div class="step-title-group">
                         <h3>{{ 'CHECKOUT.SHIPPING_METHOD' | translate }}</h3>
                         <p *ngIf="currentStep() > 3 && selectedRate()" class="step-summary">
-                            {{ selectedRate()?.carrier }} — {{ selectedRate()?.price | currency }}
+                            {{ selectedRate()?.serviceName }} —
+                            <span *ngIf="selectedRate()?.price === 0" class="highlight-green">{{ 'CHECKOUT.FREE' | translate }}</span>
+                            <span *ngIf="selectedRate()!.price > 0">{{ selectedRate()!.price | currency }}</span>
                         </p>
                     </div>
                 </div>
@@ -164,25 +166,37 @@
                         <button class="btn-retry" (click)="loadShippingRates()">{{ 'CHECKOUT.RETRY' | translate }}</button>
                     </div>
 
-                    <!-- Rates Table -->
+                    <!-- Free shipping qualified banner -->
+                    <div *ngIf="!loadingRates() && shippingConfig.rules().freeShipping.enabled &&
+                                 cartService.cartSubtotal() >= shippingConfig.rules().freeShipping.threshold"
+                         class="free-shipping-banner">
+                        {{ 'CHECKOUT.FREE_SHIPPING_QUALIFIED' | translate }}
+                    </div>
+
+                    <!-- Rates List -->
                     <div *ngIf="!loadingRates() && shippingRates().length > 0" class="rates-list">
                         <div class="rate-option"
                              *ngFor="let rate of shippingRates(); let i = index"
                              [class.selected]="selectedRate()?.rateId === rate.rateId"
+                             [class.rate-free]="rate.isFree"
                              (click)="selectRate(rate)">
                             <div class="rate-radio">
                                 <div class="radio-circle" [class.checked]="selectedRate()?.rateId === rate.rateId"></div>
                             </div>
-                            <div class="carrier-badge" [style.background]="carrierColor(rate.carrier)">
-                                {{ rate.carrier.substring(0,2).toUpperCase() }}
+                            <div class="rate-icon">
+                                <span *ngIf="rate.isFree">🎉</span>
+                                <span *ngIf="!rate.isFree && rate.rateId === 'express'">⚡</span>
+                                <span *ngIf="!rate.isFree && rate.rateId !== 'express' && !rate.isFree">🚚</span>
                             </div>
                             <div class="rate-info">
-                                <span class="rate-carrier">{{ rate.carrier }}</span>
                                 <span class="rate-service">{{ rate.serviceName }}</span>
-                                <span *ngIf="rate.estimatedDays" class="rate-days">{{ rate.estimatedDays }} día{{ rate.estimatedDays === 1 ? '' : 's' }}</span>
+                                <span *ngIf="rate.estimatedDays" class="rate-days">
+                                    {{ rate.estimatedDays }} día{{ rate.estimatedDays === 1 ? '' : 's' }}
+                                </span>
                             </div>
-                            <div class="rate-price">
-                                {{ rate.price | currency }}
+                            <div class="rate-price" [class.rate-price-free]="rate.isFree">
+                                <span *ngIf="rate.isFree">{{ 'CHECKOUT.FREE' | translate }}</span>
+                                <span *ngIf="!rate.isFree">{{ rate.price | currency }}</span>
                             </div>
                         </div>
                     </div>
@@ -295,9 +309,13 @@
                     <div class="row">
                         <span>{{ 'CHECKOUT.SHIPPING_COST' | translate }}</span>
                         @if (selectedRate()) {
-                            <span class="highlight-green">{{ selectedRate()!.price | currency }}</span>
-                        } @else if (cartService.amountToFreeShipping() <= 0) {
-                            <span class="highlight-green">Gratis</span>
+                            @if (selectedRate()!.price === 0) {
+                                <span class="highlight-green">{{ 'CHECKOUT.FREE' | translate }} 🎉</span>
+                            } @else {
+                                <span>{{ selectedRate()!.price | currency }}</span>
+                            }
+                        } @else if (shippingPreview) {
+                            <span class="highlight-green">{{ shippingPreview }}</span>
                         } @else {
                             <span class="text-muted">{{ 'CHECKOUT.CALCULATED_NEXT' | translate }}</span>
                         }

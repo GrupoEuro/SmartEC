@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, PLATFORM_ID, Inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { PromotionEngineService } from '../../core/services/promotion-engine.service';
+import { PromotionEngineService } from '../../../core/services/promotion-engine.service';
 
 @Component({
     selector: 'app-exit-intent',
@@ -78,7 +78,7 @@ import { PromotionEngineService } from '../../core/services/promotion-engine.ser
     `]
 })
 export class ExitIntentComponent implements OnInit {
-    engine = inject(PromotionEngineService);
+    readonly engine: PromotionEngineService = inject(PromotionEngineService) as PromotionEngineService;
 
     constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 

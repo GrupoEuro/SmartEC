@@ -126,6 +126,23 @@ h1 {
     font-weight: 500;
 }
 
+/* Shipping method display */
+.shipping-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    text-align: left;
+}
+.shipping-icon { font-size: 1.8rem; flex-shrink: 0; }
+.shipping-details { display: flex; flex-direction: column; gap: 2px; }
+.shipping-label { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+.shipping-price { font-size: 0.85rem; color: #10b981; font-weight: 500; }
+
 /* ========================================
    ACTIONS
    ======================================== */

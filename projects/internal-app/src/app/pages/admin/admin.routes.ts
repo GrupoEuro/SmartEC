@@ -213,6 +213,12 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
+                path: 'integrations/zip-debug',
+                loadComponent: () => import('./settings/integrations/zip-debug/zip-debug.component').then(m => m.ZipDebugComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
+            },
+            {
                 path: 'integrations/products',
                 loadComponent: () => import('./settings/integrations/product-link/product-link.component').then(m => m.ProductLinkComponent),
                 canActivate: [roleGuard],

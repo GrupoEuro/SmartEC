@@ -189,6 +189,15 @@
                     {{ zippopotamStatus === 'checking' ? 'Checking connection...' : (zippopotamStatus === 'online' ? 'API is Online and Responding' : 'API Connection Failed') }}
                  </span>
              </div>
+
+             <div class="flex justify-end mt-4">
+                 <a routerLink="/admin/integrations/zip-debug"
+                    class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded text-sm font-bold transition flex items-center gap-2 no-underline shadow-lg shadow-emerald-500/20">
+                     <i class="fas fa-map-marker-alt"></i>
+                     ZIP Debugger
+                     <i class="fas fa-arrow-right text-xs opacity-70"></i>
+                 </a>
+             </div>
         </div>
 
         <!-- MERCADOPAGO CARD -->

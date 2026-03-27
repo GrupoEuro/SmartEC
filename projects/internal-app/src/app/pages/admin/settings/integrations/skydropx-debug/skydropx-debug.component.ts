@@ -2,6 +2,16 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Functions, httpsCallable } from '@angular/fire/functions';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
+interface ZipInfo {
+    zip:       string;
+    country:   string;
+    state:     string;
+    city:      string;
+    colonias:  string[];
+}
 
 @Component({
     selector: 'app-skydropx-debug',
@@ -44,6 +54,34 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
             <span *ngIf="!loading()">▶ Get Rates</span>
             <span *ngIf="loading()">⏳ Fetching…</span>
         </button>
+    </div>
+
+    <!-- DESTINATION ZIP INFO CARD -->
+    <div class="zip-info-card" *ngIf="zipInfo()">
+        <div class="zip-info-header">
+            <span class="zip-info-title">📍 Destination</span>
+            <span class="zip-badge">CP {{ zipInfo()!.zip }}</span>
+        </div>
+        <div class="zip-info-grid">
+            <div class="zip-field">
+                <span class="zip-label">🏙 City</span>
+                <span class="zip-value">{{ zipInfo()!.city }}</span>
+            </div>
+            <div class="zip-field">
+                <span class="zip-label">🗺 State</span>
+                <span class="zip-value">{{ zipInfo()!.state }}</span>
+            </div>
+            <div class="zip-field">
+                <span class="zip-label">🌎 Country</span>
+                <span class="zip-value">{{ zipInfo()!.country }}</span>
+            </div>
+            <div class="zip-field zip-field-colonias" *ngIf="zipInfo()!.colonias.length">
+                <span class="zip-label">🏘 Colonias</span>
+                <div class="colonias-list">
+                    <span class="colonia-chip" *ngFor="let c of zipInfo()!.colonias">{{ c }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- CARRIER RATES TABLE -->
@@ -189,6 +227,19 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 .section-header h2 { font-size: 1rem; font-weight: 700; margin: 0; }
 .rate-count { background: #3b82f620; color: #60a5fa; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px; border: 1px solid #3b82f630; }
 
+/* ZIP INFO CARD */
+.zip-info-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.zip-info-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; }
+.zip-info-title { font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+.zip-badge { background: #3b82f620; color: #60a5fa; border: 1px solid #3b82f640; border-radius: 20px; padding: 0.2rem 0.7rem; font-size: 0.8rem; font-weight: 700; font-family: monospace; }
+.zip-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.zip-field { display: flex; flex-direction: column; gap: 0.2rem; }
+.zip-field-colonias { grid-column: 1 / -1; }
+.zip-label { font-size: 0.65rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.zip-value { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; }
+.colonias-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
+.colonia-chip { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 0.2rem 0.55rem; font-size: 0.72rem; color: #94a3b8; font-weight: 500; }
+
 .rates-table-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
 .rates-table { width: 100%; border-collapse: collapse; }
 .rates-table thead tr { background: #0f172a; border-bottom: 1px solid #334155; }
@@ -250,7 +301,8 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
     `]
 })
 export class SkydropxDebugComponent {
-    private fns = inject(Functions);
+    private fns  = inject(Functions);
+    private http = inject(HttpClient);
 
     zipTo  = '64000';
     weight = 5;
@@ -261,6 +313,7 @@ export class SkydropxDebugComponent {
     loading    = signal(false);
     testResult = signal<any>(null);
     debugOpen  = signal(false);
+    zipInfo    = signal<ZipInfo | null>(null);
 
     rates = computed(() => {
         const r = this.testResult();
@@ -309,21 +362,44 @@ export class SkydropxDebugComponent {
     async runTest() {
         this.loading.set(true);
         this.testResult.set(null);
+        this.zipInfo.set(null);
         this.debugOpen.set(false);
+        // Lookup ZIP info and rates in parallel
+        await Promise.all([
+            this.lookupZip(this.zipTo),
+            (async () => {
+                try {
+                    const fn  = httpsCallable(this.fns, 'skydropxRawTest');
+                    const res = await fn({ zipTo: this.zipTo, parcel: { weight: this.weight, height: this.height, width: this.width, length: this.length } });
+                    console.log('[SkydropxDebug] v6 result:', res.data);
+                    this.testResult.set(res.data);
+                    const q = (res.data as any)?.step3_quotation;
+                    if (q?.status >= 400 || !q?.response?.rates?.length) this.debugOpen.set(true);
+                } catch (err: any) {
+                    console.error('[SkydropxDebug]', err);
+                    this.testResult.set({ functionError: err.message });
+                    this.debugOpen.set(true);
+                }
+            })()
+        ]);
+        this.loading.set(false);
+    }
+
+    private async lookupZip(zip: string): Promise<void> {
+        if (!zip || zip.length !== 5) return;
         try {
-            const fn  = httpsCallable(this.fns, 'skydropxRawTest');
-            const res = await fn({ zipTo: this.zipTo, parcel: { weight: this.weight, height: this.height, width: this.width, length: this.length } });
-            console.log('[SkydropxDebug] v6 result:', res.data);
-            this.testResult.set(res.data);
-            // Auto-open debug if quotation failed
-            const q = (res.data as any)?.step3_quotation;
-            if (q?.status >= 400 || !q?.response?.rates?.length) this.debugOpen.set(true);
-        } catch (err: any) {
-            console.error('[SkydropxDebug]', err);
-            this.testResult.set({ functionError: err.message });
-            this.debugOpen.set(true);
-        } finally {
-            this.loading.set(false);
+            const data: any = await firstValueFrom(
+                this.http.get(`https://api.zippopotam.us/mx/${zip}`)
+            );
+            this.zipInfo.set({
+                zip,
+                country: data['country'] ?? 'México',
+                state:   data['places']?.[0]?.['state'] ?? '—',
+                city:    data['places']?.[0]?.['place name'] ?? '—',
+                colonias: (data['places'] as any[] ?? []).map((p: any) => p['place name']).filter(Boolean)
+            });
+        } catch {
+            // ZIP not found — silently ignore, card just won't show
         }
     }
 }

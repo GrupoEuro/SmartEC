@@ -15,6 +15,21 @@
                 </p>
             }
 
+            @if (shipping) {
+                <div class="shipping-summary">
+                    <span class="shipping-icon">{{ shipping.isFree ? '🎉' : '🚚' }}</span>
+                    <div class="shipping-details">
+                        <span class="shipping-label">{{ shipping.serviceName }}</span>
+                        <span class="shipping-price">
+                            {{ shipping.isFree ? 'Envío Gratis' : (shipping.price | currency) }}
+                            <ng-container *ngIf="shipping.estimatedDays">
+                                · {{ shipping.estimatedDays }} días
+                            </ng-container>
+                        </span>
+                    </div>
+                </div>
+            }
+
             <div class="actions">
                 <a routerLink="/" class="btn-primary">
                     {{ 'ORDER_CONFIRMATION.RETURN_HOME' | translate }}

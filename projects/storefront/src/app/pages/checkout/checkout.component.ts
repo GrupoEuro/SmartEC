@@ -120,37 +120,37 @@ export class CheckoutComponent implements OnInit {
     // ── Shipping Rates ────────────────────────────────────────────────────────
 
     async loadShippingRates() {
-        this.loadingRates.set(true);
         this.ratesError.set(null);
         this.selectedRate.set(null);
         this.shippingRates.set([]);
 
-        try {
-            const mode = this.shippingConfig.mode;
+        const mode = this.shippingConfig.mode;
 
-            if (mode === 'preset') {
-                // Instant — no network call. Rates come from admin config.
-                const subtotal = this.cartService.cartSubtotal();
-                const lang     = this.translate.currentLang || this.translate.defaultLang || 'es';
-                const rates    = this.shippingConfig.buildPresetRates(subtotal, lang);
-                this.shippingRates.set(rates as any);
-                if (rates.length === 1) {
-                    // Auto-select single option (e.g. free shipping)
-                    this.selectedRate.set(rates[0] as any);
-                }
-                if (rates.length === 0) {
-                    this.ratesError.set('No hay opciones de envío configuradas.');
-                }
-            } else {
-                // Live mode: query Skydropx via Cloud Function
-                const zip     = this.shippingForm.value.zip || '';
-                const parcels = this.buildParcel();
-                const fn      = httpsCallable<any, { rates: ShippingRate[] }>(this.functions, 'skydropxGetRates');
-                const res     = await fn({ zipTo: zip, parcel: parcels });
-                const rates   = res.data?.rates ?? [];
-                this.shippingRates.set(rates);
-                if (rates.length === 0) this.ratesError.set('No hay opciones de envío disponibles para este código postal.');
+        if (mode === 'preset') {
+            // Synchronous — no spinner, no network call. Rates from admin config.
+            const subtotal = this.cartService.cartSubtotal();
+            const lang     = this.translate.currentLang || this.translate.defaultLang || 'es';
+            const rates    = this.shippingConfig.buildPresetRates(subtotal, lang);
+            this.shippingRates.set(rates as any);
+            if (rates.length === 1) {
+                this.selectedRate.set(rates[0] as any);
             }
+            if (rates.length === 0) {
+                this.ratesError.set('No hay opciones de envío configuradas.');
+            }
+            return; // ← no loading state needed
+        }
+
+        // Live mode: show spinner, call Skydropx Cloud Function
+        try {
+            this.loadingRates.set(true);
+            const zip     = this.shippingForm.value.zip || '';
+            const parcels = this.buildParcel();
+            const fn      = httpsCallable<any, { rates: ShippingRate[] }>(this.functions, 'skydropxGetRates');
+            const res     = await fn({ zipTo: zip, parcel: parcels });
+            const rates   = res.data?.rates ?? [];
+            this.shippingRates.set(rates);
+            if (rates.length === 0) this.ratesError.set('No hay opciones de envío disponibles para este código postal.');
         } catch (e: any) {
             this.ratesError.set('No se pudieron cargar las opciones de envío. Verifica el código postal.');
             console.error('[Checkout] Rates error:', e);
@@ -165,6 +165,19 @@ export class CheckoutComponent implements OnInit {
 
     get orderTotal(): number {
         return this.cartService.cartSubtotal() + (this.selectedRate()?.price ?? 0);
+    }
+
+    /**
+     * Smart shipping cost preview for the order summary column.
+     * Returns 'Gratis 🎉' if threshold already met, null otherwise (show 'Calculated at next step').
+     */
+    get shippingPreview(): string | null {
+        const r = this.shippingConfig.rules();
+        if (r.freeShipping.enabled && this.cartService.cartSubtotal() >= r.freeShipping.threshold) {
+            const lang = this.translate.currentLang || 'es';
+            return lang === 'es' ? 'Gratis 🎉' : 'Free 🎉';
+        }
+        return null;
     }
 
     carrierColor(carrier: string): string {
@@ -250,7 +263,9 @@ export class CheckoutComponent implements OnInit {
             });
 
             // 4. Navigate to confirmation
-            this.router.navigate(['/order-confirmation'], { state: { orderId, email } });
+            this.router.navigate(['/order-confirmation'], {
+                state: { orderId, email, shipping: this.selectedRate() }
+            });
 
         } catch (err: any) {
             console.error('[Checkout] Payment error:', err);

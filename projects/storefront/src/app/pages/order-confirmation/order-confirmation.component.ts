@@ -13,13 +13,15 @@ import { CartService } from '@lib/core';
 })
 export class OrderConfirmationComponent implements OnInit {
     cartService = inject(CartService);
-    orderId: string | null = null;
-    email: string | null = null;
+    orderId:  string | null = null;
+    email:    string | null = null;
+    shipping: { serviceName: string; price: number; estimatedDays: number | null; isFree?: boolean } | null = null;
 
     constructor(private router: Router) {
         const nav = this.router.getCurrentNavigation();
-        this.orderId = nav?.extras?.state?.['orderId'] ?? null;
-        this.email   = nav?.extras?.state?.['email']   ?? null;
+        this.orderId  = nav?.extras?.state?.['orderId']  ?? null;
+        this.email    = nav?.extras?.state?.['email']    ?? null;
+        this.shipping = nav?.extras?.state?.['shipping'] ?? null;
     }
 
     ngOnInit() {

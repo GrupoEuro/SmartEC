@@ -2,6 +2,8 @@ import { Component, HostListener, Inject, OnInit, PLATFORM_ID, signal, inject, e
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
+import { AttributionService, stripUndefined } from '../../core/services/attribution.service';
+import { Firestore, collection, addDoc, Timestamp } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-chat-widget',
@@ -13,8 +15,10 @@ import { CartService } from '../../core/services/cart.service';
 export class ChatWidgetComponent implements OnInit {
   isVisible = signal(false);
   private hasScrolled = false;
-  private router = inject(Router);
-  private cartService = inject(CartService); // Inject Cart Service
+  private router         = inject(Router);
+  private cartService    = inject(CartService);
+  private attributionSvc = inject(AttributionService);
+  private firestore      = inject(Firestore);
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     // Effect to auto-hide chat when Cart Drawer is open
@@ -82,7 +86,48 @@ export class ChatWidgetComponent implements OnInit {
     }
   }
 
-  openChat() {
-    window.open('https://wa.me/5214442004677', '_blank');
+  async openChat() {
+    const attr      = this.attributionSvc.get();
+    const url       = this.router.url;
+    const cartItems = this.cartService.cartItems();
+    const cartValue = this.cartService.cartSubtotal();
+    const sessionId = isPlatformBrowser(this.platformId)
+        ? (sessionStorage.getItem('cart_session_id') || null)
+        : null;
+
+    // ── Build context-aware pre-filled message ────────────────────────────
+    let message = '¡Hola! Me gustaría obtener más información.';
+
+    if (url.includes('/product/')) {
+      // Extract product slug from URL for context
+      const slug = url.split('/product/')[1]?.split('?')[0] ?? '';
+      message = `¡Hola! Estoy viendo el producto ${decodeURIComponent(slug)} y tengo una pregunta.`;
+    } else if (cartItems.length > 0) {
+      const names = cartItems.slice(0, 2).map(i => i.product.name?.es || i.product.name?.en || 'producto').join(', ');
+      message = `¡Hola! Tengo ${cartItems.length} producto(s) en mi carrito (${names}) y necesito ayuda.`;
+    } else if (url.includes('/catalog')) {
+      message = '¡Hola! Estoy buscando llantas y me gustaría recibir asesoría.';
+    }
+
+    // ── Log click to Firestore (fire-and-forget) ──────────────────────────
+    if (isPlatformBrowser(this.platformId)) {
+      addDoc(collection(this.firestore, 'whatsappClicks'), stripUndefined({
+        clickedAt:    Timestamp.now(),
+        page:         url,
+        sessionId,
+        cartValue:    cartValue > 0 ? cartValue : undefined,
+        cartItems:    cartItems.length > 0 ? cartItems.length : undefined,
+        geo:          attr?.geo         ?? undefined,
+        device:       attr?.device      ?? undefined,
+        utm:          attr?.utm         ?? undefined,
+        campaignId:   attr?.campaignId  ?? undefined,
+        campaignName: attr?.campaignName ?? undefined,
+        referrer:     attr?.referrer    ?? undefined,
+      })).catch(() => {}); // Non-critical — never block the click
+    }
+
+    // ── Open WhatsApp with pre-filled message ─────────────────────────────
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/5214442004677?text=${encoded}`, '_blank');
   }
 }

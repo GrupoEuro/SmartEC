@@ -1,4 +1,5 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import {
     Firestore, doc, collection, setDoc, deleteDoc,
     collectionData, query, where, getDocs
@@ -7,6 +8,7 @@ import { Auth, user } from '@angular/fire/auth';
 import { Product } from '@lib/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map, switchMap, of, Observable } from 'rxjs';
+import { AttributionService } from './attribution.service';
 
 export interface WishlistItem {
     productId: string;
@@ -18,8 +20,10 @@ const LS_KEY = 'euro_wishlist';
 
 @Injectable({ providedIn: 'root' })
 export class WishlistService {
-    private firestore = inject(Firestore);
-    private auth = inject(Auth);
+    private firestore      = inject(Firestore);
+    private auth           = inject(Auth);
+    private attributionSvc = inject(AttributionService);
+    private platformId     = inject(PLATFORM_ID);
 
     // ── Local (guest) wishlist backed by localStorage + signal ─────────────────
     private _localIds = signal<Set<string>>(this.loadLocalIds());
@@ -77,11 +81,19 @@ export class WishlistService {
 
         // Persist to Firestore if logged in
         if (uid) {
+            const attr      = this.attributionSvc.get();
+            const sessionId = isPlatformBrowser(this.platformId)
+                ? (sessionStorage.getItem('cart_session_id') || null)
+                : null;
             const ref = doc(this.firestore, `users/${uid}/wishlist/${id}`);
             await setDoc(ref, {
                 productId: id,
                 product,
-                addedAt: new Date()
+                addedAt:   new Date(),
+                // ── Attribution context ─────────────────────────────────────────────────
+                sessionId,
+                utm:       attr?.utm ?? null,
+                source:    attr?.utm?.utm_source || attr?.referrerDomain || null,
             });
         }
     }

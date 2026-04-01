@@ -1,0 +1,438 @@
+<div class="ac-page">
+
+  <!-- ── Page Header ────────────────────────────────────────────────────────── -->
+  <div class="ac-header">
+    <div class="ac-header-left">
+      <div class="ac-title-group">
+        <div class="ac-title-icon">
+          <app-icon name="shopping-cart" [size]="22"></app-icon>
+        </div>
+        <div>
+          <h1 class="ac-title">Abandoned Carts</h1>
+          <p class="ac-subtitle">Revenue recovery ·
+            {{ timeframeFilter() === '24h' ? 'Last 24 hours'
+              : timeframeFilter() === '7d' ? 'Last 7 days' : 'Last 30 days' }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="ac-header-right">
+      <div class="ac-tab-group">
+        @for (tf of [['24h','24h'], ['7d','7 days'], ['30d','30 days']]; track tf[0]) {
+          <button class="ac-tab" [class.active]="timeframeFilter() === tf[0]"
+                  (click)="setTimeframe($any(tf[0]))">{{ tf[1] }}</button>
+        }
+      </div>
+      <button class="ac-refresh-btn" (click)="refresh()" [class.spinning]="isRefreshing()" title="Refresh">
+        <app-icon name="refresh-cw" [size]="16"></app-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── KPI Cards ─────────────────────────────────────────────────────────── -->
+  <div class="ac-kpi-grid">
+    <div class="ac-kpi-card kpi-danger">
+      <div class="kpi-icon-wrap"><app-icon name="shopping-cart" [size]="20"></app-icon></div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ totalAbandoned() }}</span>
+        <span class="kpi-label">Total Abandoned</span>
+        <span class="kpi-sub">{{ guestPct() }}% guest sessions</span>
+      </div>
+    </div>
+
+    <div class="ac-kpi-card kpi-warning">
+      <div class="kpi-icon-wrap"><app-icon name="dollar-sign" [size]="20"></app-icon></div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ formatMXN(revenueAtRisk()) }}</span>
+        <span class="kpi-label">Revenue at Risk</span>
+        <span class="kpi-sub">MXN · all abandoned carts</span>
+      </div>
+    </div>
+
+    <div class="ac-kpi-card kpi-success">
+      <div class="kpi-icon-wrap"><app-icon name="mail" [size]="20"></app-icon></div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ recoverable() }}</span>
+        <span class="kpi-label">Recoverable</span>
+        <span class="kpi-sub">Logged-in users with email</span>
+      </div>
+    </div>
+
+    <div class="ac-kpi-card kpi-info">
+      <div class="kpi-icon-wrap"><app-icon name="clock" [size]="20"></app-icon></div>
+      <div class="kpi-body">
+        <span class="kpi-value">{{ formatDuration(avgTimeToAbandon()) }}</span>
+        <span class="kpi-label">Avg. Time to Abandon</span>
+        <span class="kpi-sub">{{ checkoutPct() }}% reached checkout</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filters ─────────────────────────────────────────────────────────────── -->
+  <div class="ac-filters">
+    <div class="filter-group">
+      <label class="filter-label">Audience</label>
+      <div class="ac-tab-group sm">
+        @for (a of [['all','All'], ['guest','Guest'], ['authenticated','Logged in']]; track a[0]) {
+          <button class="ac-tab" [class.active]="audienceFilter() === a[0]"
+                  (click)="setAudience($any(a[0]))">{{ a[1] }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Cart Value</label>
+      <div class="ac-tab-group sm">
+        @for (v of [['all','Any'], ['low','< $500'], ['mid','$500–$2k'], ['high','> $2k']]; track v[0]) {
+          <button class="ac-tab" [class.active]="valueFilter() === v[0]"
+                  (click)="setValueTier($any(v[0]))">{{ v[1] }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Source</label>
+      <select class="ac-select" [value]="sourceFilter()" (change)="setSource($any($event.target).value)">
+        @for (s of uniqueSources(); track s) {
+          <option [value]="s">{{ s === 'all' ? 'All sources' : s }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- ── Table ────────────────────────────────────────────────────────────────── -->
+  <div class="ac-table-wrapper">
+
+    @if (filteredCarts().length === 0) {
+      <div class="ac-empty">
+        <app-icon name="check-circle" [size]="48"></app-icon>
+        <p class="ac-empty-title">No abandoned carts</p>
+        <p class="ac-empty-sub">All clear for the selected filters and timeframe.</p>
+      </div>
+    } @else {
+      <table class="ac-table">
+        <thead>
+          <tr>
+            <th class="col-expand"></th>
+            <th>Session / User</th>
+            <th>Products</th>
+            <th>Cart Value</th>
+            <th>Stage</th>
+            <th>Source</th>
+            <th>Location</th>
+            <th>Last Seen</th>
+            <th class="col-journey">Journey</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cart of filteredCarts(); track cart.id) {
+
+            <!-- Main Row -->
+            <tr class="ac-row" [class.expanded]="expandedId() === cart.id"
+                (click)="toggleExpand(cart.id)">
+
+              <td class="col-expand">
+                <span class="expand-chevron" [class.open]="expandedId() === cart.id">
+                  <app-icon name="chevron-right" [size]="14"></app-icon>
+                </span>
+              </td>
+
+              <td>
+                <div class="user-cell">
+                  <span class="audience-badge" [class.guest]="cart.audience === 'guest'"
+                                               [class.auth]="cart.audience === 'authenticated'">
+                    <app-icon [name]="cart.audience === 'guest' ? 'user' : 'user-check'" [size]="12"></app-icon>
+                  </span>
+                  <div class="user-meta">
+                    <span class="user-name">{{ cart.displayName }}</span>
+                    @if (cart.device) {
+                      <span class="user-device">
+                        <app-icon [name]="cart.device === 'mobile' ? 'smartphone' : 'monitor'" [size]="11"></app-icon>
+                        {{ cart.device }}{{ cart.connectionType ? ' · ' + cart.connectionType : '' }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </td>
+
+              <td>
+                <div class="items-cell">
+                  @for (item of cart.items.slice(0, 2); track item.name) {
+                    @if (item.image) {
+                      <img [src]="item.image" [alt]="item.name" class="item-thumb" loading="lazy">
+                    } @else {
+                      <div class="item-thumb-placeholder"><app-icon name="package" [size]="12"></app-icon></div>
+                    }
+                  }
+                  @if (cart.items.length > 2) {
+                    <span class="items-more">+{{ cart.items.length - 2 }}</span>
+                  }
+                  <span class="items-count">{{ cart.items.length }} item{{ cart.items.length !== 1 ? 's' : '' }}</span>
+                </div>
+              </td>
+
+              <td>
+                <span class="cart-value" [class.high]="cart.cartValue >= 2000"
+                                         [class.mid]="cart.cartValue >= 500 && cart.cartValue < 2000">
+                  {{ formatMXN(cart.cartValue) }}
+                </span>
+              </td>
+
+              <td>
+                <span class="stage-badge" [class.checkout]="cart.stage === 'checkout_started'">
+                  @if (cart.stage === 'checkout_started') {
+                    <app-icon name="credit-card" [size]="12"></app-icon>
+                  } @else {
+                    <app-icon name="shopping-bag" [size]="12"></app-icon>
+                  }
+                  {{ stageLabel(cart.stage) }}
+                </span>
+              </td>
+
+              <td>
+                <div class="source-cell">
+                  <app-icon [name]="getSourceIcon(cart.source)" [size]="13"></app-icon>
+                  <span>{{ cart.source }}</span>
+                </div>
+              </td>
+
+              <td>
+                <span class="location-cell">
+                  @if (cart.city) { {{ cart.city }}{{ cart.country ? ', ' + cart.country : '' }} }
+                  @else { <span class="text-muted">—</span> }
+                </span>
+              </td>
+
+              <td>
+                <span class="idle-badge" [class.recent]="cart.minutesIdle < 120"
+                                         [class.stale]="cart.minutesIdle >= 120 && cart.minutesIdle < 1440"
+                                         [class.cold]="cart.minutesIdle >= 1440">
+                  {{ formatIdle(cart.minutesIdle) }}
+                </span>
+              </td>
+
+              <!-- Journey button -->
+              <td class="col-journey" (click)="$event.stopPropagation()">
+                <button class="journey-btn" (click)="openJourney(cart, $event)" title="View session journey">
+                  <app-icon name="git-branch" [size]="14"></app-icon>
+                  <span>Trail</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Expanded Detail Row -->
+            @if (expandedId() === cart.id) {
+              <tr class="ac-detail-row">
+                <td colspan="9">
+                  <div class="ac-detail-panel">
+
+                    <!-- Products -->
+                    <div class="detail-section">
+                      <h4 class="detail-section-title">
+                        <app-icon name="package" [size]="14"></app-icon> Products
+                      </h4>
+                      <div class="detail-products">
+                        @for (item of cart.items; track item.name) {
+                          <div class="detail-product-row">
+                            @if (item.image) {
+                              <img [src]="item.image" [alt]="item.name" class="detail-product-img">
+                            } @else {
+                              <div class="detail-product-img placeholder"><app-icon name="package" [size]="16"></app-icon></div>
+                            }
+                            <div class="detail-product-info">
+                              <span class="detail-product-name">{{ item.name }}</span>
+                              <span class="detail-product-price">{{ formatMXN(item.price) }} × {{ item.quantity }}</span>
+                            </div>
+                            <span class="detail-product-total">{{ formatMXN(item.price * item.quantity) }}</span>
+                          </div>
+                        }
+                        <div class="detail-products-total">
+                          <span>Cart Total</span>
+                          <span class="detail-total-value">{{ formatMXN(cart.cartValue) }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Attribution & Device -->
+                    <div class="detail-section">
+                      <h4 class="detail-section-title">
+                        <app-icon name="map-pin" [size]="14"></app-icon> Attribution &amp; Device
+                      </h4>
+                      <div class="detail-attrs">
+                        @if (cart.source)         { <div class="attr-row"><span class="attr-key">Source</span><span class="attr-val">{{ cart.source }}</span></div> }
+                        @if (cart.campaign)        { <div class="attr-row"><span class="attr-key">Campaign</span><span class="attr-val">{{ cart.campaign }}</span></div> }
+                        @if (cart.city)            { <div class="attr-row"><span class="attr-key">Location</span><span class="attr-val">{{ cart.city }}{{ cart.country ? ', ' + cart.country : '' }}{{ cart.region ? ' · ' + cart.region : '' }}</span></div> }
+                        @if (cart.device)          { <div class="attr-row"><span class="attr-key">Device</span><span class="attr-val">{{ cart.device }}{{ cart.deviceOs ? ' · ' + cart.deviceOs : '' }}</span></div> }
+                        @if (cart.connectionType)  { <div class="attr-row"><span class="attr-key">Connection</span><span class="attr-val">{{ cart.connectionType }}</span></div> }
+                        @if (cart.language)        { <div class="attr-row"><span class="attr-key">Language</span><span class="attr-val">{{ cart.language }}</span></div> }
+                        @if (cart.email)           { <div class="attr-row"><span class="attr-key">Email</span><span class="attr-val email">{{ cart.email }}</span></div> }
+                      </div>
+                    </div>
+
+                    <!-- Cart Timeline -->
+                    <div class="detail-section">
+                      <h4 class="detail-section-title">
+                        <app-icon name="clock" [size]="14"></app-icon> Cart Timeline
+                      </h4>
+                      <div class="detail-timeline">
+                        @if (cart.firstAddedMs) {
+                          <div class="timeline-node done">
+                            <span class="tl-dot"></span>
+                            <span class="tl-label">First item added</span>
+                            <span class="tl-ts">{{ cart.firstAddedMs | date:'MMM d, h:mm a' }}</span>
+                          </div>
+                        }
+                        @if (cart.checkoutStartedAt) {
+                          <div class="timeline-node done">
+                            <span class="tl-dot checkout"></span>
+                            <span class="tl-label">Checkout started</span>
+                            <span class="tl-ts">{{ cart.checkoutStartedAt | date:'MMM d, h:mm a' }}</span>
+                          </div>
+                        }
+                        <div class="timeline-node abandoned">
+                          <span class="tl-dot dead"></span>
+                          <span class="tl-label">Last activity</span>
+                          <span class="tl-ts">{{ cart.lastSeenMs | date:'MMM d, h:mm a' }} ({{ formatIdle(cart.minutesIdle) }})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    }
+
+  </div><!-- /table-wrapper -->
+
+</div><!-- /ac-page -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- JOURNEY SLIDE-IN PANEL                                                      -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
+@if (journeyOpen()) {
+  <!-- Backdrop -->
+  <div class="journey-backdrop" (click)="closeJourney()"></div>
+
+  <!-- Drawer -->
+  <aside class="journey-drawer" [class.open]="journeyOpen()">
+
+    <!-- Header -->
+    <div class="journey-header">
+      <div class="journey-header-left">
+        <app-icon name="git-branch" [size]="18"></app-icon>
+        <div>
+          <span class="journey-title">Session Trail</span>
+          @if (journeyCart()) {
+            <span class="journey-subtitle">{{ journeyCart()!.displayName }}</span>
+          }
+        </div>
+      </div>
+      <button class="journey-close" (click)="closeJourney()">
+        <app-icon name="x" [size]="18"></app-icon>
+      </button>
+    </div>
+
+    <!-- Session snapshot -->
+    @if (journeyCart(); as cart) {
+      <div class="journey-snapshot">
+        <div class="snapshot-pill">
+          <app-icon [name]="cart.device === 'mobile' ? 'smartphone' : 'monitor'" [size]="13"></app-icon>
+          {{ cart.device }}{{ cart.connectionType ? ' · ' + cart.connectionType : '' }}
+        </div>
+        @if (cart.city) {
+          <div class="snapshot-pill">
+            <app-icon name="map-pin" [size]="13"></app-icon>
+            {{ cart.city }}{{ cart.country ? ', ' + cart.country : '' }}
+          </div>
+        }
+        <div class="snapshot-pill">
+          <app-icon [name]="getSourceIcon(cart.source)" [size]="13"></app-icon>
+          {{ cart.source }}
+        </div>
+        <div class="snapshot-pill value">
+          {{ formatMXN(cart.cartValue) }}
+        </div>
+      </div>
+    }
+
+    <!-- Loading -->
+    @if (journeyLoading()) {
+      <div class="journey-loading">
+        <div class="journey-spinner"></div>
+        <span>Loading trail…</span>
+      </div>
+    }
+
+    <!-- Event timeline -->
+    @if (!journeyLoading() && journeyEvents().length > 0) {
+      <div class="journey-timeline">
+        @for (ev of journeyEvents(); track ev.timestampMs; let last = $last) {
+          <div class="journey-event" [class.last]="last">
+
+            <!-- Connector line -->
+            @if (!last) { <div class="jt-line"></div> }
+
+            <!-- Icon node -->
+            <div class="jt-node" [style.background]="journeyEventColor(ev.type)">
+              <app-icon [name]="journeyIconName(ev.icon)" [size]="14"></app-icon>
+            </div>
+
+            <!-- Content -->
+            <div class="jt-content">
+              <div class="jt-header">
+                <span class="jt-label">{{ ev.label }}</span>
+                @if (ev.type === 'qr_scan' && ev.converted) {
+                  <span class="jt-converted-badge">Converted ✓</span>
+                }
+                @if (ev.type === 'qr_scan' && !ev.converted) {
+                  <span class="jt-pending-badge">No conversion</span>
+                }
+              </div>
+              @if (ev.detail) {
+                <span class="jt-detail">{{ ev.detail }}</span>
+              }
+              @if (ev.couponCode) {
+                <span class="jt-coupon">
+                  <app-icon name="tag" [size]="11"></app-icon>
+                  {{ ev.couponCode }}
+                </span>
+              }
+              <span class="jt-time">{{ ev.timestampMs | date:'MMM d · h:mm a' }}</span>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+
+    @if (!journeyLoading() && journeyEvents().length === 0) {
+      <div class="journey-empty">
+        <app-icon name="search" [size]="32"></app-icon>
+        <p>No cross-collection events found for this session.</p>
+        <span>Cart events are shown in the row detail panel.</span>
+      </div>
+    }
+
+    <!-- Footer actions -->
+    @if (journeyCart(); as cart) {
+      <div class="journey-footer">
+        @if (cart.email) {
+          <button class="jf-btn primary">
+            <app-icon name="mail" [size]="14"></app-icon>
+            Send Recovery Email
+          </button>
+        }
+        <button class="jf-btn wa" (click)="openJourneyWhatsApp(cart)">
+          <app-icon name="message-circle" [size]="14"></app-icon>
+          Contact via WhatsApp
+        </button>
+      </div>
+    }
+
+  </aside>
+}

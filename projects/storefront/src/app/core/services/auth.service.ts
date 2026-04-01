@@ -1,4 +1,4 @@
-import { Injectable, inject, PLATFORM_ID, signal, DestroyRef, Injector } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID, signal, DestroyRef, Injector, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { Auth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
@@ -10,7 +10,6 @@ import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
 import { DevConfigService } from './dev-config.service';
 import { StateRegistryService } from './state-registry.service';
-import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -74,14 +73,14 @@ export class AuthService {
                   this.currentProfile.set(profile); // Update Inspector
                   observer.next(profile);
                 } else {
-                  if (!environment.production) console.log('[Auth] No profile document found for uid:', firebaseUser.uid);
+                  if (isDevMode()) console.log('[Auth] No profile document found for uid:', firebaseUser.uid);
                   this.currentProfile.set(null); // Update Inspector
                   observer.next(null);
                 }
                 observer.complete();
               })
               .catch(err => {
-                if (!environment.production) console.error('[Auth] Firestore profile fetch error:', err);
+                if (isDevMode()) console.error('[Auth] Firestore profile fetch error:', err);
                 observer.next(null);
                 observer.complete();
               });
@@ -198,7 +197,7 @@ export class AuthService {
 
     // ORPHAN RECOVERY: If Auth exists but Firestore profile is missing, create it.
     if (!profile) {
-      if (!environment.production) console.warn('[Auth] Orphaned account detected. Creating fallback profile.', firebaseUser.email);
+      if (isDevMode()) console.warn('[Auth] Orphaned account detected. Creating fallback profile.', firebaseUser.email);
       const newProfile: UserProfile = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || '',
@@ -318,7 +317,7 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) return null;
 
     // GOD MODE: Role impersonation — DEV ONLY. Disabled in production.
-    const impersonatedRole = !environment.production ? this.devConfig.getImpersonatedRole() : null;
+    const impersonatedRole = isDevMode() ? this.devConfig.getImpersonatedRole() : null;
 
     return new Promise((resolve) => {
       this.userProfile$.subscribe({

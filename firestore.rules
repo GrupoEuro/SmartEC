@@ -45,6 +45,22 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // WhatsApp click events — public create for tracking, staff read for analytics
+    match /whatsappClicks/{document} {
+      allow create: if true;
+      allow read:   if isStaff();
+      allow update, delete: if false;
+    }
+
+    // Cart event snapshots — append-only ledger of cart lifecycle events
+    // Public create so the storefront can write without auth.
+    // Staff read for analytics and Journey Panel.
+    match /cartSnapshots/{document} {
+      allow create: if true;
+      allow read:   if isStaff();
+      allow update, delete: if false;
+    }
+
     // ── System ───────────────────────────────────────────────────────────────
 
     // System counters (order IDs, etc.) — staff read, admin write only
@@ -167,7 +183,12 @@ service cloud.firestore {
       // Allow anyone to log a scan
       match /scans/{scanId} {
         allow create: if true;
-        allow read: if isManager();
+        allow read:   if isManager();
+        // Allow storefront to mark a scan as converted (at checkout success).
+        // Only conversion fields may be updated — no other fields.
+        allow update: if request.resource.data.diff(resource.data)
+                           .affectedKeys()
+                           .hasOnly(['converted', 'orderId', 'discountUsed', 'convertedAt']);
       }
     }
 
@@ -413,13 +434,16 @@ service cloud.firestore {
     // this prevents one session from overwriting another's data.
     // Reads are staff-only to protect visitor PII (IP, device, geo).
     //
+    // Note: We write even when items=[] to preserve `cleared_by_user`,
+    // `migrated`, and `abandoned` status changes for analytics.
+    //
     match /guestCarts/{sessionId} {
       // Anyone (including unauthenticated) can create/update their own session cart.
       // Validate that the sessionId field in the payload matches the document ID.
       allow create, update: if request.resource.data.sessionId == sessionId;
       // Staff can read all guest carts (for ops dashboard and recovery emails)
       allow read: if isStaff();
-      // No client-side deletes — we mark as 'migrated' instead to preserve history
+      // No client-side deletes — we mark as 'migrated'/'abandoned' to preserve history
       allow delete: if isAdmin();
     }
 

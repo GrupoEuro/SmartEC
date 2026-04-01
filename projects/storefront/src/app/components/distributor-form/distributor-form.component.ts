@@ -2,8 +2,9 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, Timestamp } from '@angular/fire/firestore';
 import { inject, Injector } from '@angular/core';
+import { AttributionService } from '../../core/services/attribution.service';
 
 @Component({
   selector: 'app-distributor-form',
@@ -29,6 +30,7 @@ export class DistributorFormComponent {
 
   private injector = inject(Injector);
   private _firestore?: Firestore;
+  private attributionSvc = inject(AttributionService);
 
   private get firestore(): Firestore {
     if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
@@ -108,9 +110,13 @@ export class DistributorFormComponent {
 
     try {
       console.log('Attempting to add document to Firestore...');
+      const attr = this.attributionSvc.get();
       const docRef = await addDoc(collection(this.firestore, 'distributors'), {
         ...this.distributor,
-        createdAt: new Date()
+        createdAt:   Timestamp.now(),
+        // ── Attribution ──────────────────────────────────────────────────────────────────
+        attribution: attr ?? null,
+        source:      attr?.utm?.utm_source || attr?.referrerDomain || 'website',
       });
       console.log('Document written with ID: ', docRef.id);
 

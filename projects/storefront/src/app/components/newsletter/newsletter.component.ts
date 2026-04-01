@@ -2,6 +2,7 @@ import { Component, inject, Injector } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Firestore, collection, addDoc, query, where, getDocs, Timestamp } from '@angular/fire/firestore';
+import { AttributionService } from '../../core/services/attribution.service';
 
 @Component({
   selector: 'app-newsletter',
@@ -187,9 +188,10 @@ import { Firestore, collection, addDoc, query, where, getDocs, Timestamp } from 
   `]
 })
 export class NewsletterComponent {
-  private injector = inject(Injector);
+  private injector        = inject(Injector);
+  private fb              = inject(FormBuilder);
+  private attributionSvc  = inject(AttributionService);
   private _firestore?: Firestore;
-  private fb = inject(FormBuilder);
 
   private get firestore(): Firestore {
     if (!this._firestore) this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
@@ -231,12 +233,18 @@ export class NewsletterComponent {
         return;
       }
 
-      // Add new subscriber
+      // Add new subscriber with attribution
+      const attr      = this.attributionSvc.get();
+      const sessionId = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('cart_session_id') : null) || null;
       await addDoc(newsletterCollection, {
         email,
-        subscribedAt: Timestamp.now(),
-        source: 'website',
-        active: true
+        subscribedAt:  Timestamp.now(),
+        source:        attr?.utm?.utm_source || attr?.referrerDomain || 'website',
+        active:        true,
+        // ── Attribution ────────────────────────────────────────────────────
+        attribution:   attr ?? null,
+        sessionId,
+        landingUrl:    attr?.landingUrl ?? null,
       });
 
       // Track with GA4

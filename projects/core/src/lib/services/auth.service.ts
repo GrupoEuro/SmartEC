@@ -1,4 +1,4 @@
-import { Injectable, inject, PLATFORM_ID, signal, DestroyRef } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID, signal, DestroyRef, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
 import { Auth, GoogleAuthProvider, signInWithPopup, signOut, user, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from '@angular/fire/auth';
@@ -10,7 +10,6 @@ import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
 import { DevConfigService } from './dev-config.service';
 import { StateRegistryService } from './state-registry.service';
-import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +24,20 @@ export class AuthService {
   private devConfig = inject(DevConfigService);
   private stateRegistry = inject(StateRegistryService);
   private destroyRef = inject(DestroyRef);
+
+  /** Read attribution from localStorage without injecting AttributionService (avoids cross-lib deps) */
+  private readAttribution(): Record<string, any> | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    try {
+      const raw = localStorage.getItem('euro_attribution');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  private readSessionId(): string | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    try { return sessionStorage.getItem('cart_session_id') || null; } catch { return null; }
+  }
 
   // Raw Firebase User
   user$: Observable<User | null>;
@@ -59,14 +72,14 @@ export class AuthService {
                   this.currentProfile.set(profile); // Update Inspector
                   observer.next(profile);
                 } else {
-                  if (!environment.production) console.log('[Auth] No profile document found for uid:', firebaseUser.uid);
+                  if (isDevMode()) console.log('[Auth] No profile document found for uid:', firebaseUser.uid);
                   this.currentProfile.set(null); // Update Inspector
                   observer.next(null);
                 }
                 observer.complete();
               })
               .catch(err => {
-                if (!environment.production) console.error('[Auth] Firestore profile fetch error:', err);
+                if (isDevMode()) console.error('[Auth] Firestore profile fetch error:', err);
                 observer.next(null);
                 observer.complete();
               });
@@ -148,8 +161,12 @@ export class AuthService {
         isActive: true,
         createdAt: new Date(),
         lastLogin: new Date(),
-        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 }
-      };
+        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 },
+        // ── Acquisition attribution ──────────────────────────────────────────────
+        acquisitionAttribution: this.readAttribution() ?? null,
+        acquisitionSessionId:   this.readSessionId(),
+        registrationMethod:     'email',
+      } as any;
 
       const userRef = doc(this.firestore, 'users', user.uid);
       await setDoc(userRef, newProfile);
@@ -178,12 +195,16 @@ export class AuthService {
         email: firebaseUser.email || '',
         displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
         photoURL: firebaseUser.photoURL || '',
-        role: 'CUSTOMER', // Default to Customer for safety
+        role: 'CUSTOMER',
         isActive: true,
         createdAt: new Date(),
         lastLogin: new Date(),
-        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 }
-      };
+        stats: { totalOrders: 0, totalSpend: 0, averageOrderValue: 0 },
+        // ── Acquisition attribution (Google sign-in / first login) ───────────────────
+        acquisitionAttribution: this.readAttribution() ?? null,
+        acquisitionSessionId:   this.readSessionId(),
+        registrationMethod:     'google',
+      } as any;
 
       try {
         await setDoc(doc(this.firestore, 'users', firebaseUser.uid), newProfile);
@@ -292,7 +313,7 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) return null;
 
     // GOD MODE: Role impersonation — DEV ONLY. Disabled in production.
-    const impersonatedRole = !environment.production ? this.devConfig.getImpersonatedRole() : null;
+    const impersonatedRole = isDevMode() ? this.devConfig.getImpersonatedRole() : null;
 
     return new Promise((resolve) => {
       this.userProfile$.subscribe({

@@ -141,6 +141,13 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 title: 'ADMIN.SIDEBAR.CAMPAIGNS',
                 icon: 'target',
                 route: '/admin/marketing/campaigns'
+            },
+            {
+                id: 'abandoned_carts',
+                title: 'ADMIN.SIDEBAR.ABANDONED_CARTS',
+                icon: 'shopping-cart',
+                route: '/admin/marketing/abandoned-carts',
+                badge: { text: 'New', color: 'orange' }
             }
         ]
     },

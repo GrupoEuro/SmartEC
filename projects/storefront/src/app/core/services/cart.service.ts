@@ -1,8 +1,11 @@
 import { Injectable, signal, computed, effect, inject, PLATFORM_ID, NgZone } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { CartItem, CartState } from '../models/cart.model';
+import { CartItem, CartState, CartStatus, CartEventType, CartItemDelta } from '../models/cart.model';
 import { Product } from '../models/product.model';
-import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firestore';
+import {
+    Firestore, doc, setDoc, getDoc, addDoc,
+    collection, Timestamp
+} from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { ShippingConfigService } from './shipping-config.service';
 import { AttributionService, stripUndefined } from './attribution.service';
@@ -54,17 +57,14 @@ export class CartService {
         effect(() => {
             const state = this.cartState();
             this.saveToStorage(state);
-            if (!environment.production) console.log('[Cart] State changed — items:', state.items.length, '| attribution ready:', !!this.attributionSvc.get());
+            if (!environment.production) console.log('[Cart] State changed — items:', state.items.length, '| status:', state.status);
             this.saveToFirestore(state);
         });
 
         // Effect 2: When attribution resolves, push one more Firestore write with full data.
         effect(() => {
             const attr = this.attributionSvc.attribution();
-            if (!attr) {
-                if (!environment.production) console.log('[Cart] Effect 2: attribution not ready yet — skipping.');
-                return;
-            }
+            if (!attr) return;
             if (!environment.production) console.log('[Cart] Effect 2: attribution resolved — flushing to Firestore.');
             this.saveToFirestore(this.cartState());
         });
@@ -92,20 +92,17 @@ export class CartService {
             try {
                 const user = this.authService.currentUser();
 
-                // Convert items: addedAt (number) → Firestore Timestamp
                 const items = (state.items ?? []).map(item => ({
                     ...item,
                     addedAt: item.addedAt ? Timestamp.fromMillis(item.addedAt) : Timestamp.now(),
                 }));
 
-                // Convert attribution.capturedAt (number) → Firestore Timestamp
                 const attribution = this.attributionSvc.get();
                 const attributionFs = attribution ? {
                     ...attribution,
                     capturedAt: Timestamp.fromMillis(attribution.capturedAt),
                 } : undefined;
 
-                // Convert all top-level date fields
                 const now             = Timestamp.now();
                 const firstAddedAt    = state.firstAddedAt
                     ? Timestamp.fromMillis(state.firstAddedAt)
@@ -116,14 +113,25 @@ export class CartService {
                 const checkoutStartedAt = state.checkoutStartedAt
                     ? Timestamp.fromDate(new Date(state.checkoutStartedAt))
                     : undefined;
+                const clearedAt = state.clearedAt
+                    ? Timestamp.fromMillis(state.clearedAt)
+                    : undefined;
 
                 if (user) {
                     // ── Logged-in: save to carts/{uid} ──────────────────────
                     const cartRef = doc(this.firestore, `carts/${user.uid}`);
-                    if (!environment.production) console.log('[Cart] Writing to Firestore — uid:', user.uid);
+                    if (!environment.production) console.log('[Cart] Writing to Firestore — uid:', user.uid, '| status:', state.status);
+
+                    // Preserve clearedItems as Firestore-friendly format
+                    const clearedItemsFs = state.clearedItems?.map(item => ({
+                        ...item,
+                        addedAt: item.addedAt ? Timestamp.fromMillis(item.addedAt) : Timestamp.now(),
+                    }));
+
                     await setDoc(cartRef, stripUndefined({
                         ...state,
                         items,
+                        clearedItems:      clearedItemsFs,
                         userId:            user.uid,
                         email:             user.email,
                         sessionId:         this.sessionId,
@@ -132,6 +140,7 @@ export class CartService {
                         firstAddedAt,
                         updatedAt,
                         checkoutStartedAt,
+                        clearedAt,
                         attribution:       attributionFs,
                         lastUpdated:       now,
                     }), { merge: true });
@@ -139,18 +148,31 @@ export class CartService {
 
                 } else {
                     // ── Guest: save to guestCarts/{sessionId} ────────────────
-                    if (state.items.length === 0) return;
+                    // Always write cleared_by_user status — skip only if truly empty with no history
+                    const isEmptyNoHistory = state.items.length === 0
+                        && state.status !== 'cleared_by_user'
+                        && !state.firstAddedAt;
+                    if (isEmptyNoHistory) return;
+
                     const guestRef = doc(this.firestore, `guestCarts/${this.sessionId}`);
-                    if (!environment.production) console.log('[Cart] Writing GUEST cart — sessionId:', this.sessionId);
+                    if (!environment.production) console.log('[Cart] Writing GUEST cart — sessionId:', this.sessionId, '| status:', state.status);
+
+                    const clearedItemsFs = state.clearedItems?.map(item => ({
+                        ...item,
+                        addedAt: item.addedAt ? Timestamp.fromMillis(item.addedAt) : Timestamp.now(),
+                    }));
+
                     await setDoc(guestRef, stripUndefined({
                         ...state,
                         items,
+                        clearedItems:      clearedItemsFs,
                         sessionId:         this.sessionId,
                         source:            state.source ?? this.source,
                         status:            state.status ?? 'active',
                         firstAddedAt,
                         updatedAt,
                         checkoutStartedAt,
+                        clearedAt,
                         attribution:       attributionFs,
                         lastUpdated:       now,
                     }), { merge: true });
@@ -176,9 +198,10 @@ export class CartService {
             const guestCart  = guestSnap.exists()  ? (guestSnap.data()  as CartState) : null;
             const cloudCart  = userSnap.exists()   ? (userSnap.data()   as CartState) : null;
 
-            // Don't reload a completed cart (already placed order)
-            if (cloudCart?.status === 'completed') {
-                if (!environment.production) console.log('[Cart] Skipping completed cloud cart — starting fresh.');
+            // Don't reload a completed or cleared cart
+            const skipStatuses: CartStatus[] = ['completed', 'migrated', 'cleared_by_user'];
+            if (cloudCart?.status && skipStatuses.includes(cloudCart.status)) {
+                if (!environment.production) console.log('[Cart] Skipping cloud cart with status:', cloudCart.status);
                 if (guestCart?.items?.length) {
                     this.zone.run(() => this.updateState(guestCart.items, 'active'));
                 }
@@ -189,7 +212,6 @@ export class CartService {
             const cloudItems = cloudCart?.items   ?? [];
             const localItems = this.cartState().items;
 
-            // Merge: union of cloud + guest + local, keeping max quantity per product
             const merged = this.mergeItems([...cloudItems, ...guestItems, ...localItems]);
 
             if (merged.length > 0) {
@@ -198,13 +220,14 @@ export class CartService {
                 this.zone.run(() => this.updateState(cloudItems, 'active'));
             }
 
-            // Archive the guest cart doc by marking it as migrated
+            // Archive the guest cart doc as migrated + write snapshot
             if (guestSnap.exists()) {
                 await setDoc(guestRef, {
                     status:    'migrated',
                     migratedTo: userId,
                     migratedAt: Timestamp.now()
                 }, { merge: true });
+                await this.writeSnapshot('migrated', guestCart?.items ?? [], undefined, userId, email);
             }
 
         } catch (e) {
@@ -232,17 +255,20 @@ export class CartService {
         const currentItems = this.cartItems();
         const existingIdx  = currentItems.findIndex(i => i.product.id === product.id);
         let   updatedItems = [...currentItems];
+        const delta: CartItemDelta = {};
 
         if (existingIdx > -1) {
+            const prev = updatedItems[existingIdx];
             updatedItems[existingIdx] = {
-                ...updatedItems[existingIdx],
-                quantity: updatedItems[existingIdx].quantity + quantity
+                ...prev,
+                quantity: prev.quantity + quantity
             };
+            delta.qtyChanged = [{ productId: product.id!, from: prev.quantity, to: prev.quantity + quantity }];
         } else {
             updatedItems.push({ product, quantity, addedAt: Date.now() });
+            delta.added = [{ product, quantity, addedAt: Date.now() }];
         }
 
-        // Capture firstAddedAt on the very first item ever added
         const current = this.cartState();
         const firstAddedAt = current.firstAddedAt ?? Date.now();
         this.cartState.set({
@@ -250,30 +276,72 @@ export class CartService {
             items:        updatedItems,
             updatedAt:    Date.now(),
             firstAddedAt,
-            status:       current.status ?? 'active',
+            status:       current.status === 'cleared_by_user' ? 'active' : (current.status ?? 'active'),
             sessionId:    current.sessionId ?? this.sessionId,
             source:       current.source    ?? this.source,
+            // Clear the cleared snapshot if they're shopping again
+            clearedAt:    undefined,
+            clearedItems: undefined,
         });
+
+        // Write snapshot (debounced fire-and-forget)
+        this.writeSnapshotDebounced(existingIdx > -1 ? 'quantity_changed' : 'item_added', updatedItems, delta);
     }
 
     removeFromCart(productId: string) {
-        this.updateState(this.cartItems().filter(i => i.product.id !== productId));
+        const removed = this.cartItems().filter(i => i.product.id === productId);
+        const updatedItems = this.cartItems().filter(i => i.product.id !== productId);
+        this.updateState(updatedItems);
+        if (removed.length) {
+            this.writeSnapshotDebounced('item_removed', updatedItems, { removed });
+        }
     }
 
     updateQuantity(productId: string, quantity: number) {
+        const prev = this.cartItems().find(i => i.product.id === productId);
         let updated = this.cartItems().map(i =>
             i.product.id === productId ? { ...i, quantity: Math.max(0, quantity) } : i
         ).filter(i => i.quantity > 0);
         this.updateState(updated);
+        if (prev) {
+            this.writeSnapshotDebounced('quantity_changed', updated, {
+                qtyChanged: [{ productId, from: prev.quantity, to: quantity }]
+            });
+        }
     }
 
+    /**
+     * Phase 1: Soft-delete the cart instead of silently erasing.
+     * Persists cleared_by_user status and preserves the items snapshot
+     * for recovery, segmentation, and product intelligence.
+     */
     clearCart() {
-        this.updateState([]);
+        const itemsBeforeClear = [...this.cartItems()];
+        const current = this.cartState();
+        const now     = Date.now();
+
+        // Only record a clear event if there were actual items
+        if (itemsBeforeClear.length === 0) {
+            this.updateState([]);
+            return;
+        }
+
+        // Update state: empty items but preserve history + flag the event
+        this.cartState.set({
+            ...current,
+            items:        [],
+            updatedAt:    now,
+            status:       'cleared_by_user',
+            clearedAt:    now,
+            clearedItems: itemsBeforeClear,
+        });
+
+        // Write a snapshot so the event ledger has a record
+        this.writeSnapshot('cleared_by_user', itemsBeforeClear, { removed: itemsBeforeClear });
     }
 
     /**
      * Mark cart as checkout_started — call when the user lands on /checkout.
-     * Updates status in Firestore so ops can see drop-off at this stage.
      */
     markCheckoutStarted() {
         const current = this.cartState();
@@ -283,12 +351,12 @@ export class CartService {
             status:            'checkout_started',
             checkoutStartedAt: new Date().toISOString(),
         });
+        this.writeSnapshotDebounced('checkout_started', current.items);
     }
 
     /**
      * Archive the cart as completed instead of deleting it.
      * Keeps a permanent record of what was purchased for analytics.
-     * Then wipes items so next session starts fresh.
      */
     async completeCart(orderId: string): Promise<void> {
         const user = this.authService.currentUser();
@@ -307,6 +375,7 @@ export class CartService {
                 lastUpdated: Timestamp.now(),
             }));
 
+            await this.writeSnapshot('completed', current.items ?? [], undefined, user.uid, user.email ?? undefined);
             console.log(`[Cart] Archived as completed → orderId: ${orderId}`);
         } catch (e) {
             console.warn('[Cart] Could not archive cart:', e);
@@ -353,6 +422,79 @@ export class CartService {
         }
     }
 
+    // ── Phase 2: Cart Snapshot (event ledger) ─────────────────────────────────
+
+    private snapshotDebounceMap = new Map<string, any>();
+
+    /**
+     * Debounced snapshot write — prevents flooding on rapid qty changes.
+     * Each event type key gets its own debounce timer.
+     */
+    private writeSnapshotDebounced(
+        event: CartEventType,
+        items: CartItem[],
+        delta?: CartItemDelta,
+        userId?: string,
+        email?: string
+    ) {
+        if (this.snapshotDebounceMap.has(event)) {
+            clearTimeout(this.snapshotDebounceMap.get(event));
+        }
+        const timer = setTimeout(() => {
+            this.writeSnapshot(event, items, delta, userId, email);
+            this.snapshotDebounceMap.delete(event);
+        }, 1500);
+        this.snapshotDebounceMap.set(event, timer);
+    }
+
+    /**
+     * Writes a single event snapshot to the cartSnapshots collection.
+     * This is the append-only ledger — never updated, only created.
+     */
+    private async writeSnapshot(
+        event: CartEventType,
+        items: CartItem[],
+        delta?: CartItemDelta,
+        userId?: string,
+        email?: string
+    ) {
+        if (!isPlatformBrowser(this.platformId)) return;
+        try {
+            const user = this.authService.currentUser();
+            const resolvedUserId = userId ?? user?.uid;
+            const resolvedEmail  = email  ?? user?.email ?? undefined;
+            const attribution    = this.attributionSvc.get();
+            const cartValue      = items.reduce((sum, i) => sum + (i.product.price || 0) * i.quantity, 0);
+
+            // Firestore-safe items (convert addedAt numbers to Timestamps)
+            const itemsFs = items.map(item => ({
+                ...item,
+                addedAt: item.addedAt ? Timestamp.fromMillis(item.addedAt) : Timestamp.now(),
+            }));
+
+            const snapshotRef = collection(this.firestore, 'cartSnapshots');
+            await addDoc(snapshotRef, stripUndefined({
+                sessionId:  this.sessionId,
+                userId:     resolvedUserId,
+                email:      resolvedEmail,
+                event,
+                items:      itemsFs,
+                itemsDelta: delta,
+                cartValue,
+                attribution: attribution ? {
+                    ...attribution,
+                    capturedAt: Timestamp.fromMillis(attribution.capturedAt),
+                } : undefined,
+                createdAt: Timestamp.now(),
+            }));
+
+            if (!environment.production) console.log(`[CartSnapshot] ✅ Written: ${event}`);
+        } catch (e) {
+            // Non-critical — don't crash the cart if snapshot fails
+            console.warn('[CartSnapshot] Failed to write snapshot:', e);
+        }
+    }
+
     // ── Session & Attribution Helpers ─────────────────────────────────────────
     private getOrCreateSessionId(): string {
         if (!isPlatformBrowser(this.platformId)) return 'ssr';
@@ -370,11 +512,9 @@ export class CartService {
         if (!isPlatformBrowser(this.platformId)) return 'direct';
         try {
             const params = new URLSearchParams(window.location.search);
-            // UTM parameters take priority
             if (params.get('utm_source'))   return params.get('utm_source')!;
             if (params.get('utm_medium'))   return params.get('utm_medium')!;
             if (params.get('utm_campaign')) return params.get('utm_campaign')!;
-            // Fallback: referrer domain
             if (document.referrer) {
                 try { return new URL(document.referrer).hostname; } catch { return document.referrer; }
             }

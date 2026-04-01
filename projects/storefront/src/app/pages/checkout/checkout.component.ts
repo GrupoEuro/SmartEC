@@ -13,6 +13,7 @@ import { ShippingConfigService } from '../../core/services/shipping-config.servi
 import { CouponService } from '../../core/services/coupon.service';
 import { LocationService } from '../../core/services/location.service';
 import { AccountService, Address } from '@lib/core';
+import { AttributionService } from '../../core/services/attribution.service';
 import { Coupon } from '../../core/models/coupon.model';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Firestore, collection, addDoc, serverTimestamp, doc, runTransaction, increment } from '@angular/fire/firestore';
@@ -54,6 +55,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     couponService   = inject(CouponService);
     locationService = inject(LocationService);
     accountService  = inject(AccountService);
+    attributionSvc  = inject(AttributionService);
 
     private destroy$ = new Subject<void>();
 
@@ -465,6 +467,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                     note:      `Orden ${orderNumber} creada en storefront web`,
                     updatedBy: 'system',
                 }],
+                // ── Marketing attribution ──────────────────────────────────────────
+                attribution: this.attributionSvc.get() ?? null,
             });
 
             const orderId = orderDoc.id;
@@ -505,6 +509,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 this.couponService.updateCoupon(coupon.id, {
                     usageCount: increment(1) as any
                 }).catch(() => {});
+                // Mark the QR scan (if any) as converted — closes the funnel
+                if (coupon.code) {
+                    this.couponService.markScanConverted(
+                        coupon.code,
+                        orderId,
+                        this.discountAmount()
+                    ).catch(() => {});
+                }
             }
 
             // 6. Archive cart (preserves record) and navigate to confirmation
@@ -544,6 +556,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                         this.couponService.updateCoupon(this.appliedCoupon()!.id!, {
                             usageCount: (this.appliedCoupon()!.usageCount ?? 0) + 1
                         }).catch(() => {});
+                        // Mark QR scan as converted for 3DS flow
+                        if (this.appliedCoupon()!.code) {
+                            this.couponService.markScanConverted(
+                                this.appliedCoupon()!.code,
+                                orderId,
+                                this.discountAmount()
+                            ).catch(() => {});
+                        }
                     }
                     this.cartService.clearCart();
                     await this.cartService.completeCart(orderId);

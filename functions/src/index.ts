@@ -1845,3 +1845,121 @@ export const getMeliRawOrderDebug = functions.https.onRequest(async (req: any, r
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// ─── Phase 3: Abandoned Cart Detector ────────────────────────────────────────
+//
+// Scheduled function that runs every 30 minutes.
+// Scans `carts/` and `guestCarts/` for docs where:
+//   - status is 'active' or 'checkout_started'
+//   - lastUpdated is older than ABANDON_THRESHOLD_MS (60 minutes)
+//
+// On match: sets status = 'abandoned' and writes a cartSnapshot event.
+//
+// Deploy with: firebase deploy --only functions:detectAbandonedCarts
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ABANDON_THRESHOLD_MS = 60 * 60 * 1000; // 60 minutes
+
+async function runAbandonedCartDetection(): Promise<{ carts: number; guests: number; total: number }> {
+    const now      = Date.now();
+    const cutoff   = admin.firestore.Timestamp.fromMillis(now - ABANDON_THRESHOLD_MS);
+    const batch    = db.batch();
+    let cartCount  = 0;
+    let guestCount = 0;
+
+    // Helper: write a cartSnapshot event doc
+    async function writeAbandonedSnapshot(data: any, collection_: string) {
+        try {
+            const items = data.items ?? [];
+            const cartValue = Array.isArray(items)
+                ? items.reduce((sum: number, i: any) => sum + (i.product?.price || 0) * (i.quantity || 1), 0)
+                : 0;
+            await db.collection('cartSnapshots').add({
+                sessionId:  data.sessionId ?? 'unknown',
+                userId:     data.userId    ?? null,
+                email:      data.email     ?? null,
+                event:      'abandoned_detected',
+                items:      items,
+                cartValue,
+                attribution: data.attribution ?? null,
+                createdAt:  admin.firestore.Timestamp.now(),
+                source:     collection_,
+            });
+        } catch (e) {
+            console.warn('[AbandonDetect] Snapshot write failed:', e);
+        }
+    }
+
+    // ── Scan: carts/{uid} ──────────────────────────────────────────────────────
+    const cartSnap = await db.collection('carts')
+        .where('status', 'in', ['active', 'checkout_started'])
+        .where('lastUpdated', '<=', cutoff)
+        .limit(200)
+        .get();
+
+    for (const docSnap of cartSnap.docs) {
+        const data = docSnap.data();
+        // Guard: require at least one item
+        if (!Array.isArray(data.items) || data.items.length === 0) continue;
+        batch.update(docSnap.ref, {
+            status:          'abandoned',
+            abandonedAt:     admin.firestore.Timestamp.now(),
+            lastUpdated:     admin.firestore.Timestamp.now(),
+        });
+        await writeAbandonedSnapshot(data, 'carts');
+        cartCount++;
+    }
+
+    // ── Scan: guestCarts/{sessionId} ───────────────────────────────────────────
+    const guestSnap = await db.collection('guestCarts')
+        .where('status', 'in', ['active', 'checkout_started'])
+        .where('lastUpdated', '<=', cutoff)
+        .limit(200)
+        .get();
+
+    for (const docSnap of guestSnap.docs) {
+        const data = docSnap.data();
+        if (!Array.isArray(data.items) || data.items.length === 0) continue;
+        batch.update(docSnap.ref, {
+            status:          'abandoned',
+            abandonedAt:     admin.firestore.Timestamp.now(),
+            lastUpdated:     admin.firestore.Timestamp.now(),
+        });
+        await writeAbandonedSnapshot(data, 'guestCarts');
+        guestCount++;
+    }
+
+    await batch.commit();
+
+    const total = cartCount + guestCount;
+    console.log(`[AbandonDetect] Marked ${total} carts as abandoned (${cartCount} auth, ${guestCount} guest).`);
+    return { carts: cartCount, guests: guestCount, total };
+}
+
+// ── Scheduled: every 30 minutes ───────────────────────────────────────────────
+export const detectAbandonedCarts = functions.pubsub
+    .schedule('every 30 minutes')
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+        try {
+            const result = await runAbandonedCartDetection();
+            console.log('[AbandonDetect] Run complete:', result);
+        } catch (err: any) {
+            console.error('[AbandonDetect] Fatal error:', err.message);
+        }
+    });
+
+// ── Manual HTTP trigger for testing (staff only — validate via token or restrict in rules) ──
+export const detectAbandonedCartsHttp = functions.https.onCall(async (_data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const role = context.auth.token?.role;
+    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(role)) {
+        throw new functions.https.HttpsError('permission-denied', 'Manager+ required.');
+    }
+    const result = await runAbandonedCartDetection();
+    return { success: true, ...result };
+});

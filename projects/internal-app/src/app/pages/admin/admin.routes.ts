@@ -251,6 +251,11 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./marketing/campaigns/campaign-form/campaign-form.component').then(m => m.CampaignFormComponent),
                 title: 'Edit Campaign'
             },
+            {
+                path: 'marketing/abandoned-carts',
+                loadComponent: () => import('./marketing/abandoned-carts/abandoned-carts.component').then(m => m.AbandonedCartsComponent),
+                title: 'Abandoned Carts'
+            },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
         ]
     },

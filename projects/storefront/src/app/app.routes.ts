@@ -23,7 +23,15 @@ export const routes: Routes = [
     {
         path: 'order-confirmation',
         loadComponent: () => import('./pages/order-confirmation/order-confirmation.component').then(m => m.OrderConfirmationComponent),
-        title: 'Order Confirmation'
+        title: 'Order Confirmation',
+        canActivate: [() => {
+            // Guard: only allow navigation from the checkout flow (requires orderId in router state).
+            // Direct access (bookmarks, shared links) will be redirected. The component also handles
+            // this gracefully via isDirectNav, but redirecting at the route level is more correct.
+            const router = inject(Router);
+            const nav = router.getCurrentNavigation();
+            return nav?.extras?.state?.['orderId'] ? true : router.createUrlTree(['/catalog']);
+        }]
     },
     {
         path: 'blog',

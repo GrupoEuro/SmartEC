@@ -6,6 +6,7 @@ import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firesto
 import { AuthService } from './auth.service';
 import { ShippingConfigService } from './shipping-config.service';
 import { AttributionService, stripUndefined } from './attribution.service';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -53,7 +54,7 @@ export class CartService {
         effect(() => {
             const state = this.cartState();
             this.saveToStorage(state);
-            console.log('[Cart] State changed — items:', state.items.length, '| attribution ready:', !!this.attributionSvc.get());
+            if (!environment.production) console.log('[Cart] State changed — items:', state.items.length, '| attribution ready:', !!this.attributionSvc.get());
             this.saveToFirestore(state);
         });
 
@@ -61,10 +62,10 @@ export class CartService {
         effect(() => {
             const attr = this.attributionSvc.attribution();
             if (!attr) {
-                console.log('[Cart] Effect 2: attribution not ready yet — skipping.');
+                if (!environment.production) console.log('[Cart] Effect 2: attribution not ready yet — skipping.');
                 return;
             }
-            console.log('[Cart] Effect 2: attribution resolved — flushing to Firestore.');
+            if (!environment.production) console.log('[Cart] Effect 2: attribution resolved — flushing to Firestore.');
             this.saveToFirestore(this.cartState());
         });
 
@@ -119,7 +120,7 @@ export class CartService {
                 if (user) {
                     // ── Logged-in: save to carts/{uid} ──────────────────────
                     const cartRef = doc(this.firestore, `carts/${user.uid}`);
-                    console.log('[Cart] Writing to Firestore — uid:', user.uid, '| attribution:', attribution ? '✅ present' : '❌ null');
+                    if (!environment.production) console.log('[Cart] Writing to Firestore — uid:', user.uid);
                     await setDoc(cartRef, stripUndefined({
                         ...state,
                         items,
@@ -134,13 +135,13 @@ export class CartService {
                         attribution:       attributionFs,
                         lastUpdated:       now,
                     }), { merge: true });
-                    console.log('[Cart] ✅ Firestore write complete.');
+                    if (!environment.production) console.log('[Cart] ✅ Firestore write complete.');
 
                 } else {
                     // ── Guest: save to guestCarts/{sessionId} ────────────────
                     if (state.items.length === 0) return;
                     const guestRef = doc(this.firestore, `guestCarts/${this.sessionId}`);
-                    console.log('[Cart] Writing GUEST cart — sessionId:', this.sessionId, '| attribution:', attribution ? '✅ present' : '❌ null');
+                    if (!environment.production) console.log('[Cart] Writing GUEST cart — sessionId:', this.sessionId);
                     await setDoc(guestRef, stripUndefined({
                         ...state,
                         items,
@@ -153,7 +154,7 @@ export class CartService {
                         attribution:       attributionFs,
                         lastUpdated:       now,
                     }), { merge: true });
-                    console.log('[Cart] ✅ Guest Firestore write complete.');
+                    if (!environment.production) console.log('[Cart] ✅ Guest Firestore write complete.');
                 }
             } catch (e) {
                 console.error('[Cart] Error syncing to Firestore:', e);
@@ -177,7 +178,7 @@ export class CartService {
 
             // Don't reload a completed cart (already placed order)
             if (cloudCart?.status === 'completed') {
-                console.log('[Cart] Skipping completed cloud cart — starting fresh.');
+                if (!environment.production) console.log('[Cart] Skipping completed cloud cart — starting fresh.');
                 if (guestCart?.items?.length) {
                     this.zone.run(() => this.updateState(guestCart.items, 'active'));
                 }

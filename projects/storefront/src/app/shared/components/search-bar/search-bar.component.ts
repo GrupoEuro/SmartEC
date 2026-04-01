@@ -276,9 +276,27 @@ export class SearchBarComponent {
     }
 
     highlightMatch(text: string): string {
+        if (!text) return '';
         const term = this.searchControl.value;
-        if (!term) return text;
-        const re = new RegExp(term, 'gi');
-        return text.replace(re, match => `<strong>${match}</strong>`);
+        // Always escape product name to prevent XSS from Firestore content
+        const safe = this.escapeHtml(text);
+        if (!term) return safe;
+        try {
+            // Escape user input before using it as a RegExp to prevent ReDoS / crash
+            const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp(escapedTerm, 'gi');
+            return safe.replace(re, match => `<strong>${match}</strong>`);
+        } catch {
+            return safe;
+        }
+    }
+
+    private escapeHtml(s: string): string {
+        return s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }

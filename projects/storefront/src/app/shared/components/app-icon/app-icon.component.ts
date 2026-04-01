@@ -54,6 +54,11 @@ export class AppIconComponent {
             return '';
         }
 
+        // SECURITY NOTE: bypassSecurityTrustHtml is safe here because `content`
+        // is sourced exclusively from the compile-time ICONS map (icons.ts), which
+        // contains only hardcoded SVG path strings. It is never derived from user
+        // input, URL parameters, or Firestore data. Do NOT use dynamic icon sources
+        // without sanitizing through DomSanitizer.sanitize(SecurityContext.HTML, ...) first.
         return this.sanitizer.bypassSecurityTrustHtml(content);
     });
 }

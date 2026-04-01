@@ -60,7 +60,11 @@ service cloud.firestore {
       allow write: if isStaff();
     }
 
-    // Site Configuration — public read, admin write
+    // Site Configuration — public read, admin write.
+    // NOTE: world-readable means all fields in these documents are browser-accessible.
+    // Do NOT store plain-text secrets (clientSecret, secretKey, access tokens) in any
+    // config document. Secret credentials belong in Firebase Functions environment variables.
+    // The config/integrations document should contain only publishable/public keys.
     match /config/{document} {
       allow read: if true;
       allow write: if isAdmin();

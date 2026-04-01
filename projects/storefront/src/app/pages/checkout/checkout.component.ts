@@ -15,7 +15,7 @@ import { LocationService } from '../../core/services/location.service';
 import { AccountService, Address } from '@lib/core';
 import { Coupon } from '../../core/models/coupon.model';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Firestore, collection, addDoc, serverTimestamp, doc, runTransaction } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, serverTimestamp, doc, runTransaction, increment } from '@angular/fire/firestore';
 
 interface ShippingRate {
     rateId: string;
@@ -500,10 +500,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            // 5. Increment coupon usage if applied
+            // 5. Increment coupon usage atomically (prevents race conditions)
             if (coupon?.id) {
                 this.couponService.updateCoupon(coupon.id, {
-                    usageCount: coupon.usageCount + 1
+                    usageCount: increment(1) as any
                 }).catch(() => {});
             }
 

@@ -10,6 +10,7 @@ import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
 import { DevConfigService } from './dev-config.service';
 import { StateRegistryService } from './state-registry.service';
+import { environment } from '../../../environments/environment';
 
 // Roles permitted to use the Internal App. Customers are explicitly excluded.
 const INTERNAL_STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'];
@@ -74,7 +75,7 @@ export class AuthService {
                   this.currentProfile.set(profile); // Update Inspector
                   observer.next(profile);
                 } else {
-                  console.log('Auth Debug: No profile document found');
+                  if (!environment.production) console.log('[Auth] No profile document found for uid:', firebaseUser.uid);
                   if (!this._loginHandled) {
                     this.currentProfile.set(null); // Update Inspector
                   }
@@ -83,7 +84,7 @@ export class AuthService {
                 observer.complete();
               })
               .catch(err => {
-                console.error('Auth Debug: Firestore Error:', err);
+                if (!environment.production) console.error('[Auth] Firestore profile fetch error:', err);
                 observer.next(null);
                 observer.complete();
               });
@@ -348,14 +349,14 @@ export class AuthService {
   async getCurrentUser(): Promise<UserProfile | null> {
     if (!isPlatformBrowser(this.platformId)) return null;
 
-    // Check for GOD MODE override (Role Impersonation)
-    const impersonatedRole = this.devConfig.getImpersonatedRole();
+    // GOD MODE: Role impersonation — DEV ONLY. Disabled in production.
+    const impersonatedRole = !environment.production ? this.devConfig.getImpersonatedRole() : null;
 
     return new Promise((resolve) => {
       this.userProfile$.subscribe({
         next: (profile) => {
           if (profile && impersonatedRole) {
-            // Return a modified clone of the profile
+            // Return a modified clone of the profile (dev only)
             resolve({ ...profile, role: impersonatedRole as any });
           } else {
             resolve(profile);

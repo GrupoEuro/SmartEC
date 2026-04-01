@@ -9,11 +9,12 @@ import { FormsModule } from '@angular/forms';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { MetaService } from '../../../core/services/meta.service';
 import { LanguageService } from '@lib/core';
+import { SafeHtmlPipe } from '../../../shared/pipes/safe-html.pipe';
 
 @Component({
     selector: 'app-blog-detail',
     standalone: true,
-    imports: [CommonModule, RouterModule, TranslateModule, FormsModule],
+    imports: [CommonModule, RouterModule, TranslateModule, FormsModule, SafeHtmlPipe],
     templateUrl: './blog-detail.component.html',
     styleUrls: ['./blog-detail.component.css']
 })

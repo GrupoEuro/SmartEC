@@ -2,7 +2,7 @@ import { Injectable, signal, computed, effect, inject, PLATFORM_ID } from '@angu
 import { isPlatformBrowser } from '@angular/common';
 import { CartItem, CartState } from '../models/cart.model';
 import { Product } from '../models/product.model';
-import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firestore';
+import { Firestore, doc, setDoc, getDoc, deleteDoc, Timestamp } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -10,7 +10,7 @@ import { AuthService } from './auth.service';
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
-    private firestore = inject('FIRESTORE' as any) as Firestore;
+    private firestore = inject(Firestore);
     private authService = inject(AuthService);
     private platformId = inject(PLATFORM_ID);
 
@@ -94,16 +94,28 @@ export class CartService {
 
             if (snapshot.exists()) {
                 const cloudCart = snapshot.data() as CartState;
+                const localItems = this.cartState().items;
+                const cloudItems = cloudCart.items ?? [];
 
-                // Strategy: Cloud wins on login, OR merge (for now simpler: Cloud wins if exists)
-                // Better UX: If local cart has items and cloud is empty -> Push local
-                // If cloud has items -> Pull cloud
-
-                if (cloudCart.items && cloudCart.items.length > 0) {
-                    this.updateState(cloudCart.items);
-                    console.log('Loaded cart from Firestore');
+                if (cloudItems.length === 0) {
+                    this.saveToFirestore(this.cartState());
+                } else if (localItems.length === 0) {
+                    this.updateState(cloudItems);
                 } else {
-                    // Cloud empty, push local
+                    // Union merge: keep higher quantity
+                    const merged = [...cloudItems];
+                    for (const localItem of localItems) {
+                        const idx = merged.findIndex(ci => ci.product.id === localItem.product.id);
+                        if (idx > -1) {
+                            merged[idx] = { ...merged[idx], quantity: Math.max(merged[idx].quantity, localItem.quantity) };
+                        } else {
+                            merged.push(localItem);
+                        }
+                    }
+                    this.updateState(merged);
+                }
+            } else {
+                if (this.cartState().items.length > 0) {
                     this.saveToFirestore(this.cartState());
                 }
             }
@@ -123,15 +135,13 @@ export class CartService {
         let updatedItems = [...currentItems];
 
         if (existingItemIndex > -1) {
-            // Update existing
-            updatedItems[existingItemIndex].quantity += quantity;
+            // ✅ Create new object — do NOT mutate in place (Signal won't fire otherwise)
+            updatedItems[existingItemIndex] = {
+                ...updatedItems[existingItemIndex],
+                quantity: updatedItems[existingItemIndex].quantity + quantity
+            };
         } else {
-            // Add new
-            updatedItems.push({
-                product,
-                quantity,
-                addedAt: Date.now()
-            });
+            updatedItems.push({ product, quantity, addedAt: Date.now() });
         }
 
         this.updateState(updatedItems);
@@ -158,6 +168,17 @@ export class CartService {
 
     clearCart() {
         this.updateState([]);
+    }
+
+    /** Hard-delete the Firestore cart document — call after successful order placement */
+    async clearFirestoreCart(): Promise<void> {
+        const user = this.authService.currentUser();
+        if (!user) return;
+        try {
+            await deleteDoc(doc(this.firestore, `carts/${user.uid}`));
+        } catch (e) {
+            console.warn('[Cart] Could not clear Firestore cart:', e);
+        }
     }
 
     // ==========================================

@@ -30,6 +30,8 @@ export interface IntegrationConfig {
         accessToken: string;
         publicKey: string;
         connected: boolean;
+        installmentsEnabled?: boolean; // default false — must be explicitly turned on
+        maxInstallments?: number;      // 3 | 6 | 9 | 12
     };
     skydropx?: {
         apiKey: string;
@@ -54,7 +56,7 @@ export class SecretsService {
         return {
             meli: { appId: '', clientSecret: '', redirectUri: window.location.origin + '/admin/settings/integrations/callback', connected: false },
             amazon: { clientId: '', clientSecret: '', refreshToken: '', region: 'na', connected: false },
-            mercadopago: { accessToken: '', publicKey: '', connected: false },
+            mercadopago: { accessToken: '', publicKey: '', connected: false, installmentsEnabled: false, maxInstallments: 1 },
             skydropx: { apiKey: '', apiSecret: '', connected: false }
         };
     }

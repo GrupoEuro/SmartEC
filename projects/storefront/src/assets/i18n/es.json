@@ -154,7 +154,11 @@
     "SECURE_SSL": "Pago Seguro SSL",
     "SHIPPING_METHOD": "Método de Envío",
     "CALCULATING_RATES": "Calculando opciones de envío…",
-    "RETRY": "Reintentar"
+    "RETRY": "Reintentar",
+    "COUPON_PLACEHOLDER": "Código de cupón",
+    "APPLY": "Aplicar",
+    "DISCOUNT": "Descuento",
+    "EMPTY_CART": "Tu carrito está vacío"
   },
   "CATALOG_QUICK_VIEW_BTN": "Vista Rápida",
   "COMMON": {
@@ -207,7 +211,9 @@
     "TITLE": "¡Orden Confirmada! 🎉",
     "EMAIL_SENT": "Hemos enviado un correo de confirmación a",
     "RETURN_HOME": "Volver al Inicio",
-    "TRACK_ORDER": "Rastrear Mi Orden"
+    "TRACK_ORDER": "Rastrear Mi Orden",
+    "NOT_FOUND_TITLE": "No encontramos tu orden",
+    "NOT_FOUND_MSG": "Si realizaste una compra, puedes rastrear tu pedido desde tu cuenta o contactarnos."
   },
   "CLIENTS": {
     "OVERLINE": "Nuestros Clientes",
@@ -704,6 +710,15 @@
         "CANCEL": "Cancelar",
         "SAVE": "Guardar Dirección"
       }
+    },
+    "WISHLIST": {
+      "TITLE": "Favoritos",
+      "SUBTITLE": "Productos que guardaste para más tarde.",
+      "EMPTY_TITLE": "Tu lista de favoritos está vacía",
+      "EMPTY_MSG": "Guarda productos con el ♥ para encontrarlos fácilmente después.",
+      "BROWSE_CATALOG": "Explorar Catálogo",
+      "ADD_TO_CART": "Agregar al Carrito",
+      "CLEAR_ALL": "Vaciar Lista"
     },
     "COMMON": {
       "LOADING": "Cargando...",

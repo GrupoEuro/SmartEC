@@ -1,192 +1,330 @@
-import { Injectable, signal, computed, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, PLATFORM_ID, NgZone } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CartItem, CartState } from '../models/cart.model';
 import { Product } from '../models/product.model';
 import { Firestore, doc, setDoc, getDoc, Timestamp } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
 import { ShippingConfigService } from './shipping-config.service';
+import { AttributionService, stripUndefined } from './attribution.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CartService {
     private readonly STORAGE_KEY = 'praxis_guest_cart';
-    private firestore = inject(Firestore);
-    private authService = inject(AuthService);
-    private platformId = inject(PLATFORM_ID);
-    private shippingConfig = inject(ShippingConfigService);
+    private firestore        = inject(Firestore);
+    private authService      = inject(AuthService);
+    private platformId       = inject(PLATFORM_ID);
+    private shippingConfig   = inject(ShippingConfigService);
+    private zone             = inject(NgZone);
+    private attributionSvc   = inject(AttributionService);
 
-    // State Signals
+    /** Stable session ID — generated once per browser session, survives page reloads */
+    private readonly sessionId = this.getOrCreateSessionId();
+
+    /** UTM source or referrer — captured once on service init */
+    private readonly source = this.captureSource();
+
+    /** Prevent Firestore from overwriting local state on every auth re-emit */
+    private firestoreLoaded = false;
+
+    // ── State Signals ─────────────────────────────────────────────────────────
     private cartState = signal<CartState>(this.loadFromStorage());
 
     // UI State
     readonly isDrawerOpen = signal(false);
 
     // Computed Selectors
-    readonly cartItems = computed(() => this.cartState().items);
-
-    readonly cartCount = computed(() =>
-        this.cartItems().reduce((total, item) => total + item.quantity, 0)
-    );
-
+    readonly cartItems    = computed(() => this.cartState().items);
+    readonly cartCount    = computed(() => this.cartItems().reduce((t, i) => t + i.quantity, 0));
     readonly cartSubtotal = computed(() =>
-        this.cartItems().reduce((total, item) => {
-            // Price Logic: Use sale price if valid, otherwise regular price
-            // Assuming Product model has price and salePrice
-            const price = item.product.price || 0;
-            return total + (price * item.quantity);
-        }, 0)
+        this.cartItems().reduce((t, i) => t + (i.product.price || 0) * i.quantity, 0)
     );
 
-    /** Dynamic free-shipping threshold — reads from admin Firestore config when available */
-    readonly freeShippingThreshold = computed(() => this.shippingConfig.freeThreshold);
-    readonly amountToFreeShipping = computed(() => {
-        const remaining = this.freeShippingThreshold() - this.cartSubtotal();
-        return remaining > 0 ? remaining : 0;
+    /** Dynamic free-shipping threshold — reads from admin Firestore config */
+    readonly freeShippingThreshold   = computed(() => this.shippingConfig.freeThreshold);
+    readonly amountToFreeShipping    = computed(() => {
+        const rem = this.freeShippingThreshold() - this.cartSubtotal();
+        return rem > 0 ? rem : 0;
     });
 
     constructor() {
-        // Effect to persist to LocalStorage AND Firestore
+        // Effect 1: persist every cart state change to localStorage + Firestore
         effect(() => {
             const state = this.cartState();
             this.saveToStorage(state);
+            console.log('[Cart] State changed — items:', state.items.length, '| attribution ready:', !!this.attributionSvc.get());
             this.saveToFirestore(state);
         });
 
-        // Listen for Auth Changes to switch carts
+        // Effect 2: When attribution resolves, push one more Firestore write with full data.
+        effect(() => {
+            const attr = this.attributionSvc.attribution();
+            if (!attr) {
+                console.log('[Cart] Effect 2: attribution not ready yet — skipping.');
+                return;
+            }
+            console.log('[Cart] Effect 2: attribution resolved — flushing to Firestore.');
+            this.saveToFirestore(this.cartState());
+        });
+
+        // Auth listener — load cloud cart ONCE per session on login
         this.authService.user$.subscribe(user => {
-            if (user) {
-                // User logged in: Load their cloud cart
-                this.loadFromFirestore(user.uid);
+            if (user && !this.firestoreLoaded) {
+                this.firestoreLoaded = true;
+                this.migrateGuestCartAndLoad(user.uid, user.email ?? '');
+            } else if (!user) {
+                this.firestoreLoaded = false;
             }
         });
     }
 
-    // ==========================================
-    // Cloud Persistence
-    // ==========================================
+    // ── Cloud Persistence ─────────────────────────────────────────────────────
     private saveTimeout: any;
 
+    /** Debounced save to user cart doc (logged-in) OR guest cart doc */
     private async saveToFirestore(state: CartState) {
-        const user = this.authService.currentUser();
-        if (!user) return; // Don't save for guests yet (or implement guest session logic later)
-
-        // Debounce: Wait 1s before writing to save writes
+        if (!isPlatformBrowser(this.platformId)) return;
         if (this.saveTimeout) clearTimeout(this.saveTimeout);
 
         this.saveTimeout = setTimeout(async () => {
             try {
-                const cartRef = doc(this.firestore, `carts/${user.uid}`);
-                await setDoc(cartRef, {
-                    ...state,
-                    userId: user.uid,
-                    email: user.email,
-                    lastUpdated: Timestamp.now()
-                }, { merge: true });
-                console.log('Cart synced to Firestore');
+                const user = this.authService.currentUser();
+
+                // Convert items: addedAt (number) → Firestore Timestamp
+                const items = (state.items ?? []).map(item => ({
+                    ...item,
+                    addedAt: item.addedAt ? Timestamp.fromMillis(item.addedAt) : Timestamp.now(),
+                }));
+
+                // Convert attribution.capturedAt (number) → Firestore Timestamp
+                const attribution = this.attributionSvc.get();
+                const attributionFs = attribution ? {
+                    ...attribution,
+                    capturedAt: Timestamp.fromMillis(attribution.capturedAt),
+                } : undefined;
+
+                // Convert all top-level date fields
+                const now             = Timestamp.now();
+                const firstAddedAt    = state.firstAddedAt
+                    ? Timestamp.fromMillis(state.firstAddedAt)
+                    : (state.items.length > 0 ? now : undefined);
+                const updatedAt       = state.updatedAt
+                    ? Timestamp.fromMillis(state.updatedAt)
+                    : now;
+                const checkoutStartedAt = state.checkoutStartedAt
+                    ? Timestamp.fromDate(new Date(state.checkoutStartedAt))
+                    : undefined;
+
+                if (user) {
+                    // ── Logged-in: save to carts/{uid} ──────────────────────
+                    const cartRef = doc(this.firestore, `carts/${user.uid}`);
+                    console.log('[Cart] Writing to Firestore — uid:', user.uid, '| attribution:', attribution ? '✅ present' : '❌ null');
+                    await setDoc(cartRef, stripUndefined({
+                        ...state,
+                        items,
+                        userId:            user.uid,
+                        email:             user.email,
+                        sessionId:         this.sessionId,
+                        source:            state.source ?? this.source,
+                        status:            state.status ?? 'active',
+                        firstAddedAt,
+                        updatedAt,
+                        checkoutStartedAt,
+                        attribution:       attributionFs,
+                        lastUpdated:       now,
+                    }), { merge: true });
+                    console.log('[Cart] ✅ Firestore write complete.');
+
+                } else {
+                    // ── Guest: save to guestCarts/{sessionId} ────────────────
+                    if (state.items.length === 0) return;
+                    const guestRef = doc(this.firestore, `guestCarts/${this.sessionId}`);
+                    console.log('[Cart] Writing GUEST cart — sessionId:', this.sessionId, '| attribution:', attribution ? '✅ present' : '❌ null');
+                    await setDoc(guestRef, stripUndefined({
+                        ...state,
+                        items,
+                        sessionId:         this.sessionId,
+                        source:            state.source ?? this.source,
+                        status:            state.status ?? 'active',
+                        firstAddedAt,
+                        updatedAt,
+                        checkoutStartedAt,
+                        attribution:       attributionFs,
+                        lastUpdated:       now,
+                    }), { merge: true });
+                    console.log('[Cart] ✅ Guest Firestore write complete.');
+                }
             } catch (e) {
-                console.error('Error syncing cart to Firestore', e);
+                console.error('[Cart] Error syncing to Firestore:', e);
             }
         }, 1000);
     }
 
-    private async loadFromFirestore(userId: string) {
+    /**
+     * On login: migrate the guest cart (guestCarts/{sessionId}) into the user cart,
+     * then load the merged result.
+     */
+    private async migrateGuestCartAndLoad(userId: string, email: string) {
         try {
-            const cartRef = doc(this.firestore, `carts/${userId}`);
-            const snapshot = await getDoc(cartRef);
+            const guestRef = doc(this.firestore, `guestCarts/${this.sessionId}`);
+            const userRef  = doc(this.firestore, `carts/${userId}`);
 
-            if (snapshot.exists()) {
-                const cloudCart = snapshot.data() as CartState;
+            const [guestSnap, userSnap] = await Promise.all([getDoc(guestRef), getDoc(userRef)]);
 
-                // Strategy: Cloud wins on login, OR merge (for now simpler: Cloud wins if exists)
-                // Better UX: If local cart has items and cloud is empty -> Push local
-                // If cloud has items -> Pull cloud
+            const guestCart  = guestSnap.exists()  ? (guestSnap.data()  as CartState) : null;
+            const cloudCart  = userSnap.exists()   ? (userSnap.data()   as CartState) : null;
 
-                if (cloudCart.items && cloudCart.items.length > 0) {
-                    this.updateState(cloudCart.items);
-                    console.log('Loaded cart from Firestore');
-                } else {
-                    // Cloud empty, push local
-                    this.saveToFirestore(this.cartState());
+            // Don't reload a completed cart (already placed order)
+            if (cloudCart?.status === 'completed') {
+                console.log('[Cart] Skipping completed cloud cart — starting fresh.');
+                if (guestCart?.items?.length) {
+                    this.zone.run(() => this.updateState(guestCart.items, 'active'));
                 }
+                return;
             }
+
+            const guestItems = guestCart?.items   ?? [];
+            const cloudItems = cloudCart?.items   ?? [];
+            const localItems = this.cartState().items;
+
+            // Merge: union of cloud + guest + local, keeping max quantity per product
+            const merged = this.mergeItems([...cloudItems, ...guestItems, ...localItems]);
+
+            if (merged.length > 0) {
+                this.zone.run(() => this.updateState(merged, 'active'));
+            } else if (cloudItems.length > 0) {
+                this.zone.run(() => this.updateState(cloudItems, 'active'));
+            }
+
+            // Archive the guest cart doc by marking it as migrated
+            if (guestSnap.exists()) {
+                await setDoc(guestRef, {
+                    status:    'migrated',
+                    migratedTo: userId,
+                    migratedAt: Timestamp.now()
+                }, { merge: true });
+            }
+
         } catch (e) {
-            console.error('Error loading cart from Firestore', e);
+            console.error('[Cart] Error during guest migration:', e);
         }
     }
 
-    // ==========================================
-    // Core Actions
-    // ==========================================
+    private mergeItems(items: CartItem[]): CartItem[] {
+        const map = new Map<string, CartItem>();
+        for (const item of items) {
+            const key = item.product.id ?? item.product.sku ?? String(item.addedAt);
+            const existing = map.get(key);
+            if (existing) {
+                map.set(key, { ...existing, quantity: Math.max(existing.quantity, item.quantity) });
+            } else {
+                map.set(key, item);
+            }
+        }
+        return Array.from(map.values());
+    }
+
+    // ── Core Actions ──────────────────────────────────────────────────────────
 
     addToCart(product: Product, quantity: number = 1) {
         const currentItems = this.cartItems();
-        const existingItemIndex = currentItems.findIndex(item => item.product.id === product.id);
+        const existingIdx  = currentItems.findIndex(i => i.product.id === product.id);
+        let   updatedItems = [...currentItems];
 
-        let updatedItems = [...currentItems];
-
-        if (existingItemIndex > -1) {
-            // Update existing
-            updatedItems[existingItemIndex].quantity += quantity;
+        if (existingIdx > -1) {
+            updatedItems[existingIdx] = {
+                ...updatedItems[existingIdx],
+                quantity: updatedItems[existingIdx].quantity + quantity
+            };
         } else {
-            // Add new
-            updatedItems.push({
-                product,
-                quantity,
-                addedAt: Date.now()
-            });
+            updatedItems.push({ product, quantity, addedAt: Date.now() });
         }
 
-        this.updateState(updatedItems);
+        // Capture firstAddedAt on the very first item ever added
+        const current = this.cartState();
+        const firstAddedAt = current.firstAddedAt ?? Date.now();
+        this.cartState.set({
+            ...current,
+            items:        updatedItems,
+            updatedAt:    Date.now(),
+            firstAddedAt,
+            status:       current.status ?? 'active',
+            sessionId:    current.sessionId ?? this.sessionId,
+            source:       current.source    ?? this.source,
+        });
     }
 
     removeFromCart(productId: string) {
-        const updatedItems = this.cartItems().filter(item => item.product.id !== productId);
-        this.updateState(updatedItems);
+        this.updateState(this.cartItems().filter(i => i.product.id !== productId));
     }
 
     updateQuantity(productId: string, quantity: number) {
-        let updatedItems = this.cartItems().map(item => {
-            if (item.product.id === productId) {
-                return { ...item, quantity: Math.max(0, quantity) };
-            }
-            return item;
-        });
-
-        // Remove items with 0 quantity
-        updatedItems = updatedItems.filter(item => item.quantity > 0);
-
-        this.updateState(updatedItems);
+        let updated = this.cartItems().map(i =>
+            i.product.id === productId ? { ...i, quantity: Math.max(0, quantity) } : i
+        ).filter(i => i.quantity > 0);
+        this.updateState(updated);
     }
 
     clearCart() {
         this.updateState([]);
     }
 
-    // ==========================================
-    // UI Actions
-    // ==========================================
-
-    toggleCart() {
-        this.isDrawerOpen.update(v => !v);
-    }
-
-    openCart() {
-        this.isDrawerOpen.set(true);
-    }
-
-    closeCart() {
-        this.isDrawerOpen.set(false);
-    }
-
-    // ==========================================
-    // Persistence Logic
-    // ==========================================
-
-    private updateState(items: CartItem[]) {
+    /**
+     * Mark cart as checkout_started — call when the user lands on /checkout.
+     * Updates status in Firestore so ops can see drop-off at this stage.
+     */
+    markCheckoutStarted() {
+        const current = this.cartState();
+        if (current.status === 'checkout_started' || current.status === 'completed') return;
         this.cartState.set({
+            ...current,
+            status:            'checkout_started',
+            checkoutStartedAt: new Date().toISOString(),
+        });
+    }
+
+    /**
+     * Archive the cart as completed instead of deleting it.
+     * Keeps a permanent record of what was purchased for analytics.
+     * Then wipes items so next session starts fresh.
+     */
+    async completeCart(orderId: string): Promise<void> {
+        const user = this.authService.currentUser();
+        if (!user) return;
+        try {
+            const cartRef = doc(this.firestore, `carts/${user.uid}`);
+            const snap    = await getDoc(cartRef);
+            const current = snap.exists() ? snap.data() as CartState : this.cartState();
+
+            await setDoc(cartRef, stripUndefined({
+                ...current,
+                items:       [],
+                status:      'completed',
+                orderId,
+                completedAt: Timestamp.now(),
+                lastUpdated: Timestamp.now(),
+            }));
+
+            console.log(`[Cart] Archived as completed → orderId: ${orderId}`);
+        } catch (e) {
+            console.warn('[Cart] Could not archive cart:', e);
+        }
+    }
+
+    // ── UI Actions ────────────────────────────────────────────────────────────
+    toggleCart() { this.isDrawerOpen.update(v => !v); }
+    openCart()   { this.isDrawerOpen.set(true); }
+    closeCart()  { this.isDrawerOpen.set(false); }
+
+    // ── Internal State ────────────────────────────────────────────────────────
+    private updateState(items: CartItem[], status?: CartState['status']) {
+        const current = this.cartState();
+        this.cartState.set({
+            ...current,
             items,
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            ...(status ? { status } : {}),
         });
     }
 
@@ -195,7 +333,7 @@ export class CartService {
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
         } catch (e) {
-            console.error('Failed to save cart to storage', e);
+            console.error('[Cart] Failed to save to localStorage:', e);
         }
     }
 
@@ -203,10 +341,43 @@ export class CartService {
         if (!isPlatformBrowser(this.platformId)) return { items: [], updatedAt: Date.now() };
         try {
             const data = localStorage.getItem(this.STORAGE_KEY);
-            return data ? JSON.parse(data) : { items: [], updatedAt: Date.now() };
+            if (!data) return { items: [], updatedAt: Date.now() };
+            const parsed: CartState = JSON.parse(data);
+            // If the locally-stored cart was completed, start fresh
+            if (parsed.status === 'completed') return { items: [], updatedAt: Date.now() };
+            return parsed;
         } catch (e) {
-            console.warn('Failed to load cart from storage', e);
+            console.warn('[Cart] Failed to load from localStorage:', e);
             return { items: [], updatedAt: Date.now() };
         }
+    }
+
+    // ── Session & Attribution Helpers ─────────────────────────────────────────
+    private getOrCreateSessionId(): string {
+        if (!isPlatformBrowser(this.platformId)) return 'ssr';
+        try {
+            let id = sessionStorage.getItem('cart_session_id');
+            if (!id) {
+                id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+                sessionStorage.setItem('cart_session_id', id);
+            }
+            return id;
+        } catch { return `s_${Date.now()}`; }
+    }
+
+    private captureSource(): string {
+        if (!isPlatformBrowser(this.platformId)) return 'direct';
+        try {
+            const params = new URLSearchParams(window.location.search);
+            // UTM parameters take priority
+            if (params.get('utm_source'))   return params.get('utm_source')!;
+            if (params.get('utm_medium'))   return params.get('utm_medium')!;
+            if (params.get('utm_campaign')) return params.get('utm_campaign')!;
+            // Fallback: referrer domain
+            if (document.referrer) {
+                try { return new URL(document.referrer).hostname; } catch { return document.referrer; }
+            }
+            return 'direct';
+        } catch { return 'direct'; }
     }
 }

@@ -9,75 +9,160 @@ const db = admin.firestore();
 
 export const processPayment = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to process a payment.');
+        console.warn('[processPayment] Guest checkout — no Firebase auth. Validating inputs.');
     }
 
-    const { token, amount, email, description, orderId, installments, paymentMethodId, issuerId } = data;
+    const { token, amount, email, description, orderId, orderNumber,
+            installments, paymentMethodId, issuerId } = data;
 
     if (!token || !amount || !email) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required payment parameters.');
     }
 
+    // Load MP credentials + installments policy from Firestore
     let accessToken = process.env.MP_ACCESS_TOKEN;
+    let installmentsEnabled = false;
+    let maxInstallments = 1;
+
     try {
         const integrationsDoc = await db.collection('config').doc('integrations').get();
         if (integrationsDoc.exists) {
             const mpConfig = integrationsDoc.data()?.mercadopago || {};
-            if (mpConfig.accessToken) {
-                accessToken = mpConfig.accessToken;
-            }
+            if (mpConfig.accessToken) accessToken = mpConfig.accessToken;
+            installmentsEnabled = mpConfig.installmentsEnabled ?? false;
+            maxInstallments     = mpConfig.maxInstallments ?? 1;
         }
     } catch (err) {
-        console.warn('Could not read MP keys from config/integrations', err);
+        console.warn('Could not read MP config from Firestore:', err);
     }
 
     if (!accessToken) {
-        console.error("Missing MP_ACCESS_TOKEN");
         throw new functions.https.HttpsError('internal', 'Server configuration error. Missing Access Token.');
     }
 
-    const client = new MercadoPagoConfig({ accessToken, options: { timeout: 5000 } });
+    // Enforce installments policy
+    let finalInstallments = 1;
+    if (installmentsEnabled) {
+        finalInstallments = Math.min(Number(installments) || 1, maxInstallments);
+    }
+
+    const client  = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
     const payment = new Payment(client);
 
     try {
-        const paymentData = {
-            transaction_amount: Number(amount),
-            token: token,
-            description: description || 'Storefront Order',
-            installments: Number(installments) || 1,
-            payment_method_id: paymentMethodId,
-            issuer_id: issuerId,
-            payer: { email },
-            metadata: { order_id: orderId || '' }
+        const paymentData: any = {
+            transaction_amount:  Number(amount),
+            token,
+            description:         description || `Orden ${orderNumber || orderId || ''} — Storefront`,
+            installments:        finalInstallments,
+            payment_method_id:   paymentMethodId,
+            issuer_id:           issuerId,
+            three_d_secure_mode: 'optional',
+            payer: {
+                email,
+                identification: { type: 'RFC', number: 'XAXX010101000' }
+            },
+            metadata: { order_id: orderId || '', order_number: orderNumber || '' }
         };
 
         const result = await payment.create({ body: paymentData });
 
+        // 3DS challenge required
+        if (result.status === 'pending' && result.status_detail === 'pending_challenge') {
+            const challengeUrl = (result as any).three_ds_info?.external_resource_url;
+            console.log(`[processPayment] 3DS challenge for order ${orderId}`);
+            if (orderId) {
+                await db.collection('orders').doc(orderId).update({
+                    paymentStatus: 'pending_3ds',
+                    paymentId:     result.id,
+                    updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+                }).catch(e => console.error('Failed to update order for 3DS:', e));
+            }
+            return { success: false, requires3DS: true, challengeUrl, paymentId: result.id,
+                     status: result.status, statusDetail: result.status_detail };
+        }
+
+        // Payment approved/rejected/in_process
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: result.status,
-                paymentId: result.id,
+                paymentId:     result.id,
                 paymentMethod: result.payment_method_id,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.error("Failed to update order status:", err));
+                installments:  result.installments,
+                updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+            }).catch(e => console.error('Failed to update order status:', e));
         }
 
-        return { success: true, status: result.status, paymentId: result.id, statusDetail: result.status_detail };
+        return { success: true, status: result.status, paymentId: result.id,
+                 statusDetail: result.status_detail };
 
     } catch (error: any) {
-        console.error('MercadoPago Payment Create Error:', error);
-
+        console.error('MercadoPago Payment Error:', error);
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: 'rejected',
-                paymentError: error.message || 'Unknown processing error',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.error("Failed to update rejected status:", err));
+                paymentError:  error.message || 'Unknown error',
+                updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+            }).catch(e => console.error('Failed to update rejected status:', e));
         }
-
         throw new functions.https.HttpsError('internal', error.message || 'Payment processing failed.');
     }
 });
+
+// ─── MercadoPago Webhook ──────────────────────────────────────────────────────
+// Receives payment status updates from MP's notification system.
+// Register this URL in MP Developer Panel → Notifications → Webhook:
+//   https://us-central1-tiendapraxis.cloudfunctions.net/mpWebhook
+
+export const mpWebhook = functions.https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+    try {
+        const topic      = req.body?.type || req.query['topic'];
+        const resourceId = req.body?.data?.id || req.query['id'];
+        console.log('[mpWebhook] Received:', topic, resourceId);
+
+        if (topic !== 'payment' || !resourceId) { res.status(200).send('OK'); return; }
+
+        let accessToken = process.env.MP_ACCESS_TOKEN;
+        try {
+            const snap = await db.collection('config').doc('integrations').get();
+            const t = snap.data()?.mercadopago?.accessToken;
+            if (t) accessToken = t;
+        } catch (e) { /* fall back to env */ }
+
+        if (!accessToken) { res.status(500).send('No access token'); return; }
+
+        const mpClient   = new MercadoPagoConfig({ accessToken });
+        const paymentApi = new Payment(mpClient);
+        const paymentData = await paymentApi.get({ id: String(resourceId) });
+
+        const orderId = paymentData.metadata?.order_id;
+        if (!orderId) { res.status(200).send('No order_id in metadata'); return; }
+
+        const statusMap: Record<string, string> = {
+            approved: 'approved', rejected: 'rejected', cancelled: 'cancelled',
+            refunded: 'refunded', pending: 'pending', in_process: 'pending', authorized: 'pending'
+        };
+        const newStatus = statusMap[paymentData.status || ''] ?? 'unknown';
+
+        await db.collection('orders').doc(orderId).update({
+            paymentStatus: newStatus,
+            paymentId:     paymentData.id,
+            paymentMethod: paymentData.payment_method_id,
+            installments:  paymentData.installments,
+            updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+            ...(newStatus === 'approved' ? { status: 'paid' } : {}),
+            ...(newStatus === 'rejected' ? { status: 'payment_failed' } : {}),
+        });
+
+        console.log(`[mpWebhook] Order ${orderId} payment → ${newStatus}`);
+        res.status(200).send('OK');
+    } catch (err: any) {
+        console.error('[mpWebhook] Error:', err);
+        res.status(500).send('Internal Error');
+    }
+});
+
 
 
 // ─── Firebase Custom Claims: Role Sync ───────────────────────────────────────

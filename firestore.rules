@@ -392,10 +392,38 @@ service cloud.firestore {
     // ── Commerce: Carts ───────────────────────────────────────────────────────
 
     match /carts/{cartId} {
-      // Anyone can create a cart (anonymous abandon-cart analytics preserved)
+      // Anyone can create a cart (needed for anonymous → user handoff)
       allow create: if true;
-      // Only the authenticated owner can read/update/delete their own cart
-      allow read, update, delete: if isAuth() && request.auth.uid == cartId;
+      // Authenticated owner can read/update their own cart
+      allow read, update: if isAuth() && request.auth.uid == cartId;
+      // Staff can read all carts (ops dashboard, recovery campaigns)
+      allow read: if isStaff();
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // ── Commerce: Guest Carts (anonymous visitor tracking) ────────────────────
+    //
+    // Written by unauthenticated visitors who add items without logging in.
+    // The sessionId in the document payload MUST match the document path ID —
+    // this prevents one session from overwriting another's data.
+    // Reads are staff-only to protect visitor PII (IP, device, geo).
+    //
+    match /guestCarts/{sessionId} {
+      // Anyone (including unauthenticated) can create/update their own session cart.
+      // Validate that the sessionId field in the payload matches the document ID.
+      allow create, update: if request.resource.data.sessionId == sessionId;
+      // Staff can read all guest carts (for ops dashboard and recovery emails)
+      allow read: if isStaff();
+      // No client-side deletes — we mark as 'migrated' instead to preserve history
+      allow delete: if isAdmin();
+    }
+
+    // ── Promotions ────────────────────────────────────────────────────────────
+
+    match /promotions/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
   }

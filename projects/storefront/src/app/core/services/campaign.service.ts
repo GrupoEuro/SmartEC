@@ -2,6 +2,7 @@ import { Injectable, inject, signal, Injector } from '@angular/core';
 import { Firestore, collection, query, where, orderBy, getDocs, Timestamp, onSnapshot } from '@angular/fire/firestore';
 import { Campaign, WebsiteTheme } from '../models/campaign.model';
 import { ThemeService } from './theme.service';
+import { AttributionService } from './attribution.service';
 
 @Injectable({
     providedIn: 'root'
@@ -10,6 +11,7 @@ export class CampaignService {
     private injector = inject(Injector);
     private _firestore: Firestore | null = null;
     private themeService = inject(ThemeService);
+    private attribution = inject(AttributionService);
     private initialized = false;
 
     private get firestore(): Firestore {
@@ -63,6 +65,8 @@ export class CampaignService {
                 const winner = campaigns[0];
                 console.log('🏆 Active Campaign Found:', winner.name);
                 this.activeCampaign.set(winner);
+                // Record active campaign in attribution for cart docs
+                this.attribution.setCampaign(winner.id || '', winner.name);
 
                 // 🎨 Auto-Apply Theme
                 if (winner.themeId) {

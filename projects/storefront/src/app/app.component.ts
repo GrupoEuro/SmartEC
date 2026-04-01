@@ -13,6 +13,7 @@ import { ExitIntentComponent } from './shared/components/exit-intent/exit-intent
 import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer.component';
 import { ThemeService } from './core/services/theme.service';
 import { LanguageService } from './core/services/language.service';
+import { AttributionService } from './core/services/attribution.service';
 
 @Component({
   selector: 'app-root',
@@ -33,6 +34,7 @@ export class AppComponent implements OnInit {
 
   private themeService = inject(ThemeService); // Initializes Theme Engine
   private languageService = inject(LanguageService); // Single source of truth for language
+  private attributionService = inject(AttributionService);
 
   constructor() {
     console.log('%c Storefront App V1.0 ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');
@@ -41,6 +43,10 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.dateLangAttribute();
+
+    // Attribution MUST be captured immediately on page load (UTM params are in the URL NOW)
+    // Non-blocking: geo resolution is async and resolves quietly in background
+    this.attributionService.init();
 
     // Defer non-critical services to completely bypass Lighthouse TBT penalty
     // We strictly wait for the first user interaction (mousemove, scroll, touch)

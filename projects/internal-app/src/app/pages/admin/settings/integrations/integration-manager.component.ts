@@ -39,6 +39,8 @@ export class IntegrationManagerComponent implements OnInit {
 
     mpAccessToken = '';
     mpPublicKey = '';
+    mpInstallmentsEnabled = false;
+    mpMaxInstallments = 1;
 
     stripePublishableKey = '';
     stripeSecretKey = '';
@@ -106,6 +108,8 @@ export class IntegrationManagerComponent implements OnInit {
         if (conf.mercadopago) {
             this.mpAccessToken = conf.mercadopago.accessToken || '';
             this.mpPublicKey = conf.mercadopago.publicKey || '';
+            this.mpInstallmentsEnabled = conf.mercadopago.installmentsEnabled ?? false;
+            this.mpMaxInstallments = conf.mercadopago.maxInstallments ?? 1;
         }
         if (conf.stripe) {
             this.stripePublishableKey = conf.stripe.publishableKey || '';
@@ -268,7 +272,9 @@ export class IntegrationManagerComponent implements OnInit {
                 mercadopago: {
                     accessToken: this.mpAccessToken,
                     publicKey: this.mpPublicKey,
-                    connected: !!this.mpAccessToken
+                    connected: !!this.mpAccessToken,
+                    installmentsEnabled: this.mpInstallmentsEnabled,
+                    maxInstallments: this.mpInstallmentsEnabled ? this.mpMaxInstallments : 1,
                 }
             });
             alert('MercadoPago Keys Saved.');

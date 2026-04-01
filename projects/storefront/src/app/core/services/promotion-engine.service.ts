@@ -1,7 +1,8 @@
 import { Injectable, inject, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Firestore, collection, query, where, orderBy, getDocs, doc, increment, updateDoc } from '@angular/fire/firestore';
-import { AuthService, CartService, LanguageService } from '@lib/core';
+import { AuthService, LanguageService } from '@lib/core';
+import { CartService } from './cart.service';
 import { signal } from '@angular/core';
 
 export interface BilingualText { es: string; en: string; }

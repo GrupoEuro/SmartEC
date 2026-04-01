@@ -5,14 +5,15 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
-import { Action } from 'rxjs/internal/scheduler/Action';
+
 import { ProductService } from '@lib/core';
+import { CartService } from '../../core/services/cart.service';
 import { MetaService } from '../../core/services/meta.service';
-import { CartService } from '@lib/core';
 import { Product } from '@lib/core';
 import { ImageGalleryComponent } from './components/image-gallery/image-gallery.component';
 import { RelatedProductsComponent } from './components/related-products/related-products.component';
 import { ProductBundlesComponent } from './components/product-bundles/product-bundles.component';
+import { WishlistService } from '../../core/services/wishlist.service';
 
 @Component({
     selector: 'app-product-detail',
@@ -34,7 +35,8 @@ export class ProductDetailComponent implements OnInit {
     private router = inject(Router);
     private productService = inject(ProductService);
     private metaService = inject(MetaService);
-    private cartService = inject(CartService); // Inject CartService
+    private cartService = inject(CartService);
+    readonly wishlistService = inject(WishlistService);
 
     product$!: Observable<Product | null>;
     relatedProducts$!: Observable<Product[]>;
@@ -109,9 +111,8 @@ export class ProductDetailComponent implements OnInit {
         this.cartService.openCart();
     }
 
-    addToWishlist(product: Product) {
-        // TODO: Implement wishlist functionality
-        console.log('Add to wishlist:', product);
+    async addToWishlist(product: Product) {
+        await this.wishlistService.toggle(product);
     }
 
     shareProduct() {

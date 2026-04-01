@@ -75,7 +75,15 @@ import { CartService } from '../../../core/services/cart.service';
                                                 <button (click)="updateQty(item.product.id, item.quantity + 1)">+</button>
                                             </div>
                                         </div>
-                                        <button class="remove-btn" (click)="removeItem(item.product.id)">🗑️</button>
+                                        <!-- Remove: inline confirmation instead of browser confirm() -->
+                                        @if (confirmingId() === item.product.id) {
+                                            <div class="remove-confirm">
+                                                <button class="confirm-yes" (click)="confirmRemove(item.product.id!)">🗑️ Eliminar</button>
+                                                <button class="confirm-no" (click)="cancelRemove()">No</button>
+                                            </div>
+                                        } @else {
+                                            <button class="remove-btn" (click)="requestRemove(item.product.id!)" title="Eliminar">🗑️</button>
+                                        }
                                     </div>
                                 }
                             </div>
@@ -314,13 +322,45 @@ import { CartService } from '../../../core/services/cart.service';
             padding: 8px;
             font-size: 1.1rem;
             transition: all 0.2s;
-            filter: grayscale(1);
-        }
+            filter: grayscale(1);\n        }
         .remove-btn:hover { 
             opacity: 1; 
             transform: scale(1.1);
             filter: grayscale(0);
         }
+
+        .remove-confirm {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-self: flex-start;
+        }
+        .confirm-yes {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 6px;
+            color: #fca5a5;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .confirm-yes:hover { background: rgba(239, 68, 68, 0.3); }
+        .confirm-no {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .confirm-no:hover { background: rgba(255, 255, 255, 0.1); }
+
 
         .drawer-footer {
             padding: 32px 24px;
@@ -397,7 +437,8 @@ export class CartDrawerComponent {
     cartService = inject(CartService);
     translate = inject(TranslateService);
 
-    // Controlled by Service Logic via Signal
+    /** productId that awaits inline delete confirmation, null = none */
+    confirmingId = signal<string | null>(null);
 
     close() {
         this.cartService.closeCart();
@@ -406,17 +447,23 @@ export class CartDrawerComponent {
     updateQty(productId: string | undefined, qty: number) {
         if (!productId) return;
         if (qty <= 0) {
-            this.removeItem(productId);
+            this.requestRemove(productId);
         } else {
             this.cartService.updateQuantity(productId, qty);
         }
     }
 
-    removeItem(productId: string | undefined) {
-        if (!productId) return;
-        if (confirm(this.translate.instant('CART.CONFIRM_REMOVE'))) {
-            this.cartService.removeFromCart(productId);
-        }
+    requestRemove(productId: string) {
+        this.confirmingId.set(productId);
+    }
+
+    confirmRemove(productId: string) {
+        this.cartService.removeFromCart(productId);
+        this.confirmingId.set(null);
+    }
+
+    cancelRemove() {
+        this.confirmingId.set(null);
     }
 
     get shippingProgress() {
@@ -425,3 +472,4 @@ export class CartDrawerComponent {
         return Math.min(100, (current / threshold) * 100);
     }
 }
+

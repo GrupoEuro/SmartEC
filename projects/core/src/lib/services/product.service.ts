@@ -234,8 +234,15 @@ export class ProductService {
                 switch (sortBy) {
                     case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
                     case 'price-desc': filtered.sort((a, b) => b.price - a.price); break;
+                    case 'name-asc': filtered.sort((a, b) => (a.name.es || a.name.en).localeCompare(b.name.es || b.name.en)); break;
+                    case 'name-desc': filtered.sort((a, b) => (b.name.es || b.name.en).localeCompare(a.name.es || a.name.en)); break;
                     case 'newest': filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); break;
-                    default: filtered.sort((a, b) => (b.featured ? 1 : -1) || b.createdAt.getTime() - a.createdAt.getTime());
+                    default: // 'featured' — featured first, then newest
+                        filtered.sort((a, b) => {
+                            const featuredDiff = (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+                            if (featuredDiff !== 0) return featuredDiff;
+                            return b.createdAt.getTime() - a.createdAt.getTime();
+                        });
                 }
 
                 observer.next(filtered);

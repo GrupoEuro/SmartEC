@@ -5,13 +5,15 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, combineLatest, BehaviorSubject } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ProductService, CategoryService, CartService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy, KitService, ProductKit } from '@lib/core';
+import { ProductService, CategoryService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy, KitService, ProductKit } from '@lib/core';
+import { CartService } from '../../core/services/cart.service';
 
 import { MetaService } from '../../core/services/meta.service';
 
 import { SkeletonProductCardComponent } from '../../shared/components/skeleton-product-card/skeleton-product-card.component';
 import { QuickViewModalComponent } from '../../shared/components/quick-view-modal/quick-view-modal.component';
 import { CartAnimationService } from '../../core/services/cart-animation.service';
+import { WishlistService } from '../../core/services/wishlist.service';
 import { MatSliderModule } from '@angular/material/slider';
 
 @Component({
@@ -44,6 +46,7 @@ export class CatalogV2Component implements OnInit {
     private cartService = inject(CartService);
     private cartAnimation = inject(CartAnimationService);
     private kitService = inject(KitService);
+    public wishlistService = inject(WishlistService);
     public languageService = inject(LanguageService);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
@@ -390,6 +393,12 @@ export class CatalogV2Component implements OnInit {
             delete (this.filters as any)[feature];
         }
         this.onFilterChange();
+    }
+
+    async toggleWishlist(product: Product, event: Event) {
+        event.preventDefault();
+        event.stopPropagation();
+        await this.wishlistService.toggle(product);
     }
 
     addToCart(product: Product, event: Event) {

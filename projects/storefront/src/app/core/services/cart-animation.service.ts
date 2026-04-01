@@ -1,11 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 
 @Injectable({
     providedIn: 'root'
 })
 export class CartAnimationService {
-
-    constructor() { }
+    private zone = inject(NgZone);
 
     /**
      * Animates an element (usually an image) flying from its current position 
@@ -58,10 +57,10 @@ export class CartAnimationService {
             clone.style.opacity = '0.7';
         });
 
-        // Cleanup
+        // Cleanup & run callback inside Angular zone
         setTimeout(() => {
             clone.remove();
-            if (onComplete) onComplete();
+            if (onComplete) this.zone.run(() => onComplete());
         }, 800); // Match transition duration
     }
 }

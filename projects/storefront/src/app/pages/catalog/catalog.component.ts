@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, combineLatest, BehaviorSubject } from 'rxjs';
 import { map, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { ProductService, CategoryService, CartService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy } from '@lib/core';
+import { ProductService, CategoryService, LanguageService, DataSeederService, Product, ProductFilters, Category, ProductSortBy } from '@lib/core';
+import { CartService } from '../../core/services/cart.service';
 import { MetaService } from '../../core/services/meta.service';
 
 import { SkeletonProductCardComponent } from '../../shared/components/skeleton-product-card/skeleton-product-card.component';

@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { CartService } from '@lib/core';
+import { CartService } from './core/services/cart.service';
 
 export const routes: Routes = [
     { path: '', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
@@ -43,7 +43,7 @@ export const routes: Routes = [
     },
     {
         path: 'catalog',
-        loadComponent: () => import('./pages/catalog/catalog.component').then(m => m.CatalogComponent)
+        loadComponent: () => import('./pages/catalog-v2/catalog-v2.component').then(m => m.CatalogV2Component)
     },
     {
         path: 'product/:slug',

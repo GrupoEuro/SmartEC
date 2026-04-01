@@ -111,7 +111,11 @@
     "SECURE_SSL": "Secure SSL Payment",
     "SHIPPING_METHOD": "Shipping Method",
     "CALCULATING_RATES": "Calculating shipping options…",
-    "RETRY": "Retry"
+    "RETRY": "Retry",
+    "COUPON_PLACEHOLDER": "Coupon code",
+    "APPLY": "Apply",
+    "DISCOUNT": "Discount",
+    "EMPTY_CART": "Your cart is empty"
   },
   "CATALOG_QUICK_VIEW_BTN": "Quick View",
   "HERO": {
@@ -574,7 +578,9 @@
     "TITLE": "Order Confirmed! 🎉",
     "EMAIL_SENT": "We've sent a confirmation email to",
     "RETURN_HOME": "Return to Home",
-    "TRACK_ORDER": "Track My Order"
+    "TRACK_ORDER": "Track My Order",
+    "NOT_FOUND_TITLE": "Order not found",
+    "NOT_FOUND_MSG": "If you completed a purchase, you can track your order from your account or contact us."
   },
   "PRODUCT_DETAIL": {
     "BREADCRUMB_HOME": "Home",
@@ -736,6 +742,15 @@
         "TOTAL": "Total",
         "TRACK": "Track Order"
       }
+    },
+    "WISHLIST": {
+      "TITLE": "Wishlist",
+      "SUBTITLE": "Products you saved for later.",
+      "EMPTY_TITLE": "Your wishlist is empty",
+      "EMPTY_MSG": "Save products with the ♥ to find them easily later.",
+      "BROWSE_CATALOG": "Browse Catalog",
+      "ADD_TO_CART": "Add to Cart",
+      "CLEAR_ALL": "Clear Wishlist"
     },
     "COMMON": {
       "LOADING": "Loading...",

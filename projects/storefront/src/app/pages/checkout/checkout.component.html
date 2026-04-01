@@ -4,7 +4,9 @@
         <!-- Left Column: Steps -->
         <div class="steps-column">
 
-            <!-- STEP 1: IDENTITY -->
+            <!-- ─────────────────────────────────────────────────────── -->
+            <!-- STEP 1: IDENTITY                                        -->
+            <!-- ─────────────────────────────────────────────────────── -->
             <div class="step-card" [class.active]="currentStep() === 1" [class.completed]="currentStep() > 1">
                 <div class="step-header" (click)="currentStep() > 1 ? goToStep(1) : null">
                     <div class="step-indicator">
@@ -13,14 +15,12 @@
                     </div>
                     <div class="step-title-group">
                         <h3>{{ 'CHECKOUT.IDENTITY' | translate }}</h3>
-                        <p *ngIf="currentStep() > 1 && emailControl.valid" class="step-summary">{{ emailControl.value }}
-                        </p>
+                        <p *ngIf="currentStep() > 1 && emailControl.valid" class="step-summary">{{ emailControl.value }}</p>
                     </div>
                 </div>
 
                 <div class="step-content" [@expandCollapse]="currentStep() === 1 ? 'expanded' : 'collapsed'">
-                    <p class="step-intro text-muted" style="margin-bottom: 24px">{{ 'CHECKOUT.GUEST_LOGIN_HINT' |
-                        translate }}</p>
+                    <p class="step-intro text-muted" style="margin-bottom: 24px">{{ 'CHECKOUT.GUEST_LOGIN_HINT' | translate }}</p>
 
                     <div class="form-group">
                         <input type="email" [formControl]="emailControl" placeholder=" " class="form-input">
@@ -41,14 +41,10 @@
 
                         <button class="btn-google" (click)="loginWithGoogle()">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20px" height="20px">
-                                <path fill="#FFC107"
-                                    d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
-                                <path fill="#FF3D00"
-                                    d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
-                                <path fill="#4CAF50"
-                                    d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
-                                <path fill="#1976D2"
-                                    d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+                                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+                                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+                                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+                                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
                             </svg>
                             {{ 'CHECKOUT.SIGN_IN_GOOGLE' | translate }}
                         </button>
@@ -56,7 +52,9 @@
                 </div>
             </div>
 
-            <!-- STEP 2: SHIPPING -->
+            <!-- ─────────────────────────────────────────────────────── -->
+            <!-- STEP 2: SHIPPING ADDRESS                                -->
+            <!-- ─────────────────────────────────────────────────────── -->
             <div class="step-card" [class.active]="currentStep() === 2" [class.completed]="currentStep() > 2">
                 <div class="step-header" (click)="currentStep() > 2 ? goToStep(2) : null">
                     <div class="step-indicator">
@@ -69,6 +67,39 @@
                 </div>
 
                 <div class="step-content" [@expandCollapse]="currentStep() === 2 ? 'expanded' : 'collapsed'">
+
+                    <!-- ── Saved Addresses Picker (logged-in users only) ── -->
+                    @if (authService.currentUser() && savedAddresses().length > 0) {
+                        <div class="saved-addresses-section">
+                            <p class="saved-addr-label">📍 Tus direcciones guardadas</p>
+                            @if (loadingAddresses()) {
+                                <div class="addr-loading">
+                                    <div class="zip-spinner" style="width:20px;height:20px"></div>
+                                    <span>Cargando direcciones…</span>
+                                </div>
+                            } @else {
+                                <div class="addr-cards-row">
+                                    @for (addr of savedAddresses(); track addr.id) {
+                                        <button class="addr-card"
+                                                [class.addr-selected]="selectedAddressId() === addr.id"
+                                                (click)="applyAddress(addr)"
+                                                type="button">
+                                            <span class="addr-card-label">
+                                                @if (addr.isDefault) { ⭐ }
+                                                {{ addr.label || 'Dirección' }}
+                                            </span>
+                                            <span class="addr-card-detail">{{ addr.street }} {{ addr.extNum }}</span>
+                                            <span class="addr-card-detail">{{ addr.colonia }}, {{ addr.zip }}</span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            <div class="addr-divider">
+                                <span>o ingresa una nueva dirección</span>
+                            </div>
+                        </div>
+                    }
+
                     <form [formGroup]="shippingForm">
                         <div class="form-row">
                             <div class="form-group">
@@ -99,25 +130,38 @@
                             </div>
                         </div>
 
+                        <!-- ZIP with spinner -->
                         <div class="form-row">
-                            <div class="form-group">
-                                <input formControlName="colonia" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.COLONIA' | translate }}</label>
-                            </div>
-                            <div class="form-group">
-                                <input formControlName="zip" class="form-input" placeholder=" ">
+                            <div class="form-group zip-group">
+                                <input formControlName="zip" class="form-input" placeholder=" " maxlength="5" inputmode="numeric">
                                 <label class="floating-label">{{ 'CHECKOUT.ZIP' | translate }}</label>
+                                <div *ngIf="zipLoading()" class="zip-spinner"></div>
                             </div>
-                        </div>
-
-                        <div class="form-row">
                             <div class="form-group">
                                 <input formControlName="city" class="form-input" placeholder=" ">
                                 <label class="floating-label">{{ 'CHECKOUT.CITY' | translate }}</label>
                             </div>
+                        </div>
+
+                        <!-- State & Colonia -->
+                        <div class="form-row">
                             <div class="form-group">
                                 <input formControlName="state" class="form-input" placeholder=" ">
                                 <label class="floating-label">{{ 'CHECKOUT.STATE' | translate }}</label>
+                            </div>
+                            <!-- Colonia: dropdown if ZIP populated, plain input otherwise -->
+                            <div class="form-group">
+                                @if (colonias().length > 0) {
+                                    <select formControlName="colonia" class="form-input form-select">
+                                        <option value="" disabled>{{ 'CHECKOUT.COLONIA' | translate }}</option>
+                                        @for (col of colonias(); track col) {
+                                            <option [value]="col">{{ col }}</option>
+                                        }
+                                    </select>
+                                } @else {
+                                    <input formControlName="colonia" class="form-input" placeholder=" ">
+                                    <label class="floating-label">{{ 'CHECKOUT.COLONIA' | translate }}</label>
+                                }
                             </div>
                         </div>
 
@@ -135,7 +179,9 @@
                 </div>
             </div>
 
-            <!-- STEP 3: SHIPPING METHOD -->
+            <!-- ─────────────────────────────────────────────────────── -->
+            <!-- STEP 3: SHIPPING METHOD                                 -->
+            <!-- ─────────────────────────────────────────────────────── -->
             <div class="step-card" [class.active]="currentStep() === 3" [class.completed]="currentStep() > 3">
                 <div class="step-header" (click)="currentStep() > 3 ? goToStep(3) : null">
                     <div class="step-indicator">
@@ -186,7 +232,7 @@
                             <div class="rate-icon">
                                 <span *ngIf="rate.isFree">🎉</span>
                                 <span *ngIf="!rate.isFree && rate.rateId === 'express'">⚡</span>
-                                <span *ngIf="!rate.isFree && rate.rateId !== 'express' && !rate.isFree">🚚</span>
+                                <span *ngIf="!rate.isFree && rate.rateId !== 'express'">🚚</span>
                             </div>
                             <div class="rate-info">
                                 <span class="rate-service">{{ rate.serviceName }}</span>
@@ -209,7 +255,9 @@
                 </div>
             </div>
 
-            <!-- STEP 4: PAYMENT -->
+            <!-- ─────────────────────────────────────────────────────── -->
+            <!-- STEP 4: PAYMENT                                         -->
+            <!-- ─────────────────────────────────────────────────────── -->
             <div class="step-card" [class.active]="currentStep() === 4">
                 <div class="step-header">
                     <div class="step-indicator">4</div>
@@ -217,7 +265,8 @@
                 </div>
 
                 <div class="step-content" [@expandCollapse]="currentStep() === 4 ? 'expanded' : 'collapsed'">
-                    <div class="payment-section" [formGroup]="paymentForm">
+                    <div class="payment-section">
+                        <!-- Trust banner -->
                         <div class="trust-banner">
                             <div class="secure-badge">🛡️ {{ 'CHECKOUT.SECURE_SSL' | translate }}</div>
                             <div class="payment-logos-row">
@@ -227,80 +276,138 @@
                                 </div>
                                 <div class="mp-features">
                                     <span class="feature-tag">💳 MSI</span>
+                                    <span class="feature-tag">🔒 3DS</span>
                                     <span class="feature-tag">🔒 Protegida</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group full-width secure-field-group">
-                                <label>{{ 'CHECKOUT.CARD_NUMBER' | translate }}</label>
-                                <div id="form-checkout__cardNumber" class="secure-input-container"></div>
+                        <!-- Brick loading shimmer -->
+                        @if (brickLoading()) {
+                            <div class="brick-shimmer">
+                                <div class="shimmer-bar wide"></div>
+                                <div class="shimmer-bar medium"></div>
+                                <div class="shimmer-bar wide"></div>
+                                <div class="shimmer-bar narrow"></div>
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group secure-field-group">
-                                <label>{{ 'CHECKOUT.EXPIRATION' | translate }}</label>
-                                <div id="form-checkout__expirationDate" class="secure-input-container"></div>
-                            </div>
-                            <div class="form-group secure-field-group">
-                                <label>{{ 'CHECKOUT.CVV' | translate }}</label>
-                                <div id="form-checkout__securityCode" class="secure-input-container"></div>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <input type="text" formControlName="cardHolder" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.CARD_HOLDER' | translate }}</label>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <input type="text" formControlName="identificationNumber" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.DNI_INE' | translate }}</label>
-                            </div>
+                        }
+
+                        <!-- MercadoPago CardPayment Brick mounts here -->
+                        <div id="cardPaymentBrick_container"
+                             [class.brick-hidden]="brickLoading()">
                         </div>
 
-                        <!-- Payment Error -->
-                        <div *ngIf="paymentError()" class="payment-error-banner">
-                            ❌ {{ paymentError() }}
-                        </div>
+                        <!-- Payment error -->
+                        @if (paymentError()) {
+                            <div class="payment-error-banner">
+                                ❌ {{ paymentError() }}
+                            </div>
+                        }
 
-                        <button class="btn-pay" [disabled]="paymentProcessing()" (click)="processPayment()">
-                            <span *ngIf="!paymentProcessing()">
-                                {{ 'CHECKOUT.PAY_BUTTON' | translate: { amount: (orderTotal | currency) } }}
-                            </span>
-                            <span *ngIf="paymentProcessing()">⏳ Procesando…</span>
-                        </button>
-
-                        <p class="terms-text text-muted">
-                            {{ 'CHECKOUT.TERMS_AGREEMENT' | translate }} {{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate }}
-                        </p>
+                        <p class="secure-note">{{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate }}</p>
+                        <p class="terms-note">{{ 'CHECKOUT.TERMS_AGREEMENT' | translate }}</p>
                     </div>
+
+                    <!-- 3DS Challenge Overlay -->
+                    @if (awaitingChallenge()) {
+                        <div class="challenge-overlay">
+                            <div class="challenge-modal">
+                                <div class="challenge-header">
+                                    <span>🔐 Verificación bancaria requerida</span>
+                                    <p>Tu banco requiere confirmar la transacción. Completa el proceso en la ventana.</p>
+                                </div>
+                                <iframe [src]="challengeUrl()"
+                                        class="challenge-iframe"
+                                        sandbox="allow-forms allow-scripts allow-same-origin allow-top-navigation"
+                                        title="3DS Challenge">
+                                </iframe>
+                                <div class="challenge-footer">
+                                    <div class="challenge-spinner"></div>
+                                    <span>Esperando confirmación…</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
 
-        </div>
-
-        <!-- Right Column: Order Summary -->
+        <!-- ─────────────────────────────────────────────────────────── -->
+        <!-- Right Column: Order Summary                                  -->
+        <!-- ─────────────────────────────────────────────────────────── -->
         <div class="summary-column">
             <div class="summary-card sticky-summary">
                 <h3>{{ 'CHECKOUT.ORDER_SUMMARY' | translate }}</h3>
-                <div class="summary-items-scroll">
-                    @for (item of cartService.cartItems(); track item.product.id) {
-                    <div class="summary-item">
-                        <div class="item-img-wrapper">
-                            <img [src]="item.product.images.main || 'assets/placeholder_tire.png'" alt="prod">
-                            <span class="qty-badge">{{ item.quantity }}</span>
-                        </div>
-                        <div class="item-info">
-                            <p class="name">{{ item.product.name.es || item.product.name.en }}</p>
-                            <p class="price">{{ item.product.price | currency }}</p>
-                        </div>
+
+                <!-- Cart Items -->
+                @if (cartService.cartCount() === 0) {
+                    <div class="empty-cart-notice">
+                        <span>🛒</span>
+                        <p>{{ 'CHECKOUT.EMPTY_CART' | translate }}</p>
                     </div>
+                } @else {
+                    <div class="summary-items-scroll">
+                        @for (item of cartService.cartItems(); track item.product.id) {
+                        <div class="summary-item">
+                            <div class="item-img-wrapper">
+                                <img [src]="item.product.images.main || 'assets/placeholder_tire.png'" alt="prod">
+                                <span class="qty-badge">{{ item.quantity }}</span>
+                            </div>
+                            <div class="item-info">
+                                <p class="name">{{ item.product.name.es || item.product.name.en }}</p>
+                                <p class="price">{{ item.product.price | currency }}</p>
+                            </div>
+                            <!-- Inline qty controls -->
+                            <div class="item-qty-controls">
+                                <button class="qty-btn" (click)="cartService.updateQuantity(item.product.id!, item.quantity - 1)" title="Quitar uno">−</button>
+                                <span>{{ item.quantity }}</span>
+                                <button class="qty-btn" (click)="cartService.updateQuantity(item.product.id!, item.quantity + 1)" title="Agregar uno">+</button>
+                            </div>
+                        </div>
+                        }
+                    </div>
+                }
+
+                <!-- Coupon Input -->
+                <div class="coupon-section">
+                    @if (!appliedCoupon()) {
+                        <div class="coupon-input-row">
+                            <input
+                                type="text"
+                                class="coupon-input"
+                                placeholder="{{ 'CHECKOUT.COUPON_PLACEHOLDER' | translate }}"
+                                [value]="couponCode()"
+                                (input)="couponCode.set($any($event.target).value)"
+                                (keyup.enter)="applyCoupon()"
+                                [disabled]="couponLoading()">
+                            <button class="coupon-apply-btn"
+                                    (click)="applyCoupon()"
+                                    [disabled]="!couponCode() || couponLoading()">
+                                @if (couponLoading()) {
+                                    <span class="coupon-spinner"></span>
+                                } @else {
+                                    {{ 'CHECKOUT.APPLY' | translate }}
+                                }
+                            </button>
+                        </div>
+                        @if (couponError()) {
+                            <p class="coupon-error">❌ {{ couponError() }}</p>
+                        }
+                    } @else {
+                        <div class="coupon-applied">
+                            <span class="coupon-badge">🏷️ {{ appliedCoupon()!.code }}</span>
+                            <span class="coupon-desc">
+                                @if (appliedCoupon()!.type === 'percentage') {
+                                    {{ appliedCoupon()!.value }}% de descuento
+                                } @else {
+                                    {{ appliedCoupon()!.value | currency }} de descuento
+                                }
+                            </span>
+                            <button class="coupon-remove-btn" (click)="removeCoupon()" title="Eliminar cupón">✕</button>
+                        </div>
                     }
                 </div>
 
+                <!-- Totals -->
                 <div class="summary-footer">
                     <div class="row">
                         <span>{{ 'CHECKOUT.SUBTOTAL' | translate }}</span>
@@ -320,11 +427,22 @@
                             <span class="text-muted">{{ 'CHECKOUT.CALCULATED_NEXT' | translate }}</span>
                         }
                     </div>
+
+                    <!-- Discount row (only when coupon applied) -->
+                    @if (appliedCoupon() && discountAmount() > 0) {
+                        <div class="row discount-row">
+                            <span>🏷️ {{ 'CHECKOUT.DISCOUNT' | translate }} ({{ appliedCoupon()!.code }})</span>
+                            <span class="discount-amount">−{{ discountAmount() | currency }}</span>
+                        </div>
+                    }
+
                     <div class="divider"></div>
                     <div class="row total">
                         <span>{{ 'CHECKOUT.TOTAL' | translate }}</span>
                         <span class="total-amount">{{ orderTotal | currency }}</span>
                     </div>
+                    <!-- IVA Inclusive note -->
+                    <p class="iva-note">* Precios incluyen IVA (16%)</p>
                 </div>
             </div>
         </div>

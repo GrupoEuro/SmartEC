@@ -6,6 +6,7 @@ import { AddressBookComponent } from './address-book/address-book.component';
 import { OrderHistoryComponent } from './order-history/order-history.component';
 import { OrderDetailComponent } from './order-history/order-detail/order-detail.component';
 import { ProfileComponent } from './profile/profile.component';
+import { WishlistComponent } from './wishlist/wishlist.component';
 
 export const accountRoutes: Routes = [
     {
@@ -17,7 +18,8 @@ export const accountRoutes: Routes = [
             { path: 'addresses', component: AddressBookComponent },
             { path: 'orders', component: OrderHistoryComponent },
             { path: 'orders/details/:id', component: OrderDetailComponent },
-            { path: 'profile', component: ProfileComponent }
+            { path: 'profile', component: ProfileComponent },
+            { path: 'wishlist', component: WishlistComponent }
         ]
     }
 ];

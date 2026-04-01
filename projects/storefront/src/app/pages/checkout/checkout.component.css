@@ -624,3 +624,408 @@
     font-size: 0.875rem;
     color: #fca5a5;
 }
+
+/* ========================================
+   COUPON SECTION
+   ======================================== */
+.coupon-section {
+    padding: 0 24px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 4px;
+}
+
+.coupon-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.coupon-input {
+    flex: 1;
+    height: 44px;
+    padding: 0 14px;
+    background: var(--zinc-950);
+    border: 1px solid var(--zinc-700);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: border-color 0.2s;
+}
+
+.coupon-input::placeholder { text-transform: none; letter-spacing: 0; }
+.coupon-input:focus { outline: none; border-color: var(--primary-cyan); }
+.coupon-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.coupon-apply-btn {
+    height: 44px;
+    padding: 0 18px;
+    background: rgba(0,172,216,0.12);
+    border: 1px solid rgba(0,172,216,0.3);
+    border-radius: 8px;
+    color: var(--primary-cyan);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+}
+.coupon-apply-btn:hover:not(:disabled) {
+    background: rgba(0,172,216,0.2);
+    border-color: var(--primary-cyan);
+}
+.coupon-apply-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.coupon-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,172,216,0.3);
+    border-top-color: var(--primary-cyan);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+.coupon-error {
+    font-size: 0.78rem;
+    color: #fca5a5;
+    margin: 6px 0 0;
+}
+
+.coupon-applied {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+.coupon-badge {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #10b981;
+    letter-spacing: 0.05em;
+}
+
+.coupon-desc {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--zinc-400);
+}
+
+.coupon-remove-btn {
+    background: none;
+    border: none;
+    color: var(--zinc-500);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+.coupon-remove-btn:hover { color: #fca5a5; }
+
+/* ========================================
+   DISCOUNT ROW
+   ======================================== */
+.discount-row {
+    color: #10b981 !important;
+}
+.discount-amount {
+    font-weight: 700;
+    color: #10b981;
+}
+
+/* IVA note */
+.iva-note {
+    font-size: 0.72rem;
+    color: var(--zinc-500);
+    margin: 8px 0 0;
+    text-align: right;
+}
+
+/* ========================================
+   QUANTITY CONTROLS IN SUMMARY
+   ======================================== */
+.item-qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.item-qty-controls span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 18px;
+    text-align: center;
+}
+
+.qty-btn {
+    width: 28px;
+    height: 28px;
+    background: var(--zinc-800);
+    border: 1px solid var(--zinc-700);
+    border-radius: 6px;
+    color: var(--zinc-400);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.qty-btn:hover {
+    background: var(--zinc-700);
+    color: var(--text-primary);
+    border-color: var(--primary-cyan);
+}
+
+/* ========================================
+   ZIP SPINNER
+   ======================================== */
+.zip-group { position: relative; }
+.zip-spinner {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0,172,216,0.3);
+    border-top-color: var(--primary-cyan);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+/* ========================================
+   COLONIA SELECT
+   ======================================== */
+.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2371717a' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+}
+.form-select:focus { border-color: var(--primary-cyan); outline: none; }
+.form-select option { background: var(--zinc-900); color: var(--text-primary); }
+
+/* ========================================
+   EMPTY CART NOTICE
+   ======================================== */
+.empty-cart-notice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 24px;
+    color: var(--zinc-500);
+    font-size: 0.9rem;
+}
+/* ========================================
+   SAVED ADDRESS PICKER (Step 2)
+   ======================================== */
+.saved-addresses-section {
+    margin-bottom: 20px;
+}
+
+.saved-addr-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--zinc-400);
+    margin: 0 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.addr-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--zinc-500);
+    font-size: 0.85rem;
+    padding: 12px 0;
+}
+
+.addr-cards-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+}
+.addr-cards-row::-webkit-scrollbar { display: none; }
+
+.addr-card {
+    flex-shrink: 0;
+    min-width: 160px;
+    max-width: 200px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.addr-card:hover {
+    background: rgba(0,172,216,0.06);
+    border-color: rgba(0,172,216,0.3);
+}
+.addr-card.addr-selected {
+    border-color: var(--primary-cyan);
+    background: rgba(0,172,216,0.08);
+    box-shadow: 0 0 12px rgba(0,172,216,0.2);
+}
+
+.addr-card-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.addr-card.addr-selected .addr-card-label {
+    color: var(--primary-cyan);
+}
+
+.addr-card-detail {
+    font-size: 0.75rem;
+    color: var(--zinc-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.addr-divider {
+    display: flex;
+    align-items: center;
+    color: var(--zinc-500);
+    font-size: 0.78rem;
+    margin: 18px 0 4px;
+}
+.addr-divider::before,
+.addr-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+}
+.addr-divider span { padding: 0 12px; }
+
+
+
+/* ─── MercadoPago Bricks ─────────────────────────────────────────────────── */
+
+#cardPaymentBrick_container {
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 200px;
+    transition: opacity 0.3s ease;
+}
+#cardPaymentBrick_container.brick-hidden {
+    opacity: 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.brick-shimmer {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 0;
+}
+.shimmer-bar {
+    height: 44px;
+    border-radius: 8px;
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.10) 50%,
+        rgba(255,255,255,0.04) 75%);
+    background-size: 200% 100%;
+    animation: shimmer-slide 1.6s infinite;
+}
+.shimmer-bar.wide   { width: 100%; }
+.shimmer-bar.medium { width: 75%; }
+.shimmer-bar.narrow { width: 50%; }
+@keyframes shimmer-slide {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.secure-note, .terms-note {
+    font-size: 0.72rem;
+    color: var(--zinc-500, #71717a);
+    text-align: center;
+    margin-top: 8px;
+}
+
+/* ─── 3DS Challenge Overlay ──────────────────────────────────────────────── */
+.challenge-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.25s ease;
+}
+.challenge-modal {
+    width: min(520px, 92vw);
+    max-height: 90vh;
+    background: #18181b;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+.challenge-header {
+    padding: 18px 20px 14px;
+    background: rgba(0,172,216,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.challenge-header span {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #00acd8;
+    display: block;
+    margin-bottom: 6px;
+}
+.challenge-header p { font-size: 0.8rem; color: rgba(255,255,255,0.55); margin: 0; }
+.challenge-iframe { flex: 1; width: 100%; height: 400px; border: none; background: #fff; }
+.challenge-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+.challenge-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #00acd8;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

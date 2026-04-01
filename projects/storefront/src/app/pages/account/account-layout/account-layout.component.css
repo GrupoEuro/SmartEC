@@ -143,3 +143,29 @@
     padding: 20px;
     min-height: 60vh;
 }
+/* ─── Wishlist pill in account nav ────────────────────────────────────────── */
+.wish-pill {
+    position: relative;
+}
+.wish-pill-inner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.wish-count-badge {
+    position: absolute;
+    top: 3px;
+    right: 8px;
+    background: #f43f5e;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    pointer-events: none;
+}

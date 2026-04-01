@@ -1,4 +1,27 @@
 <div class="confirmation-container">
+
+    <!-- ── Direct Navigation Fallback ───────────────────────────────── -->
+    @if (isDirectNav) {
+        <div class="success-card glass-panel not-found-state">
+            <div class="icon-wrapper">
+                <div class="check-circle">🔍</div>
+            </div>
+            <div class="content">
+                <h1>{{ 'ORDER_CONFIRMATION.NOT_FOUND_TITLE' | translate }}</h1>
+                <p class="message">{{ 'ORDER_CONFIRMATION.NOT_FOUND_MSG' | translate }}</p>
+                <div class="actions">
+                    <a routerLink="/account/orders" class="btn-primary">
+                        {{ 'ORDER_CONFIRMATION.TRACK_ORDER' | translate }}
+                    </a>
+                    <a routerLink="/" class="btn-secondary">
+                        {{ 'ORDER_CONFIRMATION.RETURN_HOME' | translate }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    } @else {
+
+    <!-- ── Real Purchase Confirmation ────────────────────────────────── -->
     <div class="success-card glass-panel">
         <div class="icon-wrapper">
             <div class="check-circle pulse-animation">✓</div>
@@ -6,7 +29,15 @@
 
         <div class="content">
             <h1>{{ 'ORDER_CONFIRMATION.TITLE' | translate }}</h1>
-            <p class="order-id">{{ 'COMMON.ORDER_NUMBER' | translate }}{{ orderId ?? 'N/A' }}</p>
+
+            <!-- Order Number (primary display) -->
+            @if (orderNumber) {
+                <p class="order-number-badge">{{ orderNumber }}</p>
+            }
+            <!-- Firestore ID (secondary, smaller) -->
+            @if (orderId) {
+                <p class="order-id">{{ 'COMMON.ORDER_NUMBER' | translate }}{{ orderId }}</p>
+            }
 
             @if (email) {
                 <p class="message">
@@ -31,13 +62,16 @@
             }
 
             <div class="actions">
-                <a routerLink="/" class="btn-primary">
-                    {{ 'ORDER_CONFIRMATION.RETURN_HOME' | translate }}
-                </a>
-                <a routerLink="/account/orders" class="btn-secondary">
+                <a routerLink="/account/orders" class="btn-primary">
                     {{ 'ORDER_CONFIRMATION.TRACK_ORDER' | translate }}
+                </a>
+                <a routerLink="/" class="btn-secondary">
+                    {{ 'ORDER_CONFIRMATION.RETURN_HOME' | translate }}
                 </a>
             </div>
         </div>
     </div>
+
+    } <!-- end @else -->
+
 </div>

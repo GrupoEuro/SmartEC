@@ -61,6 +61,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Session identity events — session_start and user_identified events written by the storefront.
+    // Public create (anonymous visitors write session_start before auth).
+    // Staff read for the Attribution Report and Customer Journey views.
+    match /sessionEvents/{document} {
+      allow create: if true;
+      allow read:   if isStaff();
+      allow update, delete: if false;
+    }
+
     // ── System ───────────────────────────────────────────────────────────────
 
     // System counters (order IDs, etc.) — staff read, admin write only

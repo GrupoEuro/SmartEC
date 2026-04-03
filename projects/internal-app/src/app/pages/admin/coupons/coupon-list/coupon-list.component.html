@@ -120,6 +120,10 @@
                                     <button class="btn-icon-ghost" (click)="downloadQR(coupon)" title="Download QR">
                                         📱
                                     </button>
+                                    <button class="btn-icon-ghost" [routerLink]="['/admin/coupons', coupon.id, 'analytics']"
+                                        title="Ver Analytics QR">
+                                        📊
+                                    </button>
                                     <button class="btn-icon-ghost" [routerLink]="['/admin/coupons/edit', coupon.id]"
                                         [title]="'ADMIN.COMMON.EDIT' | translate">
                                         ✏️

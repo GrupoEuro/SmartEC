@@ -62,11 +62,10 @@ export const operationsRoutes: Routes = [
                 path: 'abc-analysis',
                 loadComponent: () => import('./inventory/abc-analysis.component').then(m => m.AbcAnalysisComponent)
             },
-            // TEMPORARY: Disabled due to TypeScript cache issue - restart VS Code to fix
-            // {
-            //     path: 'replenishment-planner',
-            //     loadComponent: () => import('./inventory/replenishment-planner.component').then(m => m.ReplenishmentPlannerComponent)
-            // },
+            {
+                path: 'replenishment-planner',
+                loadComponent: () => import('./inventory/replenishment-planner.component').then(m => m.ReplenishmentPlannerComponent)
+            },
             {
                 path: 'promotions',
                 loadComponent: () => import('./promotions/promotions-reference.component').then(m => m.PromotionsReferenceComponent)

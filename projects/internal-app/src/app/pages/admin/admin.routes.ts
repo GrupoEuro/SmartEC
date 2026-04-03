@@ -154,6 +154,11 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent)
             },
             {
+                path: 'coupons/:id/analytics',
+                loadComponent: () => import('./coupons/coupon-analytics/coupon-analytics.component').then(m => m.CouponAnalyticsComponent),
+                title: 'QR Analytics'
+            },
+            {
                 path: 'promotions',
                 loadComponent: () => import('./promotions/promotion-list/promotion-list.component').then(m => m.PromotionListComponent)
             },
@@ -236,10 +241,13 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
+            // ── Marketing (Campaigns remain here for Phase 1) ─────────────────────
+            // Abandoned Carts → moved to /marketing/abandoned-carts
+            // Attribution    → moved to /marketing/attribution
             {
                 path: 'marketing/campaigns',
                 loadComponent: () => import('./marketing/campaigns/campaign-list/campaign-list.component').then(m => m.CampaignListComponent),
-                title: 'Marketing Calendar'
+                title: 'Campaigns'
             },
             {
                 path: 'marketing/campaigns/new',
@@ -251,11 +259,9 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./marketing/campaigns/campaign-form/campaign-form.component').then(m => m.CampaignFormComponent),
                 title: 'Edit Campaign'
             },
-            {
-                path: 'marketing/abandoned-carts',
-                loadComponent: () => import('./marketing/abandoned-carts/abandoned-carts.component').then(m => m.AbandonedCartsComponent),
-                title: 'Abandoned Carts'
-            },
+            // ── Legacy redirects (bookmark safety) ────────────────────────────────
+            { path: 'marketing/abandoned-carts', redirectTo: '/marketing/abandoned-carts', pathMatch: 'full' },
+            { path: 'marketing/attribution',     redirectTo: '/marketing/attribution',     pathMatch: 'full' },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
         ]
     },

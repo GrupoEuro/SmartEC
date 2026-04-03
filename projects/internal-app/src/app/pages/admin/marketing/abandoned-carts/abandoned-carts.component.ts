@@ -6,14 +6,31 @@ import {
 } from './abandoned-carts.service';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
-type TimeframeKey = '24h' | '7d' | '30d';
+type TimeframeKey = '24h' | '7d' | '30d' | 'MTD' | 'PAST_MONTH' | 'YTD';
 type ValueTierKey = 'all' | 'low' | 'mid' | 'high';
 
-const TIMEFRAME_MS: Record<TimeframeKey, number> = {
+const TIMEFRAME_MS: Record<string, number> = {
     '24h': 24 * 60 * 60 * 1000,
     '7d':  7  * 24 * 60 * 60 * 1000,
     '30d': 30 * 24 * 60 * 60 * 1000,
 };
+
+function calendarFrom(key: TimeframeKey): number | null {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    if (key === 'MTD')        return new Date(y, m, 1).getTime();
+    if (key === 'PAST_MONTH') return new Date(y, m - 1, 1).getTime();
+    if (key === 'YTD')        return new Date(y, 0, 1).getTime();
+    return null; // rolling-window keys handled by TIMEFRAME_MS
+}
+
+function calendarTo(key: TimeframeKey): number | null {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    if (key === 'PAST_MONTH') return new Date(y, m, 0, 23, 59, 59, 999).getTime();
+    if (key === 'MTD' || key === 'YTD') return now.getTime();
+    return null;
+}
 
 @Component({
     selector: 'app-abandoned-carts',
@@ -48,13 +65,23 @@ export class AbandonedCartsComponent implements OnInit, OnDestroy {
     // ── Filtered carts ──────────────────────────────────────────────────────
     filteredCarts = computed(() => {
         const now      = Date.now();
-        const windowMs = TIMEFRAME_MS[this.timeframeFilter()];
+        const tf       = this.timeframeFilter();
         const audience = this.audienceFilter();
         const valueTier = this.valueFilter();
         const source   = this.sourceFilter();
 
+        // Calendar-based range (MTD / PAST_MONTH / YTD)
+        const fromMs = calendarFrom(tf);
+        const toMs   = calendarTo(tf);
+        // Rolling window
+        const windowMs = TIMEFRAME_MS[tf] ?? null;
+
         return this.allCarts().filter(c => {
-            if ((now - c.lastSeenMs) > windowMs) return false;
+            if (fromMs !== null && toMs !== null) {
+                if (c.lastSeenMs < fromMs || c.lastSeenMs > toMs) return false;
+            } else if (windowMs !== null) {
+                if ((now - c.lastSeenMs) > windowMs) return false;
+            }
             if (audience !== 'all' && c.audience !== audience) return false;
             if (valueTier === 'low'  && c.cartValue >= 500)  return false;
             if (valueTier === 'mid'  && (c.cartValue < 500 || c.cartValue >= 2000)) return false;
@@ -166,6 +193,23 @@ export class AbandonedCartsComponent implements OnInit, OnDestroy {
                        `(${items}) por un total de ${value}${city}. ` +
                        `¿Te podemos ayudar a completar tu compra? 😊`;
         window.open(`https://wa.me/5214442004677?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    openRecoveryEmail(cart: AbandonedCart) {
+        if (!cart.email) return;
+        const items   = cart.items.slice(0, 3).map(i => i.name).join(', ');
+        const value   = this.formatMXN(cart.cartValue);
+        const subject = encodeURIComponent(`Tu carrito te está esperando — ${value}`);
+        const body    = encodeURIComponent(
+            `Hola ${cart.displayName || ''},\n\n` +
+            `Notamos que dejaste artículos en tu carrito de Importadora Euro:\n` +
+            `${items}${cart.items.length > 3 ? ` y ${cart.items.length - 3} más` : ''}\n` +
+            `Total: ${value}\n\n` +
+            `Completa tu compra aquí: https://www.importadoraeuro.com/checkout\n\n` +
+            `¿Tienes alguna duda? Escríbenos, con gusto te ayudamos.\n\n` +
+            `Equipo Importadora Euro`
+        );
+        window.open(`mailto:${cart.email}?subject=${subject}&body=${body}`, '_blank');
     }
 
     journeyEventColor(type: JourneyEvent['type']): string {

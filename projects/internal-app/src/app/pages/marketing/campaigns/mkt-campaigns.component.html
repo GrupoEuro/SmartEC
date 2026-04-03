@@ -1,0 +1,141 @@
+<div class="camp-root">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <div class="camp-header">
+        <div class="camp-title-block">
+            <div class="camp-title-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="camp-title">{{ 'MARKETING.CAMPAIGNS.TITLE' | translate }}</h1>
+                <p class="camp-subtitle">{{ 'MARKETING.CAMPAIGNS.SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+        <a routerLink="new" class="camp-new-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {{ 'MARKETING.CAMPAIGNS.NEW' | translate }}
+        </a>
+    </div>
+
+    <!-- ── Stats bar ─────────────────────────────────────────────────────── -->
+    <div class="camp-stats">
+        <div class="camp-stat">
+            <span class="cs-val green">{{ active().length }}</span>
+            <span class="cs-lbl">{{ 'MARKETING.CAMPAIGNS.ACTIVE' | translate }}</span>
+        </div>
+        <div class="camp-stat">
+            <span class="cs-val accent">{{ upcoming().length }}</span>
+            <span class="cs-lbl">{{ 'MARKETING.CAMPAIGNS.UPCOMING' | translate }}</span>
+        </div>
+        <div class="camp-stat">
+            <span class="cs-val dim">{{ past().length }}</span>
+            <span class="cs-lbl">{{ 'MARKETING.CAMPAIGNS.PAST' | translate }}</span>
+        </div>
+        <div class="camp-stat">
+            <span class="cs-val">{{ campaigns().length }}</span>
+            <span class="cs-lbl">{{ 'MARKETING.CAMPAIGNS.TOTAL' | translate }}</span>
+        </div>
+    </div>
+
+    <!-- ── Active Now ─────────────────────────────────────────────────────── -->
+    @if (active().length > 0) {
+        <section class="camp-section">
+            <div class="camp-section-label live">
+                <span class="live-dot"></span>
+                {{ 'MARKETING.CAMPAIGNS.ACTIVE_NOW' | translate }}
+            </div>
+            <div class="camp-list">
+                @for (c of active(); track c.id) {
+                    <div class="camp-card active-card" [style.--theme-color]="themeColor(c.themeId)">
+                        <div class="camp-card-left">
+                            <div class="camp-theme-dot" [style.background]="themeColor(c.themeId)"></div>
+                            <div>
+                                <span class="camp-name">{{ c.name }}</span>
+                                <div class="camp-meta">
+                                    <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
+                                    <span class="camp-dates">
+                                        Ends in {{ daysRemaining(c.endDate) }} days · Priority {{ c.priority }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="camp-card-actions">
+                            <a [routerLink]="['edit', c.id]" class="camp-edit-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <!-- ── Upcoming ───────────────────────────────────────────────────────── -->
+    <section class="camp-section">
+        <div class="camp-section-label">{{ 'MARKETING.CAMPAIGNS.UPCOMING_LABEL' | translate }}</div>
+        @if (upcoming().length === 0) {
+            <div class="camp-empty">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p>{{ 'MARKETING.CAMPAIGNS.EMPTY_UPCOMING' | translate }}</p>
+                <a routerLink="new" class="camp-new-btn sm">
+                    + {{ 'MARKETING.CAMPAIGNS.NEW' | translate }}
+                </a>
+            </div>
+        } @else {
+            <div class="camp-list">
+                @for (c of upcoming(); track c.id) {
+                    <div class="camp-card upcoming-card" [style.--theme-color]="themeColor(c.themeId)">
+                        <div class="camp-card-left">
+                            <div class="camp-theme-dot upcoming" [style.background]="themeColor(c.themeId)"></div>
+                            <div>
+                                <span class="camp-name dim">{{ c.name }}</span>
+                                <div class="camp-meta">
+                                    <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
+                                    <span class="camp-dates">
+                                        Starts {{ c.startDate.toDate() | date:'mediumDate' }} · {{ duration(c.startDate, c.endDate) }} days
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="camp-card-actions">
+                            <a [routerLink]="['edit', c.id]" class="camp-edit-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <!-- ── Past ────────────────────────────────────────────────────────────── -->
+    @if (past().length > 0) {
+        <details class="camp-past-details">
+            <summary class="camp-past-summary">
+                <span>{{ 'MARKETING.CAMPAIGNS.PAST_LABEL' | translate }} ({{ past().length }})</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" class="chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="camp-list past-list">
+                @for (c of past(); track c.id) {
+                    <div class="camp-card past-card">
+                        <div class="camp-card-left">
+                            <div class="camp-theme-dot past"></div>
+                            <div>
+                                <span class="camp-name past-name">{{ c.name }}</span>
+                                <span class="camp-dates">Ended {{ c.endDate.toDate() | date:'shortDate' }}</span>
+                            </div>
+                        </div>
+                        <a [routerLink]="['edit', c.id]" class="camp-edit-btn ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View
+                        </a>
+                    </div>
+                }
+            </div>
+        </details>
+    }
+</div>

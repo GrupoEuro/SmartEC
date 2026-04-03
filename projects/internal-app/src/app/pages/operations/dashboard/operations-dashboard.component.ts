@@ -73,6 +73,8 @@ interface StaffWorkload {
 }
 
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { ActiveCampaignsWidgetComponent } from '../shared/active-campaigns-widget/active-campaigns-widget.component';
+import { ActiveCouponsWidgetComponent } from '../shared/active-coupons-widget/active-coupons-widget.component';
 
 const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
     'AGUASCALIENTES': { lat: 21.8853, lng: -102.2916 },
@@ -116,7 +118,7 @@ const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
 @Component({
     selector: 'app-operations-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule, ActiveCampaignsWidgetComponent, ActiveCouponsWidgetComponent],
     templateUrl: './operations-dashboard.component.html',
     styleUrls: ['./operations-dashboard.component.css']
 })

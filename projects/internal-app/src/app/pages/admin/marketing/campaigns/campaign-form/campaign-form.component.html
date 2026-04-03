@@ -5,7 +5,7 @@
 
     <!-- Breadcrumb -->
     <div class="breadcrumb">
-      <a routerLink="/admin/marketing/campaigns">Campaigns</a>
+      <a (click)="goBack()" style="cursor:pointer">Campaigns</a>
       <span>/</span>
       <span>{{ isEditMode() ? 'Edit' : 'New' }} Campaign</span>
     </div>
@@ -163,7 +163,7 @@
 
       <!-- Actions -->
       <div class="form-actions">
-        <a routerLink="/admin/marketing/campaigns" class="btn-cancel">Cancel</a>
+        <button type="button" (click)="goBack()" class="btn-cancel">Cancel</button>
         <button type="submit" [disabled]="form.invalid || loading()" class="btn-save">
           @if (loading()) {
             <span class="material-icons spin">autorenew</span> Saving...

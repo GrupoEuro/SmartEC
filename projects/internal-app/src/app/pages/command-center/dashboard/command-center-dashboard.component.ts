@@ -18,6 +18,7 @@ import { of } from 'rxjs';
 import { SmartBriefingService } from '../services/smart-briefing.service';
 import { CommandCenterDataService } from '../services/command-center-data.service';
 import { TourService } from '../../../core/services/tour.service';
+import { CcMarketingPerformanceComponent } from './widgets/cc-marketing-performance/cc-marketing-performance.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
@@ -32,7 +33,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
         ApprovalStatsComponent,
         AppIconComponent,
         ExecutiveBriefingComponent,
-        DashboardDiagnosticsComponent
+        DashboardDiagnosticsComponent,
+        CcMarketingPerformanceComponent,
     ],
     templateUrl: './command-center-dashboard.component.html',
     styleUrls: ['./command-center-dashboard.component.css']

@@ -2,7 +2,11 @@ import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { Timestamp } from '@angular/fire/firestore';
+import {
+    Firestore, doc, setDoc, addDoc, collection,
+    Timestamp, serverTimestamp,
+} from '@angular/fire/firestore';
+import { SessionService } from './session.service';
 
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -90,13 +94,18 @@ export function stripUndefined<T>(obj: T): T {
 
 @Injectable({ providedIn: 'root' })
 export class AttributionService {
-    private platformId = inject(PLATFORM_ID);
-    private http       = inject(HttpClient);
+    private platformId  = inject(PLATFORM_ID);
+    private http        = inject(HttpClient);
+    private fs          = inject(Firestore);
+    private sessionSvc  = inject(SessionService);
 
     private _attribution: Attribution | null = null;
 
     /** Signal — available after init() resolves */
     readonly attribution = signal<Attribution | null>(null);
+
+    /** Convenience — same sessionId used by CartService */
+    get sessionId(): string { return this.sessionSvc.sessionId; }
 
     /**
      * Call this ONCE on app init (app.component.ngOnInit) — deferred, non-blocking.
@@ -162,6 +171,13 @@ export class AttributionService {
         this.attribution.set(attr);
         this.saveToStorage(attr);
         console.log('[Attribution] ✅ First-visit attribution captured and stored:', attr);
+
+        // Write session_start to Firestore (only on new sessions)
+        if (this.sessionSvc.isNewSession) {
+            this.writeSessionStart(attr).catch(e =>
+                console.warn('[Attribution] session_start write failed:', e)
+            );
+        }
     }
 
     /** Attach active campaign metadata — call from CampaignService when winner resolves */
@@ -178,15 +194,56 @@ export class AttributionService {
         return this._attribution;
     }
 
+    /**
+     * Call on login/register — writes a `user_identified` event to sessionEvents
+     * that maps the anonymous sessionId → authenticated uid.
+     * This is the core of session stitching.
+     */
+    async flushSessionIdentity(uid: string, email: string): Promise<void> {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const attr = this._attribution;
+        try {
+            const eventsRef = collection(this.fs, 'sessionEvents');
+            await addDoc(eventsRef, stripUndefined({
+                event:      'user_identified',
+                sessionId:  this.sessionSvc.sessionId,
+                uid,
+                email,
+                attribution: attr ? {
+                    ...attr,
+                    capturedAt: Timestamp.fromMillis(attr.capturedAt),
+                } : null,
+                timestamp:  Timestamp.now(),
+            }));
+            console.log('[Attribution] ✅ user_identified event written — uid:', uid);
+        } catch (e) {
+            console.warn('[Attribution] Could not write user_identified event:', e);
+        }
+    }
+
     // ─── UTM capture ────────────────────────────────────────────────────────────
 
-    private captureUtm(): UtmParams {
+    /**
+     * Read UTM params from the current URL.
+     * Prefers ActivatedRoute queryParams (Angular-safe) but falls back to
+     * window.location.search for direct reads on app boot.
+     */
+    private captureUtm(queryParams?: Record<string, string>): UtmParams {
         const p: UtmParams = {};
         try {
-            const params = new URLSearchParams(window.location.search);
             const keys: (keyof UtmParams)[] = [
                 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'
             ];
+            // Prefer Angular router's queryParams if provided
+            if (queryParams) {
+                for (const k of keys) {
+                    const v = queryParams[k];
+                    if (v) p[k] = v;
+                }
+                return p;
+            }
+            // Fallback: raw URL (works on first page load)
+            const params = new URLSearchParams(window.location.search);
             for (const k of keys) {
                 const v = params.get(k);
                 if (v) p[k] = v;
@@ -254,6 +311,24 @@ export class AttributionService {
         } catch {
             return {};
         }
+    }
+
+    // ─── Session Start event ─────────────────────────────────────────────────────
+    private async writeSessionStart(attr: Attribution): Promise<void> {
+        try {
+            const eventsRef = collection(this.fs, 'sessionEvents');
+            // Use sessionId as doc ID so it's idempotent
+            const sessionDocRef = doc(this.fs, `sessionEvents/${this.sessionSvc.sessionId}`);
+            await setDoc(sessionDocRef, stripUndefined({
+                event:      'session_start',
+                sessionId:  this.sessionSvc.sessionId,
+                attribution: {
+                    ...attr,
+                    capturedAt: Timestamp.fromMillis(attr.capturedAt),
+                },
+                timestamp:  Timestamp.now(),
+            }));
+        } catch { /* non-critical */ }
     }
 
     // ─── IP + Geo (via ipapi.co — free, HTTPS, no API key) ──────────────────────

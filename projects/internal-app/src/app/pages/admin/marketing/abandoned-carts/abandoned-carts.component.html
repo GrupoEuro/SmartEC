@@ -10,15 +10,19 @@
         <div>
           <h1 class="ac-title">Abandoned Carts</h1>
           <p class="ac-subtitle">Revenue recovery ·
-            {{ timeframeFilter() === '24h' ? 'Last 24 hours'
-              : timeframeFilter() === '7d' ? 'Last 7 days' : 'Last 30 days' }}
+            {{ timeframeFilter() === '24h'        ? 'Last 24 hours'
+              : timeframeFilter() === '7d'         ? 'Last 7 days'
+              : timeframeFilter() === '30d'        ? 'Last 30 days'
+              : timeframeFilter() === 'MTD'        ? 'Month to Date'
+              : timeframeFilter() === 'PAST_MONTH' ? 'Past Month'
+              : 'Year to Date' }}
           </p>
         </div>
       </div>
     </div>
     <div class="ac-header-right">
       <div class="ac-tab-group">
-        @for (tf of [['24h','24h'], ['7d','7 days'], ['30d','30 days']]; track tf[0]) {
+        @for (tf of [['24h','24h'], ['7d','7d'], ['30d','30d'], ['MTD','MTD'], ['PAST_MONTH','Past Mo.'], ['YTD','YTD']]; track tf[0]) {
           <button class="ac-tab" [class.active]="timeframeFilter() === tf[0]"
                   (click)="setTimeframe($any(tf[0]))">{{ tf[1] }}</button>
         }
@@ -422,7 +426,7 @@
     @if (journeyCart(); as cart) {
       <div class="journey-footer">
         @if (cart.email) {
-          <button class="jf-btn primary">
+          <button class="jf-btn primary" (click)="openRecoveryEmail(cart)">
             <app-icon name="mail" [size]="14"></app-icon>
             Send Recovery Email
           </button>

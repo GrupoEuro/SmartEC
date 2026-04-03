@@ -10,6 +10,7 @@ import { ToastService } from './toast.service';
 import { UserProfile } from '../models/user.model';
 import { DevConfigService } from './dev-config.service';
 import { StateRegistryService } from './state-registry.service';
+import { AttributionService } from './attribution.service';
 
 @Injectable({
   providedIn: 'root'
@@ -25,6 +26,7 @@ export class AuthService {
   private devConfig = inject(DevConfigService);
   private stateRegistry = inject(StateRegistryService);
   private destroyRef = inject(DestroyRef);
+  private attributionSvc = inject(AttributionService);
 
   private get auth(): Auth {
     if (!this._auth) this._auth = this.injector.get('AUTH' as any) as Auth;
@@ -149,6 +151,12 @@ export class AuthService {
       }
 
       await this.handleLoginSuccess(user);
+
+      // Session stitching: map anonymous sessionId → authenticated uid
+      this.attributionSvc
+          .flushSessionIdentity(user.uid, user.email ?? email)
+          .catch(e => console.warn('[Auth] flushSessionIdentity failed:', e));
+
     } catch (error: any) {
       this.handleAuthError(error, 'Login');
     }
@@ -185,6 +193,12 @@ export class AuthService {
 
       this.toast.success(`Welcome, ${displayName}! Account created.`);
       // await this.logService.log('REGISTER', 'AUTH', `New user registered: ${email}`);
+
+      // Session stitching: map anonymous sessionId → new uid immediately on registration
+      this.attributionSvc
+          .flushSessionIdentity(user.uid, user.email ?? email)
+          .catch(e => console.warn('[Auth] flushSessionIdentity on register failed:', e));
+
       this.router.navigate(['/account']);
 
     } catch (error: any) {

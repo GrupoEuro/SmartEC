@@ -1,0 +1,49 @@
+<div class="mktw-root">
+
+    <!-- Header -->
+    <div class="mktw-header">
+        <div class="mktw-header-icon">
+            <!-- Signal / analytics SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+        </div>
+        <div class="mktw-header-text">
+            <span class="mktw-title">{{ 'CC.MARKETING.TITLE' | translate }}</span>
+            <span class="mktw-badge">MTD</span>
+        </div>
+        <a routerLink="/marketing/dashboard" class="mktw-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 width="12" height="12">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            {{ 'CC.MARKETING.OPEN' | translate }}
+        </a>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isLoading()" class="mktw-loading">
+        <div class="mktw-spinner"></div>
+    </div>
+
+    <!-- KPI Pills -->
+    <div *ngIf="!isLoading()" class="mktw-kpis">
+        <div *ngFor="let kpi of kpis()" class="mktw-kpi" [style.--c]="kpi.color">
+            <span class="mktw-kpi-val">{{ kpi.value }}</span>
+            <span class="mktw-kpi-lbl">{{ kpi.labelKey | translate }}</span>
+        </div>
+    </div>
+
+    <!-- Top Source -->
+    <div *ngIf="!isLoading() && topSource() !== '—'" class="mktw-source">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             width="11" height="11"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>{{ 'CC.MARKETING.TOP_SOURCE' | translate }}</span>
+        <span class="mktw-source-val">{{ topSource() }}</span>
+    </div>
+
+</div>

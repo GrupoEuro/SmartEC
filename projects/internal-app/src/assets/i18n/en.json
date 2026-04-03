@@ -1,4 +1,16 @@
 {
+  "CC": {
+    "MARKETING": {
+      "TITLE": "Marketing Performance",
+      "OPEN": "Open Hub",
+      "REVENUE": "Revenue",
+      "ORDERS": "Orders",
+      "SESSIONS": "Sessions",
+      "CONV_RATE": "Conv. Rate",
+      "ABANDONED": "Abandoned",
+      "TOP_SOURCE": "Top Source"
+    }
+  },
   "PAGINATION": {
     "FIRST": "First Page",
     "PREVIOUS": "Previous Page",
@@ -109,6 +121,10 @@
   },
   "CATALOG_QUICK_VIEW_BTN": "Quick View",
   "PORTAL": {
+    "MARKETING": {
+      "TITLE": "Marketing Hub",
+      "DESC": "Campaigns, attribution, abandoned carts, and customer intelligence"
+    },
     "WELCOME": "Welcome back,",
     "SELECT_WORKSPACE": "Select a workspace to begin your session",
     "LOGOUT": "Log Out",
@@ -1228,7 +1244,9 @@
       "INTEGRATIONS": "API Integrations",
       "LOGS": "Activity Logs",
       "LOGOUT": "Logout",
-      "PDFS": "PDFs"
+      "PDFS": "PDFs",
+      "ATTRIBUTION": "Attribution",
+      "GO_MARKETING_HUB": "Marketing Hub ↗"
     },
     "PDF_LIST": {
       "TITLE": "PDF Library",
@@ -1404,6 +1422,64 @@
         "BTN_UPDATE": "Update Coupon",
         "BTN_CREATE": "Create Coupon",
         "BTN_SAVING": "Saving..."
+      },
+      "ANALYTICS": {
+        "TITLE": "QR Analytics",
+        "BACK": "← Coupons",
+        "EDIT": "✏️ Edit coupon",
+        "DISCOUNT": "Discount",
+        "VALID_UNTIL": "Valid until",
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive",
+        "LOADING": "Loading QR analysis...",
+        "KPI": {
+          "TOTAL_SCANS": "Total scans",
+          "UNIQUE": "Unique visitors",
+          "CART_ADDS": "Added to cart",
+          "ORDERS": "Completed orders",
+          "REVENUE": "Revenue generated",
+          "CONVERSION": "Conversion rate"
+        },
+        "FUNNEL": {
+          "TITLE": "Conversion funnel",
+          "SCANS": "Scans",
+          "CART": "Cart",
+          "CHECKOUT": "Checkout",
+          "ORDER": "Order",
+          "WA_CLICKS": "WhatsApp clicks",
+          "CART_CLEARS": "Cleared carts",
+          "AVG_CART": "Avg. cart value"
+        },
+        "BREAKDOWN": {
+          "CITIES": "📍 Cities",
+          "SOURCES": "🔗 Traffic sources",
+          "UNKNOWN": "Unknown"
+        },
+        "TABLE": {
+          "TITLE": "Scan detail",
+          "SEARCH": "🔍 Search session, email, city...",
+          "SESSION": "Session",
+          "DATE": "Date",
+          "USER_CITY": "User / City",
+          "CART": "Cart",
+          "WA": "WA",
+          "STATUS": "Status",
+          "ANONYMOUS": "Anonymous",
+          "VIEW_ORDER": "Order →",
+          "FILTER_ALL": "All scans",
+          "FILTER_CONV": "Converted",
+          "FILTER_CART": "Cart only",
+          "FILTER_WA": "Opened WhatsApp",
+          "FILTER_NONE": "No action",
+          "EMPTY": "No scans in this filter"
+        },
+        "STATUS": {
+          "ORDER": "Order",
+          "CHECKOUT": "Checkout",
+          "CART": "Cart",
+          "WHATSAPP": "WhatsApp",
+          "SCAN_ONLY": "Scan only"
+        }
       }
     },
     "CATEGORIES": {
@@ -1645,6 +1721,12 @@
       "TITLE": "Operations"
     },
     "DASHBOARD": {
+      "CHARTS_TITLE": "Analytics & Charts",
+      "TF": {
+        "MTD": "Month to Date",
+        "PAST_MONTH": "Past Month",
+        "YTD": "Year to Date"
+      },
       "WELCOME": "Welcome to Importadora Euro Dashboard",
       "SUBTITLE": "Manage your content, banners, blog posts, and PDF library from one place.",
       "BANNERS_DESC": "Update homepage sliders",
@@ -1820,10 +1902,53 @@
         "ACTIONS": "Actions"
       },
       "DETAIL": {
-        "SUBTITLE": "Detailed customer information",
+        "SUBTITLE": "Customer profile and activity",
         "STATS": "Statistics",
-        "ORDER_HISTORY": "Order History",
+        "ORDER_HISTORY": "Order history",
         "NO_ORDERS": "This customer has not placed any orders yet."
+      },
+      "TABS": {
+        "OVERVIEW": "Profile",
+        "ORDERS": "Orders",
+        "TIMELINE": "Timeline"
+      },
+      "CONTACT": "Contact information",
+      "SHIPPING": "Shipping address",
+      "ACQUISITION": "Acquisition source",
+      "ACQU_SOURCE": "Source",
+      "ACQU_MEDIUM": "Medium",
+      "ACQU_CAMPAIGN": "Campaign",
+      "ANONYMOUS": "Anonymous",
+      "PHONE": "Phone",
+      "UID_LABEL": "UID",
+      "ROLE": "Role",
+      "REGISTERED": "Registered",
+      "ORDERS_TITLE": "Order history",
+      "STATS": {
+        "TITLE": "Statistics",
+        "ORDERS": "Orders",
+        "TOTAL_SPEND": "Total spent",
+        "QR_SCANS": "QR scans",
+        "WA_CLICKS": "WA clicks"
+      },
+      "TIMELINE": {
+        "LOADING": "Loading activity...",
+        "STATS_TOTAL": "Total events",
+        "STATS_ORDERS": "Orders",
+        "STATS_SPEND": "Total spent",
+        "STATS_CLEARS": "Cleared carts",
+        "STATS_QR": "QR converted",
+        "FILTER_ALL": "All",
+        "FILTER_ORDER": "Orders",
+        "FILTER_CART": "Cart",
+        "FILTER_QR": "QR",
+        "FILTER_WA": "WhatsApp",
+        "FILTER_ACCOUNT": "Account",
+        "FILTER_NEWS": "Newsletter",
+        "EMPTY_TITLE": "No activity recorded yet",
+        "EMPTY_DETAIL": "Events will appear here as the customer interacts with the store.",
+        "SEE_ORDER": "View order →",
+        "SESSION": "session"
       }
     },
     "ORDERS": {
@@ -2902,7 +3027,14 @@
       "HELP": "Help"
     },
     "DASHBOARD_TITLE": "Operations Dashboard",
-    "DASHBOARD_SUBTITLE": "Activity overview and quick actions"
+    "DASHBOARD_SUBTITLE": "Activity overview and quick actions",
+    "ACTIVE_CAMPAIGNS": {
+      "TITLE": "Active Campaigns",
+      "ACTIVE": "active",
+      "MANAGE": "Manage in Marketing Hub",
+      "LOADING": "Loading campaigns...",
+      "EMPTY": "No active campaigns right now."
+    }
   },
   "CATALOG": {
     "TITLE": "Product Catalog",
@@ -4031,5 +4163,152 @@
     "COPIED": "Copied to clipboard",
     "COPY_FAILED": "Failed to copy",
     "CHANGES_DISCARDED": "Changes discarded"
+  },
+  "ATTRIBUTION": {
+    "TITLE": "Attribution Report",
+    "SUBTITLE": "Revenue by marketing channel — first-touch model",
+    "LOADING": "Loading attribution data...",
+    "KPI": {
+      "SESSIONS": "Total Sessions",
+      "CHANNELS": "Channels Tracked",
+      "ORDERS": "Converted Orders",
+      "REVENUE": "Attributed Revenue",
+      "CONV_RATE": "Overall Conversion",
+      "TOP_SOURCE": "Top Source"
+    },
+    "TABLE": {
+      "TITLE": "Channel Breakdown",
+      "CHANNEL": "Source / Channel",
+      "MEDIUM": "Medium",
+      "CAMPAIGN": "Campaign",
+      "SESSIONS": "Sessions",
+      "CART_ADDS": "Cart Adds",
+      "ORDERS": "Orders",
+      "REVENUE": "Revenue",
+      "AOV": "Avg. Order",
+      "CONV": "Conv. Rate",
+      "SHARE": "Revenue Share",
+      "EMPTY": "No attribution data for this period"
+    },
+    "HOW": {
+      "TITLE": "How Attribution Works",
+      "STEP1_TITLE": "Session start captured",
+      "STEP1_BODY": "When a visitor lands, UTM params, referrer, device, and geo are saved to localStorage and written to Firestore sessionEvents.",
+      "STEP2_TITLE": "Attribution follows the cart",
+      "STEP2_BODY": "Every cart add, checkout start, and order completion carries the captured attribution data so revenue is traceable back to its source.",
+      "STEP3_TITLE": "Session stitching on login",
+      "STEP3_BODY": "When a guest authenticates, a user_identified event links the anonymous sessionId to the new uid, retroactively attributing all activity.",
+      "STEP4_TITLE": "First-touch model",
+      "STEP4_BODY": "Revenue is credited to the channel that brought the visitor on their very first touchpoint. Switch to last-touch coming soon."
+    },
+    "TF": {
+      "MTD": "Month to Date",
+      "PAST_MONTH": "Past Month",
+      "YTD": "Year to Date"
+    }
+  },
+  "MARKETING": {
+    "TITLE": "Marketing Hub",
+    "SUBTITLE": "Growth Intelligence",
+    "TOGGLE_SIDEBAR": "Toggle Sidebar",
+    "SIDEBAR": {
+      "DASHBOARD": "Overview",
+      "SECTION_CAMPAIGNS": "Campaigns",
+      "CAMPAIGNS": "All Campaigns",
+      "COUPONS": "Coupons & QR",
+      "SECTION_ANALYTICS": "Analytics",
+      "ATTRIBUTION": "Attribution",
+      "ABANDONED_CARTS": "Abandoned Carts",
+      "SECTION_INTELLIGENCE": "Customer Intelligence",
+      "SEGMENTS": "Segments"
+    },
+    "DASHBOARD": {
+      "TITLE": "Marketing Overview",
+      "SUBTITLE": "Performance summary across all marketing channels",
+      "LOADING": "Loading marketing data...",
+      "PERIOD": "Last 30 days",
+      "QUICK_TITLE": "Quick Access",
+      "KPI": {
+        "SESSIONS": "Sessions",
+        "CART_ADDS": "Cart Adds",
+        "ORDERS": "Orders",
+        "REVENUE": "Revenue",
+        "CONV_RATE": "Conv. Rate",
+        "ABANDONED": "Abandoned",
+        "TOP_SOURCE": "Top Source"
+      },
+      "QUICK": {
+        "ATTRIBUTION": "Attribution Report",
+        "ABANDONED_CARTS": "Abandoned Carts",
+        "CAMPAIGNS": "Campaigns",
+        "COUPONS": "Coupons & QR",
+        "SEGMENTS": "Segments"
+      },
+      "CHART_SOON": {
+        "CHANNEL_MIX": "Channel Mix Chart — Coming Soon",
+        "CONVERSION_TREND": "Conversion Trend — Coming Soon",
+        "SESSION_TIMELINE": "Session Timeline — Coming Soon"
+      },
+      "CHARTS_TITLE": "Analytics & Charts",
+      "TF": {
+        "MTD": "Month to Date",
+        "PAST_MONTH": "Past Month",
+        "YTD": "Year to Date"
+      },
+      "CHARTS": {
+        "NO_DATA": "No data for the selected period",
+        "CHANNEL_MIX": "Channel Mix",
+        "CHANNEL_MIX_SUB": "Traffic sources",
+        "CONV_TREND": "Conversion Trend",
+        "CONV_TREND_SUB": "Orders per day",
+        "SESSION_TIMELINE": "Session Timeline",
+        "SESSION_TIMELINE_SUB": "Unique sessions per day"
+      }
+    },
+    "COUPONS": {
+      "MIRROR_TITLE": "Coupon & QR Management",
+      "MIRROR_BODY": "Coupon creation and management is currently available in the Admin panel. Full integration into Marketing Hub is planned for Phase 2.",
+      "MIRROR_GO_ADMIN": "Open Coupon Manager",
+      "PHASE2_NOTE": "Phase 2: Full coupon + QR analytics will be integrated here.",
+      "TITLE": "Coupons & QR",
+      "SUBTITLE": "Track coupon performance and QR scan analytics",
+      "NEW": "New Coupon",
+      "KPI_ACTIVE": "Active",
+      "KPI_USES": "Total Uses",
+      "KPI_SCANS": "QR Scans",
+      "KPI_CONV": "Scan Conv.",
+      "FILTER_ALL": "All",
+      "FILTER_ACTIVE": "Active",
+      "FILTER_INACTIVE": "Inactive",
+      "FILTER_EXPIRED": "Expired",
+      "SEARCH": "Search coupon code…",
+      "EMPTY": "No coupons found.",
+      "EDIT": "Edit"
+    },
+    "SEGMENTS": {
+      "COMING_SOON": "Coming Soon",
+      "TITLE": "Customer Segments",
+      "BODY": "Segment your customers by behavior, purchase history, and lifecycle stage to power personalized campaigns and automated workflows.",
+      "F1": "RFM Scoring (Recency, Frequency, Monetary)",
+      "F2": "Custom segment builder with filters",
+      "F3": "Automated WhatsApp campaigns per segment",
+      "SUBTITLE_LIVE": "RFM analysis — automatically updated from order history",
+      "KPI_CUSTOMERS": "Customers",
+      "KPI_REVENUE": "Total Revenue",
+      "KPI_AOV": "Avg. Order Value"
+    },
+    "CAMPAIGNS": {
+      "TITLE": "Campaigns",
+      "SUBTITLE": "Schedule visual takeovers and seasonal campaigns",
+      "NEW": "New Campaign",
+      "ACTIVE": "Active",
+      "UPCOMING": "Upcoming",
+      "PAST": "Past",
+      "TOTAL": "Total",
+      "ACTIVE_NOW": "Active Now",
+      "UPCOMING_LABEL": "Upcoming",
+      "PAST_LABEL": "Past Campaigns",
+      "EMPTY_UPCOMING": "No upcoming campaigns scheduled."
+    }
   }
 }

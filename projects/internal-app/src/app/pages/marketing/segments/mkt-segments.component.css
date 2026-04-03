@@ -1,0 +1,351 @@
+/* ── Root ─────────────────────────────────────────────────────────────────── */
+.seg-root {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.seg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: .5rem;
+}
+
+.seg-title-block { display: flex; align-items: center; gap: 1rem; }
+
+.seg-title-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(251,191,36,.1);
+    border: 1px solid rgba(251,191,36,.25);
+    display: flex; align-items: center; justify-content: center;
+    color: #fbbf24; flex-shrink: 0;
+}
+.seg-title-icon svg { width: 26px; height: 26px; }
+.seg-title { font-size: 1.4rem; font-weight: 800; color: var(--theme-text-primary); margin: 0; }
+.seg-subtitle { font-size: .875rem; color: var(--theme-text-secondary); margin: .15rem 0 0; }
+
+/* ── Skeleton ─────────────────────────────────────────────────────────────── */
+.seg-loading { display: none; }
+.seg-skeleton {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Error ────────────────────────────────────────────────────────────────── */
+.seg-error {
+    display: flex; align-items: center; gap: .75rem;
+    padding: 1rem 1.25rem;
+    background: rgba(248,113,113,.08);
+    border: 1px solid rgba(248,113,113,.2);
+    border-radius: 12px;
+    color: #f87171; font-size: .875rem;
+}
+
+/* ── KPI strip ────────────────────────────────────────────────────────────── */
+.seg-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+@media (max-width: 700px) { .seg-kpis { grid-template-columns: repeat(2, 1fr); } }
+
+.seg-kpi {
+    background: var(--theme-bg-surface);
+    border: 1px solid var(--theme-border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex; flex-direction: column; gap: .2rem;
+}
+
+.skpi-val {
+    font-size: 1.4rem; font-weight: 800;
+    color: var(--theme-text-primary); line-height: 1;
+}
+.skpi-val.green  { color: #4ade80; }
+.skpi-val.accent { color: #a5b4fb; }
+.skpi-val.yellow { color: #fbbf24; }
+.skpi-val.dim    { color: #52525b; font-size: 1rem; }
+
+.skpi-lbl {
+    font-size: .68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: var(--theme-text-secondary);
+}
+
+/* ── Timeframe toggle ─────────────────────────────────────────────────────── */
+.seg-tf-toggle {
+    display: flex;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.seg-tf-btn {
+    padding: .3rem .75rem;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: #71717a;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: all .18s;
+    white-space: nowrap;
+}
+.seg-tf-btn:hover:not(:disabled)  { color: #d4d4d8; background: rgba(255,255,255,.05); }
+.seg-tf-btn.active {
+    background: #fbbf24;
+    color: #1a1a1a;
+    box-shadow: 0 2px 8px rgba(251,191,36,.35);
+}
+.seg-tf-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Meta KPI (docs read) */
+.seg-kpi-meta { opacity: .55; }
+
+/* ── Segment chips ────────────────────────────────────────────────────────── */
+.seg-chips-wrap {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.seg-chip {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .9rem;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.04);
+    color: var(--theme-text-secondary);
+    font-size: .75rem; font-weight: 600;
+    cursor: pointer;
+    transition: all .18s;
+}
+.seg-chip:hover { border-color: rgba(255,255,255,.2); color: var(--theme-text-primary); }
+.seg-chip.active {
+    background: var(--sb, rgba(251,191,36,.1));
+    border-color: var(--sc, #fbbf24);
+    color: var(--sc, #fbbf24);
+}
+
+.chip-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ── Chip tooltips ────────────────────────────────────────────────────────── */
+.seg-chip--tip {
+    position: relative;
+    /* CSS custom prop passed for tooltip border color */
+}
+
+/* Tooltip card — single ::after with both lines of text */
+.seg-chip--tip::after {
+    /* Two lines: description \A criteria (using attr + concatenation isn't supported in CSS)  */
+    /* We use data-tip only, and show data-criteria in ::before as a sub-line badge */
+    content: attr(data-tip) "\A" attr(data-criteria);
+    white-space: pre-line;           /* renders \A as newline */
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    background: #111827;
+    border: 1px solid color-mix(in srgb, var(--sc, #6366f1) 40%, transparent);
+    border-radius: 10px;
+    padding: .6rem .9rem .5rem;
+    width: max-content;
+    max-width: 230px;
+    font-size: .75rem;
+    font-weight: 400;
+    color: #d4d4d8;
+    line-height: 1.5;
+    text-align: left;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,.55);
+}
+
+/* Arrow */
+.seg-chip--tip::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid color-mix(in srgb, var(--sc, #6366f1) 40%, transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 101;
+}
+
+.seg-chip--tip:hover::after,
+.seg-chip--tip:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Keep chips wrap overflow visible so tooltips show */
+.seg-chips-wrap { overflow: visible; }
+
+/* ── Desc bar ─────────────────────────────────────────────────────────────── */
+.seg-desc-bar {
+    padding: .75rem 1.1rem;
+    background: var(--sb, rgba(251,191,36,.08));
+    border: 1px solid color-mix(in srgb, var(--sc, #fbbf24) 30%, transparent);
+    border-radius: 10px;
+    font-size: .825rem;
+    color: var(--sc, #fbbf24);
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+.seg-table-wrap { overflow-x: auto; }
+
+.seg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+    background: var(--theme-bg-surface);
+    border: 1px solid var(--theme-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.seg-table th {
+    padding: .75rem 1rem;
+    text-align: left;
+    color: var(--theme-text-secondary);
+    font-size: .7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    white-space: nowrap;
+    background: rgba(0,0,0,.15);
+}
+.seg-table th.text-center { text-align: center; }
+.seg-table th.text-right  { text-align: right; }
+
+.seg-table td {
+    padding: .8rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    color: var(--theme-text-primary);
+    vertical-align: middle;
+}
+.seg-table td.text-center { text-align: center; }
+.seg-table td.text-right  { text-align: right; }
+.seg-table td.mono        { font-family: 'JetBrains Mono', monospace; }
+.seg-table td.green       { color: #4ade80; }
+.seg-table td.dim         { color: var(--theme-text-secondary); font-size: .8rem; }
+.seg-row:last-child td    { border-bottom: none; }
+.seg-row:hover td         { background: rgba(255,255,255,.02); }
+
+/* Customer cell */
+.cust-cell { display: flex; align-items: center; gap: .75rem; }
+.cust-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: .875rem;
+    flex-shrink: 0;
+}
+.cust-name  { display: block; font-weight: 600; font-size: .875rem; color: var(--theme-text-primary); }
+.cust-email { display: block; font-size: .72rem; color: var(--theme-text-secondary); }
+
+/* Segment pill */
+.seg-pill {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 50px;
+    font-size: .68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+    white-space: nowrap;
+}
+
+/* RFM score badges */
+.rfm-score {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    font-size: .75rem; font-weight: 800;
+}
+.rs-5 { background: rgba(74,222,128,.2);  color: #4ade80; }
+.rs-4 { background: rgba(165,180,251,.15); color: #a5b4fb; }
+.rs-3 { background: rgba(251,191,36,.12); color: #fbbf24; }
+.rs-2 { background: rgba(251,146,60,.12); color: #fb923c; }
+.rs-1 { background: rgba(248,113,113,.12);color: #f87171; }
+
+.rfm-total {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: rgba(99,102,241,.12);
+    border: 1px solid rgba(99,102,241,.2);
+    color: #a5b4fb; font-weight: 800; font-size: .8rem;
+}
+
+/* Empty */
+.seg-empty {
+    padding: 3rem; text-align: center;
+    color: var(--theme-text-secondary); font-size: .875rem;
+    border: 1px dashed rgba(255,255,255,.08);
+    border-radius: 14px;
+}
+
+/* ── Segment desc bar layout ─────────────────────────────── */
+.seg-desc-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.seg-desc-text { flex: 1; min-width: 0; }
+
+/* ── Create Campaign CTA button ─────────────────────────── */
+.seg-campaign-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem .85rem;
+    border-radius: 8px;
+    border: 1px solid var(--sc, #6366f1);
+    background: color-mix(in srgb, var(--sc, #6366f1) 12%, transparent);
+    color: var(--sc, #6366f1);
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s ease, transform .1s ease;
+    flex-shrink: 0;
+}
+.seg-campaign-btn:hover {
+    background: color-mix(in srgb, var(--sc, #6366f1) 22%, transparent);
+    transform: translateY(-1px);
+}

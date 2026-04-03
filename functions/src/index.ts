@@ -984,8 +984,19 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
     if (hasDeliveredTag || realShippingStatus === 'delivered') internalStatus = 'delivered';
     if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled') internalStatus = 'cancelled';
 
-    const isMeliFull = shipData?.logistic_type === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
-    const fType = isMeliFull ? 'platform' : 'merchant';
+    // Detect fulfillment type using 3 signals in priority order:
+    // 1. shipment.logistic.type  (nested — correct path per ML /shipments API docs)
+    // 2. shipment.logistic_type  (top-level fallback — field exists on items/.., sometimes null here)
+    // 3. order item logistic_type (item-level fallback when shipment fetch silently failed)
+    const logisticType: string | undefined =
+        shipData?.logistic?.type           // ← correct nested path
+     ?? shipData?.logistic_type            // ← top-level fallback
+     ?? mo.order_items?.[0]?.item?.logistic_type; // ← item-level last resort
+
+    const fType: 'platform' | 'flex' | 'merchant' =
+        logisticType === 'fulfillment'  ? 'platform' :  // MELI Full — ML warehouse packs & ships
+        logisticType === 'self_service' ? 'flex'     :  // MELI Flex — seller packs, same-day delivery
+        'merchant';                                      // Classic   — seller packs, standard MercadoEnvíos
 
     // Extract Handling Limit (Native Meli SLA Dispatch Deadline)
     // MercadoLibre provides this in shipping_option.estimated_handling_limit.date
@@ -1233,7 +1244,12 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
                             const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
                                 headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
                             });
-                            if (sRes.ok) shipmentsMap[mo.shipping.id] = await sRes.json();
+                            if (sRes.ok) {
+                                    shipmentsMap[mo.shipping.id] = await sRes.json();
+                                } else {
+                                    console.warn(`[Meli Sync] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                                    shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+                                }
                         }
                         // Billing info (try v2 for Mexico, fallback v1)
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
@@ -1344,7 +1360,12 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
                             const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
                                 headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
                             });
-                            if (sRes.ok) shipmentsMap[mo.shipping.id] = await sRes.json();
+                            if (sRes.ok) {
+                                    shipmentsMap[mo.shipping.id] = await sRes.json();
+                                } else {
+                                    console.warn(`[Meli Historical] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                                    shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+                                }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -1595,7 +1616,12 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
                             const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
                                 headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
                             });
-                            if (sRes.ok) shipmentsMap[mo.shipping.id] = await sRes.json();
+                            if (sRes.ok) {
+                                    shipmentsMap[mo.shipping.id] = await sRes.json();
+                                } else {
+                                    console.warn(`[Meli Cron] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                                    shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+                                }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }

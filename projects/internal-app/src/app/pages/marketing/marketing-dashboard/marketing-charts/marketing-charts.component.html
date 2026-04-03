@@ -1,0 +1,70 @@
+<!-- Loading -->
+<div *ngIf="isLoading()" class="mktc-loading">
+    <div class="mktc-spinner"></div>
+    <span>{{ 'MARKETING.DASHBOARD.LOADING' | translate }}</span>
+</div>
+
+<!-- No Data -->
+<div *ngIf="!isLoading() && noData()" class="mktc-empty">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         width="32" height="32">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+    </svg>
+    <p>{{ 'MARKETING.DASHBOARD.CHARTS.NO_DATA' | translate }}</p>
+</div>
+
+<div *ngIf="!isLoading() && !noData()" class="mktc-grid">
+
+    <!-- Channel Mix -->
+    <div class="mktc-card">
+        <div class="mktc-card-header">
+            <div class="mktc-card-icon indigo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
+                </svg>
+            </div>
+            <h3 class="mktc-card-title">{{ 'MARKETING.DASHBOARD.CHARTS.CHANNEL_MIX' | translate }}</h3>
+            <span class="mktc-card-sub">{{ 'MARKETING.DASHBOARD.CHARTS.CHANNEL_MIX_SUB' | translate }}</span>
+        </div>
+        <div class="mktc-chart-wrap">
+            <canvas #mixCanvas></canvas>
+        </div>
+    </div>
+
+    <!-- Conversion Trend -->
+    <div class="mktc-card">
+        <div class="mktc-card-header">
+            <div class="mktc-card-icon violet">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+            </div>
+            <h3 class="mktc-card-title">{{ 'MARKETING.DASHBOARD.CHARTS.CONV_TREND' | translate }}</h3>
+            <span class="mktc-card-sub">{{ 'MARKETING.DASHBOARD.CHARTS.CONV_TREND_SUB' | translate }}</span>
+        </div>
+        <div class="mktc-chart-wrap">
+            <canvas #trendCanvas></canvas>
+        </div>
+    </div>
+
+    <!-- Session Timeline -->
+    <div class="mktc-card mktc-card-full">
+        <div class="mktc-card-header">
+            <div class="mktc-card-icon purple">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+            </div>
+            <h3 class="mktc-card-title">{{ 'MARKETING.DASHBOARD.CHARTS.SESSION_TIMELINE' | translate }}</h3>
+            <span class="mktc-card-sub">{{ 'MARKETING.DASHBOARD.CHARTS.SESSION_TIMELINE_SUB' | translate }}</span>
+        </div>
+        <div class="mktc-chart-wrap mktc-chart-tall">
+            <canvas #sessionCanvas></canvas>
+        </div>
+    </div>
+
+</div>

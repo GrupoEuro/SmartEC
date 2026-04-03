@@ -1,0 +1,181 @@
+<div class="mh-layout theme-marketing">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+    <aside class="mh-sidebar" [class.collapsed]="isSidebarCollapsed()">
+
+        <!-- Brand -->
+        <div class="mh-sidebar-header">
+            <div class="mh-brand">
+                <div class="mh-brand-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <div class="mh-brand-text" [class.hidden]="isSidebarCollapsed()">
+                    <span class="mh-brand-name">{{ 'MARKETING.TITLE' | translate }}</span>
+                    <span class="mh-brand-sub">{{ 'MARKETING.SUBTITLE' | translate }}</span>
+                </div>
+            </div>
+            <button class="mh-toggle-btn" (click)="toggleSidebar()" [title]="'MARKETING.TOGGLE_SIDEBAR' | translate">
+                <app-icon [name]="isSidebarCollapsed() ? 'menu' : 'arrow-left'" [size]="18"></app-icon>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="mh-nav">
+            <ng-container *ngFor="let item of navigationItems">
+
+                <!-- Single item (no children) -->
+                <div *ngIf="!item.children" class="mh-nav-single">
+                    <a [routerLink]="item.route"
+                       routerLinkActive="mh-nav-active"
+                       class="mh-nav-item"
+                       [title]="isSidebarCollapsed() ? (item.title | translate) : ''">
+                        <app-icon [name]="item.icon" [size]="19" class="mh-nav-icon"></app-icon>
+                        <span class="mh-nav-label" [class.hidden]="isSidebarCollapsed()">
+                            {{ item.title | translate }}
+                        </span>
+                        <span *ngIf="item.badge && !isSidebarCollapsed()"
+                              class="mh-badge" [style.background]="badgeBg(item.badge.color)">
+                            {{ item.badge.text }}
+                        </span>
+                    </a>
+                </div>
+
+                <!-- Section with children -->
+                <div *ngIf="item.children" class="mh-nav-section">
+                    <button class="mh-section-header"
+                            (click)="toggleSection(item.id)"
+                            [title]="isSidebarCollapsed() ? (item.title | translate) : ''">
+                        <app-icon *ngIf="isSidebarCollapsed()" [name]="item.icon" [size]="20" class="mh-section-icon-collapsed"></app-icon>
+                        <span [class.hidden]="isSidebarCollapsed()">{{ item.title | translate }}</span>
+                        <app-icon *ngIf="!isSidebarCollapsed()"
+                                  [name]="isExpanded(item.id) ? 'chevron-down' : 'chevron-right'"
+                                  [size]="13" class="mh-chevron">
+                        </app-icon>
+                    </button>
+
+                    <div class="mh-section-items"
+                         [class.expanded]="isExpanded(item.id)"
+                         [class.hidden]="isSidebarCollapsed() && !isExpanded(item.id)">
+                        <ng-container *ngFor="let child of item.children">
+                            <a [routerLink]="child.route"
+                               routerLinkActive="mh-nav-active"
+                               class="mh-nav-item mh-nav-child"
+                               [title]="isSidebarCollapsed() ? (child.title | translate) : ''">
+                                <app-icon [name]="child.icon" [size]="17" class="mh-nav-icon"></app-icon>
+                                <span class="mh-nav-label" [class.hidden]="isSidebarCollapsed()">
+                                    {{ child.title | translate }}
+                                </span>
+                                <span *ngIf="child.badge && !isSidebarCollapsed()"
+                                      class="mh-badge" [style.background]="badgeBg(child.badge.color)">
+                                    {{ child.badge.text }}
+                                </span>
+                            </a>
+                        </ng-container>
+                    </div>
+                </div>
+
+            </ng-container>
+        </nav>
+
+        <!-- Sidebar footer: user info + logout -->
+        <div class="mh-sidebar-footer">
+            @if (user$ | async; as user) {
+                <div class="mh-user-row" [title]="(userProfile$ | async)?.displayName || user.email || ''">
+                    <div class="mh-avatar-sm">
+                        @if (user.photoURL) {
+                            <img [src]="user.photoURL" [alt]="user.displayName || ''">
+                        } @else {
+                            <app-icon name="user" [size]="16"></app-icon>
+                        }
+                    </div>
+                    <div class="mh-user-info" [class.hidden]="isSidebarCollapsed()">
+                        <span class="mh-user-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'User' }}</span>
+                        <span class="mh-user-email">{{ user.email }}</span>
+                    </div>
+                </div>
+            }
+            <button class="mh-logout-btn" (click)="logout()" [title]="'OPERATIONS.LOGOUT' | translate">
+                <app-icon name="log-out" [size]="17"></app-icon>
+                <span [class.hidden]="isSidebarCollapsed()">{{ 'OPERATIONS.LOGOUT' | translate }}</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+    <main class="mh-main" [class.expanded]="isSidebarCollapsed()">
+
+        <!-- Topbar -->
+        <header class="mh-topbar">
+            <div class="mh-topbar-spacer"></div>
+
+            <div class="mh-topbar-actions">
+                <!-- Language switcher -->
+                <div class="lang-wrap" [class.open]="isLangMenuOpen">
+                    <button class="lang-btn" (click)="isLangMenuOpen = !isLangMenuOpen">
+                        <span>{{ languageService.currentLang() === 'es' ? '🇲🇽' : '🇺🇸' }}</span>
+                        <span class="lang-code">{{ languageService.currentLang() === 'es' ? 'ES' : 'EN' }}</span>
+                        <app-icon name="chevron-down" [size]="11" class="lang-chevron"></app-icon>
+                    </button>
+                    @if (isLangMenuOpen) {
+                        <div class="lang-dropdown">
+                            <button class="lang-opt" [class.active]="languageService.currentLang() === 'es'"
+                                    (click)="setLanguage('es')">🇲🇽 Español</button>
+                            <button class="lang-opt" [class.active]="languageService.currentLang() === 'en'"
+                                    (click)="setLanguage('en')">🇺🇸 English</button>
+                        </div>
+                    }
+                </div>
+
+                <!-- Avatar + user menu -->
+                @if (user$ | async; as user) {
+                    <div class="user-menu-wrap">
+                        <button class="mh-avatar-btn" (click)="toggleUserMenu()"
+                                [title]="(userProfile$ | async)?.displayName || user.email || ''">
+                            @if (user.photoURL) {
+                                <img [src]="user.photoURL" [alt]="user.displayName || ''">
+                            } @else {
+                                <div class="mh-avatar-placeholder">
+                                    <app-icon name="user" [size]="16"></app-icon>
+                                </div>
+                            }
+                        </button>
+
+                        @if (isUserMenuOpen) {
+                            <div class="mh-user-dropdown">
+                                <div class="dd-header">
+                                    <span class="dd-name">{{ (userProfile$ | async)?.displayName || user.displayName || 'User' }}</span>
+                                    @if (userProfile$ | async; as profile) {
+                                        <span class="dd-role">{{ profile.role }}</span>
+                                    }
+                                    <span class="dd-email">{{ user.email }}</span>
+                                </div>
+                                <div class="dd-divider"></div>
+                                <a href="https://www.importadoraeuro.com" target="_blank" rel="noopener" class="dd-item" (click)="closeUserMenu()">
+                                    <app-icon name="globe" [size]="15"></app-icon>
+                                    {{ 'ADMIN.GO_TO_WEBSITE' | translate }}
+                                    <span class="dd-ext">↗</span>
+                                </a>
+                                <a routerLink="/portal" class="dd-item" (click)="closeUserMenu()">
+                                    <app-icon name="layout-dashboard" [size]="15"></app-icon>
+                                    {{ 'ADMIN.GO_TO_PORTAL' | translate }}
+                                </a>
+                                <div class="dd-divider"></div>
+                                <button class="dd-item dd-danger" (click)="logout()">
+                                    <app-icon name="log-out" [size]="15"></app-icon>
+                                    {{ 'OPERATIONS.LOGOUT' | translate }}
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </header>
+
+        <div class="mh-content">
+            <router-outlet></router-outlet>
+        </div>
+    </main>
+
+</div>

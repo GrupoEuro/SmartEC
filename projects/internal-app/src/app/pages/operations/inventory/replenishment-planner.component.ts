@@ -11,7 +11,7 @@ import { Product } from '../../../core/models/product.model';
 import { firstValueFrom } from 'rxjs';
 
 interface ReplenishmentItem {
-    product: Product;
+    product: any; // Product + optional Firestore extended fields (inventoryPolicy, supplierId, etc.)
     currentStock: number;
     safetyStock: number;
     reorderPoint: number;
@@ -99,7 +99,8 @@ export class ReplenishmentPlannerComponent implements OnInit {
 
             const replenishmentItems: ReplenishmentItem[] = [];
 
-            for (const product of products) {
+            for (const rawProduct of products) {
+                const product = rawProduct as any;
                 // Only analyze products with inventory policy or below reorder point
                 if (!product.inventoryPolicy && product.stockQuantity > 10) continue;
 

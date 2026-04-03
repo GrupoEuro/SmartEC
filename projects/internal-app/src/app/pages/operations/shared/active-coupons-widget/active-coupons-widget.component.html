@@ -1,0 +1,91 @@
+<!-- Active Coupons Context Widget – read-only mirror for Operations -->
+@if (!isLoading() && coupons().length === 0) {
+    <!-- Render nothing if no active coupons — no noise -->
+}
+
+@if (isLoading() || coupons().length > 0) {
+<div class="acw-container">
+
+    <!-- Header / toggle -->
+    <div class="acw-header" (click)="toggle()">
+        <div class="acw-header-left">
+            <div class="acw-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="acw-title">Active Coupons</h3>
+                @if (!isLoading()) {
+                    <span class="acw-count">{{ coupons().length }} active right now</span>
+                }
+            </div>
+        </div>
+        <div class="acw-controls">
+            <a routerLink="/marketing/coupons" class="acw-hub-link" (click)="$event.stopPropagation()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Marketing Hub
+            </a>
+            <svg class="acw-chevron" [class.rotated]="isCollapsed()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Body -->
+    @if (!isCollapsed()) {
+        <div class="acw-body">
+
+            <!-- Loading skeleton -->
+            @if (isLoading()) {
+                <div class="acw-skeleton">
+                    <div class="skeleton sk-h-card sk-w-full" style="border-radius:10px"></div>
+                    <div class="skeleton sk-h-card sk-w-full" style="border-radius:10px"></div>
+                </div>
+            }
+
+            <!-- Coupon cards -->
+            @if (!isLoading()) {
+                <div class="acw-coupons">
+                    @for (c of coupons(); track c.id) {
+                        <div class="acw-coupon" [class]="urgencyClass(c)">
+                            <!-- Code + discount -->
+                            <div class="acw-coupon-top">
+                                <div class="acw-coupon-code">
+                                    <span class="acw-code-badge">{{ c.code }}</span>
+                                    <span class="acw-discount">{{ fmtDiscount(c) }} off</span>
+                                </div>
+                                <!-- Urgency indicator -->
+                                @if (c.endDate) {
+                                    <span class="acw-days" [class]="urgencyClass(c)">
+                                        {{ daysLeft(c.endDate) }}d left
+                                    </span>
+                                } @else {
+                                    <span class="acw-days safe">No expiry</span>
+                                }
+                            </div>
+
+                            @if (c.description) {
+                                <p class="acw-desc">{{ c.description }}</p>
+                            }
+
+                            <!-- Usage bar -->
+                            @if (c.usageLimit > 0) {
+                                <div class="acw-usage-wrap">
+                                    <div class="acw-usage-bar">
+                                        <div class="acw-usage-fill" [style.width]="usagePct(c) + '%'"></div>
+                                    </div>
+                                    <span class="acw-usage-text">{{ c.usageCount }}/{{ c.usageLimit }}</span>
+                                </div>
+                            } @else {
+                                <span class="acw-usage-text">{{ c.usageCount }} uses · unlimited</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+}

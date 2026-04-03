@@ -1,0 +1,87 @@
+/* Loading */
+.mktc-loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: .75rem; padding: 3rem;
+    color: #52525b; font-size: .85rem;
+}
+.mktc-spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,.06);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: mktc-spin .75s linear infinite;
+}
+@keyframes mktc-spin { to { transform: rotate(360deg); }}
+
+/* Empty */
+.mktc-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .75rem; padding: 4rem 2rem;
+    color: #3f3f46;
+}
+.mktc-empty svg { opacity: .35; }
+.mktc-empty p { font-size: .85rem; }
+
+/* Grid */
+.mktc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+/* Card */
+.mktc-card {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.mktc-card-full {
+    grid-column: 1 / -1;
+}
+
+/* Card Header */
+.mktc-card-header {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .9rem 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    background: rgba(0,0,0,.15);
+}
+.mktc-card-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.mktc-card-icon svg { width: 13px; height: 13px; }
+.mktc-card-icon.indigo {
+    background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.25); color: #a5b4fc;
+}
+.mktc-card-icon.violet {
+    background: rgba(139,92,246,.15); border: 1px solid rgba(139,92,246,.25); color: #c4b5fd;
+}
+.mktc-card-icon.purple {
+    background: rgba(168,85,247,.15); border: 1px solid rgba(168,85,247,.25); color: #d8b4fe;
+}
+.mktc-card-title {
+    font-size: .8rem; font-weight: 700;
+    color: #e4e4e7; letter-spacing: .01em;
+    flex: 1;
+}
+.mktc-card-sub {
+    font-size: .68rem; color: #52525b; font-weight: 500;
+}
+
+/* Chart area */
+.mktc-chart-wrap {
+    position: relative; height: 220px;
+    padding: .75rem 1rem 1rem;
+}
+.mktc-chart-tall {
+    height: 180px;
+}
+
+@media (max-width: 768px) {
+    .mktc-grid { grid-template-columns: 1fr; }
+    .mktc-card-full { grid-column: 1; }
+}

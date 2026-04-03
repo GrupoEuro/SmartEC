@@ -1,4 +1,16 @@
 {
+  "CC": {
+    "MARKETING": {
+      "TITLE": "Rendimiento de Marketing",
+      "OPEN": "Abrir Hub",
+      "REVENUE": "Ingresos",
+      "ORDERS": "Pedidos",
+      "SESSIONS": "Sesiones",
+      "CONV_RATE": "Conv.",
+      "ABANDONED": "Abandonados",
+      "TOP_SOURCE": "Fuente Principal"
+    }
+  },
   "PAGINATION": {
     "FIRST": "Primera Página",
     "PREVIOUS": "Página Anterior",
@@ -152,6 +164,10 @@
   },
   "CATALOG_QUICK_VIEW_BTN": "Vista Rápida",
   "PORTAL": {
+    "MARKETING": {
+      "TITLE": "Marketing Hub",
+      "DESC": "Campañas, atribución, carritos abandonados e inteligencia de clientes"
+    },
     "WELCOME": "Bienvenido de nuevo,",
     "SELECT_WORKSPACE": "Selecciona un espacio de trabajo para comenzar",
     "LOGOUT": "Cerrar Sesión",
@@ -1585,6 +1601,12 @@
         "TITLE": "Operaciones"
       },
       "DASHBOARD": {
+        "CHARTS_TITLE": "Analítica y Gráficas",
+        "TF": {
+          "MTD": "Mes Actual",
+          "PAST_MONTH": "Mes Anterior",
+          "YTD": "Año Actual"
+        },
         "WELCOME": "Bienvenido al Tablero de Importadora Euro",
         "SUBTITLE": "Gestiona tu contenido, banners, blog y biblioteca PDF desde un solo lugar.",
         "BANNERS_DESC": "Actualizar sliders de inicio",
@@ -4258,6 +4280,13 @@
     "PRICING": {
       "TITLE": "Gestión de Precios",
       "SUBTITLE": "Constructor inteligente de estrategias de precios"
+    },
+    "ACTIVE_CAMPAIGNS": {
+      "TITLE": "Campañas Activas",
+      "ACTIVE": "activas",
+      "MANAGE": "Gestionar en Marketing Hub",
+      "LOADING": "Cargando campañas...",
+      "EMPTY": "No hay campañas activas en este momento."
     }
   },
   "ADMIN": {
@@ -4325,7 +4354,9 @@
       "ROLES": "Roles y Permisos",
       "WAREHOUSES": "Almacenes",
       "MEDIA": "Medios",
-      "KITS": "Kits"
+      "KITS": "Kits",
+      "ATTRIBUTION": "Atribución",
+      "GO_MARKETING_HUB": "Marketing Hub ↗"
     },
     "BANNERS": {
       "FORM": {
@@ -4550,6 +4581,64 @@
         "BTN_CREATE": "Crear Cupón",
         "BTN_UPDATE": "Guardar Cambios",
         "BTN_SAVING": "Guardando..."
+      },
+      "ANALYTICS": {
+        "TITLE": "QR Analytics",
+        "BACK": "← Cupones",
+        "EDIT": "✏️ Editar cupón",
+        "DISCOUNT": "Descuento",
+        "VALID_UNTIL": "Válido hasta",
+        "ACTIVE": "Activo",
+        "INACTIVE": "Inactivo",
+        "LOADING": "Cargando análisis del QR...",
+        "KPI": {
+          "TOTAL_SCANS": "Escaneos totales",
+          "UNIQUE": "Visitantes únicos",
+          "CART_ADDS": "Agregaron al carrito",
+          "ORDERS": "Órdenes completadas",
+          "REVENUE": "Ingresos generados",
+          "CONVERSION": "Tasa de conversión"
+        },
+        "FUNNEL": {
+          "TITLE": "Embudo de conversión",
+          "SCANS": "Escaneos",
+          "CART": "Carrito",
+          "CHECKOUT": "Checkout",
+          "ORDER": "Orden",
+          "WA_CLICKS": "Clicks WhatsApp",
+          "CART_CLEARS": "Carritos borrados",
+          "AVG_CART": "Valor promedio carrito"
+        },
+        "BREAKDOWN": {
+          "CITIES": "📍 Ciudades",
+          "SOURCES": "🔗 Fuentes de tráfico",
+          "UNKNOWN": "Desconocida"
+        },
+        "TABLE": {
+          "TITLE": "Detalle de escaneos",
+          "SEARCH": "�� Buscar sesión, email, ciudad...",
+          "SESSION": "Sesión",
+          "DATE": "Fecha",
+          "USER_CITY": "Usuario / Ciudad",
+          "CART": "Carrito",
+          "WA": "WA",
+          "STATUS": "Estado",
+          "ANONYMOUS": "Anónimo",
+          "VIEW_ORDER": "Orden →",
+          "FILTER_ALL": "Todos los escaneos",
+          "FILTER_CONV": "Convertidos",
+          "FILTER_CART": "Carrito sin orden",
+          "FILTER_WA": "Abrieron WhatsApp",
+          "FILTER_NONE": "Sin acción",
+          "EMPTY": "Sin escaneos en este filtro"
+        },
+        "STATUS": {
+          "ORDER": "Orden",
+          "CHECKOUT": "Checkout",
+          "CART": "Carrito",
+          "WHATSAPP": "WhatsApp",
+          "SCAN_ONLY": "Solo scan"
+        }
       }
     },
     "CUSTOMERS": {
@@ -4563,14 +4652,57 @@
         "ACTIONS": "Acciones"
       },
       "DETAIL": {
+        "SUBTITLE": "Perfil y actividad del cliente",
         "STATS": "Estadísticas",
-        "ORDER_HISTORY": "Historial de Pedidos",
-        "NO_ORDERS": "Este cliente aún no tiene pedidos.",
-        "SUBTITLE": "Información detallada del cliente"
+        "ORDER_HISTORY": "Historial de órdenes",
+        "NO_ORDERS": "Este cliente no ha realizado ninguna orden todavía."
       },
       "TITLE": "Gestión de Clientes",
       "NO_RESULTS": "Sin resultados para esta búsqueda.",
-      "SEARCH_PLACEHOLDER": "Buscar clientes..."
+      "SEARCH_PLACEHOLDER": "Buscar clientes...",
+      "TABS": {
+        "OVERVIEW": "Perfil",
+        "ORDERS": "Órdenes",
+        "TIMELINE": "Timeline"
+      },
+      "CONTACT": "Información de contacto",
+      "SHIPPING": "Dirección de envío",
+      "ACQUISITION": "Origen de adquisición",
+      "ACQU_SOURCE": "Fuente",
+      "ACQU_MEDIUM": "Medio",
+      "ACQU_CAMPAIGN": "Campaña",
+      "ANONYMOUS": "Anónimo",
+      "PHONE": "Teléfono",
+      "UID_LABEL": "UID",
+      "ROLE": "Rol",
+      "REGISTERED": "Registrado",
+      "ORDERS_TITLE": "Historial de órdenes",
+      "STATS": {
+        "TITLE": "Estadísticas",
+        "ORDERS": "Órdenes",
+        "TOTAL_SPEND": "Total gastado",
+        "QR_SCANS": "Escaneos QR",
+        "WA_CLICKS": "Clicks WA"
+      },
+      "TIMELINE": {
+        "LOADING": "Cargando actividad...",
+        "STATS_TOTAL": "Eventos totales",
+        "STATS_ORDERS": "Órdenes",
+        "STATS_SPEND": "Total comprado",
+        "STATS_CLEARS": "Carritos borrados",
+        "STATS_QR": "QR convertidos",
+        "FILTER_ALL": "Todo",
+        "FILTER_ORDER": "Órdenes",
+        "FILTER_CART": "Carrito",
+        "FILTER_QR": "QR",
+        "FILTER_WA": "WhatsApp",
+        "FILTER_ACCOUNT": "Cuenta",
+        "FILTER_NEWS": "Newsletter",
+        "EMPTY_TITLE": "No hay actividad registrada aún",
+        "EMPTY_DETAIL": "Los eventos aparecerán aquí a medida que el cliente interactúe con la tienda.",
+        "SEE_ORDER": "Ver orden →",
+        "SESSION": "sesión"
+      }
     },
     "ORDERS": {
       "TABLE": {
@@ -5673,6 +5805,153 @@
     "LIBRARIES": {
       "TITLE": "Stack Explorer",
       "SUBTITLE": "A holographic tour of the technologies powering this platform."
+    }
+  },
+  "ATTRIBUTION": {
+    "TITLE": "Reporte de Atribución",
+    "SUBTITLE": "Ingresos por canal de marketing — modelo de primer toque",
+    "LOADING": "Cargando datos de atribución...",
+    "KPI": {
+      "SESSIONS": "Sesiones Totales",
+      "CHANNELS": "Canales Rastreados",
+      "ORDERS": "Órdenes Convertidas",
+      "REVENUE": "Ingresos Atribuidos",
+      "CONV_RATE": "Conversión General",
+      "TOP_SOURCE": "Principal Fuente"
+    },
+    "TABLE": {
+      "TITLE": "Desglose por Canal",
+      "CHANNEL": "Fuente / Canal",
+      "MEDIUM": "Medio",
+      "CAMPAIGN": "Campaña",
+      "SESSIONS": "Sesiones",
+      "CART_ADDS": "Al Carrito",
+      "ORDERS": "Órdenes",
+      "REVENUE": "Ingresos",
+      "AOV": "Ticket Promedio",
+      "CONV": "Tasa Conv.",
+      "SHARE": "Part. Ingresos",
+      "EMPTY": "Sin datos de atribución para este período"
+    },
+    "HOW": {
+      "TITLE": "Cómo Funciona la Atribución",
+      "STEP1_TITLE": "Inicio de sesión capturado",
+      "STEP1_BODY": "Cuando un visitante llega, los parámetros UTM, referrer, dispositivo y geo se guardan en localStorage y se escriben en Firestore sessionEvents.",
+      "STEP2_TITLE": "La atribución sigue al carrito",
+      "STEP2_BODY": "Cada vez que se agrega al carrito, inicia el checkout o se completa una orden, se incluyen los datos de atribución para rastrear el ingreso hasta su fuente.",
+      "STEP3_TITLE": "Costura de sesión al iniciar sesión",
+      "STEP3_BODY": "Cuando un visitante anónimo se autentica, un evento user_identified vincula el sessionId anónimo con el uid real, atribuyendo retroactivamente toda la actividad.",
+      "STEP4_TITLE": "Modelo de primer toque",
+      "STEP4_BODY": "El ingreso se acredita al canal que trajo al visitante en su primer punto de contacto. El cambio a último toque estará disponible próximamente."
+    },
+    "TF": {
+      "MTD": "Mes Actual",
+      "PAST_MONTH": "Mes Anterior",
+      "YTD": "Año Actual"
+    }
+  },
+  "MARKETING": {
+    "TITLE": "Marketing Hub",
+    "SUBTITLE": "Inteligencia de Crecimiento",
+    "TOGGLE_SIDEBAR": "Colapsar Menú",
+    "SIDEBAR": {
+      "DASHBOARD": "Resumen",
+      "SECTION_CAMPAIGNS": "Campañas",
+      "CAMPAIGNS": "Todas las Campañas",
+      "COUPONS": "Cupones y QR",
+      "SECTION_ANALYTICS": "Analítica",
+      "ATTRIBUTION": "Atribución",
+      "ABANDONED_CARTS": "Carritos Abandonados",
+      "SECTION_INTELLIGENCE": "Inteligencia de Cliente",
+      "SEGMENTS": "Segmentos"
+    },
+    "DASHBOARD": {
+      "TITLE": "Resumen de Marketing",
+      "SUBTITLE": "Resumen de rendimiento en todos los canales de marketing",
+      "LOADING": "Cargando datos de marketing...",
+      "PERIOD": "Últimos 30 días",
+      "QUICK_TITLE": "Acceso Rápido",
+      "KPI": {
+        "SESSIONS": "Sesiones",
+        "CART_ADDS": "Al Carrito",
+        "ORDERS": "Órdenes",
+        "REVENUE": "Ingresos",
+        "CONV_RATE": "Tasa Conv.",
+        "ABANDONED": "Abandonados",
+        "TOP_SOURCE": "Principal Fuente"
+      },
+      "QUICK": {
+        "ATTRIBUTION": "Reporte de Atribución",
+        "ABANDONED_CARTS": "Carritos Abandonados",
+        "CAMPAIGNS": "Campañas",
+        "COUPONS": "Cupones y QR",
+        "SEGMENTS": "Segmentos"
+      },
+      "CHART_SOON": {
+        "CHANNEL_MIX": "Mezcla de Canales — Próximamente",
+        "CONVERSION_TREND": "Tendencia de Conversión — Próximamente",
+        "SESSION_TIMELINE": "Historial de Sesiones — Próximamente"
+      },
+      "CHARTS_TITLE": "Analítica y Gráficas",
+      "TF": {
+        "MTD": "Mes Actual",
+        "PAST_MONTH": "Mes Anterior",
+        "YTD": "Año Actual"
+      },
+      "CHARTS": {
+        "NO_DATA": "Sin datos para el período seleccionado",
+        "CHANNEL_MIX": "Mezcla de Canales",
+        "CHANNEL_MIX_SUB": "Fuentes de tráfico",
+        "CONV_TREND": "Tendencia de Conversión",
+        "CONV_TREND_SUB": "Órdenes por día",
+        "SESSION_TIMELINE": "Historial de Sesiones",
+        "SESSION_TIMELINE_SUB": "Sesiones únicas por día"
+      }
+    },
+    "COUPONS": {
+      "MIRROR_TITLE": "Gestión de Cupones y QR",
+      "MIRROR_BODY": "La gestión y creación de cupones está disponible en el panel de administración. La integración completa en Marketing Hub está prevista para la Fase 2.",
+      "MIRROR_GO_ADMIN": "Abrir Gestor de Cupones",
+      "PHASE2_NOTE": "Fase 2: Los cupones y análisis de QR se integrarán aquí.",
+      "TITLE": "Cupones y QR",
+      "SUBTITLE": "Rendimiento de cupones y análisis de escaneos QR",
+      "NEW": "Nuevo Cupón",
+      "KPI_ACTIVE": "Activos",
+      "KPI_USES": "Total Usos",
+      "KPI_SCANS": "Escaneos QR",
+      "KPI_CONV": "Conv. Escaneo",
+      "FILTER_ALL": "Todos",
+      "FILTER_ACTIVE": "Activos",
+      "FILTER_INACTIVE": "Inactivos",
+      "FILTER_EXPIRED": "Expirados",
+      "SEARCH": "Buscar código…",
+      "EMPTY": "No se encontraron cupones.",
+      "EDIT": "Editar"
+    },
+    "SEGMENTS": {
+      "COMING_SOON": "Próximamente",
+      "TITLE": "Segmentos de Clientes",
+      "BODY": "Segmenta a tus clientes por comportamiento, historial de compras y etapa del ciclo de vida para potenciar campañas personalizadas y flujos automatizados.",
+      "F1": "Puntuación RFM (Recencia, Frecuencia, Monetario)",
+      "F2": "Constructor de segmentos personalizados con filtros",
+      "F3": "Campañas automatizadas por WhatsApp por segmento",
+      "SUBTITLE_LIVE": "Análisis RFM — actualizado automáticamente del historial de pedidos",
+      "KPI_CUSTOMERS": "Clientes",
+      "KPI_REVENUE": "Ingresos Totales",
+      "KPI_AOV": "Ticket Promedio"
+    },
+    "CAMPAIGNS": {
+      "TITLE": "Campañas",
+      "SUBTITLE": "Programa tomas visuales y campañas estacionales",
+      "NEW": "Nueva Campaña",
+      "ACTIVE": "Activas",
+      "UPCOMING": "Próximas",
+      "PAST": "Pasadas",
+      "TOTAL": "Total",
+      "ACTIVE_NOW": "Activas Ahora",
+      "UPCOMING_LABEL": "Próximas",
+      "PAST_LABEL": "Campañas Pasadas",
+      "EMPTY_UPCOMING": "No hay campañas próximas."
     }
   }
 }

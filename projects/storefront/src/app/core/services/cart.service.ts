@@ -9,6 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { ShippingConfigService } from './shipping-config.service';
 import { AttributionService, stripUndefined } from './attribution.service';
+import { SessionService } from './session.service';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -22,9 +23,10 @@ export class CartService {
     private shippingConfig   = inject(ShippingConfigService);
     private zone             = inject(NgZone);
     private attributionSvc   = inject(AttributionService);
+    private sessionSvc       = inject(SessionService);
 
-    /** Stable session ID — generated once per browser session, survives page reloads */
-    private readonly sessionId = this.getOrCreateSessionId();
+    /** Stable cross-tab session ID — owned by SessionService */
+    private get sessionId(): string { return this.sessionSvc.sessionId; }
 
     /** UTM source or referrer — captured once on service init */
     private readonly source = this.captureSource();
@@ -220,6 +222,16 @@ export class CartService {
                 this.zone.run(() => this.updateState(cloudItems, 'active'));
             }
 
+            // Stitch: write previousSessionId to user cart doc so we can join
+            // anonymous QR scans (which used the guest sessionId) to this user.
+            if (guestSnap.exists()) {
+                const userCartRef = doc(this.firestore, `carts/${userId}`);
+                await setDoc(userCartRef, {
+                    previousSessionId: this.sessionId,
+                    stitchedAt:        Timestamp.now(),
+                }, { merge: true });
+            }
+
             // Archive the guest cart doc as migrated + write snapshot
             if (guestSnap.exists()) {
                 await setDoc(guestRef, {
@@ -227,8 +239,18 @@ export class CartService {
                     migratedTo: userId,
                     migratedAt: Timestamp.now()
                 }, { merge: true });
-                await this.writeSnapshot('migrated', guestCart?.items ?? [], undefined, userId, email);
+
+                // Write user_identified snapshot so CustomerTimelineService
+                // can show the session-stitching event in the timeline.
+                await this.writeSnapshot('migrated', guestCart?.items ?? [], {
+                    removed: [],
+                    stitched: { sessionId: this.sessionId, uid: userId, email },
+                } as any, userId, email);
             }
+
+            // Fire the attribution identity flush (sessionId → uid mapping)
+            this.attributionSvc.flushSessionIdentity(userId, email)
+                .catch(e => console.warn('[Cart] flushSessionIdentity failed:', e));
 
         } catch (e) {
             console.error('[Cart] Error during guest migration:', e);
@@ -496,17 +518,6 @@ export class CartService {
     }
 
     // ── Session & Attribution Helpers ─────────────────────────────────────────
-    private getOrCreateSessionId(): string {
-        if (!isPlatformBrowser(this.platformId)) return 'ssr';
-        try {
-            let id = sessionStorage.getItem('cart_session_id');
-            if (!id) {
-                id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-                sessionStorage.setItem('cart_session_id', id);
-            }
-            return id;
-        } catch { return `s_${Date.now()}`; }
-    }
 
     private captureSource(): string {
         if (!isPlatformBrowser(this.platformId)) return 'direct';

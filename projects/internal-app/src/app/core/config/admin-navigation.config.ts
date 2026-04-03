@@ -124,30 +124,35 @@ export const ADMIN_NAVIGATION: NavItem[] = [
         title: 'ADMIN.SIDEBAR.SECTION_MARKETING',
         icon: 'trending-up',
         children: [
-            {
-                id: 'coupons',
-                title: 'ADMIN.SIDEBAR.COUPONS',
-                icon: 'gift',
-                route: '/admin/coupons'
-            },
+            // Promotions engine stays in Admin (CMS creation tool)
             {
                 id: 'promotions',
                 title: 'ADMIN.SIDEBAR.PROMOTIONS',
                 icon: 'zap',
                 route: '/admin/promotions'
             },
+            // Coupons form creation stays in Admin (CMS)
+            {
+                id: 'coupons',
+                title: 'ADMIN.SIDEBAR.COUPONS',
+                icon: 'gift',
+                route: '/admin/coupons'
+            },
+            // Campaign builder stays in Admin (CMS creation)
             {
                 id: 'campaigns',
                 title: 'ADMIN.SIDEBAR.CAMPAIGNS',
                 icon: 'target',
                 route: '/admin/marketing/campaigns'
             },
+            // ── Jump to Marketing Hub ──────────────────────────────
             {
-                id: 'abandoned_carts',
-                title: 'ADMIN.SIDEBAR.ABANDONED_CARTS',
-                icon: 'shopping-cart',
-                route: '/admin/marketing/abandoned-carts',
-                badge: { text: 'New', color: 'orange' }
+                id: 'go_marketing_hub',
+                title: 'ADMIN.SIDEBAR.GO_MARKETING_HUB',
+                icon: 'bar-chart-2',
+                route: '/marketing/dashboard',
+                badge: { text: 'Hub', color: 'bg-indigo-600' },
+                divider: true
             }
         ]
     },

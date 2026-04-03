@@ -1,0 +1,262 @@
+<!-- Loading -->
+<div *ngIf="isLoading()" class="attr-loading">
+    <div class="spinner"></div>
+    <p>{{ 'ADMIN.ATTRIBUTION.LOADING' | translate }}</p>
+</div>
+
+<div *ngIf="!isLoading()" class="attr-root">
+
+    <!-- Header -->
+    <div class="attr-header">
+        <div class="attr-title-block">
+            <div class="attr-title-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="attr-title">{{ 'ADMIN.ATTRIBUTION.TITLE' | translate }}</h1>
+                <p class="attr-subtitle">{{ 'ADMIN.ATTRIBUTION.SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+
+        <!-- Date presets -->
+        <div class="preset-bar">
+            <button
+                *ngFor="let p of datePresets"
+                class="preset-btn"
+                [class.active]="activePreset() === p.days"
+                (click)="setPreset(p.days)">
+                {{ p.label }}
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="kpi-strip" *ngIf="summary() as s">
+        <!-- Total sessions -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#6366f1">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val">{{ s.totalSessions }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.SESSIONS' | translate }}</span>
+            </div>
+        </div>
+        <!-- Total channels -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#8b5cf6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val">{{ s.rows.length }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.CHANNELS' | translate }}</span>
+            </div>
+        </div>
+        <!-- Total orders -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#22c55e">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val green">{{ s.totalOrders }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.ORDERS' | translate }}</span>
+            </div>
+        </div>
+        <!-- Total revenue -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#10b981">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val green">{{ fmtMXN(s.totalRevenue) }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.REVENUE' | translate }}</span>
+            </div>
+        </div>
+        <!-- Overall conversion -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#f59e0b">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val accent">{{ fmtPct(totalConvRate()) }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.CONV_RATE' | translate }}</span>
+            </div>
+        </div>
+        <!-- Top source -->
+        <div class="kpi-card glass-panel">
+            <div class="kpi-icon-wrap" style="--c:#3b82f6">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <span class="kpi-val accent" style="font-size:1rem;overflow:hidden;text-overflow:ellipsis;max-width:130px;white-space:nowrap">{{ s.topSource }}</span>
+                <span class="kpi-lbl">{{ 'ADMIN.ATTRIBUTION.KPI.TOP_SOURCE' | translate }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribution table -->
+    <div class="glass-panel table-card" *ngIf="summary() as s">
+        <div class="table-card-header">
+            <h3 class="card-title mb-0">{{ 'ADMIN.ATTRIBUTION.TABLE.TITLE' | translate }} ({{ s.rows.length }})</h3>
+        </div>
+
+        <div class="table-wrap">
+            <table class="attr-table">
+                <thead>
+                    <tr>
+                        <th>{{ 'ADMIN.ATTRIBUTION.TABLE.CHANNEL' | translate }}</th>
+                        <th>{{ 'ADMIN.ATTRIBUTION.TABLE.MEDIUM' | translate }}</th>
+                        <th>{{ 'ADMIN.ATTRIBUTION.TABLE.CAMPAIGN' | translate }}</th>
+                        <th (click)="sortBy('sessions')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.SESSIONS' | translate }}
+                            <svg *ngIf="sortCol() === 'sessions'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <th (click)="sortBy('cartAdds')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.CART_ADDS' | translate }}
+                            <svg *ngIf="sortCol() === 'cartAdds'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <th (click)="sortBy('orders')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.ORDERS' | translate }}
+                            <svg *ngIf="sortCol() === 'orders'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <th (click)="sortBy('revenue')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.REVENUE' | translate }}
+                            <svg *ngIf="sortCol() === 'revenue'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <th (click)="sortBy('avgOrderValue')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.AOV' | translate }}
+                            <svg *ngIf="sortCol() === 'avgOrderValue'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <th (click)="sortBy('conversionRate')" class="sortable text-right">
+                            {{ 'ADMIN.ATTRIBUTION.TABLE.CONV' | translate }}
+                            <svg *ngIf="sortCol() === 'conversionRate'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
+                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            </svg>
+                        </th>
+                        <!-- Revenue share bar -->
+                        <th>{{ 'ADMIN.ATTRIBUTION.TABLE.SHARE' | translate }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let row of sortedRows()" class="attr-row">
+                        <!-- Channel -->
+                        <td>
+                            <div class="channel-cell">
+                                <div class="ch-icon-wrap">
+                                    <!-- Search engine -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'search'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <!-- Social -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'social'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                    <!-- WhatsApp -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'whatsapp'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    <!-- Email -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'mail'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    <!-- QR -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'qr'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
+                                    <!-- Direct / bookmark -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'bookmark'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                    <!-- Generic link -->
+                                    <svg *ngIf="channelIcon(row.channel) === 'link'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                </div>
+                                <span class="ch-name">{{ row.channel }}</span>
+                            </div>
+                        </td>
+                        <td><span class="medium-pill" *ngIf="row.medium">{{ row.medium }}</span><span class="dim" *ngIf="!row.medium">—</span></td>
+                        <td><span class="campaign-name" *ngIf="row.campaign" [title]="row.campaign">{{ row.campaign | slice:0:28 }}{{ row.campaign.length > 28 ? '…' : '' }}</span><span class="dim" *ngIf="!row.campaign">—</span></td>
+                        <td class="text-right mono">{{ row.sessions }}</td>
+                        <td class="text-right mono">{{ row.cartAdds }}</td>
+                        <td class="text-right mono green">{{ row.orders }}</td>
+                        <td class="text-right mono green">{{ fmtMXN(row.revenue) }}</td>
+                        <td class="text-right mono">{{ fmtMXN(row.avgOrderValue) }}</td>
+                        <td class="text-right">
+                            <span class="conv-badge" [class.conv-high]="row.conversionRate >= 0.05" [class.conv-mid]="row.conversionRate >= 0.01 && row.conversionRate < 0.05" [class.conv-low]="row.conversionRate < 0.01">
+                                {{ fmtPct(row.conversionRate) }}
+                            </span>
+                        </td>
+                        <!-- Revenue share bar -->
+                        <td class="share-cell" *ngIf="summary() as s">
+                            <div class="share-bar-wrap">
+                                <div class="share-bar" [style.width]="s.totalRevenue > 0 ? ((row.revenue / s.totalRevenue) * 100) + '%' : '0%'"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty -->
+        <div class="empty-state" *ngIf="sortedRows().length === 0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="empty-svg"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <p>{{ 'ADMIN.ATTRIBUTION.TABLE.EMPTY' | translate }}</p>
+        </div>
+    </div>
+
+    <!-- Session Events panel -->
+    <div class="glass-panel info-card">
+        <h3 class="card-title">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-title-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ 'ADMIN.ATTRIBUTION.HOW.TITLE' | translate }}
+        </h3>
+        <div class="how-grid">
+            <div class="how-step">
+                <div class="how-num">1</div>
+                <div>
+                    <strong>{{ 'ADMIN.ATTRIBUTION.HOW.STEP1_TITLE' | translate }}</strong>
+                    <p>{{ 'ADMIN.ATTRIBUTION.HOW.STEP1_BODY' | translate }}</p>
+                </div>
+            </div>
+            <div class="how-step">
+                <div class="how-num">2</div>
+                <div>
+                    <strong>{{ 'ADMIN.ATTRIBUTION.HOW.STEP2_TITLE' | translate }}</strong>
+                    <p>{{ 'ADMIN.ATTRIBUTION.HOW.STEP2_BODY' | translate }}</p>
+                </div>
+            </div>
+            <div class="how-step">
+                <div class="how-num">3</div>
+                <div>
+                    <strong>{{ 'ADMIN.ATTRIBUTION.HOW.STEP3_TITLE' | translate }}</strong>
+                    <p>{{ 'ADMIN.ATTRIBUTION.HOW.STEP3_BODY' | translate }}</p>
+                </div>
+            </div>
+            <div class="how-step">
+                <div class="how-num">4</div>
+                <div>
+                    <strong>{{ 'ADMIN.ATTRIBUTION.HOW.STEP4_TITLE' | translate }}</strong>
+                    <p>{{ 'ADMIN.ATTRIBUTION.HOW.STEP4_BODY' | translate }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

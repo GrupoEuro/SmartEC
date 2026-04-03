@@ -62,6 +62,15 @@ export class PortalLauncherComponent implements OnInit {
             description: 'PORTAL.ADMIN_PANEL_CARD.DESC'
         },
         {
+            id: 'marketing',
+            title: 'PORTAL.MARKETING.TITLE',
+            route: '/marketing/dashboard',
+            roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MARKETING'],
+            icon: 'bar_chart_4_bars',
+            description: 'PORTAL.MARKETING.DESC',
+            badge: 'NEW'
+        },
+        {
             id: 'help',
             title: 'PORTAL.HELP.TITLE',
             route: '/help',

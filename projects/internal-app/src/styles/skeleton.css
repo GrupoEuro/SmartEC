@@ -1,0 +1,63 @@
+/* ── Generic skeleton utilities used across Marketing Hub ─────────────────── */
+
+/* Shimmer animation */
+@keyframes skeleton-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255,255,255,.04) 0%,
+        rgba(255,255,255,.09) 40%,
+        rgba(255,255,255,.04) 80%
+    );
+    background-size: 800px 100%;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+    border-radius: 6px;
+}
+
+/* Sizes */
+.sk-h-xs  { height: 10px; }
+.sk-h-sm  { height: 14px; }
+.sk-h-md  { height: 20px; }
+.sk-h-lg  { height: 28px; }
+.sk-h-xl  { height: 40px; }
+.sk-h-2xl { height: 56px; }
+.sk-h-3xl { height: 80px; }
+.sk-h-card { height: 120px; }
+.sk-h-chart { height: 260px; }
+
+/* Width helpers */
+.sk-w-full  { width: 100%; }
+.sk-w-3q    { width: 75%; }
+.sk-w-half  { width: 50%; }
+.sk-w-third { width: 33%; }
+.sk-w-px { width: 60px; }
+
+/* KPI card skeleton */
+.sk-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.sk-kpi-card {
+    background: var(--theme-bg-surface);
+    border: 1px solid var(--theme-border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+
+/* Row */
+.sk-row { display: flex; flex-direction: column; gap: .5rem; }
+.sk-spacer { height: 1rem; }
+
+/* Table skeleton */
+.sk-table { display: flex; flex-direction: column; gap: 0; overflow: hidden; border-radius: 14px; border: 1px solid var(--theme-border); }
+.sk-table-head { padding: .75rem 1rem; background: rgba(0,0,0,.15); }
+.sk-table-row  { padding: .85rem 1rem; border-top: 1px solid rgba(255,255,255,.04); display: flex; gap: 1rem; align-items: center; }

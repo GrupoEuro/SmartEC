@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { Firestore, doc, getDoc, setDoc, addDoc, collection, Timestamp } from '@angular/fire/firestore';
@@ -21,6 +21,7 @@ export class CampaignFormComponent implements OnInit {
     private fb = inject(FormBuilder);
     private firestore = inject(Firestore);
     private router = inject(Router);
+    private location = inject(Location);
     private route = inject(ActivatedRoute);
     private themeService = inject(ThemeService);
     private authService = inject(AuthService);
@@ -209,7 +210,7 @@ export class CampaignFormComponent implements OnInit {
                 await addDoc(collection(this.firestore, 'campaigns'), payload);
             }
 
-            this.router.navigate(['/admin/marketing/campaigns']);
+            this.location.back();
         } catch (err) {
             console.error('Error saving campaign', err);
             alert('Failed to save campaign');
@@ -217,4 +218,6 @@ export class CampaignFormComponent implements OnInit {
             this.loading.set(false);
         }
     }
+
+    goBack() { this.location.back(); }
 }

@@ -1,0 +1,74 @@
+<!-- Marketing context bar — read-only, always visible on Operations Dashboard -->
+<div class="acw-root" [class.collapsed]="isCollapsed()">
+
+    <!-- Header row -->
+    <div class="acw-header" (click)="toggle()">
+        <div class="acw-header-left">
+            <!-- Megaphone SVG -->
+            <div class="acw-header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+                </svg>
+            </div>
+            <div class="acw-header-text">
+                <span class="acw-title">{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.TITLE' | translate }}</span>
+                <span *ngIf="!isLoading()" class="acw-count">
+                    {{ campaigns().length }} {{ 'OPERATIONS.ACTIVE_CAMPAIGNS.ACTIVE' | translate }}
+                </span>
+            </div>
+        </div>
+        <div class="acw-header-right">
+            <!-- Link to Marketing Hub -->
+            <a routerLink="/marketing/campaigns"
+               class="acw-manage-link"
+               (click)="$event.stopPropagation()"
+               [title]="'OPERATIONS.ACTIVE_CAMPAIGNS.MANAGE' | translate">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                {{ 'OPERATIONS.ACTIVE_CAMPAIGNS.MANAGE' | translate }}
+            </a>
+            <!-- Chevron -->
+            <svg class="acw-chevron" [class.rotated]="isCollapsed()"
+                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="acw-body">
+
+        <!-- Loading -->
+        <div *ngIf="isLoading()" class="acw-loading">
+            <div class="acw-spinner"></div>
+            <span>{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.LOADING' | translate }}</span>
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="!isLoading() && campaigns().length === 0" class="acw-empty">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+                <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            <span>{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.EMPTY' | translate }}</span>
+        </div>
+
+        <!-- Campaign pills -->
+        <div *ngIf="!isLoading() && campaigns().length > 0" class="acw-pills">
+            <div *ngFor="let c of campaigns()" class="acw-pill" [class]="urgencyClass(daysLeft(c.endDate))">
+                <!-- Pulse dot -->
+                <span class="acw-pulse-dot"></span>
+                <span class="acw-pill-name">{{ c.name }}</span>
+                <span class="acw-pill-days">
+                    {{ daysLeft(c.endDate) }}d
+                </span>
+            </div>
+        </div>
+
+    </div>
+</div>

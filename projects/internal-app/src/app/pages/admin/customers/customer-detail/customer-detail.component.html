@@ -1,128 +1,273 @@
+<!-- Loading state -->
 <div *ngIf="isLoading" class="loading-container">
     <div class="spinner"></div>
     <p>{{ 'ADMIN.COMMON.LOADING' | translate }}</p>
 </div>
 
-<div *ngIf="!isLoading && customer" class="customer-detail-container">
-    <!-- Back Link -->
-    <div class="mb-4">
+<!-- Customer content -->
+<div *ngIf="!isLoading && customer" class="customer-root">
+
+    <!-- Back link -->
+    <div class="back-row">
         <a routerLink="/admin/customers" class="back-link">
-            ← {{ 'ADMIN.CUSTOMERS.BACK_TO_LIST' | translate }}
+            <span class="back-arrow">←</span> {{ 'ADMIN.CUSTOMERS.BACK_TO_LIST' | translate }}
         </a>
     </div>
 
-    <!-- Header -->
-    <app-admin-page-header icon="👤" [title]="customer.displayName || customer.email"
-        [subtitle]="'ADMIN.CUSTOMERS.DETAIL.SUBTITLE' | translate">
-    </app-admin-page-header>
-
-    <div class="detail-grid">
-        <!-- Sidebar -->
-        <div class="side-col">
-            <!-- Profile Card -->
-            <div class="card glass-panel profile-card">
-                <div class="profile-header">
-                    <div class="avatar-lg" *ngIf="!customer.photoURL">
-                        {{ customer.displayName?.charAt(0) || customer.email.charAt(0) | uppercase }}
-                    </div>
-                    <img *ngIf="customer.photoURL" [src]="customer.photoURL" class="avatar-lg-img">
-                    <h3 class="profile-name">{{ customer.displayName || 'Guest' }}</h3>
-                    <span class="role-badge">{{ customer.role }}</span>
-                </div>
-
-                <div class="info-list">
-                    <div class="info-item">
-                        <span class="label">{{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}</span>
-                        <span class="value">{{ customer.email }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label">{{ 'ADMIN.CUSTOMERS.TABLE.JOINED' | translate }}</span>
-                        <span class="value">{{ customer.createdAt | date:'mediumDate' }}</span>
-                    </div>
-                    <div class="info-item" *ngIf="customer.phone">
-                        <span class="label">Phone</span>
-                        <span class="value">{{ customer.phone }}</span>
-                    </div>
-                </div>
+    <!-- Hero header -->
+    <div class="hero-header glass-panel">
+        <div class="hero-avatar-wrap">
+            <div class="hero-avatar" *ngIf="!customer.photoURL">
+                {{ (customer.displayName?.charAt(0) || customer.email.charAt(0)) | uppercase }}
             </div>
+            <img *ngIf="customer.photoURL" [src]="customer.photoURL" class="hero-avatar-img" [alt]="customer.displayName">
+            <span class="online-dot" title="Customer account active"></span>
+        </div>
 
-            <!-- Stats Card -->
-            <div class="card glass-panel stats-card">
-                <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.DETAIL.STATS' | translate }}</h3>
-                <div class="stat-row">
-                    <span class="stat-label">{{ 'ADMIN.CUSTOMERS.TABLE.ORDERS' | translate }}</span>
-                    <span class="stat-value">{{ customerOrders.length }}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">{{ 'ADMIN.CUSTOMERS.TABLE.SPEND' | translate }}</span>
-                    <span class="stat-value text-accent font-bold">
-                        {{ (customer.stats?.totalSpend || 0) | currency }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Shipping Address Card -->
-            <div class="card glass-panel address-card" *ngIf="customer.shippingAddress">
-                <h3 class="card-title">Shipping Address</h3>
-                <div class="address-content">
-                    <p class="address-line">{{ customer.shippingAddress.street }} {{
-                        customer.shippingAddress.exteriorNumber }}</p>
-                    <p class="address-line" *ngIf="customer.shippingAddress.interiorNumber">
-                        Int. {{ customer.shippingAddress.interiorNumber }}
-                    </p>
-                    <p class="address-line">
-                        {{ customer.shippingAddress.neighborhood ? customer.shippingAddress.neighborhood + ',' : '' }}
-                        {{ customer.shippingAddress.city }}
-                    </p>
-                    <p class="address-line">{{ customer.shippingAddress.state }}, {{ customer.shippingAddress.country }}
-                    </p>
-                    <p class="address-line postal-code">{{ customer.shippingAddress.zipCode }}</p>
-                </div>
+        <div class="hero-info">
+            <h1 class="hero-name">{{ customer.displayName || 'Sin nombre' }}</h1>
+            <p class="hero-email">{{ customer.email }}</p>
+            <div class="hero-badges">
+                <span class="badge role-badge">{{ customer.role || 'CUSTOMER' }}</span>
+                <span class="badge joined-badge">Desde {{ customer.createdAt | date:'MMM yyyy' }}</span>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-col">
-            <!-- Order History -->
-            <div class="card glass-panel orders-card">
-                <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.DETAIL.ORDER_HISTORY' | translate }}</h3>
-
-                <div class="table-responsive" *ngIf="customerOrders.length > 0">
-                    <table class="simple-table">
-                        <thead>
-                            <tr>
-                                <th>{{ 'ADMIN.ORDERS.TABLE.ORDER_NUMBER' | translate }}</th>
-                                <th>{{ 'ADMIN.ORDERS.TABLE.DATE' | translate }}</th>
-                                <th>{{ 'ADMIN.ORDERS.TABLE.STATUS' | translate }}</th>
-                                <th class="text-right">{{ 'ADMIN.ORDERS.TABLE.TOTAL' | translate }}</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr *ngFor="let order of customerOrders">
-                                <td class="font-mono text-accent">#{{ order.orderNumber }}</td>
-                                <td>{{ $any(order.createdAt) | date:'shortDate' }}</td>
-                                <td>
-                                    <span class="status-pill" [ngClass]="getStatusClass(order.status)">
-                                        <span class="dot"></span>
-                                        {{ 'ADMIN.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
-                                    </span>
-                                </td>
-                                <td class="text-right font-bold">{{ order.total | currency }}</td>
-                                <td class="text-right">
-                                    <a [routerLink]="['/admin/orders', order.id]" class="btn-icon-sm">
-                                        👁️
-                                    </a>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="empty-state" *ngIf="customerOrders.length === 0">
-                    <p>{{ 'ADMIN.CUSTOMERS.DETAIL.NO_ORDERS' | translate }}</p>
-                </div>
+        <!-- Quick KPIs from timeline -->
+        <div class="hero-kpis">
+            <div class="kpi">
+                <span class="kpi-value">{{ customerOrders.length }}</span>
+                <span class="kpi-label">Órdenes</span>
+            </div>
+            <div class="kpi-divider"></div>
+            <div class="kpi">
+                <span class="kpi-value">{{ formatMXN(totalSpend()) }}</span>
+                <span class="kpi-label">Total gastado</span>
+            </div>
+            <div class="kpi-divider"></div>
+            <div class="kpi">
+                <span class="kpi-value">{{ qrScans() }}</span>
+                <span class="kpi-label">Escaneos QR</span>
+            </div>
+            <div class="kpi-divider"></div>
+            <div class="kpi">
+                <span class="kpi-value">{{ waClicks() }}</span>
+                <span class="kpi-label">Clicks WA</span>
             </div>
         </div>
     </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <div class="tab-btn"
+            *ngFor="let tab of tabs"
+            class="tab-btn"
+            [class.active]="activeTab() === tab.id"
+            (click)="setTab(tab.id)">
+            <span class="tab-icon">{{ tab.icon }}</span>
+            {{ 'ADMIN.CUSTOMERS.TABS.' + tab.id.toUpperCase() | translate }}
+        </div>
+    </div>
+
+    <!-- ── Tab: Overview ─────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'overview'" class="tab-content overview-grid">
+
+        <!-- Contact Info -->
+        <div class="card glass-panel">
+            <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.CONTACT' | translate }}</h3>
+            <div class="info-list">
+                <div class="info-row">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.TABLE.EMAIL' | translate }}</span>
+                    <span class="info-value">{{ customer.email }}</span>
+                </div>
+                <div class="info-row" *ngIf="customer.phone">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.PHONE' | translate }}</span>
+                    <span class="info-value">{{ customer.phone }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.UID_LABEL' | translate }}</span>
+                    <span class="info-value mono dim">{{ customer.uid }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.ROLE' | translate }}</span>
+                    <span class="info-value">{{ customer.role }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.REGISTERED' | translate }}</span>
+                    <span class="info-value">{{ customer.createdAt | date:'medium' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipping Address -->
+        <div class="card glass-panel" *ngIf="customer.shippingAddress">
+            <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.SHIPPING' | translate }}</h3>
+            <div class="address-block">
+                <p>{{ customer.shippingAddress.street }} {{ customer.shippingAddress.exteriorNumber }}</p>
+                <p *ngIf="customer.shippingAddress.interiorNumber">Int. {{ customer.shippingAddress.interiorNumber }}</p>
+                <p>{{ customer.shippingAddress.neighborhood }}</p>
+                <p>{{ customer.shippingAddress.city }}, {{ customer.shippingAddress.state }}</p>
+                <p class="cp">CP {{ customer.shippingAddress.zipCode }}</p>
+            </div>
+        </div>
+
+        <!-- Attribution snapshot -->
+        <div class="card glass-panel" *ngIf="$any(customer).acquisitionSource || $any(customer).acquisitionMedium">
+            <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.ACQUISITION' | translate }}</h3>
+            <div class="info-list">
+                <div class="info-row" *ngIf="$any(customer).acquisitionSource">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.ACQU_SOURCE' | translate }}</span>
+                    <span class="info-value">{{ $any(customer).acquisitionSource }}</span>
+                </div>
+                <div class="info-row" *ngIf="$any(customer).acquisitionMedium">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.ACQU_MEDIUM' | translate }}</span>
+                    <span class="info-value">{{ $any(customer).acquisitionMedium }}</span>
+                </div>
+                <div class="info-row" *ngIf="$any(customer).acquisitionCampaign">
+                    <span class="info-label">{{ 'ADMIN.CUSTOMERS.ACQU_CAMPAIGN' | translate }}</span>
+                    <span class="info-value">{{ $any(customer).acquisitionCampaign }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Tab: Orders ───────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'orders'" class="tab-content">
+        <div class="card glass-panel">
+            <h3 class="card-title">{{ 'ADMIN.CUSTOMERS.ORDERS_TITLE' | translate }} ({{ customerOrders.length }})</h3>
+
+            <div *ngIf="customerOrders.length > 0" class="orders-table-wrap">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th># Orden</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let order of customerOrders" class="order-row" (click)="openOrder(order.id!)">
+                            <td class="mono accent">#{{ order.orderNumber }}</td>
+                            <td class="dim">{{ $any(order.createdAt) | date:'d MMM yyyy' }}</td>
+                            <td>
+                                <span class="status-pill" [ngClass]="getStatusClass(order.status)">
+                                    <span class="dot"></span>
+                                    {{ order.status | uppercase }}
+                                </span>
+                            </td>
+                            <td class="bold">{{ formatMXN(order.total) }}</td>
+                            <td class="actions-cell">
+                                <button class="view-btn" (click)="openOrder(order.id!); $event.stopPropagation()">Ver →</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="empty-state" *ngIf="customerOrders.length === 0">
+                <span class="empty-icon">📦</span>
+                <p>{{ 'ADMIN.CUSTOMERS.NO_ORDERS' | translate }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tab: Timeline ─────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'timeline'" class="tab-content">
+
+        <!-- Timeline loading -->
+        <div *ngIf="timelineLoading()" class="timeline-loading">
+            <div class="spinner sm"></div>
+            <p>{{ 'ADMIN.CUSTOMERS.TIMELINE.LOADING' | translate }}</p>
+        </div>
+
+        <div *ngIf="!timelineLoading()">
+
+            <!-- Stats bar -->
+            <div class="timeline-stats" *ngIf="timelineEvents().length > 0">
+                <div class="tstat">
+                    <span class="tstat-val">{{ timelineEvents().length }}</span>
+                    <span class="tstat-label">{{ 'ADMIN.CUSTOMERS.TIMELINE.STATS_TOTAL' | translate }}</span>
+                </div>
+                <div class="tstat">
+                    <span class="tstat-val">{{ orderCount() }}</span>
+                    <span class="tstat-label">{{ 'ADMIN.CUSTOMERS.TIMELINE.STATS_ORDERS' | translate }}</span>
+                </div>
+                <div class="tstat">
+                    <span class="tstat-val accent">{{ formatMXN(totalSpend()) }}</span>
+                    <span class="tstat-label">{{ 'ADMIN.CUSTOMERS.TIMELINE.STATS_SPEND' | translate }}</span>
+                </div>
+                <div class="tstat">
+                    <span class="tstat-val">{{ cartClears() }}</span>
+                    <span class="tstat-label">{{ 'ADMIN.CUSTOMERS.TIMELINE.STATS_CLEARS' | translate }}</span>
+                </div>
+                <div class="tstat">
+                    <span class="tstat-val green">{{ conversionScans() }}/{{ qrScans() }}</span>
+                    <span class="tstat-label">{{ 'ADMIN.CUSTOMERS.TIMELINE.STATS_QR' | translate }}</span>
+                </div>
+            </div>
+
+            <!-- Filter chips -->
+            <div class="filter-bar">
+                <button
+                    *ngFor="let f of categoryFilters"
+                    class="filter-chip"
+                    [class.active]="timelineFilter() === f.id"
+                    (click)="setFilter(f.id)">
+                    {{ f.icon }} {{ 'ADMIN.CUSTOMERS.TIMELINE.FILTER_' + f.id.toUpperCase() | translate }}
+                </button>
+            </div>
+
+            <!-- Timeline feed -->
+            <div class="timeline-feed" *ngIf="filteredEvents().length > 0">
+                <div *ngFor="let event of filteredEvents(); let last = last" class="timeline-item">
+                    <!-- Line connector -->
+                    <div class="tl-line-wrap">
+                        <div class="tl-dot" [style.background]="event.color" [style.box-shadow]="'0 0 8px ' + event.color + '66'">
+                            <span class="tl-icon">{{ event.icon }}</span>
+                        </div>
+                        <div class="tl-connector" *ngIf="!last"></div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="tl-body glass-panel">
+                        <div class="tl-header">
+                            <div class="tl-left">
+                                <span class="tl-title">{{ event.title }}</span>
+                                <span class="tl-category-pill" [style.background]="event.color + '22'" [style.color]="event.color">
+                                    {{ event.category }}
+                                </span>
+                            </div>
+                            <div class="tl-right">
+                                <span class="tl-value" *ngIf="event.value">{{ formatMXN(event.value) }}</span>
+                                <span class="tl-time" [title]="formatDate(event.timestampMs)">
+                                    {{ formatRelative(event.timestampMs) }}
+                                </span>
+                            </div>
+                        </div>
+                        <p class="tl-detail" *ngIf="event.detail">{{ event.detail }}</p>
+                        <div class="tl-meta" *ngIf="event.meta?.['orderId']">
+                            <button class="tl-action-btn" (click)="openOrder(event.meta!['orderId'])">
+                                {{ 'ADMIN.CUSTOMERS.TIMELINE.SEE_ORDER' | translate }}
+                            </button>
+                        </div>
+                        <div class="tl-session" *ngIf="event.sessionId">
+                            <span class="session-pill">{{ 'ADMIN.CUSTOMERS.TIMELINE.SESSION' | translate }}: {{ event.sessionId.slice(-10) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty timeline -->
+            <div class="empty-state tall" *ngIf="filteredEvents().length === 0 && !timelineLoading()">
+                <span class="empty-icon">🕐</span>
+                <p>{{ 'ADMIN.CUSTOMERS.TIMELINE.EMPTY_TITLE' | translate }}</p>
+                <p class="dim small">{{ 'ADMIN.CUSTOMERS.TIMELINE.EMPTY_DETAIL' | translate }}</p>
+            </div>
+        </div>
+
+    </div>
+
 </div>

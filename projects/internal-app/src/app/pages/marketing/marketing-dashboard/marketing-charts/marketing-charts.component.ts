@@ -108,7 +108,7 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                 }
             }
 
-            // ── Orders by day ────────────────────────────────────────────────
+            // ── Orders by day + channel mix from orders (includes ML, POS) ───
             const ordersByDay = new Map<string, number>();
             for (const doc of ordersSnap.docs) {
                 const d = doc.data() as any;
@@ -116,6 +116,9 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                     const day = d.createdAt.toDate().toISOString().slice(0, 10);
                     ordersByDay.set(day, (ordersByDay.get(day) ?? 0) + 1);
                 }
+                // Merge resolved channel into sourceMap so Channel Mix includes all orders
+                const ch = this.resolveChannel(d);
+                sourceMap.set(ch, (sourceMap.get(ch) ?? 0) + 1);
             }
 
             // ── Build sorted day labels ──────────────────────────────────────
@@ -235,5 +238,21 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                 plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Sessions: ${ctx.parsed.y}` } } },
             },
         });
+    }
+
+    /** Mirrors attribution-report.service channel resolution */
+    private resolveChannel(d: any): string {
+        const sc = d.sourceChannel;
+        if (sc === 'mercadolibre') {
+            if (d.fulfillmentType === 'platform') return 'MercadoLibre Full';
+            if (d.fulfillmentType === 'flex')     return 'MercadoLibre Flex';
+            return 'MercadoLibre Classic';
+        }
+        if (sc === 'on_behalf') return d.metadata?.source ?? 'On-Behalf';
+        if (sc === 'pos')       return 'POS';
+        if (sc === 'amazon')    return 'Amazon';
+        return d.attribution?.utm?.utm_source
+            ?? d.attribution?.referrerDomain
+            ?? (d.channel === 'MELI_CLASSIC' ? 'MercadoLibre Classic' : 'direct');
     }
 }

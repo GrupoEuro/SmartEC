@@ -30,9 +30,15 @@ export class MarketingDashboardComponent implements OnInit {
 
     timeframe  = signal<DashTimeframe>('MTD');
 
-    convRate = computed(() =>
-        this.sessions() > 0 ? (this.orders() / this.sessions() * 100).toFixed(1) + '%' : '0%'
-    );
+    convRate = computed(() => {
+        const s = this.sessions();
+        const o = this.orders();
+        // Only storefront sessions tracked — cap at 100% to avoid misleading values
+        // when ML/POS orders outnumber tracked sessions
+        if (s === 0) return '0%';
+        const pct = o / s * 100;
+        return (pct > 100 ? 100 : pct).toFixed(1) + '%';
+    });
 
     readonly timeframes: { value: DashTimeframe; labelKey: string }[] = [
         { value: 'MTD',        labelKey: 'MARKETING.DASHBOARD.TF.MTD' },

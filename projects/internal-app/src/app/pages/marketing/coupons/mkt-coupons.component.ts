@@ -1,8 +1,8 @@
-import { Component, inject, signal, computed, Signal } from '@angular/core';
+import { Component, inject, signal, computed, Signal, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { Firestore, collection, collectionData, query, orderBy, Timestamp } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, query, orderBy, Timestamp, getDocs, where } from '@angular/fire/firestore';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Coupon } from '../../../core/models/coupon.model';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
@@ -16,8 +16,13 @@ type CouponFilter = 'all' | 'active' | 'inactive' | 'expired';
     templateUrl: './mkt-coupons.component.html',
     styleUrls: ['./mkt-coupons.component.css'],
 })
-export class MktCouponsComponent {
+export class MktCouponsComponent implements OnInit {
     private firestore = inject(Firestore);
+
+    // Per-card copied feedback state
+    copiedId = signal<string | null>(null);
+    // Per-coupon order usage from orders collection: code -> { orders, savedAmount }
+    orderUsageMap = signal<Map<string, { orders: number; savedAmount: number }>>(new Map());
 
     private allCoupons: Signal<Coupon[]> = toSignal(
         collectionData(
@@ -61,6 +66,51 @@ export class MktCouponsComponent {
         const uses  = this.totalUses();
         return scans > 0 ? Math.round((uses / scans) * 100) : 0;
     });
+
+    ngOnInit() { this.loadOrderUsage(); }
+
+    /** Fetch real coupon usage from orders collection */
+    private async loadOrderUsage() {
+        const snap = await getDocs(
+            query(collection(this.firestore, 'orders'),
+                where('couponCode', '!=', null))
+        ).catch(() => null);
+        if (!snap) return;
+        const map = new Map<string, { orders: number; savedAmount: number }>();
+        snap.forEach(doc => {
+            const d = doc.data() as any;
+            const code = (d.couponCode || d.appliedCoupon || d.discountCode || '')?.toUpperCase();
+            if (!code) return;
+            const saved = d.discountAmount ?? d.couponDiscount ?? 0;
+            const cur = map.get(code) ?? { orders: 0, savedAmount: 0 };
+            map.set(code, { orders: cur.orders + 1, savedAmount: cur.savedAmount + saved });
+        });
+        this.orderUsageMap.set(map);
+    }
+
+    orderUsage(code: string): { orders: number; savedAmount: number } {
+        return this.orderUsageMap().get(code?.toUpperCase()) ?? { orders: 0, savedAmount: 0 };
+    }
+
+    /** Copy storefront promo link to clipboard */
+    async copyPromoLink(coupon: Coupon) {
+        const url = `https://www.importadoraeuro.com/catalogo?coupon=${encodeURIComponent(coupon.code)}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            this.copiedId.set(coupon.id!);
+            setTimeout(() => this.copiedId.set(null), 2000);
+        } catch {
+            // Fallback for older browsers
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.copiedId.set(coupon.id!);
+            setTimeout(() => this.copiedId.set(null), 2000);
+        }
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     toDate(d: Timestamp | Date): Date {

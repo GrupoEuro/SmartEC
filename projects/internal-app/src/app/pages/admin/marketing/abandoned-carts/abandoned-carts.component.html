@@ -104,6 +104,37 @@
     </div>
   </div>
 
+  <!-- ── Top Abandoned Products ──────────────────────────────────────────── -->
+  @if (topAbandonedProducts().length > 0) {
+    <div class="ac-top-products">
+      <div class="ac-tp-header">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Top Abandoned Products
+        <span class="ac-tp-badge">{{ filteredCarts().length }} carts</span>
+      </div>
+      <div class="ac-tp-list">
+        @for (p of topAbandonedProducts(); track p.name) {
+          <div class="ac-tp-row">
+            @if (p.img) {
+              <img [src]="p.img" [alt]="p.name" class="ac-tp-thumb" />
+            } @else {
+              <div class="ac-tp-thumb-ph">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+            }
+            <div class="ac-tp-info">
+              <span class="ac-tp-name" [title]="p.name">{{ p.name | slice:0:36 }}{{ p.name.length > 36 ? '…' : '' }}</span>
+            </div>
+            <div class="ac-tp-stats">
+              <span class="ac-tp-count">× {{ p.count }}</span>
+              <span class="ac-tp-val">${{ p.valueAtRisk | number:'1.0-0' }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <!-- ── Table ────────────────────────────────────────────────────────────────── -->
   <div class="ac-table-wrapper">
 

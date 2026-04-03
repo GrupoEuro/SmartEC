@@ -115,6 +115,23 @@ export class AbandonedCartsComponent implements OnInit, OnDestroy {
         return ['all', ...Array.from(sources).sort()];
     });
 
+    // ── Top abandoned products (pure computed — no extra Firestore reads) ────
+    topAbandonedProducts = computed(() => {
+        const map = new Map<string, { name: string; count: number; valueAtRisk: number; img: string }>();
+        for (const cart of this.filteredCarts()) {
+            for (const item of (cart.items ?? [])) {
+                const key = item.name || 'Unknown';
+                const cur = map.get(key) ?? { name: item.name, count: 0, valueAtRisk: 0, img: item.image };
+                map.set(key, {
+                    ...cur,
+                    count: cur.count + (item.quantity ?? 1),
+                    valueAtRisk: cur.valueAtRisk + ((item.price ?? 0) * (item.quantity ?? 1)),
+                });
+            }
+        }
+        return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+    });
+
     // ── Percentage helpers ──────────────────────────────────────────────────
     guestPct = computed(() => {
         const t = this.filteredCarts().length;

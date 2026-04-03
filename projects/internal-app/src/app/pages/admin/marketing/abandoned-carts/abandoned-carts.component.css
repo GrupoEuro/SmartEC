@@ -764,3 +764,40 @@
     background: rgba(34,197,94,.2);
     box-shadow: 0 4px 16px rgba(34,197,94,.15);
 }
+
+/* ── Top Abandoned Products panel ──────────────────── */
+.ac-top-products {
+    margin: 0 1.5rem 1rem;
+    border-radius: 12px;
+    background: rgba(251,191,36,.05);
+    border: 1px solid rgba(251,191,36,.2);
+    overflow: hidden;
+}
+.ac-tp-header {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .65rem 1rem; font-size: .75rem; font-weight: 700;
+    color: #fbbf24; background: rgba(251,191,36,.07);
+    border-bottom: 1px solid rgba(251,191,36,.15);
+}
+.ac-tp-badge {
+    margin-left: auto; padding: .15rem .45rem; border-radius: 5px;
+    font-size: .68rem; background: rgba(251,191,36,.15); color: #fbbf24;
+}
+.ac-tp-list { padding: .25rem 0; }
+.ac-tp-row {
+    display: flex; align-items: center; gap: .75rem;
+    padding: .5rem 1rem; transition: background .12s;
+}
+.ac-tp-row:hover { background: rgba(255,255,255,.03); }
+.ac-tp-thumb { width: 36px; height: 36px; border-radius: 7px; object-fit: cover; flex-shrink: 0; }
+.ac-tp-thumb-ph {
+    width: 36px; height: 36px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.06); color: #71717a;
+}
+.ac-tp-info { flex: 1; min-width: 0; }
+.ac-tp-name { display: block; font-size: .8rem; font-weight: 600; color: #e4e4e7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ac-tp-sku { font-size: .7rem; color: #71717a; }
+.ac-tp-stats { display: flex; flex-direction: column; align-items: flex-end; gap: .1rem; flex-shrink: 0; }
+.ac-tp-count { font-size: .75rem; font-weight: 700; color: #f59e0b; }
+.ac-tp-val { font-size: .72rem; color: #a1a1aa; }

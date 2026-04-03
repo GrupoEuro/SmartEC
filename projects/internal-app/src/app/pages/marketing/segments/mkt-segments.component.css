@@ -349,3 +349,17 @@
     background: color-mix(in srgb, var(--sc, #6366f1) 22%, transparent);
     transform: translateY(-1px);
 }
+
+/* ── Header actions wrapper ──────────────────────────── */
+.seg-header-actions { display: flex; align-items: center; gap: .75rem; }
+
+/* ── Export CSV button ───────────────────────────────── */
+.seg-export-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .4rem .85rem; border-radius: 8px; font-size: .75rem;
+    font-weight: 600; cursor: pointer; transition: all .15s ease;
+    border: 1px solid rgba(16,185,129,.35);
+    background: rgba(16,185,129,.08); color: #34d399;
+    white-space: nowrap;
+}
+.seg-export-btn:hover { background: rgba(16,185,129,.18); transform: translateY(-1px); }

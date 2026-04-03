@@ -318,4 +318,35 @@ export class MktSegmentsComponent {
             queryParams: { segment: seg, audience: meta?.label ?? seg }
         });
     }
+
+    /** Export currently filtered segment as CSV */
+    exportCsv() {
+        const rows = this.filtered();
+        if (!rows.length) return;
+        const seg   = this.activeSegment();
+        const label = seg === 'all' ? 'All Customers' : (this.getMeta(seg)?.label ?? seg);
+        const date  = new Date().toISOString().slice(0, 10);
+
+        const headers = ['Name', 'Email', 'Segment', 'Orders', 'Revenue (MXN)', 'Last Order', 'R', 'F', 'M', 'RFM Score'];
+        const csvRows = rows.map(c => [
+            `"${c.name.replace(/"/g, '""')}"`,
+            `"${c.email.replace(/"/g, '""')}"`,
+            `"${this.getMeta(c.segment)?.label ?? c.segment}"`,
+            c.orders,
+            c.revenue.toFixed(2),
+            c.lastOrderDate.toISOString().slice(0, 10),
+            c.R, c.F, c.M, c.rfmScore,
+        ]);
+
+        // BOM so Excel opens UTF-8 correctly
+        const bom = '\uFEFF';
+        const csv = bom + [headers.join(','), ...csvRows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `rfm-${seg}-${date}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 }

@@ -136,8 +136,10 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 8);
 
-            // Wait one tick for view to initialize
-            await new Promise(r => setTimeout(r, 100));
+            // Reveal the canvas containers FIRST so Angular renders *ngIf blocks,
+            // then wait one microtask for the DOM to actually paint before drawing.
+            this.isLoading.set(false);
+            await new Promise(r => setTimeout(r, 60));
 
             this.renderMixChart(topSources);
             this.renderTrendChart(dayLabels, orderData);
@@ -145,7 +147,6 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
         } catch (e) {
             console.error('[MarketingCharts] load error:', e);
-        } finally {
             this.isLoading.set(false);
         }
     }

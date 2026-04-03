@@ -28,6 +28,9 @@ export class MarketingDashboardComponent implements OnInit {
     topSource  = signal('—');
     abandoned  = signal(0);
 
+    // Channel revenue breakdown for the mini bar chart (feature #9)
+    channelRevenue = signal<{ channel: string; revenue: number; color: string }[]>([]);
+
     timeframe  = signal<DashTimeframe>('MTD');
 
     convRate = computed(() => {
@@ -124,12 +127,15 @@ export class MarketingDashboardComponent implements OnInit {
 
             // Count orders by resolved channel (includes ML, POS, On-Behalf)
             const orderChannelMap = new Map<string, number>();
+            const channelRevMap   = new Map<string, number>(); // NEW: revenue by channel
             let totalRev = 0;
             for (const doc of ordersSnap.docs) {
                 const d = doc.data() as any;
-                totalRev += d.total ?? d.totalAmount ?? 0;
+                const rev = d.total ?? d.totalAmount ?? 0;
+                totalRev += rev;
                 const ch = this.resolveChannel(d);
                 orderChannelMap.set(ch, (orderChannelMap.get(ch) ?? 0) + 1);
+                channelRevMap.set(ch, (channelRevMap.get(ch) ?? 0) + rev);
             }
 
             // Merge order channels into sourceMap so topSource reflects all revenue
@@ -148,6 +154,17 @@ export class MarketingDashboardComponent implements OnInit {
             this.revenue.set(totalRev);
             this.topSource.set(topSrc);
             this.abandoned.set(abandonedCount);
+
+            // Build channel revenue breakdown: sorted by revenue desc, top 6
+            const chanRevArr = [...channelRevMap.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([channel, rev]) => ({
+                    channel,
+                    revenue: rev,
+                    color: this.channelColor(channel),
+                }));
+            this.channelRevenue.set(chanRevArr);
         } catch (e) {
             console.error('[MarketingDashboard] KPI load error:', e);
         } finally {
@@ -170,6 +187,19 @@ export class MarketingDashboardComponent implements OnInit {
         return d.attribution?.utm?.utm_source
             ?? d.attribution?.referrerDomain
             ?? (d.channel === 'MELI_CLASSIC' ? 'MercadoLibre Classic' : 'direct');
+    }
+
+    /** Brand-consistent color per channel for the revenue breakdown chart */
+    channelColor(ch: string): string {
+        const c = ch.toLowerCase();
+        if (c.includes('full'))    return '#f59e0b';   // ML Full — amber
+        if (c.includes('flex'))    return '#fbbf24';   // ML Flex — yellow
+        if (c.includes('classic')) return '#d97706';   // ML Classic — dark amber
+        if (c === 'pos')           return '#3b82f6';   // POS — blue
+        if (c.includes('on-behalf') || c.includes('whatsapp') || c.includes('instagram')) return '#ec4899'; // Social — pink
+        if (c === 'amazon')        return '#f97316';   // Amazon — orange
+        if (c === 'direct')        return '#6366f1';   // Direct — indigo
+        return '#8b5cf6';                              // Storefront UTM — violet
     }
 
     fmtMXN(v: number): string {

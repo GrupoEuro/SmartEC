@@ -132,6 +132,32 @@
 
     </div>
 
+    <!-- ── Channel Revenue Breakdown ──────────────────────────────────── -->
+    @if (!isLoading() && channelRevenue().length > 0) {
+        <div class="mhd-ch-rev-panel glass-panel">
+            <div class="mhd-ch-rev-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                {{ 'MARKETING.DASHBOARD.CHANNEL_BREAKDOWN' | translate }}
+            </div>
+            <div class="mhd-ch-rev-list">
+                @for (ch of channelRevenue(); track ch.channel) {
+                    <div class="mhd-ch-row">
+                        <span class="mhd-ch-dot" [style.background]="ch.color"></span>
+                        <span class="mhd-ch-name">{{ ch.channel }}</span>
+                        <div class="mhd-ch-bar-wrap">
+                            <div class="mhd-ch-bar"
+                                 [style.width]="(revenue() > 0 ? (ch.revenue / revenue()) * 100 : 0) + '%'"
+                                 [style.background]="ch.color">
+                            </div>
+                        </div>
+                        <span class="mhd-ch-rev-val">{{ fmtMXN(ch.revenue) }}</span>
+                        <span class="mhd-ch-pct">{{ revenue() > 0 ? ((ch.revenue / revenue()) * 100).toFixed(0) : 0 }}%</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <!-- Quick navigation cards -->
     <div class="mhd-section-title">{{ 'MARKETING.DASHBOARD.QUICK_TITLE' | translate }}</div>
     <div class="mhd-quick-grid">

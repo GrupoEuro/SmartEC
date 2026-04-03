@@ -223,3 +223,44 @@
     text-transform: uppercase; letter-spacing: .05em;
     color: #52525b;
 }
+
+/* ── Channel Revenue Breakdown panel ─────────────────────── */
+.mhd-ch-rev-panel {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem 1.1rem;
+    border-radius: 14px;
+}
+.mhd-ch-rev-header {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: #a1a1aa; margin-bottom: .9rem;
+}
+.mhd-ch-rev-list { display: flex; flex-direction: column; gap: .55rem; }
+.mhd-ch-row {
+    display: grid;
+    grid-template-columns: 8px 160px 1fr auto auto;
+    align-items: center; gap: .6rem;
+}
+.mhd-ch-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.mhd-ch-name {
+    font-size: .78rem; font-weight: 600; color: #e4e4e7;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mhd-ch-bar-wrap {
+    height: 6px; background: rgba(255,255,255,.07);
+    border-radius: 99px; overflow: hidden;
+}
+.mhd-ch-bar {
+    height: 100%; border-radius: 99px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+    opacity: .85;
+}
+.mhd-ch-rev-val {
+    font-size: .75rem; font-weight: 700; color: #e4e4e7;
+    white-space: nowrap; text-align: right; min-width: 76px;
+}
+.mhd-ch-pct {
+    font-size: .7rem; color: #71717a; min-width: 32px; text-align: right;
+}

@@ -58,6 +58,12 @@
                                     <span class="camp-dates">
                                         Ends in {{ daysRemaining(c.endDate) }} days · Priority {{ c.priority }}
                                     </span>
+                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
+                                        <span class="camp-perf-pill live">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                                            {{ perfFor(c.name).orders }} orders · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                                        </span>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -97,6 +103,12 @@
                                     <span class="camp-dates">
                                         Starts {{ c.startDate.toDate() | date:'mediumDate' }} · {{ duration(c.startDate, c.endDate) }} days
                                     </span>
+                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
+                                        <span class="camp-perf-pill">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                                            {{ perfFor(c.name).orders }} orders · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                                        </span>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -126,7 +138,15 @@
                             <div class="camp-theme-dot past"></div>
                             <div>
                                 <span class="camp-name past-name">{{ c.name }}</span>
-                                <span class="camp-dates">Ended {{ c.endDate.toDate() | date:'shortDate' }}</span>
+                                <div class="camp-meta">
+                                    <span class="camp-dates">Ended {{ c.endDate.toDate() | date:'shortDate' }}</span>
+                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
+                                        <span class="camp-perf-pill">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                                            {{ perfFor(c.name).orders }} orders · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                                        </span>
+                                    }
+                                </div>
                             </div>
                         </div>
                         <a [routerLink]="['edit', c.id]" class="camp-edit-btn ghost">

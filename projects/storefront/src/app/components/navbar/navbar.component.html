@@ -67,7 +67,7 @@
             <div class="nav-links">
                 <a [routerLink]="['/']" fragment="home" (click)="closeMobileMenu()">{{ 'NAVBAR.HOME' | translate }}</a>
                 <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate }}</a>
-                <a [routerLink]="['/catalog']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
+                <a [routerLink]="['/catalogo']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
                 <!-- Added Explicit Catalog Link -->
                 <a [routerLink]="['/blog']" (click)="closeMobileMenu()">Blog</a>
                 <a [routerLink]="['/']" fragment="about">{{ 'NAVBAR.ABOUT' | translate }}</a>
@@ -82,7 +82,7 @@
     <div class="mobile-menu" [class.active]="isMobileMenuOpen">
         <a [routerLink]="['/']" fragment="home" (click)="closeMobileMenu()">{{ 'NAVBAR.HOME' | translate }}</a>
         <a [routerLink]="['/praxis']" (click)="closeMobileMenu()">{{ 'NAVBAR.PRAXIS' | translate }}</a>
-        <a [routerLink]="['/catalog']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
+        <a [routerLink]="['/catalogo']" (click)="closeMobileMenu()">{{ 'NAVBAR.CATALOG' | translate }}</a>
         <a [routerLink]="['/blog']" (click)="closeMobileMenu()">Blog</a>
         <a [routerLink]="['/']" fragment="about" (click)="closeMobileMenu()">{{ 'NAVBAR.ABOUT' | translate }}</a>
         <a [routerLink]="['/']" fragment="contact" (click)="closeMobileMenu()">{{ 'NAVBAR.CONTACT' | translate }}</a>

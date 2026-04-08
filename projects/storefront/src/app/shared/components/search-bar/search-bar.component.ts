@@ -1,12 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { Router } from '@angular/router'; // Import Router
+import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { debounceTime, distinctUntilChanged, switchMap, tap, catchError, filter } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { ProductService } from '../../../core/services/product.service';
 import { SearchAnalyticsService } from '../../../core/services/search-analytics.service';
+import { LanguageService } from '@lib/core';
 import { Product } from '../../../core/models/product.model';
 
 @Component({
@@ -22,6 +23,7 @@ import { Product } from '../../../core/models/product.model';
                     [formControl]="searchControl" 
                     placeholder="{{ 'NAVBAR.SEARCH_PLACEHOLDER' | translate }}"
                     (focus)="onFocus()"
+                    (keydown.enter)="goToCatalog()"
                 >
                 @if (isLoading()) {
                     <div class="spinner"></div>
@@ -44,7 +46,7 @@ import { Product } from '../../../core/models/product.model';
                                 <div class="result-item" (click)="selectProduct(product, i)">
                                     <img [src]="product.images.main || 'assets/placeholder_tire.png'" alt="thumb">
                                     <div class="result-info">
-                                        <div class="result-name" [innerHTML]="highlightMatch(product.name.en)"></div>
+                                        <div class="result-name" [innerHTML]="highlightMatch(product.name[activeLang])"></div>
                                         <div class="result-brand">{{ product.brand }}</div>
                                     </div>
                                     <div class="result-price">
@@ -55,6 +57,11 @@ import { Product } from '../../../core/models/product.model';
                                     </div>
                                 </div>
                             }
+                        </div>
+                        <!-- See all results footer -->
+                        <div class="results-footer" (click)="goToCatalog()">
+                            <span>Ver todos los resultados para "<strong>{{ searchControl.value }}</strong>"</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                         </div>
                     }
                 </div>
@@ -202,13 +209,34 @@ import { Product } from '../../../core/models/product.model';
             text-align: right;
             margin-left: 12px;
         }
+        /* Results footer — "see all" link */
+        .results-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 16px;
+            font-size: 0.8rem;
+            color: #00acd8;
+            cursor: pointer;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            transition: background 0.15s;
+            font-weight: 500;
+        }
+        .results-footer:hover { background: rgba(0,172,216,0.08); }
+        .results-footer strong { color: #fff; }
     `]
 })
 export class SearchBarComponent {
     searchControl = new FormControl('');
-    productService = inject(ProductService);
-    analyticsService = inject(SearchAnalyticsService);
-    router = inject(Router); // Inject Router
+    productService    = inject(ProductService);
+    analyticsService  = inject(SearchAnalyticsService);
+    router            = inject(Router);
+    private langSvc   = inject(LanguageService);
+
+    /** Typed active language for template indexing */
+    get activeLang(): 'es' | 'en' {
+        return this.langSvc.currentLang() === 'en' ? 'en' : 'es';
+    }
 
     products = signal<Product[]>([]);
     isLoading = signal(false);
@@ -258,6 +286,17 @@ export class SearchBarComponent {
         this.searchControl.setValue('');
         this.products.set([]);
         this.showResults.set(false);
+    }
+
+    goToCatalog() {
+        const term = (this.searchControl.value || '').trim();
+        this.showResults.set(false);
+        if (term) {
+            this.router.navigate(['/catalogo'], { queryParams: { search: term } });
+        } else {
+            this.router.navigate(['/catalogo']);
+        }
+        // Keep term visible in input so user sees what they searched
     }
 
     selectProduct(product: Product, index: number) {

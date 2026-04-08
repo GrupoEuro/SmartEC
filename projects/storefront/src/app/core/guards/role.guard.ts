@@ -28,7 +28,7 @@ export const roleGuard: CanActivateFn = (route, state) => {
             }
 
             // 3. Unauthorized Role
-            toast.error('You do not have permission to access this page.');
+            toast.error('No tienes permisos para acceder a esta sección.');
             router.navigate(['/account']);
             return false;
         })

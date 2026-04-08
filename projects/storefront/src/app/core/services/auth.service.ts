@@ -145,7 +145,7 @@ export class AuthService {
       // STRICT CHECK: Email login only for CUSTOMER role
       const profile = await this.syncUserProfile(user);
       if (profile && profile.role !== 'CUSTOMER') {
-        this.toast.error('Admin/Staff must use Google Login.');
+        this.toast.error('El personal administrativo debe iniciar sesión con Google.');
         await signOut(this.auth);
         return;
       }
@@ -191,7 +191,7 @@ export class AuthService {
       const custRef = doc(this.firestore, 'customers', user.uid);
       await setDoc(custRef, newProfile);
 
-      this.toast.success(`Welcome, ${displayName}! Account created.`);
+      this.toast.success(`¡Bienvenido, ${displayName}! Tu cuenta ha sido creada.`);
       // await this.logService.log('REGISTER', 'AUTH', `New user registered: ${email}`);
 
       // Session stitching: map anonymous sessionId → new uid immediately on registration
@@ -233,14 +233,14 @@ export class AuthService {
         // this.logService.log('REGISTER', 'AUTH', `Recovered orphan account: ${newProfile.email}`);
       } catch (err) {
         console.error('AuthService: Failed to recover orphan account', err);
-        this.toast.error('Account error. Please contact support.');
+        this.toast.error('Error en tu cuenta. Contacta a soporte técnico.');
         await signOut(this.auth);
         return;
       }
     }
 
     if (!profile.isActive) {
-      this.toast.error('Your account has been deactivated.');
+      this.toast.error('Tu cuenta ha sido desactivada. Contacta a soporte.');
       await signOut(this.auth);
       return;
     }
@@ -248,7 +248,7 @@ export class AuthService {
     // await this.logService.log('LOGIN', 'AUTH', `User logged in: ${profile.email} (${profile.role})`);
 
     const name = profile.displayName || profile.email.split('@')[0];
-    this.toast.success(`Welcome back, ${name}!`);
+    this.toast.success(`¡Bienvenido de nuevo, ${name}!`);
 
     // Redirect based on role
     if (profile.role === 'CUSTOMER') {
@@ -262,11 +262,11 @@ export class AuthService {
     console.error(`${context} error:`, error);
     let msg = error.message;
     if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-      msg = 'Invalid email or password.';
+      msg = 'Correo electrónico o contraseña incorrectos.';
     } else if (error.code === 'auth/email-already-in-use') {
-      msg = 'Email is already in use.';
+      msg = 'Este correo ya está registrado.';
     }
-    this.toast.error(`${context} failed: ${msg}`);
+    this.toast.error(`Error al iniciar sesión: ${msg}`);
   }
 
   // Links an invited email to this UID or updates existing user
@@ -319,11 +319,11 @@ export class AuthService {
       // await this.logService.log('LOGOUT', 'AUTH', 'User logged out');
 
       await signOut(this.auth);
-      this.toast.success('Logged out successfully.');
+      this.toast.success('Sesión cerrada correctamente.');
       this.router.navigate(['/login']);
     } catch (error: any) {
       console.error('Logout error:', error);
-      this.toast.error('Logout failed: ' + error.message);
+      this.toast.error('Error al cerrar sesión: ' + error.message);
     }
   }
 

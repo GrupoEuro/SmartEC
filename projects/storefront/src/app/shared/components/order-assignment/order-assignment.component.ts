@@ -61,7 +61,7 @@ export class OrderAssignmentComponent implements OnInit {
             this.availableStaff.set(staff);
         } catch (error) {
             console.error('Error loading staff:', error);
-            this.toast.error('Failed to load staff members');
+            this.toast.error('Error al cargar el equipo');
         }
     }
 
@@ -109,7 +109,7 @@ export class OrderAssignmentComponent implements OnInit {
                     user.uid,
                     user.displayName || user.email
                 );
-                this.toast.success(`Order reassigned to ${selectedStaff.displayName || selectedStaff.email}`);
+                this.toast.success(`Pedido reasignado a ${selectedStaff.displayName || selectedStaff.email}`);
             } else {
                 // New assignment
                 await this.assignmentService.assignOrder(
@@ -119,13 +119,13 @@ export class OrderAssignmentComponent implements OnInit {
                     user.uid,
                     user.displayName || user.email
                 );
-                this.toast.success(`Order assigned to ${selectedStaff.displayName || selectedStaff.email}`);
+                this.toast.success(`Pedido asignado a ${selectedStaff.displayName || selectedStaff.email}`);
             }
 
             await this.loadCurrentAssignment();
         } catch (error) {
             console.error('Error assigning order:', error);
-            this.toast.error('Failed to assign order');
+            this.toast.error('Error al asignar el pedido');
         } finally {
             this.isAssigning.set(false);
         }
@@ -137,11 +137,11 @@ export class OrderAssignmentComponent implements OnInit {
 
         try {
             await this.assignmentService.updateStatus(assignment.id, status);
-            this.toast.success('Assignment status updated');
+            this.toast.success('Estado de asignación actualizado');
             await this.loadCurrentAssignment();
         } catch (error) {
             console.error('Error updating status:', error);
-            this.toast.error('Failed to update status');
+            this.toast.error('Error al actualizar el estado');
         }
     }
 

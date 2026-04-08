@@ -58,7 +58,7 @@ export class OrderNotesComponent implements OnInit {
                 },
                 error: (error) => {
                     console.error('Error loading notes:', error);
-                    this.toast.error('Failed to load notes');
+                    this.toast.error('Error al cargar las notas');
                     this.isLoading.set(false);
                 }
             });
@@ -96,13 +96,13 @@ export class OrderNotesComponent implements OnInit {
                 true // Always internal for operations
             );
 
-            this.toast.success('Note added successfully');
+            this.toast.success('Nota agregada correctamente');
             this.resetForm();
             this.showAddForm.set(false);
             await this.loadNotes();
         } catch (error) {
             console.error('Error adding note:', error);
-            this.toast.error('Failed to add note');
+            this.toast.error('Error al agregar la nota');
         } finally {
             this.isAdding.set(false);
         }
@@ -124,12 +124,12 @@ export class OrderNotesComponent implements OnInit {
 
         try {
             await this.noteService.updateNote(noteId, text);
-            this.toast.success('Note updated successfully');
+            this.toast.success('Nota actualizada correctamente');
             this.cancelEdit();
             await this.loadNotes();
         } catch (error) {
             console.error('Error updating note:', error);
-            this.toast.error('Failed to update note');
+            this.toast.error('Error al actualizar la nota');
         }
     }
 
@@ -138,22 +138,22 @@ export class OrderNotesComponent implements OnInit {
 
         try {
             await this.noteService.deleteNote(noteId);
-            this.toast.success('Note deleted successfully');
+            this.toast.success('Nota eliminada correctamente');
             await this.loadNotes();
         } catch (error) {
             console.error('Error deleting note:', error);
-            this.toast.error('Failed to delete note');
+            this.toast.error('Error al eliminar la nota');
         }
     }
 
     async resolveIssue(noteId: string) {
         try {
             await this.noteService.resolveIssue(noteId);
-            this.toast.success('Issue marked as resolved');
+            this.toast.success('Incidencia marcada como resuelta');
             await this.loadNotes();
         } catch (error) {
             console.error('Error resolving issue:', error);
-            this.toast.error('Failed to resolve issue');
+            this.toast.error('Error al resolver la incidencia');
         }
     }
 

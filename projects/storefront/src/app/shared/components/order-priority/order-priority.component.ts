@@ -82,21 +82,21 @@ export class OrderPriorityComponent implements OnInit, OnDestroy {
                     this.selectedPriority(),
                     createdAt
                 );
-                this.toast.success('Priority updated successfully');
+                this.toast.success('Prioridad actualizada correctamente');
             } else {
                 await this.priorityService.setPriority(
                     this.orderId,
                     this.selectedPriority(),
                     createdAt
                 );
-                this.toast.success('Priority set successfully');
+                this.toast.success('Prioridad establecida correctamente');
             }
 
             this.showPriorityForm.set(false);
             await this.loadPriority();
         } catch (error) {
             console.error('Error setting priority:', error);
-            this.toast.error('Failed to set priority');
+            this.toast.error('Error al establecer la prioridad');
         } finally {
             this.isUpdating.set(false);
         }

@@ -31,11 +31,11 @@ export class PdfLibraryComponent implements OnInit {
     searchQuery: string = '';
 
     categories = [
-        { value: 'all', label: 'All Categories' },
-        { value: 'catalog', label: 'Catalogs' },
-        { value: 'technical', label: 'Technical Sheets' },
-        { value: 'promotional', label: 'Promotional' },
-        { value: 'other', label: 'Other' }
+        { value: 'all', label: 'Todas las Categorías' },
+        { value: 'catalog', label: 'Catálogos' },
+        { value: 'technical', label: 'Fichas Técnicas' },
+        { value: 'promotional', label: 'Promocional' },
+        { value: 'other', label: 'Otros' }
     ];
 
     private searchSubject = new BehaviorSubject<string>('');
@@ -85,7 +85,7 @@ export class PdfLibraryComponent implements OnInit {
         if (pdf.requiresAuth) {
             const user = await firstValueFrom(this.authService.user$);
             if (!user) {
-                this.toast.info('Please login to download this PDF', 5000);
+                this.toast.info('Inicia sesión para descargar este PDF', 5000);
                 await this.authService.loginWithGoogle();
                 return;
             }
@@ -94,7 +94,7 @@ export class PdfLibraryComponent implements OnInit {
         // Check rate limit
         const canDownload = await firstValueFrom(this.pdfService.canDownload(this.getClientIP()));
         if (!canDownload) {
-            this.toast.warning('Download limit reached. Please try again in an hour.', 5000);
+            this.toast.warning('Límite de descargas alcanzado. Intenta de nuevo en una hora.', 5000);
             return;
         }
 
@@ -120,7 +120,7 @@ export class PdfLibraryComponent implements OnInit {
     async requestAccess(pdf: PDF) {
         const user = await firstValueFrom(this.authService.user$);
         if (!user) {
-            this.toast.info('Please login to request access to this PDF');
+            this.toast.info('Inicia sesión para solicitar acceso a este documento');
             await this.authService.loginWithGoogle();
             return;
         }

@@ -164,6 +164,7 @@ export class CatalogV2Component implements OnInit, OnDestroy {
         // One-time fetch; visibility guard keeps draft/private off the storefront.
         const allProducts$ = this.productService.getProducts().pipe(
             map(products => products.filter(p =>
+                p.active !== false &&                                          // respect admin deactivation
                 (!p.publishStatus || p.publishStatus === 'published') &&
                 (!p.visibility    || p.visibility   === 'public')
             )),

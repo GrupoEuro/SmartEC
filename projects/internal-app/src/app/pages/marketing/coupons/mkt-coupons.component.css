@@ -327,3 +327,177 @@
     gap: .45rem;
     margin-top: auto;
 }
+
+/* ── Pending / rejected card states ───────────────────────────────────────── */
+.cp-card.pending  { border-color: rgba(245,158,11,.35); border-style: dashed; }
+.cp-card.rejected { border-color: rgba(239,68,68,.25); opacity: .65; }
+.status-pending   { background: rgba(245,158,11,.12); color: #fbbf24; border-color: rgba(245,158,11,.35); }
+.status-rejected  { background: rgba(239,68,68,.12);  color: #f87171; border-color: rgba(239,68,68,.3); }
+
+.cp-requester {
+    display: flex; align-items: center; gap: .3rem;
+    font-size: .7rem; color: var(--theme-text-secondary); margin-top: .2rem;
+}
+
+.cp-rejection-banner {
+    display: flex; align-items: flex-start; gap: .4rem;
+    padding: .5rem .75rem; border-radius: 8px;
+    background: rgba(239,68,68,.08); color: #f87171;
+    border: 1px solid rgba(239,68,68,.25);
+    font-size: .75rem; line-height: 1.4;
+}
+
+/* ── Header actions ───────────────────────────────────────────────────────── */
+.cp-header-actions {
+    display: flex; align-items: center; gap: .75rem; flex-shrink: 0;
+}
+
+.cp-admin-link {
+    color: #a5b4fb; text-decoration: none; font-weight: 600;
+    transition: color .15s;
+}
+.cp-admin-link:hover { color: #818cf8; text-decoration: underline; }
+
+.cp-pending-badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .35rem .85rem; border-radius: 8px;
+    background: rgba(245,158,11,.12); color: #fbbf24;
+    border: 1px solid rgba(245,158,11,.35);
+    font-size: .75rem; font-weight: 700; text-decoration: none;
+    animation: pulse-badge 2s ease-in-out infinite;
+}
+.cp-pending-badge:hover { background: rgba(245,158,11,.22); }
+@keyframes pulse-badge {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.3); }
+    50%       { box-shadow: 0 0 0 5px rgba(245,158,11,0); }
+}
+
+.cp-new-btn { border: none; }
+.cp-new-btn.sm { padding: .45rem 1rem; font-size: .8rem; }
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.cp-modal-backdrop {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.65);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
+    animation: fade-in .15s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.cp-modal {
+    width: 100%; max-width: 640px;
+    background: #0f172a;
+    border: 1px solid rgba(139,92,246,.3);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(139,92,246,.1);
+    display: flex; flex-direction: column;
+    max-height: 90vh; overflow: hidden;
+    animation: slide-up .2s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+.cp-modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 1rem; padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.cp-modal-title-row { display: flex; align-items: flex-start; gap: 1rem; }
+.cp-modal-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(139,92,246,.15); border: 1px solid rgba(139,92,246,.3);
+    display: flex; align-items: center; justify-content: center;
+    color: #c4b5fd;
+}
+.cp-modal-title { font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--theme-text-primary); }
+.cp-modal-sub   { font-size: .8rem; color: var(--theme-text-secondary); margin: .2rem 0 0; line-height: 1.4; }
+
+.cp-modal-close {
+    background: none; border: none; cursor: pointer;
+    color: #52525b; padding: .25rem; border-radius: 8px;
+    transition: color .15s, background .15s; flex-shrink: 0;
+}
+.cp-modal-close:hover { color: #f87171; background: rgba(239,68,68,.1); }
+
+.cp-modal-body {
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto; flex: 1;
+    display: flex; flex-direction: column; gap: 1rem;
+}
+
+.cp-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .75rem;
+}
+
+.cp-field { display: flex; flex-direction: column; gap: .3rem; }
+.cp-label {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--theme-text-secondary);
+}
+.req { color: #f87171; }
+
+.cp-input, .cp-select {
+    padding: .55rem .8rem;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 9px;
+    color: var(--theme-text-primary);
+    font-size: .875rem;
+    transition: border-color .2s;
+    width: 100%;
+}
+.cp-input:focus, .cp-select:focus {
+    outline: none;
+    border-color: rgba(139,92,246,.5);
+    background: rgba(139,92,246,.05);
+}
+.cp-input::placeholder { color: #52525b; }
+.code-input { font-family: monospace; font-weight: 700; letter-spacing: .05em; }
+.cp-hint { font-size: .7rem; color: #52525b; }
+
+.cp-modal-info {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .75rem 1rem; border-radius: 10px;
+    background: rgba(99,102,241,.08);
+    border: 1px solid rgba(99,102,241,.2);
+    color: #a5b4fb; font-size: .78rem; line-height: 1.5;
+}
+
+.cp-modal-footer {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: .75rem; padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.cp-btn-cancel {
+    padding: .5rem 1.25rem; border-radius: 9px;
+    background: transparent; border: 1px solid rgba(255,255,255,.12);
+    color: var(--theme-text-secondary); font-size: .875rem; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+}
+.cp-btn-cancel:hover { background: rgba(255,255,255,.06); color: var(--theme-text-primary); }
+
+.cp-btn-submit {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .55rem 1.4rem; border-radius: 9px;
+    background: #8b5cf6; border: none;
+    color: #fff; font-size: .875rem; font-weight: 700;
+    cursor: pointer; transition: background .2s, transform .15s;
+}
+.cp-btn-submit:hover:not(:disabled) { background: #7c3aed; transform: translateY(-1px); }
+.cp-btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+.cp-spinner {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    animation: spin .7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

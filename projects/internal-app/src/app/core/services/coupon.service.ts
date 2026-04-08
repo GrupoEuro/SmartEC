@@ -187,6 +187,61 @@ export class CouponService {
         });
     }
 
+    // ── Approval workflow ─────────────────────────────────────────────────────
+
+    /**
+     * Marketing Hub: submit a coupon request for Admin approval.
+     * Created with isActive: false, status: 'pending'.
+     */
+    async requestCoupon(
+        data: Pick<Coupon, 'code' | 'type' | 'value' | 'description' | 'redirectUrl' | 'startDate' | 'endDate' | 'usageLimit' | 'minPurchaseAmount'>,
+        requestedBy: string,
+        requestedByName: string
+    ): Promise<string> {
+        const exists = await this.checkCodeExists(data.code);
+        if (exists) throw new Error('El código de cupón ya existe');
+
+        const couponData = {
+            ...data,
+            code: data.code.toUpperCase(),
+            isActive: false,
+            status: 'pending' as const,
+            requestedBy,
+            requestedByName,
+            usageCount: 0,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+        };
+        const ref = await addDoc(this.couponsCollection, couponData);
+        return ref.id;
+    }
+
+    /**
+     * Admin: approve a pending coupon → sets isActive:true, status:'live'.
+     */
+    async approveCoupon(id: string): Promise<void> {
+        const docRef = doc(this.firestore, `coupons/${id}`);
+        await updateDoc(docRef, {
+            isActive: true,
+            status: 'live',
+            rejectionReason: null,
+            updatedAt: Timestamp.now()
+        });
+    }
+
+    /**
+     * Admin: reject a pending coupon with a reason.
+     */
+    async rejectCoupon(id: string, reason: string): Promise<void> {
+        const docRef = doc(this.firestore, `coupons/${id}`);
+        await updateDoc(docRef, {
+            isActive: false,
+            status: 'rejected',
+            rejectionReason: reason,
+            updatedAt: Timestamp.now()
+        });
+    }
+
     /**
      * Convert Firestore Timestamps to Date objects
      */

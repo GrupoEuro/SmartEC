@@ -28,6 +28,7 @@ export class CouponListComponent implements OnInit {
     coupons: Coupon[] = [];
     filteredCoupons: Coupon[] = [];
     isLoading = true;
+    isActioning = new Set<string>(); // tracks per-row approve/reject pending
 
     // Filters
     searchControl = new FormControl('');
@@ -95,6 +96,10 @@ export class CouponListComponent implements OnInit {
         this.filteredCoupons = result;
     }
 
+    get pendingCoupons(): Coupon[] {
+        return this.coupons.filter(c => c.status === 'pending');
+    }
+
     sort(column: string) {
         if (this.sortColumn === column) {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -133,28 +138,60 @@ export class CouponListComponent implements OnInit {
     async toggleStatus(coupon: Coupon) {
         try {
             await this.couponService.toggleStatus(coupon.id!, coupon.isActive);
-            this.toast.success(`Coupon ${coupon.code} is now ${!coupon.isActive ? 'Active' : 'Inactive'}`);
-            // Optimistic update handled by observable or reload handled by subscription
+            this.toast.success(`Cupón ${coupon.code}: ${!coupon.isActive ? 'Activado' : 'Desactivado'}`);
         } catch (error) {
             console.error('Error toggling status:', error);
-            this.toast.error('Failed to update status');
+            this.toast.error('Error al cambiar el estado');
+        }
+    }
+
+    async approveCoupon(coupon: Coupon) {
+        if (!coupon.id || this.isActioning.has(coupon.id)) return;
+        this.isActioning.add(coupon.id);
+        try {
+            await this.couponService.approveCoupon(coupon.id);
+            this.toast.success(`¡Cupón ${coupon.code} aprobado y activado!`);
+        } catch (err) {
+            this.toast.error('Error al aprobar el cupón');
+        } finally {
+            this.isActioning.delete(coupon.id);
+        }
+    }
+
+    async rejectCoupon(coupon: Coupon) {
+        if (!coupon.id || this.isActioning.has(coupon.id)) return;
+        const confirmed = await this.confirmDialog.confirm({
+            title: `¿Rechazar cupón ${coupon.code}?`,
+            message: 'Indica el motivo del rechazo (opcional):',
+            confirmText: 'Rechazar',
+            type: 'warning'
+        });
+        if (!confirmed) return;
+        this.isActioning.add(coupon.id);
+        try {
+            await this.couponService.rejectCoupon(coupon.id, 'Rechazado por el administrador');
+            this.toast.info(`Cupón ${coupon.code} rechazado`);
+        } catch (err) {
+            this.toast.error('Error al rechazar el cupón');
+        } finally {
+            this.isActioning.delete(coupon.id);
         }
     }
 
     async deleteCoupon(coupon: Coupon) {
-        const confirmed = await this.confirmDialog.confirmWarning(
-            'Delete Coupon',
-            `Are you sure you want to delete coupon ${coupon.code}? This action cannot be undone.`
-        );
-
+        const confirmed = await this.confirmDialog.confirm({
+            title: `¿Eliminar cupón ${coupon.code}?`,
+            message: 'Esta acción no se puede deshacer.',
+            confirmText: 'Eliminar',
+            type: 'danger'
+        });
         if (!confirmed) return;
-
         try {
             await this.couponService.deleteCoupon(coupon.id!);
-            this.toast.success('Coupon deleted successfully');
+            this.toast.success('Cupón eliminado correctamente');
         } catch (error) {
             console.error('Error deleting coupon:', error);
-            this.toast.error('Failed to delete coupon');
+            this.toast.error('Error al eliminar el cupón');
         }
     }
 

@@ -1,6 +1,6 @@
 <div class="cp-root">
 
-    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
     <div class="cp-header">
         <div class="cp-title-block">
             <div class="cp-title-icon">
@@ -15,78 +15,117 @@
             </div>
             <div>
                 <h1 class="cp-title">{{ 'MARKETING.COUPONS.TITLE' | translate }}</h1>
-                <p class="cp-subtitle">{{ 'MARKETING.COUPONS.SUBTITLE' | translate }}</p>
+                <p class="cp-subtitle">Administración completa en <a [routerLink]="['/admin/coupons']" class="cp-admin-link">Admin → Cupones</a>. Aquí solicita nuevos y consulta rendimiento.</p>
             </div>
         </div>
-        <!-- Create is still in Admin CMS — deep link -->
-        <a href="/admin/coupons/new" class="cp-new-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {{ 'MARKETING.COUPONS.NEW' | translate }}
-        </a>
+        <div class="cp-header-actions">
+            <!-- Pending badge -->
+            @if (totalPending() > 0) {
+                <a [routerLink]="['/admin/coupons']" class="cp-pending-badge" title="Ver en Admin">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {{ totalPending() }} pendiente{{ totalPending() !== 1 ? 's' : '' }}
+                </a>
+            }
+            <button class="cp-new-btn" (click)="openModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Solicitar cupón
+            </button>
+        </div>
     </div>
 
-    <!-- ── KPI strip ─────────────────────────────────────────────────────── -->
+    <!-- ── KPI strip ───────────────────────────────────────────────────────── -->
     <div class="cp-kpis">
         <div class="cp-kpi">
             <div class="cpk-icon" style="--c:#22c55e">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <span class="cpk-val green">{{ totalActive() }}</span>
-            <span class="cpk-lbl">{{ 'MARKETING.COUPONS.KPI_ACTIVE' | translate }}</span>
+            <span class="cpk-lbl">Activos</span>
         </div>
+        @if (totalPending() > 0) {
+            <div class="cp-kpi">
+                <div class="cpk-icon" style="--c:#f59e0b">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <span class="cpk-val yellow">{{ totalPending() }}</span>
+                <span class="cpk-lbl">Pendientes</span>
+            </div>
+        }
         <div class="cp-kpi">
             <div class="cpk-icon" style="--c:#6366f1">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
             </div>
             <span class="cpk-val accent">{{ totalUses() }}</span>
-            <span class="cpk-lbl">{{ 'MARKETING.COUPONS.KPI_USES' | translate }}</span>
+            <span class="cpk-lbl">Usos totales</span>
         </div>
         <div class="cp-kpi">
             <div class="cpk-icon" style="--c:#8b5cf6">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
             </div>
             <span class="cpk-val purple">{{ totalScans() }}</span>
-            <span class="cpk-lbl">{{ 'MARKETING.COUPONS.KPI_SCANS' | translate }}</span>
+            <span class="cpk-lbl">Escaneos QR</span>
         </div>
         <div class="cp-kpi">
             <div class="cpk-icon" style="--c:#f59e0b">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             </div>
             <span class="cpk-val yellow">{{ convRate() }}%</span>
-            <span class="cpk-lbl">{{ 'MARKETING.COUPONS.KPI_CONV' | translate }}</span>
+            <span class="cpk-lbl">Tasa Conv.</span>
         </div>
     </div>
 
-    <!-- ── Toolbar ────────────────────────────────────────────────────────── -->
+    <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
     <div class="cp-toolbar">
         <div class="cp-filter-tabs">
             @for (f of filters; track f.value) {
                 <button class="cp-tab" [class.active]="filter() === f.value" (click)="filter.set(f.value)">
-                    {{ f.labelKey | translate }}
+                    {{ f.label }}
                 </button>
             }
         </div>
         <div class="cp-search-wrap">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="cp-search" type="text" [placeholder]="'MARKETING.COUPONS.SEARCH' | translate"
+            <input class="cp-search" type="text" placeholder="Buscar por código o descripción..."
                    (input)="search.set($any($event.target).value)">
         </div>
     </div>
 
-    <!-- ── Coupon list ────────────────────────────────────────────────────── -->
+    <!-- ── Coupon list ──────────────────────────────────────────────────────── -->
     @if (coupons().length === 0) {
         <div class="cp-empty">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg>
-            <p>{{ 'MARKETING.COUPONS.EMPTY' | translate }}</p>
+            <p>No hay cupones que coincidan con el filtro.</p>
+            <button class="cp-new-btn sm" (click)="openModal()">+ Solicitar cupón</button>
         </div>
     } @else {
         <div class="cp-grid">
             @for (c of coupons(); track c.id) {
-                <div class="cp-card" [class.expired]="statusLabel(c) === 'expired'" [class.inactive]="statusLabel(c) === 'inactive'">
+                <div class="cp-card" [class.expired]="statusLabel(c) === 'expired'" [class.inactive]="statusLabel(c) === 'inactive'" [class.pending]="statusLabel(c) === 'pending'" [class.rejected]="statusLabel(c) === 'rejected'">
+
                     <!-- Status badge -->
                     <div class="cp-status-badge" [class]="'status-' + statusLabel(c)">
-                        {{ statusLabel(c) }}
+                        @if (statusLabel(c) === 'pending') { ⏳ Pendiente }
+                        @else if (statusLabel(c) === 'rejected') { ✕ Rechazado }
+                        @else if (statusLabel(c) === 'expired') { Expirado }
+                        @else if (statusLabel(c) === 'active') { ✓ Activo }
+                        @else { Inactivo }
                     </div>
+
+                    <!-- Requester info (pending/rejected) -->
+                    @if (c.requestedByName) {
+                        <div class="cp-requester">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            Solicitado por {{ c.requestedByName }}
+                        </div>
+                    }
+
+                    <!-- Rejection reason -->
+                    @if (c.status === 'rejected' && c.rejectionReason) {
+                        <div class="cp-rejection-banner">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            {{ c.rejectionReason }}
+                        </div>
+                    }
 
                     <!-- Code + type -->
                     <div class="cp-code-row">
@@ -106,11 +145,11 @@
                             <div class="cp-usage-bar-wrap">
                                 <div class="cp-usage-bar" [style.width]="usagePct(c) + '%'"></div>
                             </div>
-                            <span class="cp-usage-lbl">{{ c.usageCount }} / {{ c.usageLimit }} uses</span>
+                            <span class="cp-usage-lbl">{{ c.usageCount }} / {{ c.usageLimit }} usos</span>
                         </div>
                     } @else {
                         <div class="cp-usage">
-                            <span class="cp-usage-lbl">{{ c.usageCount }} uses · unlimited</span>
+                            <span class="cp-usage-lbl">{{ c.usageCount }} usos · sin límite</span>
                         </div>
                     }
 
@@ -119,47 +158,50 @@
                         @if (c.scanCount) {
                             <div class="cp-metric">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/></svg>
-                                {{ c.scanCount }} scans
+                                {{ c.scanCount }} escaneos
                             </div>
                         }
                         @if (c.endDate) {
                             <div class="cp-metric">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                Expires {{ toDate(c.endDate) | date:'shortDate' }}
+                                Vence {{ toDate(c.endDate) | date:'shortDate':'':'es' }}
                             </div>
                         }
                     </div>
 
                     <!-- Actions -->
                     <div class="cp-actions">
-                        <!-- Copy promo link -->
-                        <button class="cp-copy-btn" [class.copied]="copiedId() === c.id" (click)="copyPromoLink(c)" title="Copy promo link">
-                            @if (copiedId() === c.id) {
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
-                                Copied!
-                            } @else {
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                                Copy Link
-                            }
-                        </button>
+                        <!-- Copy promo link (only for live coupons) -->
+                        @if (statusLabel(c) === 'active') {
+                            <button class="cp-copy-btn" [class.copied]="copiedId() === c.id" (click)="copyPromoLink(c)" title="Copiar enlace promocional">
+                                @if (copiedId() === c.id) {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
+                                    ¡Copiado!
+                                } @else {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                    Copiar enlace
+                                }
+                            </button>
+                        }
                         <!-- QR Report — only if scans exist -->
                         @if (c.scanCount) {
                             <a [routerLink]="['/marketing/coupons/qr', c.id]" class="cp-qr-btn" title="Ver reporte QR completo">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
-                                QR Report
+                                Reporte QR
                             </a>
                         }
-                        <a [href]="adminCouponUrl(c.id!)" class="cp-edit-btn">
+                        <!-- Edit — routerLink to admin (not href!) -->
+                        <a [routerLink]="adminEditRoute(c.id!)" class="cp-edit-btn">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            {{ 'MARKETING.COUPONS.EDIT' | translate }}
+                            Editar en Admin
                         </a>
                     </div>
 
-                    <!-- Real order usage from orders collection -->
+                    <!-- Real order usage -->
                     @if (orderUsage(c.code).orders > 0) {
                         <div class="cp-order-usage">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg>
-                            {{ orderUsage(c.code).orders }} orders · {{ fmtMXN(orderUsage(c.code).savedAmount) }} saved
+                            {{ orderUsage(c.code).orders }} órdenes · {{ fmtMXN(orderUsage(c.code).savedAmount) }} ahorrado
                         </div>
                     }
                 </div>
@@ -167,3 +209,128 @@
         </div>
     }
 </div>
+
+<!-- ── Request Coupon Modal ──────────────────────────────────────────────────── -->
+@if (showModal()) {
+    <div class="cp-modal-backdrop" (click)="closeModal()">
+        <div class="cp-modal" (click)="$event.stopPropagation()">
+
+            <div class="cp-modal-header">
+                <div class="cp-modal-title-row">
+                    <div class="cp-modal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="cp-modal-title">Solicitar nuevo cupón / QR</h2>
+                        <p class="cp-modal-sub">El Admin recibirá el cupón en estado <strong>Pendiente</strong> para aprobación antes de activarlo.</p>
+                    </div>
+                </div>
+                <button class="cp-modal-close" (click)="closeModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            <div class="cp-modal-body">
+
+                <!-- Row 1: Code + Type -->
+                <div class="cp-form-row">
+                    <div class="cp-field">
+                        <label class="cp-label">Código <span class="req">*</span></label>
+                        <input class="cp-input code-input" type="text" placeholder="PROMO20"
+                               [value]="form().code"
+                               (input)="patchForm({ code: $any($event.target).value.toUpperCase() })">
+                        <span class="cp-hint">Único, en mayúsculas. Ej: VERANO25</span>
+                    </div>
+                    <div class="cp-field">
+                        <label class="cp-label">Tipo <span class="req">*</span></label>
+                        <select class="cp-select"
+                                [value]="form().type"
+                                (change)="patchForm({ type: $any($event.target).value })">
+                            <option value="percentage">Porcentaje (%)</option>
+                            <option value="fixed_amount">Monto fijo (MXN)</option>
+                        </select>
+                    </div>
+                    <div class="cp-field">
+                        <label class="cp-label">Valor <span class="req">*</span></label>
+                        <input class="cp-input" type="number" min="1"
+                               [placeholder]="form().type === 'percentage' ? '10' : '50'"
+                               [value]="form().value"
+                               (input)="patchForm({ value: +$any($event.target).value })">
+                        <span class="cp-hint">{{ form().type === 'percentage' ? '% de descuento' : 'MXN de descuento' }}</span>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="cp-field">
+                    <label class="cp-label">Descripción / Nombre</label>
+                    <input class="cp-input" type="text" placeholder="Ej: Cupón de bienvenida verano 2025"
+                           [value]="form().description"
+                           (input)="patchForm({ description: $any($event.target).value })">
+                </div>
+
+                <!-- Row 2: Dates -->
+                <div class="cp-form-row">
+                    <div class="cp-field">
+                        <label class="cp-label">Fecha inicio <span class="req">*</span></label>
+                        <input class="cp-input" type="date"
+                               [value]="form().startDate"
+                               (input)="patchForm({ startDate: $any($event.target).value })">
+                    </div>
+                    <div class="cp-field">
+                        <label class="cp-label">Fecha fin</label>
+                        <input class="cp-input" type="date"
+                               [value]="form().endDate"
+                               (input)="patchForm({ endDate: $any($event.target).value })">
+                        <span class="cp-hint">Dejar vacío = sin fecha límite</span>
+                    </div>
+                </div>
+
+                <!-- Row 3: Limits -->
+                <div class="cp-form-row">
+                    <div class="cp-field">
+                        <label class="cp-label">Límite de usos</label>
+                        <input class="cp-input" type="number" min="0" placeholder="0 = ilimitado"
+                               [value]="form().usageLimit"
+                               (input)="patchForm({ usageLimit: +$any($event.target).value })">
+                    </div>
+                    <div class="cp-field">
+                        <label class="cp-label">Compra mínima (MXN)</label>
+                        <input class="cp-input" type="number" min="0" placeholder="0 = sin mínimo"
+                               [value]="form().minPurchase"
+                               (input)="patchForm({ minPurchase: +$any($event.target).value })">
+                    </div>
+                </div>
+
+                <!-- Redirect URL -->
+                <div class="cp-field">
+                    <label class="cp-label">URL de redirección QR</label>
+                    <input class="cp-input" type="url" placeholder="https://importadoraeuro.com/catalogo?promo=..."
+                           [value]="form().redirectUrl"
+                           (input)="patchForm({ redirectUrl: $any($event.target).value })">
+                    <span class="cp-hint">Página a la que lleva el QR al escanear. Déjalo vacío para el catálogo general.</span>
+                </div>
+
+                <!-- Info banner -->
+                <div class="cp-modal-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Tu solicitud quedará en estado <b>Pendiente</b> hasta que el Admin la apruebe. Recibirás una notificación cuando sea aprobada o rechazada.</span>
+                </div>
+
+            </div>
+
+            <div class="cp-modal-footer">
+                <button class="cp-btn-cancel" (click)="closeModal()">Cancelar</button>
+                <button class="cp-btn-submit" [disabled]="isSubmitting()" (click)="submitRequest()">
+                    @if (isSubmitting()) {
+                        <span class="cp-spinner"></span>
+                        Enviando...
+                    } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        Enviar solicitud
+                    }
+                </button>
+            </div>
+
+        </div>
+    </div>
+}

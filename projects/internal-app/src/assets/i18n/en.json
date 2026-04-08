@@ -1726,7 +1726,10 @@
       "TF": {
         "MTD": "Month to Date",
         "PAST_MONTH": "Past Month",
-        "YTD": "Year to Date"
+        "YTD": "Year to Date",
+        "L6M": "Last 6 Months",
+        "L12M": "Last 12 Months",
+        "ALL": "All Time"
       },
       "WELCOME": "Welcome to Importadora Euro Dashboard",
       "SUBTITLE": "Manage your content, banners, blog posts, and PDF library from one place.",
@@ -4205,7 +4208,10 @@
     "TF": {
       "MTD": "Month to Date",
       "PAST_MONTH": "Past Month",
-      "YTD": "Year to Date"
+      "YTD": "Year to Date",
+      "L6M": "Last 6 Months",
+      "L12M": "Last 12 Months",
+      "ALL": "All Time"
     }
   },
   "MARKETING": {

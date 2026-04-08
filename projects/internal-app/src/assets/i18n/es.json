@@ -1606,7 +1606,10 @@
         "TF": {
           "MTD": "Mes Actual",
           "PAST_MONTH": "Mes Anterior",
-          "YTD": "Año Actual"
+          "YTD": "Año Actual",
+          "L6M": "Últ. 6 Meses",
+          "L12M": "Últ. 12 Meses",
+          "ALL": "Todo el Tiempo"
         },
         "WELCOME": "Bienvenido al Tablero de Importadora Euro",
         "SUBTITLE": "Gestiona tu contenido, banners, blog y biblioteca PDF desde un solo lugar.",
@@ -5848,7 +5851,10 @@
     "TF": {
       "MTD": "Mes Actual",
       "PAST_MONTH": "Mes Anterior",
-      "YTD": "Año Actual"
+      "YTD": "Año Actual",
+      "L6M": "Últ. 6 Meses",
+      "L12M": "Últ. 12 Meses",
+      "ALL": "Todo el Tiempo"
     }
   },
   "MARKETING": {

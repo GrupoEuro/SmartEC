@@ -236,6 +236,9 @@
     text-align: center;
 }
 .camp-empty p { margin: 0; font-size: .875rem; }
+.camp-empty svg { opacity: .25; }
+.camp-empty--inline { padding: 1.5rem; gap: .6rem; }
+.camp-empty--inline p { font-size: .8rem; }
 
 /* ── Past details ─────────────────────────────────────────────────────────── */
 .camp-past-details { padding: 0; }

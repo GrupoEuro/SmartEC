@@ -9,6 +9,7 @@
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg> {{ 'ADMIN.CATALOG.FILTERS' | translate }}
+            <span class="mobile-filter-badge" *ngIf="activeFiltersCount > 0">{{ activeFiltersCount }}</span>
         </button>
     </div>
 
@@ -48,19 +49,15 @@
                     <div style="display: flex; justify-content: space-between; align-items: baseline;">
                         <label class="filter-label">{{ 'ADMIN.CATALOG.PRICE_RANGE' | translate }}</label>
                         <span style="font-size: 0.8rem; font-weight: 600; color: var(--theme-primary);">
-                            ${{selectedPriceRange.min}} - ${{selectedPriceRange.max}}
+                            ${{selectedPriceRange.min}} – ${{selectedPriceRange.max}}
                         </span>
                     </div>
 
-                    <mat-slider min="0" max="5000" step="100" discrete [displayWith]="formatLabel">
+                    <mat-slider min="0" [max]="PRICE_MAX" step="100" discrete [displayWith]="formatLabel">
                         <input matSliderStartThumb [(ngModel)]="selectedPriceRange.min"
                             (dragEnd)="onPriceRangeChange()">
                         <input matSliderEndThumb [(ngModel)]="selectedPriceRange.max" (dragEnd)="onPriceRangeChange()">
                     </mat-slider>
-
-                    <div class="price-inputs-wrapper" style="margin-top: 0.5rem; opacity: 0.7;">
-                        <!-- Optional: Quick manual inputs -->
-                    </div>
                 </div>
 
                 <!-- Brands (Only show if more than 1 brand) -->
@@ -72,10 +69,22 @@
                             <input type="checkbox" [checked]="isBrandSelected(brand)" (change)="toggleBrand(brand)"
                                 [disabled]="getBrandCount(brand) === 0">
                             <span class="checkbox-custom"></span>
-                            <span class="label-text">{{ brand }} <span class="count-badge">({{ getBrandCount(brand)
-                                    }})</span></span>
+                            <span class="label-text">{{ brand }} <span class="count-badge">({{ getBrandCount(brand) }})</span></span>
                         </label>
                     </div>
+                </div>
+
+                <!-- In Stock Toggle -->
+                <div class="filter-section">
+                    <label class="filter-label">Disponibilidad</label>
+                    <label class="checkbox-label instock-toggle" [class.active]="!!filters.inStock">
+                        <input type="checkbox" [checked]="!!filters.inStock" (change)="toggleInStock()">
+                        <span class="checkbox-custom"></span>
+                        <span class="label-text">
+                            Solo en stock
+                            <span class="count-badge instock-count">({{ inStockCount }})</span>
+                        </span>
+                    </label>
                 </div>
 
                 <!-- Specs Chips -->
@@ -165,11 +174,11 @@
             <!-- Active Filters Chips -->
             <div class="active-filters-bar" *ngIf="activeFiltersList.length > 0">
                 <div class="filter-chip" *ngFor="let item of activeFiltersList">
+                    <span class="chip-type">{{ item.type }}</span>
                     <span class="chip-label">{{ item.label }}</span>
-                    <button class="chip-remove" (click)="removeFilter(item)">✕</button>
+                    <button class="chip-remove" (click)="removeFilter(item)" aria-label="Quitar filtro">✕</button>
                 </div>
-                <button class="clear-all-link" (click)="clearFilters()">{{ 'ADMIN.CATALOG.CLEAR_FILTERS' | translate
-                    }}</button>
+                <button class="clear-all-link" (click)="clearFilters()">{{ 'ADMIN.CATALOG.CLEAR_FILTERS' | translate }}</button>
             </div>
 
             <!-- Products -->

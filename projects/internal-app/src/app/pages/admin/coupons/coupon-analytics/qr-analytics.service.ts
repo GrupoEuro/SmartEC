@@ -9,6 +9,15 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface CartItem {
+    name:      string;
+    sku?:      string;
+    price:     number;
+    quantity:  number;
+    imageUrl?: string;
+    subtotal:  number;
+}
+
 export interface QrScan {
     id:          string;
     sessionId:   string;
@@ -16,13 +25,27 @@ export interface QrScan {
     userId?:     string;
     email?:      string;
     converted:   boolean;
-    device?:     string;
+    // attribution
+    device?:     string;        // normalized label e.g. "Mobile · Chrome"
     city?:       string;
-    source?:     string;
+    region?:     string;
+    country?:    string;
+    timezone?:   string;
+    isp?:        string;
+    source?:     string;        // utm_source
+    utmMedium?:  string;
+    utmCampaign?:string;
+    utmContent?: string;
+    utmTerm?:    string;
     referrer?:   string;
+    referrerDomain?: string;
+    landingUrl?: string;
+    campaignId?:   string;
+    campaignName?: string;
     // downstream
     cartValue?:  number;
     cartStatus?: string;
+    cartItems?:  CartItem[];
     waClicked?:  boolean;
     orderId?:    string;
     orderTotal?: number;
@@ -45,6 +68,16 @@ export interface QrFunnelStats {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Unwrap multilingual name objects like { es: 'Llanta', en: 'Tire' } → 'Llanta' */
+function resolveI18n(val: any): string | undefined {
+    if (!val) return undefined;
+    if (typeof val === 'string') return val || undefined;
+    if (typeof val === 'object') {
+        return val['es'] ?? val['en'] ?? val['mx'] ?? Object.values(val)[0] as string ?? undefined;
+    }
+    return String(val);
+}
 
 function toMs(v: any): number {
     if (!v) return 0;
@@ -75,6 +108,52 @@ export class QrAnalyticsService {
 
         const rawScans: QrScan[] = snap.docs.map(d => {
             const data = d.data();
+
+            // Device: stored as object { userAgent, mobile, timezone, language }
+            // Normalize to a human-readable label string
+            const deviceObj = data['device'];
+            let deviceLabel: string | undefined;
+            if (typeof deviceObj === 'string') {
+                deviceLabel = deviceObj;
+            } else if (deviceObj && typeof deviceObj === 'object') {
+                deviceLabel = deviceObj['mobile'] ? 'Mobile' : 'Desktop';
+                const ua: string = deviceObj['userAgent'] ?? '';
+                if (ua) {
+                    const browser = /Chrome\//.test(ua)  ? 'Chrome'
+                                  : /Firefox\//.test(ua) ? 'Firefox'
+                                  : /Safari\//.test(ua)  ? 'Safari'
+                                  : /Edge\//.test(ua)    ? 'Edge'
+                                  : '';
+                    if (browser) deviceLabel += ` · ${browser}`;
+                }
+            }
+
+            // City: stored under geo.city by coupon.service.ts (not attribution.city)
+            const city: string | undefined =
+                data['geo']?.city           ??
+                data['attribution']?.city   ??
+                data['city'];
+
+            // Source: stored under utm.utm_source (not attribution.source)
+            const utm = data['utm'] ?? {};
+            const source: string | undefined =
+                utm['utm_source']           ??
+                utm['source']               ??
+                data['attribution']?.source ??
+                data['source'];
+
+            // Referrer: stored as top-level field (not attribution.referrer)
+            const referrer: string | undefined =
+                data['referrer']            ??
+                data['referrerDomain']      ??
+                data['attribution']?.referrer;
+
+            // Full geo object
+            const geo = data['geo'] ?? {};
+
+            // Full UTM object
+            const utmObj = data['utm'] ?? {};
+
             return {
                 id:        d.id,
                 sessionId: data['sessionId'] ?? d.id,
@@ -82,10 +161,26 @@ export class QrAnalyticsService {
                 userId:    data['userId'],
                 email:     data['email'],
                 converted: data['converted'] === true,
-                device:    data['device'],
-                city:      data['attribution']?.city ?? data['city'],
-                source:    data['attribution']?.source ?? data['source'],
-                referrer:  data['attribution']?.referrer,
+                device:    deviceLabel,
+                // geo
+                city:      city ?? geo['city'],
+                region:    geo['region'],
+                country:   geo['country'],
+                timezone:  geo['timezone'] ?? (deviceObj && typeof deviceObj === 'object' ? deviceObj['timezone'] : undefined),
+                isp:       geo['org'],
+                // utm
+                source,
+                utmMedium:   utmObj['utm_medium'],
+                utmCampaign: utmObj['utm_campaign'],
+                utmContent:  utmObj['utm_content'],
+                utmTerm:     utmObj['utm_term'],
+                // referrer
+                referrer,
+                referrerDomain: data['referrerDomain'],
+                landingUrl:     data['landingUrl'],
+                // campaign
+                campaignId:   data['campaignId'],
+                campaignName: data['campaignName'],
             };
         });
 
@@ -118,6 +213,7 @@ export class QrAnalyticsService {
             if (cart) {
                 scan.cartValue  = cart.cartValue;
                 scan.cartStatus = cart.status;
+                scan.cartItems  = cart.cartItems;
             }
             if (waMap.has(sid)) scan.waClicked = true;
             const order = orderMap.get(scan.userId ?? '') ?? orderMap.get(scan.email ?? '');
@@ -132,16 +228,24 @@ export class QrAnalyticsService {
         }
     }
 
-    private async buildCartMap(chunks: string[][]): Promise<Map<string, { cartValue: number; status: string }>> {
-        const map = new Map<string, { cartValue: number; status: string }>();
+    private async buildCartMap(chunks: string[][]): Promise<Map<string, { cartValue: number; status: string; cartItems: CartItem[] }>> {
+        const map = new Map<string, { cartValue: number; status: string; cartItems: CartItem[] }>();
 
         const processSnap = (snap: any, getSessionId: (d: any) => string) => {
             snap?.docs?.forEach((d: any) => {
                 const data = d.data();
                 const sid  = getSessionId(d);
-                const items: any[] = data['items'] ?? [];
-                const val  = items.reduce((s: number, i: any) => s + (i.product?.price || 0) * (i.quantity || 1), 0);
-                map.set(sid, { cartValue: val, status: data['status'] ?? 'unknown' });
+                const raw: any[] = data['items'] ?? [];
+                const cartItems: CartItem[] = raw.map((i: any) => ({
+                    name:     resolveI18n(i.product?.name ?? i.name) ?? 'Producto',
+                    sku:      i.product?.sku  ?? i.sku,
+                    price:    i.product?.price ?? i.price ?? 0,
+                    quantity: i.quantity ?? 1,
+                    imageUrl: i.product?.imageUrl ?? i.imageUrl,
+                    subtotal: (i.product?.price ?? i.price ?? 0) * (i.quantity ?? 1),
+                }));
+                const val = cartItems.reduce((s, ci) => s + ci.subtotal, 0);
+                map.set(sid, { cartValue: val, status: data['status'] ?? 'unknown', cartItems });
             });
         };
 

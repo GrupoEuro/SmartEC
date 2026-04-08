@@ -60,6 +60,18 @@ export const MARKETING_ROUTES: Routes = [
                     .then(m => m.MktCouponsComponent),
                 title: 'Marketing Hub | Coupons & QR'
             },
+            {
+                path: 'coupons/qr/:id',
+                loadComponent: () => import('./coupons/qr-report/qr-report.component')
+                    .then(m => m.QrReportComponent),
+                title: 'Marketing Hub | QR Report'
+            },
+            {
+                path: 'coupons/qr/:couponId/scan/:scanId',
+                loadComponent: () => import('./coupons/scan-detail/scan-detail.component')
+                    .then(m => m.ScanDetailComponent),
+                title: 'Marketing Hub | Detalle de Escaneo'
+            },
 
             // ── Segments ──────────────────────────────────────────────────────
             {

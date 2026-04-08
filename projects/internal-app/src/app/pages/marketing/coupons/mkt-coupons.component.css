@@ -303,3 +303,27 @@
     background: rgba(16,185,129,.08); color: #34d399;
     border: 1px solid rgba(16,185,129,.2);
 }
+
+/* ── QR Report button ──────────────────────────────── */
+.cp-qr-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .4rem .85rem; border-radius: 8px;
+    border: 1px solid rgba(99,102,241,.35);
+    background: rgba(99,102,241,.1);
+    color: #a5b4fb; font-size: .78rem; font-weight: 600;
+    text-decoration: none; transition: all .18s;
+}
+.cp-qr-btn:hover {
+    background: rgba(99,102,241,.22);
+    border-color: rgba(99,102,241,.55);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 12px rgba(99,102,241,.25);
+}
+
+/* Actions row layout */
+.cp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: auto;
+}

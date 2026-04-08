@@ -208,6 +208,15 @@
     transition: opacity 0.2s;
 }
 
+/* Hide the native input — the custom .checkbox-custom span is the visual */
+.checkbox-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
 .checkbox-label:hover {
     opacity: 1;
 }
@@ -926,4 +935,69 @@ a.product-info {
     align-items: center;
     justify-content: center;
     padding: 0 4px;
+}
+
+/* ==========================================================================
+   MOBILE FILTER COUNT BADGE
+   ========================================================================== */
+.filter-toggle-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--theme-bg-glass);
+    border: 1px solid var(--theme-border);
+    color: var(--theme-text-primary);
+    padding: 0.65rem 1.25rem;
+    border-radius: var(--theme-radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+.filter-toggle-btn:hover {
+    border-color: var(--theme-primary);
+    color: var(--theme-primary);
+}
+
+.mobile-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 99px;
+    background: var(--theme-primary);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    animation: badge-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badge-pop {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ==========================================================================
+   IN-STOCK TOGGLE ACTIVE STATE
+   ========================================================================== */
+.instock-toggle.active .checkbox-custom {
+    background: #10b981;
+    border-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.instock-toggle.active .label-text {
+    color: var(--theme-text-primary);
+    font-weight: 600;
+}
+
+.instock-count {
+    color: #10b981;
+    font-weight: 600;
 }

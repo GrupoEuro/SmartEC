@@ -1,0 +1,322 @@
+<!-- ── Loading ──────────────────────────────────────────────────────────── -->
+<div *ngIf="loading()" class="sd-loading">
+    <div class="sd-spinner"></div>
+    <p>Cargando detalle del escaneo…</p>
+</div>
+
+<!-- ── Error ────────────────────────────────────────────────────────────── -->
+<div *ngIf="!loading() && error()" class="sd-error">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <p>{{ error() }}</p>
+    <a [routerLink]="['/marketing/coupons/qr', couponId]" class="sd-back-link">← Volver al reporte</a>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div *ngIf="!loading() && !error() && scan() as s" class="sd-root">
+
+    <!-- ── Breadcrumb ──────────────────────────────────────────────────── -->
+    <nav class="sd-breadcrumb">
+        <a routerLink="/marketing/coupons" class="bc-link">Cupones</a>
+        <span class="bc-sep">/</span>
+        <a [routerLink]="['/marketing/coupons/qr', couponId]" class="bc-link">
+            {{ coupon()?.code ?? 'Reporte QR' }}
+        </a>
+        <span class="bc-sep">/</span>
+        <span class="bc-current">Escaneo {{ (s.sessionId || s.id || '').slice(-10) }}</span>
+    </nav>
+
+    <!-- ── Page header ────────────────────────────────────────────────── -->
+    <div class="sd-page-header">
+        <div class="sd-title-block">
+            <div class="sd-title-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div>
+                <h1 class="sd-title">Detalle del Escaneo</h1>
+                <p class="sd-subtitle">
+                    Viaje completo · <span class="mono dim">{{ s.sessionId || s.id }}</span>
+                </p>
+            </div>
+        </div>
+        <div class="sd-header-right">
+            <ng-container *ngIf="conversionLabel(s) as badge">
+                <span class="conversion-badge" [ngClass]="badge.css">{{ badge.text }}</span>
+            </ng-container>
+            <a [routerLink]="['/marketing/coupons/qr', couponId]" class="btn-back">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+                Volver al reporte
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Journey timeline ───────────────────────────────────────────── -->
+    <div class="sd-panel journey-panel">
+        <div class="journey-header">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="journey-header-icon"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Viaje del Usuario</span>
+            <span class="journey-time">{{ fmtDate(s.scannedAt) }}</span>
+        </div>
+
+        <div class="journey-track">
+            <ng-container *ngFor="let step of journeySteps(s); let i = index; let last = last">
+                <!-- Step node -->
+                <div class="journey-step" [class.reached]="step.reached" [class.active]="step.active" [style.--step-color]="step.color">
+                    <div class="step-node">
+                        <!-- Scan icon -->
+                        <svg *ngIf="step.icon === 'scan'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                            <rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/>
+                        </svg>
+                        <!-- Cart icon -->
+                        <svg *ngIf="step.icon === 'cart'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                        </svg>
+                        <!-- WhatsApp icon -->
+                        <svg *ngIf="step.icon === 'wa'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <!-- Checkout icon -->
+                        <svg *ngIf="step.icon === 'checkout'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                        </svg>
+                        <!-- Order icon -->
+                        <svg *ngIf="step.icon === 'order'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <!-- Unreached lock -->
+                        <div *ngIf="!step.reached" class="step-lock">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lock-ico"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                    </div>
+                    <div class="step-body">
+                        <span class="step-label">{{ step.label }}</span>
+                        <span class="step-sub">{{ step.sublabel }}</span>
+                        <span *ngIf="step.value" class="step-value" [style.color]="step.color">{{ step.value }}</span>
+                        <span *ngIf="step.time" class="step-time">{{ step.time }}</span>
+                    </div>
+                </div>
+
+                <!-- Connector arrow (not after last) -->
+                <div *ngIf="!last" class="journey-connector"
+                     [class.reached]="journeySteps(s)[i + 1].reached">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </ng-container>
+        </div>
+    </div>
+
+    <!-- ── Two column: Attribution + Cart ────────────────────────────── -->
+    <div class="sd-columns">
+
+        <!-- LEFT: Attribution & Identity -->
+        <div class="sd-col">
+
+            <!-- Identity card -->
+            <div class="sd-panel attr-panel">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Identidad del usuario
+                </div>
+                <div class="attr-grid">
+                    <div class="attr-row">
+                        <span class="ar-label">Session ID</span>
+                        <span class="ar-val mono small">{{ s.sessionId || s.id }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.userId">
+                        <span class="ar-label">User ID</span>
+                        <span class="ar-val mono small">{{ s.userId }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.email">
+                        <span class="ar-label">Email</span>
+                        <span class="ar-val accent">{{ s.email }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="!s.email">
+                        <span class="ar-label">Tipo</span>
+                        <span class="ar-val dim">Anónimo / invitado</span>
+                    </div>
+                    <div class="attr-row">
+                        <span class="ar-label">Escaneado</span>
+                        <span class="ar-val">{{ fmtDate(s.scannedAt) }}</span>
+                    </div>
+                    <div class="attr-row">
+                        <span class="ar-label">Hace</span>
+                        <span class="ar-val">{{ fmtRelative(s.scannedAt) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geo card -->
+            <div class="sd-panel attr-panel">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Geolocalización
+                </div>
+                <div class="attr-grid">
+                    <div class="attr-row" *ngIf="s.city">
+                        <span class="ar-label">Ciudad</span>
+                        <span class="ar-val">{{ s.city }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.region">
+                        <span class="ar-label">Estado</span>
+                        <span class="ar-val">{{ s.region }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.country">
+                        <span class="ar-label">País</span>
+                        <span class="ar-val">{{ s.country }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.timezone">
+                        <span class="ar-label">Zona horaria</span>
+                        <span class="ar-val small">{{ s.timezone }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.isp">
+                        <span class="ar-label">ISP / Red</span>
+                        <span class="ar-val small">{{ s.isp }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="!s.city && !s.region && !s.country">
+                        <span class="ar-val dim">Sin datos de geolocalización</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device card -->
+            <div class="sd-panel attr-panel">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    Dispositivo &amp; Navegador
+                </div>
+                <div class="attr-grid">
+                    <div class="attr-row" *ngIf="s.device">
+                        <span class="ar-label">Dispositivo</span>
+                        <span class="ar-val device-badge">{{ s.device }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="!s.device">
+                        <span class="ar-val dim">Sin datos de dispositivo</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT: Attribution + Campaign + Cart + Order -->
+        <div class="sd-col">
+
+            <!-- UTM Attribution card -->
+            <div class="sd-panel attr-panel">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Atribución &amp; UTM
+                </div>
+                <div class="attr-grid">
+                    <div class="attr-row">
+                        <span class="ar-label">Fuente (utm_source)</span>
+                        <span class="ar-val" [class.dim]="!s.source">{{ s.source || 'direct' }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.utmMedium">
+                        <span class="ar-label">Medio (utm_medium)</span>
+                        <span class="ar-val">{{ s.utmMedium }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.utmCampaign">
+                        <span class="ar-label">Campaña (utm_campaign)</span>
+                        <span class="ar-val accent">{{ s.utmCampaign }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.utmContent">
+                        <span class="ar-label">Contenido (utm_content)</span>
+                        <span class="ar-val">{{ s.utmContent }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.utmTerm">
+                        <span class="ar-label">Término (utm_term)</span>
+                        <span class="ar-val">{{ s.utmTerm }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.referrer">
+                        <span class="ar-label">Referrer</span>
+                        <span class="ar-val small break-all">{{ s.referrer }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.landingUrl">
+                        <span class="ar-label">Landing URL</span>
+                        <span class="ar-val small break-all">{{ s.landingUrl }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campaign link card (if present) -->
+            <div class="sd-panel attr-panel campaign-panel" *ngIf="s.campaignId || s.campaignName">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Campaña interna
+                </div>
+                <div class="attr-grid">
+                    <div class="attr-row" *ngIf="s.campaignName">
+                        <span class="ar-label">Nombre</span>
+                        <span class="ar-val accent">{{ s.campaignName }}</span>
+                    </div>
+                    <div class="attr-row" *ngIf="s.campaignId">
+                        <span class="ar-label">ID</span>
+                        <span class="ar-val mono small">{{ s.campaignId }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart card -->
+            <div class="sd-panel cart-panel" *ngIf="(s.cartItems?.length ?? 0) > 0 || (s.cartValue ?? 0) > 0">
+                <div class="panel-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    Carrito
+                    <span *ngIf="s.cartItems?.length" class="panel-count">({{ s.cartItems!.length }} producto{{ s.cartItems!.length > 1 ? 's' : '' }})</span>
+                    <span *ngIf="s.cartStatus" class="cart-status-pill">{{ s.cartStatus }}</span>
+                </div>
+
+                <div class="cart-items-list" *ngIf="s.cartItems && s.cartItems.length > 0">
+                    <div *ngFor="let item of s.cartItems" class="cart-item">
+                        <div class="ci-img-wrap">
+                            <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="resolveItemName(item)" class="ci-img" loading="lazy">
+                            <div *ngIf="!item.imageUrl" class="ci-img-placeholder">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </div>
+                        </div>
+                        <div class="ci-info">
+                            <span class="ci-name">{{ resolveItemName(item) }}</span>
+                            <span class="ci-sku" *ngIf="item.sku">SKU: {{ item.sku }}</span>
+                        </div>
+                        <div class="ci-meta">
+                            <span class="ci-qty">×{{ item.quantity }}</span>
+                            <span class="ci-price">{{ fmtMXN(item.price) }} c/u</span>
+                            <span class="ci-sub">{{ fmtMXN(item.subtotal) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total bar -->
+                <div class="cart-total-bar" *ngIf="(s.cartValue ?? 0) > 0">
+                    <span class="ct-label">Total del carrito</span>
+                    <span class="ct-val">{{ fmtMXN(s.cartValue!) }}</span>
+                </div>
+            </div>
+
+            <!-- Order card (if converted) -->
+            <div class="sd-panel order-panel" *ngIf="s.orderId">
+                <div class="order-glow"></div>
+                <div class="panel-title success-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ¡Orden generada! — Conversión exitosa
+                </div>
+                <div class="order-content">
+                    <div class="order-metric">
+                        <span class="om-label">ID de orden</span>
+                        <span class="om-val mono">…{{ s.orderId!.slice(-8).toUpperCase() }}</span>
+                    </div>
+                    <div class="order-metric" *ngIf="s.orderTotal">
+                        <span class="om-label">Total pagado</span>
+                        <span class="om-val revenue">{{ fmtMXN(s.orderTotal) }}</span>
+                    </div>
+                    <a [routerLink]="['/admin/orders', s.orderId]" class="btn-order-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        Ver orden completa
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+    </div><!-- end columns -->
+
+</div><!-- end sd-root -->

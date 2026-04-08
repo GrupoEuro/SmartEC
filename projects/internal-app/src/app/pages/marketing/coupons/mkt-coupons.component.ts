@@ -136,6 +136,6 @@ export class MktCouponsComponent implements OnInit {
     }
 
     adminCouponUrl(id: string): string {
-        return `/admin/coupons/${id}`;
+        return `/admin/coupons/edit/${id}`;
     }
 }

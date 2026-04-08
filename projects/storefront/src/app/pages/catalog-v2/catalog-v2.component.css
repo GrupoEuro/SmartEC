@@ -1001,3 +1001,179 @@ a.product-info {
     color: #10b981;
     font-weight: 600;
 }
+
+/* ── Results count in toolbar ────────────────────────────────────────────── */
+.results-count {
+    display: flex;
+    align-items: baseline;
+    gap: .35rem;
+}
+.results-count-num {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--theme-text-primary, #f1f5f9);
+    letter-spacing: -.03em;
+}
+.results-count-label {
+    font-size: .85rem;
+    color: var(--theme-text-secondary, #94a3b8);
+    font-weight: 400;
+}
+
+/* ── Pagination container ─────────────────────────────────────────────────── */
+.cat-pagination-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 2rem 1rem 1.5rem;
+}
+.cat-pagination-wrap.hidden-single {
+    /* Even with 1 page show a subtle separator so the page feels complete */
+    padding-top: 1.25rem;
+    padding-bottom: .5rem;
+}
+.cat-pagination-wrap.hidden-single .cat-pager,
+.cat-pagination-wrap.hidden-single .cat-back-top { display: none; }
+
+/* Context line */
+.cat-page-context {
+    font-size: .8rem;
+    color: var(--theme-text-secondary, #94a3b8);
+    margin: 0;
+    text-align: center;
+}
+.cat-page-context strong {
+    color: var(--theme-text-primary, #e2e8f0);
+    font-weight: 700;
+}
+
+/* Nav row */
+.cat-pager {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Prev / Next */
+.cat-page-prev,
+.cat-page-next {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1rem;
+    border-radius: 9px;
+    border: 1px solid rgba(59, 130, 246, .25);
+    background: rgba(30, 41, 59, .6);
+    color: #94a3b8;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s cubic-bezier(.4,0,.2,1);
+    line-height: 1;
+    white-space: nowrap;
+}
+.cat-page-prev:hover:not(:disabled),
+.cat-page-next:hover:not(:disabled) {
+    background: rgba(59, 130, 246, .12);
+    border-color: rgba(59, 130, 246, .5);
+    color: #93c5fd;
+    transform: translateY(-1px);
+}
+.cat-page-prev:disabled,
+.cat-page-next:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Page pills row */
+.cat-page-pills {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+}
+
+.cat-page-pill {
+    min-width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: transparent;
+    color: #94a3b8;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cat-page-pill:hover {
+    background: rgba(59,130,246,.1);
+    border-color: rgba(59,130,246,.3);
+    color: #93c5fd;
+}
+.cat-page-pill.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-color: #3b82f6;
+    color: #fff;
+    box-shadow: 0 0 14px rgba(59,130,246,.45);
+    transform: scale(1.05);
+    cursor: default;
+}
+
+.cat-page-ellipsis {
+    width: 32px;
+    text-align: center;
+    color: #475569;
+    font-size: .9rem;
+    letter-spacing: .05em;
+    pointer-events: none;
+}
+
+/* Back to top */
+.cat-back-top {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .85rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,.07);
+    background: rgba(255,255,255,.03);
+    color: #475569;
+    font-size: .72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s ease;
+    letter-spacing: .02em;
+}
+.cat-back-top:hover {
+    color: #94a3b8;
+    background: rgba(255,255,255,.07);
+    border-color: rgba(255,255,255,.15);
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .cat-page-prev span,
+    .cat-page-next span { display: none; }
+
+    .cat-page-prev,
+    .cat-page-next {
+        padding: .6rem .75rem;
+        min-width: 42px;
+        justify-content: center;
+    }
+
+    .cat-page-pill {
+        min-width: 36px;
+        height: 36px;
+        font-size: .8rem;
+    }
+
+    .cat-pager { gap: .25rem; }
+}
+

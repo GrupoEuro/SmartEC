@@ -58,8 +58,8 @@ export class CatalogV2Component implements OnInit, OnDestroy {
 
     // ── UI State ──────────────────────────────────────────────────────────────
     viewMode: 'grid' | 'list' = 'grid';
-    currentPage = 1;
-    itemsPerPage = 15;
+    currentPage  = 1;
+    itemsPerPage = 15;  // public so template can compute range
     totalProducts = 0;
     isLoading = true;
     isSidebarOpen = false;
@@ -479,6 +479,30 @@ export class CatalogV2Component implements OnInit, OnDestroy {
     }
 
     get totalPages(): number { return Math.ceil(this.totalProducts / this.itemsPerPage); }
+
+    /** Smart page list: always show first, last, current ±1, with -1 as ellipsis sentinel */
+    get pageNumbers(): number[] {
+        const total = this.totalPages;
+        if (total <= 1) return [];
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+        const cur = this.currentPage;
+        const pages = new Set<number>();
+        pages.add(1);
+        pages.add(total);
+        for (let i = Math.max(2, cur - 1); i <= Math.min(total - 1, cur + 1); i++) pages.add(i);
+
+        const sorted = Array.from(pages).sort((a, b) => a - b);
+        const result: number[] = [];
+        for (let i = 0; i < sorted.length; i++) {
+            if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push(-1); // ellipsis
+            result.push(sorted[i]);
+        }
+        return result;
+    }
+
+    /** Returns the min of two numbers — used in template for range display */
+    minOf(a: number, b: number): number { return Math.min(a, b); }
 
     // ==========================================================================
     // URL Sync

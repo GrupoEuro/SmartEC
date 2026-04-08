@@ -59,9 +59,8 @@ export class ProductService {
             // Build Query Constraints
             const constraints: QueryConstraint[] = [];
 
-            // 1. Basic Status Filters
-            // REMOVED STRICT ACTIVE CHECK to match legacy behavior and show all products
-            // constraints.push(where('active', '==', true));
+            // 1. Basic Status Filters — only show active products in storefront
+            constraints.push(where('active', '==', true));
 
             // 2. Category Filter
             if (filters.categoryId) {
@@ -223,9 +222,11 @@ export class ProductService {
                     products.push(this.mapProduct(doc.id, doc.data()));
                 });
 
-                // Client-side filtering logic (Copy-pasted from original for compatibility)
+                // Client-side filtering logic
                 let filtered = products;
                 if (filters) {
+                    // Only show active products
+                    filtered = filtered.filter(p => p.active !== false);
                     if (filters.categoryId) filtered = filtered.filter(p => p.categoryId === filters.categoryId);
                     if (filters.brands) filtered = filtered.filter(p => filters.brands!.includes(p.brand));
                     if (filters.minPrice) filtered = filtered.filter(p => p.price >= filters.minPrice!);

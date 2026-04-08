@@ -68,6 +68,7 @@ export class ProductListComponent implements OnInit {
 
     // State
     isDeleting = false;
+    isTogglingActive = new Set<string>(); // tracks per-row pending state
 
     // Subjects for reactive filtering
     private filterSubject = new BehaviorSubject<void>(undefined);
@@ -270,79 +271,87 @@ export class ProductListComponent implements OnInit {
     // Bulk actions
     async bulkActivate() {
         if (this.selectedProducts.size === 0) return;
-
         const confirmed = await this.confirmDialog.confirm({
-            title: `Activate ${this.selectedProducts.size} products?`,
-            message: 'This will make them visible in the catalog.',
-            confirmText: 'Activate',
+            title: `¿Activar ${this.selectedProducts.size} producto(s)?`,
+            message: 'Los productos serán visibles en el catálogo.',
+            confirmText: 'Activar',
             type: 'info'
         });
-
         if (!confirmed) return;
-
         try {
             for (const id of this.selectedProducts) {
                 await this.productService.updateProduct(id, { active: true });
             }
-            this.toast.success(`${this.selectedProducts.size} products activated`);
+            this.toast.success(`${this.selectedProducts.size} producto(s) activado(s)`);
             this.selectedProducts.clear();
             this.selectAll = false;
             this.loadData();
         } catch (error) {
             console.error('Error activating products:', error);
-            this.toast.error('Failed to activate products');
+            this.toast.error('Error al activar productos');
         }
     }
 
     async bulkDeactivate() {
         if (this.selectedProducts.size === 0) return;
-
         const confirmed = await this.confirmDialog.confirm({
-            title: `Deactivate ${this.selectedProducts.size} products?`,
-            message: 'This will hide them from the catalog.',
-            confirmText: 'Deactivate',
+            title: `¿Desactivar ${this.selectedProducts.size} producto(s)?`,
+            message: 'Los productos quedarán ocultos del catálogo.',
+            confirmText: 'Desactivar',
             type: 'warning'
         });
-
         if (!confirmed) return;
-
         try {
             for (const id of this.selectedProducts) {
                 await this.productService.updateProduct(id, { active: false });
             }
-            this.toast.success(`${this.selectedProducts.size} products deactivated`);
+            this.toast.success(`${this.selectedProducts.size} producto(s) desactivado(s)`);
             this.selectedProducts.clear();
             this.selectAll = false;
             this.loadData();
         } catch (error) {
             console.error('Error deactivating products:', error);
-            this.toast.error('Failed to deactivate products');
+            this.toast.error('Error al desactivar productos');
         }
     }
 
     async bulkDelete() {
         if (this.selectedProducts.size === 0) return;
-
         const confirmed = await this.confirmDialog.confirm({
-            title: `Delete ${this.selectedProducts.size} products?`,
-            message: 'This action cannot be undone.',
-            confirmText: 'Delete',
+            title: `¿Eliminar ${this.selectedProducts.size} producto(s)?`,
+            message: 'Esta acción no se puede deshacer.',
+            confirmText: 'Eliminar',
             type: 'danger'
         });
-
         if (!confirmed) return;
-
         try {
             for (const id of this.selectedProducts) {
                 await this.productService.deleteProduct(id);
             }
-            this.toast.success(`${this.selectedProducts.size} products deleted`);
+            this.toast.success(`${this.selectedProducts.size} producto(s) eliminado(s)`);
             this.selectedProducts.clear();
             this.selectAll = false;
             this.loadData();
         } catch (error) {
             console.error('Error deleting products:', error);
-            this.toast.error('Failed to delete products');
+            this.toast.error('Error al eliminar productos');
+        }
+    }
+
+    // ── Single product toggle active ────────────────────────────────────────
+    async toggleActive(product: Product) {
+        if (!product.id || this.isTogglingActive.has(product.id)) return;
+        this.isTogglingActive.add(product.id);
+        const newState = !product.active;
+        try {
+            await this.productService.updateProduct(product.id, { active: newState });
+            this.toast.success(newState ? 'Producto activado' : 'Producto desactivado');
+            this.loadData();
+        } catch (err) {
+            console.error('Error toggling product active state:', err);
+            this.toast.error('Error al cambiar estado del producto');
+        } finally {
+            this.isTogglingActive.delete(product.id!);
         }
     }
 

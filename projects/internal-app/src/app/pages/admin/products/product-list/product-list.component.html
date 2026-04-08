@@ -10,19 +10,19 @@
         </div>
 
         <div class="header-right" style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn-ghost" (click)="downloadTemplate()" title="Download Excel Template">
+            <button class="btn-ghost" (click)="downloadTemplate()" title="Descargar plantilla Excel">
                 <span class="icon">📥</span>
-                <span class="text">Template</span>
+                <span class="text">Plantilla</span>
             </button>
             <button class="btn-ghost" (click)="fileInput.click()" [disabled]="isImporting">
                 <span class="icon">📂</span>
-                <span class="text">{{ isImporting ? 'Processing...' : 'Import' }}</span>
+                <span class="text">{{ isImporting ? 'Procesando...' : 'Importar' }}</span>
             </button>
             <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx, .xls" style="display: none;">
 
-            <button class="btn-ghost" (click)="handleExport()" title="Export filtered products">
+            <button class="btn-ghost" (click)="handleExport()" title="Exportar productos filtrados">
                 <span class="icon">📤</span>
-                <span class="text">Export</span>
+                <span class="text">Exportar</span>
             </button>
 
             <button class="btn-primary-action" routerLink="/admin/products/new">
@@ -32,130 +32,177 @@
         </div>
     </header>
 
-    <!-- Full Width Main Area (No Sidebar) -->
+    <!-- Full Width Main Area -->
     <main class="product-grid-view">
-
 
         <!-- Unified Search & Filter Toolbar -->
         <div class="table-toolbar">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-                    placeholder="Search by name, brand, or SKU...">
+                    placeholder="Buscar por nombre, marca o SKU...">
             </div>
             <select class="filter-select" [(ngModel)]="selectedCategory" (ngModelChange)="onFilterChange()">
-                <option value="">All Categories</option>
-                <option *ngFor="let cat of categories$ | async" [value]="cat.id">{{ cat.name.en }}</option>
+                <option value="">Todas las categorías</option>
+                <option *ngFor="let cat of categories$ | async" [value]="cat.id">{{ cat.name.es || cat.name.en }}</option>
+            </select>
+            <select class="filter-select" [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
+                <option value="">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
             </select>
             <select class="filter-select" [(ngModel)]="selectedStockStatus" (ngModelChange)="onFilterChange()">
-                <option value="">All Stock</option>
-                <option value="in-stock">In Stock</option>
-                <option value="low-stock">Low Stock</option>
-                <option value="out-of-stock">Out of Stock</option>
+                <option value="">Todo el stock</option>
+                <option value="in-stock">En stock</option>
+                <option value="low-stock">Stock bajo</option>
+                <option value="out-of-stock">Sin stock</option>
             </select>
-            <button class="btn-clear-filters" *ngIf="selectedCategory || selectedStockStatus" (click)="resetFilters()">
-                Clear Filters
+            <button class="btn-clear-filters" *ngIf="selectedCategory || selectedStatus || selectedStockStatus" (click)="resetFilters()">
+                Limpiar filtros
             </button>
         </div>
 
         <!-- Bulk Actions Bar (Conditional) -->
         <div class="bulk-actions-barglass" *ngIf="selectedCount > 0">
-            <span class="selected-text">{{ selectedCount }} selected</span>
+            <span class="selected-text">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ selectedCount }} seleccionado{{ selectedCount !== 1 ? 's' : '' }}
+            </span>
+            <div class="bulk-divider"></div>
             <div class="actions">
-                <button (click)="bulkActivate()">Activate</button>
-                <button (click)="bulkDeactivate()">Deactivate</button>
-                <button class="danger" (click)="bulkDelete()">Delete</button>
+                <button class="bulk-btn bulk-btn--activate" (click)="bulkActivate()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Activar
+                </button>
+                <button class="bulk-btn bulk-btn--deactivate" (click)="bulkDeactivate()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Desactivar
+                </button>
+                <div class="bulk-divider"></div>
+                <button class="bulk-btn bulk-btn--delete" (click)="bulkDelete()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    Eliminar
+                </button>
             </div>
         </div>
 
         <div class="table-glass-container" *ngIf="(displayedProducts$ | async) as products; else loading">
             <table class="rich-table">
                 <thead>
-                    <!-- Column Headers -->
                     <tr>
                         <th class="w-12">
                             <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll(products)">
                         </th>
                         <th class="w-20">{{ 'ADMIN.PRODUCTS.TH_IMAGE' | translate }}</th>
                         <th class="sortable" (click)="onSortChange('name')">
-                            Product Details <span *ngIf="sortField === 'name'">{{ sortDirection === 'asc' ? '▲' :
-                                '▼' }}</span>
+                            Producto <span *ngIf="sortField === 'name'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
                         </th>
-                        <th>Category</th>
+                        <th>Categoría</th>
                         <th class="sortable text-right" (click)="onSortChange('price')">
-                            Price <span *ngIf="sortField === 'price'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                }}</span>
+                            Precio <span *ngIf="sortField === 'price'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
                         </th>
                         <th class="sortable" (click)="onSortChange('stock')">
-                            Stock Status <span *ngIf="sortField === 'stock'">{{ sortDirection === 'asc' ? '▲' : '▼'
-                                }}</span>
+                            Stock <span *ngIf="sortField === 'stock'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
                         </th>
-                        <th>Actions</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let product of products" [class.selected]="isProductSelected(product.id)">
+                    <tr *ngFor="let product of products"
+                        [class.selected]="isProductSelected(product.id)"
+                        [class.row-inactive]="!product.active">
+
+                        <!-- Checkbox -->
                         <td>
                             <input type="checkbox" *ngIf="product.id" [checked]="isProductSelected(product.id)"
                                 (change)="toggleProductSelection(product.id)">
                         </td>
+
+                        <!-- Image -->
                         <td>
-                            <div class="img-thumbnail">
+                            <div class="img-thumbnail" [class.img-inactive]="!product.active">
                                 <img [src]="product.images.main || 'https://firebasestorage.googleapis.com/v0/b/tiendapraxis.firebasestorage.app/o/media%2Fproducts%2F1768533545145_zdh9yl.jpg?alt=media&token=968a5d90-cd5a-4d34-bf77-36472d0376c3'"
-                                    [alt]="product.name.en">
+                                    [alt]="product.name.es || product.name.en">
                             </div>
                         </td>
+
+                        <!-- Product Details -->
                         <td>
                             <div class="product-identity">
-                                <span class="product-name" [routerLink]="['/admin/products', product.id, 'edit']">{{
-                                    product.name.en }}</span>
-                                <span class="product-sku">{{ product.sku }} • {{ product.brand }}</span>
+                                <span class="product-name" [routerLink]="['/admin/products', product.id, 'edit']">
+                                    {{ product.name.es || product.name.en }}
+                                </span>
+                                <span class="product-sku">{{ product.sku }} · {{ product.brand }}</span>
                                 <div class="badges-row">
-                                    <span class="mini-badge featured" *ngIf="product.featured">Featured</span>
-                                    <span class="mini-badge new" *ngIf="product.newArrival">New</span>
+                                    <span class="mini-badge featured" *ngIf="product.featured">Destacado</span>
+                                    <span class="mini-badge new" *ngIf="product.newArrival">Nuevo</span>
+                                    <span class="mini-badge inactive" *ngIf="!product.active">Inactivo</span>
                                 </div>
                             </div>
                         </td>
+
+                        <!-- Category -->
                         <td>
                             <span class="category-badge" [attr.data-category]="product.category || 'Tires'">
-                                {{ product.category || 'Tires' }}
+                                {{ product.category || 'Neumáticos' }}
                             </span>
                         </td>
+
+                        <!-- Price -->
                         <td class="text-right">
                             <div class="price-stack">
                                 <span class="current-price">${{ product.price | number:'1.2-2' }}</span>
-                                <span class="compare-price" *ngIf="product.compareAtPrice">${{
-                                    product.compareAtPrice | number:'1.2-2' }}</span>
+                                <span class="compare-price" *ngIf="product.compareAtPrice">${{ product.compareAtPrice | number:'1.2-2' }}</span>
                             </div>
                         </td>
+
+                        <!-- Stock -->
                         <td>
                             <div class="stock-indicator">
-                                <div class="stock-pill" [class.success]="product.inStock && product.stockQuantity > 5"
-                                    [class.warning]="product.inStock && product.stockQuantity <= 5"
+                                <div class="stock-pill"
+                                    [class.success]="product.inStock && product.stockQuantity > 5"
+                                    [class.warning]="product.inStock && product.stockQuantity <= 5 && product.stockQuantity > 0"
                                     [class.danger]="!product.inStock || product.stockQuantity === 0">
                                     <span class="dot"></span>
                                     <span class="status-text">
-                                        {{ product.stockQuantity > 0 ? product.stockQuantity + ' Units' : 'Out of
-                                        Stock' }}
+                                        {{ product.stockQuantity > 0 ? product.stockQuantity + ' uds.' : 'Sin stock' }}
                                     </span>
                                 </div>
                             </div>
                         </td>
+
+                        <!-- Active toggle (new column) -->
+                        <td class="text-center">
+                            <button class="toggle-active-btn"
+                                    [class.is-active]="product.active"
+                                    [class.is-loading]="product.id && isTogglingActive.has(product.id)"
+                                    [disabled]="product.id && isTogglingActive.has(product.id)"
+                                    (click)="toggleActive(product)"
+                                    [title]="product.active ? 'Haz clic para desactivar' : 'Haz clic para activar'">
+                                <span class="toggle-track">
+                                    <span class="toggle-thumb"></span>
+                                </span>
+                                <span class="toggle-label">{{ product.active ? 'Activo' : 'Inactivo' }}</span>
+                            </button>
+                        </td>
+
+                        <!-- Row Actions -->
                         <td>
                             <div class="row-actions">
-                                <button class="btn-icon-ghost" [routerLink]="['/admin/products', product.id, 'edit']"
-                                    title="Edit">
-                                    ✏️
+                                <button class="btn-icon-ghost" [routerLink]="['/admin/products', product.id, 'edit']" title="Editar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 </button>
-                                <button class="btn-icon-ghost danger" (click)="deleteProduct(product)" title="Delete">
-                                    🗑️
+                                <button class="btn-icon-ghost danger" (click)="deleteProduct(product)" title="Eliminar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                                 </button>
                             </div>
                         </td>
+
                     </tr>
                     <tr *ngIf="products.length === 0">
-                        <td colspan="7" class="empty-state">
-                            No products found matching your criteria.
+                        <td colspan="8" class="empty-state">
+                            No se encontraron productos con los filtros actuales.
                         </td>
                     </tr>
                 </tbody>
@@ -174,7 +221,7 @@
     <ng-template #loading>
         <div class="glass-loader">
             <div class="spinner"></div>
-            Loading Products...
+            Cargando productos...
         </div>
     </ng-template>
 

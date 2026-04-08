@@ -59,8 +59,10 @@ export class ProductService {
             // Build Query Constraints
             const constraints: QueryConstraint[] = [];
 
-            // 1. Basic Status Filters — only show active products in storefront
-            constraints.push(where('active', '==', true));
+            // 1. Active filter: applied CLIENT-SIDE after fetch.
+            // NOTE: Cannot use Firestore where('active','==',true) because legacy products
+            // were created without the 'active' field — they would be invisible.
+            // Client-side: show all except explicit active===false.
 
             // 2. Category Filter
             if (filters.categoryId) {
@@ -153,6 +155,11 @@ export class ProductService {
             // Note: This is imperfect for pagination (might return empty page if all filtered out)
             // Ideally, search should be a separate Algolia/Typesense call.
             let resultProducts = products;
+
+            // Hide explicitly deactivated products (active === false).
+            // Products with no 'active' field (legacy) are treated as active.
+            resultProducts = resultProducts.filter(p => p.active !== false);
+
             if (filters.searchQuery) {
                 const qLower = filters.searchQuery.toLowerCase();
                 resultProducts = products.filter(p =>

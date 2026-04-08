@@ -76,12 +76,12 @@
 
                 <!-- In Stock Toggle -->
                 <div class="filter-section">
-                    <label class="filter-label">Disponibilidad</label>
+                    <label class="filter-label">{{ 'ADMIN.CATALOG.AVAILABILITY' | translate }}</label>
                     <label class="checkbox-label instock-toggle" [class.active]="!!filters.inStock">
                         <input type="checkbox" [checked]="!!filters.inStock" (change)="toggleInStock()">
                         <span class="checkbox-custom"></span>
                         <span class="label-text">
-                            Solo en stock
+                            {{ 'ADMIN.CATALOG.IN_STOCK_ONLY' | translate }}
                             <span class="count-badge instock-count">({{ inStockCount }})</span>
                         </span>
                     </label>
@@ -136,7 +136,7 @@
             <div class="catalog-top-bar">
                 <div class="results-count">
                     <span class="results-count-num">{{ totalProducts }}</span>
-                    <span class="results-count-label">{{ totalProducts === 1 ? 'producto encontrado' : 'productos encontrados' }}</span>
+                    <span class="results-count-label">{{ totalProducts === 1 ? ('ADMIN.CATALOG.PRODUCT_FOUND_SINGULAR' | translate) : ('ADMIN.CATALOG.PRODUCT_FOUND_PLURAL' | translate) }}</span>
                 </div>
                 <div class="top-bar-actions">
                     <select class="sort-select" [(ngModel)]="sortBy" (change)="onSortChange(sortBy)">
@@ -147,7 +147,7 @@
                     </select>
                     <div class="view-toggle">
                         <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'"
-                            title="Grid View">
+                            [title]="'ADMIN.CATALOG.GRID_VIEW' | translate">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="3" width="7" height="7"></rect>
@@ -157,7 +157,7 @@
                             </svg>
                         </button>
                         <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'"
-                            title="List View">
+                            [title]="'ADMIN.CATALOG.LIST_VIEW' | translate">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -201,8 +201,8 @@
                     <!-- Product Cards -->
                     <div *ngFor="let product of products; trackBy: trackByProduct; let i = index" class="product-card">
                         <div class="product-badges">
-                            <span *ngIf="product.newArrival" class="badge badge-new">New</span>
-                            <span *ngIf="product.bestSeller" class="badge badge-bestseller">Hot</span>
+                            <span *ngIf="product.newArrival" class="badge badge-new">{{ 'ADMIN.CATALOG.BADGE_NEW' | translate }}</span>
+                            <span *ngIf="product.bestSeller" class="badge badge-bestseller">{{ 'ADMIN.CATALOG.BADGE_HOT' | translate }}</span>
                         </div>
 
                         <div class="product-image">
@@ -214,7 +214,7 @@
                             <button class="btn-wishlist-card"
                                     [class.is-wishlisted]="wishlistService.isInWishlist(product.id!)"
                                     (click)="toggleWishlist(product, $event)"
-                                    [title]="wishlistService.isInWishlist(product.id!) ? 'Quitar de favoritos' : 'Agregar a favoritos'">
+                                    [title]="wishlistService.isInWishlist(product.id!) ? ('ADMIN.CATALOG.REMOVE_FAVORITE' | translate) : ('ADMIN.CATALOG.ADD_FAVORITE' | translate)">
                                 <svg width="16" height="16" viewBox="0 0 24 24"
                                      [attr.fill]="wishlistService.isInWishlist(product.id!) ? 'currentColor' : 'none'"
                                      stroke="currentColor" stroke-width="2">
@@ -285,8 +285,8 @@
                     <div class="combos-title-group">
                         <span class="combos-icon">🎁</span>
                         <div>
-                            <h2 class="combos-title">Combos &amp; Kits</h2>
-                            <p class="combos-subtitle">Bundle products — save more buying together</p>
+                            <h2 class="combos-title">{{ 'ADMIN.CATALOG.COMBOS_TITLE' | translate }}</h2>
+                            <p class="combos-subtitle">{{ 'ADMIN.CATALOG.COMBO_SUBTITLE' | translate }}</p>
                         </div>
                     </div>
                 </div>
@@ -311,11 +311,11 @@
 
                             <!-- Info -->
                             <div class="product-info">
-                                <div class="product-brand">Combo</div>
+                                <div class="product-brand">{{ 'ADMIN.CATALOG.COMBO_LABEL' | translate }}</div>
                                 <h3 class="product-name">
                                     {{ languageService.currentLang() === 'en' ? kit.name.en : kit.name.es }}
                                 </h3>
-                                <p class="combo-items-count">🧩 {{ kit.components.length }} productos incluidos</p>
+                                <p class="combo-items-count">🧩 {{ kit.components.length }} {{ 'ADMIN.CATALOG.PRODUCTS_INCLUDED' | translate }}</p>
 
                                 <div class="product-price">
                                     <span *ngIf="kit.compareAtPrice && kit.compareAtPrice > kit.price" class="original-price">
@@ -325,22 +325,22 @@
                                         <span class="current-price">{{ kit.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
                                         <span class="price-suffix">MXN</span>
                                     </div>
-                                    <span class="tax-info">IVA incluido</span>
+                                    <span class="tax-info">{{ 'ADMIN.CATALOG.IVA_INCLUDED' | translate }}</span>
                                 </div>
 
                                 <div class="combo-includes" *ngIf="kit.components.length > 0">
-                                    <div class="combo-includes-label">Incluye:</div>
+                                    <div class="combo-includes-label">{{ 'ADMIN.CATALOG.COMBO_INCLUDES' | translate }}:</div>
                                     <div class="combo-includes-list">
                                         <span *ngFor="let comp of kit.components.slice(0, 3)" class="combo-item-chip">
                                             {{ comp.quantity }}× {{ comp.productName | slice:0:22 }}{{ (comp.productName?.length || 0) > 22 ? '...' : '' }}
                                         </span>
                                         <span *ngIf="kit.components.length > 3" class="combo-item-chip more">
-                                            +{{ kit.components.length - 3 }} más
+                                            +{{ kit.components.length - 3 }} {{ 'ADMIN.CATALOG.MORE' | translate }}
                                         </span>
                                     </div>
                                 </div>
 
-                                <button class="btn-add-cart-card">Ver Combo</button>
+                                <button class="btn-add-cart-card">{{ 'ADMIN.CATALOG.COMBO_VIEW_BTN' | translate }}</button>
                             </div>
                         </div>
                     </div>
@@ -353,9 +353,9 @@
 
                 <!-- Context line -->
                 <p class="cat-page-context">
-                    Mostrando
+                    {{ 'ADMIN.CATALOG.SHOWING' | translate }}
                     <strong>{{ (currentPage - 1) * itemsPerPage + 1 }}–{{ minOf(currentPage * itemsPerPage, totalProducts) }}</strong>
-                    de <strong>{{ totalProducts }}</strong> productos
+                    {{ 'ADMIN.CATALOG.OF' | translate }} <strong>{{ totalProducts }}</strong> {{ 'ADMIN.CATALOG.PRODUCTS' | translate }}
                 </p>
 
                 <nav class="cat-pager" aria-label="Paginación de productos">
@@ -364,13 +364,13 @@
                     <button class="cat-page-prev"
                             [disabled]="currentPage === 1"
                             (click)="onPageChange(currentPage - 1)"
-                            aria-label="Página anterior">
+                            [attr.aria-label]="'ADMIN.CATALOG.PREVIOUS_PAGE' | translate">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                              stroke-linejoin="round" width="16" height="16">
                             <polyline points="15 18 9 12 15 6"/>
                         </svg>
-                        <span>Anterior</span>
+                        <span>{{ 'ADMIN.CATALOG.PREVIOUS' | translate }}</span>
                     </button>
 
                     <!-- Page pills -->
@@ -393,8 +393,8 @@
                     <button class="cat-page-next"
                             [disabled]="currentPage === totalPages"
                             (click)="onPageChange(currentPage + 1)"
-                            aria-label="Siguiente página">
-                        <span>Siguiente</span>
+                            [attr.aria-label]="'ADMIN.CATALOG.NEXT_PAGE' | translate">
+                        <span>{{ 'ADMIN.CATALOG.NEXT' | translate }}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                              stroke-linejoin="round" width="16" height="16">
@@ -406,13 +406,13 @@
 
                 <!-- Back to top -->
                 @if (currentPage > 1 || totalPages > 1) {
-                    <button class="cat-back-top" (click)="onPageChange(currentPage)" aria-label="Volver arriba">
+                    <button class="cat-back-top" (click)="onPageChange(currentPage)" [attr.aria-label]="'ADMIN.CATALOG.BACK_TOP' | translate">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" stroke-width="2" stroke-linecap="round"
                              stroke-linejoin="round" width="14" height="14">
                             <polyline points="18 15 12 9 6 15"/>
                         </svg>
-                        Volver arriba
+                        {{ 'ADMIN.CATALOG.BACK_TOP' | translate }}
                     </button>
                 }
 

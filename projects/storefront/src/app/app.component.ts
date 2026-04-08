@@ -56,6 +56,9 @@ export class AppComponent implements OnInit {
         this.injector.get(AnalyticsService).init();
         const { CampaignService } = await import('./core/services/campaign.service');
         this.injector.get(CampaignService).init();
+        // Load tracking pixels from Firestore config and inject enabled scripts
+        const { TrackingService } = await import('./core/services/tracking.service');
+        this.injector.get(TrackingService).init();
         // Clean up listeners
         ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
           document.removeEventListener(e, initDeferredServices);

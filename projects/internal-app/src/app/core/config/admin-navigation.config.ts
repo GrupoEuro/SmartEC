@@ -194,6 +194,13 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 route: '/admin/integrations'
             },
             {
+                id: 'tracking',
+                title: 'Tracking & Pixels',
+                icon: 'bar-chart-2',
+                route: '/admin/tracking',
+                badge: { text: 'Marketing', color: 'bg-violet-600' }
+            },
+            {
                 id: 'logs',
                 title: 'ADMIN.SIDEBAR.LOGS',
                 icon: 'activity',

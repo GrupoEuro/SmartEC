@@ -241,6 +241,13 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
+            {
+                path: 'tracking',
+                loadComponent: () => import('./settings/tracking-pixels/tracking-pixels.component').then(m => m.TrackingPixelsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Tracking & Pixels'
+            },
             // ── Marketing (Campaigns remain here for Phase 1) ─────────────────────
             // Abandoned Carts → moved to /marketing/abandoned-carts
             // Attribution    → moved to /marketing/attribution

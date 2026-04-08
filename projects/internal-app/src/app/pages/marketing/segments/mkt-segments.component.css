@@ -363,3 +363,51 @@
     white-space: nowrap;
 }
 .seg-export-btn:hover { background: rgba(16,185,129,.18); transform: translateY(-1px); }
+
+/* ── Segment distribution chart ─────────────────────────── */
+.seg-chart-panel {
+    background: var(--theme-bg-surface);
+    border: 1px solid var(--theme-border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+}
+.seg-chart-title {
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: #52525b; margin-bottom: 1rem;
+}
+.seg-chart-bars { display: flex; flex-direction: column; gap: .55rem; }
+.seg-chart-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 90px;
+    align-items: center;
+    gap: .75rem;
+    padding: .35rem .5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.seg-chart-row:hover { background: rgba(255,255,255,.03); }
+.seg-chart-row.active { background: rgba(255,255,255,.05); }
+
+.seg-chart-label {
+    font-size: .78rem; font-weight: 600;
+    color: var(--theme-text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.seg-chart-bar-wrap {
+    height: 8px;
+    background: rgba(255,255,255,.07);
+    border-radius: 99px; overflow: hidden;
+}
+.seg-chart-bar {
+    height: 100%; border-radius: 99px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+    opacity: .85;
+    min-width: 3px;
+}
+.seg-chart-count {
+    font-size: .78rem; font-weight: 700;
+    text-align: right; white-space: nowrap;
+}
+.seg-chart-pct { font-weight: 400; color: #71717a; font-size: .72rem; }

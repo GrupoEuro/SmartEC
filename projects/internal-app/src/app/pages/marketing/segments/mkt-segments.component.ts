@@ -171,6 +171,19 @@ export class MktSegmentsComponent {
         return t > 0 ? this.totalRevenue() / t : 0;
     });
 
+    readonly segmentChart = computed(() => {
+        const counts = this.segmentCounts();
+        const total  = this.customers().length || 1;
+        return this.segmentKeys.map(seg => ({
+            seg,
+            label: SEGMENT_META[seg].label,
+            color: SEGMENT_META[seg].color,
+            bg:    SEGMENT_META[seg].bg,
+            count: counts[seg] ?? 0,
+            pct:   Math.round(((counts[seg] ?? 0) / total) * 100),
+        })).sort((a, b) => b.count - a.count);
+    });
+
     getMeta(seg: RfmSegment | 'all') {
         if (seg === 'all') return null;
         return SEGMENT_META[seg];
@@ -305,9 +318,9 @@ export class MktSegmentsComponent {
 
     daysAgo(d: Date): string {
         const days = Math.floor((Date.now() - d.getTime()) / 86400000);
-        if (days === 0) return 'Today';
-        if (days === 1) return 'Yesterday';
-        return `${days}d ago`;
+        if (days === 0) return 'Hoy';
+        if (days === 1) return 'Ayer';
+        return `Hace ${days}d`;
     }
 
     /** Navigate to campaign builder pre-filled with the active segment */

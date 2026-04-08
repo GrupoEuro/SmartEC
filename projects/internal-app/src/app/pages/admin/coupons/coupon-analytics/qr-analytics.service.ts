@@ -368,4 +368,86 @@ export class QrAnalyticsService {
         const snap = await getDoc(doc(this.fs, `coupons/${couponId}`));
         return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     }
+
+    // ── Load a single scan by document ID ────────────────────────────────────
+    /**
+     * Fetches a single scan document directly (O(1) read) then enriches it.
+     * Falls back to searching by sessionId if the docId lookup returns nothing.
+     */
+    async getScan(couponId: string, scanId: string): Promise<QrScan | null> {
+        // 1. Try direct doc fetch
+        const directSnap = await getDoc(doc(this.fs, `coupons/${couponId}/scans/${scanId}`));
+        if (directSnap.exists()) {
+            const scans = await this.mapSnap([directSnap as any]);
+            await this.enrichScans(scans);
+            return scans[0] ?? null;
+        }
+        // 2. Fallback: search by sessionId (scanId might BE the sessionId)
+        const snap = await getDocs(
+            query(
+                collection(this.fs, `coupons/${couponId}/scans`),
+                where('sessionId', '==', scanId),
+                limit(1),
+            )
+        );
+        if (snap.empty) return null;
+        const scans = await this.mapSnap(snap.docs);
+        await this.enrichScans(scans);
+        return scans[0] ?? null;
+    }
+
+    /** Map raw Firestore docs to QrScan objects (extracted from getScansForCoupon) */
+    private mapSnap(docs: any[]): QrScan[] {
+        return docs.map((d: any) => {
+            const data = d.data();
+            const deviceObj = data['device'];
+            let deviceLabel: string | undefined;
+            if (typeof deviceObj === 'string') {
+                deviceLabel = deviceObj;
+            } else if (deviceObj && typeof deviceObj === 'object') {
+                deviceLabel = deviceObj['mobile'] ? 'Mobile' : 'Desktop';
+                const ua: string = deviceObj['userAgent'] ?? '';
+                if (ua) {
+                    const browser = /Chrome\//.test(ua)  ? 'Chrome'
+                                  : /Firefox\//.test(ua) ? 'Firefox'
+                                  : /Safari\//.test(ua)  ? 'Safari'
+                                  : /Edge\//.test(ua)    ? 'Edge'
+                                  : '';
+                    if (browser) deviceLabel += ` · ${browser}`;
+                }
+            }
+            const city: string | undefined =
+                data['geo']?.city ?? data['attribution']?.city ?? data['city'];
+            const utm    = data['utm'] ?? {};
+            const source = utm['utm_source'] ?? utm['source'] ?? data['attribution']?.source ?? data['source'];
+            const referrer = data['referrer'] ?? data['referrerDomain'] ?? data['attribution']?.referrer;
+            const geo    = data['geo'] ?? {};
+            const utmObj = data['utm'] ?? {};
+            return {
+                id:           d.id,
+                sessionId:    data['sessionId'] ?? d.id,
+                scannedAt:    toMs(data['scannedAt']),
+                userId:       data['userId'],
+                email:        data['email'],
+                converted:    data['converted'] === true,
+                device:       deviceLabel,
+                city:         city ?? geo['city'],
+                region:       geo['region'],
+                country:      geo['country'],
+                timezone:     geo['timezone'] ?? (deviceObj && typeof deviceObj === 'object' ? deviceObj['timezone'] : undefined),
+                isp:          geo['org'],
+                source,
+                utmMedium:    utmObj['utm_medium'],
+                utmCampaign:  utmObj['utm_campaign'],
+                utmContent:   utmObj['utm_content'],
+                utmTerm:      utmObj['utm_term'],
+                referrer,
+                referrerDomain: data['referrerDomain'],
+                landingUrl:   data['landingUrl'],
+                campaignId:   data['campaignId'],
+                campaignName: data['campaignName'],
+            } as QrScan;
+        });
+    }
 }
+

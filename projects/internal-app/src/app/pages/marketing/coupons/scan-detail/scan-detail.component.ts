@@ -48,14 +48,13 @@ export class ScanDetailComponent implements OnInit {
     private async load() {
         this.loading.set(true);
         try {
-            const [coupon, scans] = await Promise.all([
+            const [coupon, scan] = await Promise.all([
                 this.svc.getCoupon(this.couponId),
-                this.svc.getScansForCoupon(this.couponId),
+                this.svc.getScan(this.couponId, this.scanId),
             ]);
             this.coupon.set(coupon);
-            const found = scans.find(s => s.id === this.scanId || s.sessionId === this.scanId);
-            if (!found) { this.error.set('Escaneo no encontrado.'); return; }
-            this.scan.set(found);
+            if (!scan) { this.error.set('Escaneo no encontrado.'); return; }
+            this.scan.set(scan);
         } catch (e: any) {
             this.error.set('Error al cargar el escaneo.');
             console.error(e);
@@ -63,6 +62,11 @@ export class ScanDetailComponent implements OnInit {
             this.loading.set(false);
         }
     }
+
+    back() {
+        this.router.navigate(['/marketing/coupons/qr', this.couponId]);
+    }
+
 
     // ── Journey builder ────────────────────────────────────────────────────────
 

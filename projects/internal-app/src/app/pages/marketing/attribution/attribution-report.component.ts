@@ -6,7 +6,7 @@ import { AttributionReportService, AttributionSummary, AttributionRow } from './
 
 type SortCol = 'sessions' | 'cartAdds' | 'orders' | 'revenue' | 'conversionRate' | 'avgOrderValue';
 type SortDir = 'asc' | 'desc';
-export type AttrTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD';
+export type AttrTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD' | 'L6M' | 'L12M' | 'ALL';
 
 @Component({
     selector: 'app-attribution-report',
@@ -29,6 +29,9 @@ export class AttributionReportComponent implements OnInit {
         { value: 'MTD',        labelKey: 'ATTRIBUTION.TF.MTD'        },
         { value: 'PAST_MONTH', labelKey: 'ATTRIBUTION.TF.PAST_MONTH' },
         { value: 'YTD',        labelKey: 'ATTRIBUTION.TF.YTD'        },
+        { value: 'L6M',        labelKey: 'ATTRIBUTION.TF.L6M'        },
+        { value: 'L12M',       labelKey: 'ATTRIBUTION.TF.L12M'       },
+        { value: 'ALL',        labelKey: 'ATTRIBUTION.TF.ALL'        },
     ];
 
     // ── Computed ─────────────────────────────────────────────────────────────
@@ -98,7 +101,44 @@ export class AttributionReportComponent implements OnInit {
             case 'MTD':        return [new Date(y, m, 1), now];
             case 'PAST_MONTH': return [new Date(y, m - 1, 1), new Date(y, m, 0, 23, 59, 59)];
             case 'YTD':        return [new Date(y, 0, 1), now];
+            case 'L6M':        { const d = new Date(now); d.setMonth(d.getMonth() - 6);  return [d, now]; }
+            case 'L12M':       { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return [d, now]; }
+            case 'ALL':        return [new Date(0), now];
         }
+    }
+
+    // ── CSV Export ────────────────────────────────────────────────────────────
+    exportCsv() {
+        const rows = this.sortedRows();
+        if (!rows.length) return;
+        const s = this.summary()!;
+        const headers = [
+            'Canal', 'Medio', 'Campaña', 'Sesiones', 'Carritos',
+            'Órdenes', 'Ingresos (MXN)', 'AOV (MXN)', 'Conv. Rate', '% Ingresos'
+        ];
+        const lines = rows.map(r => [
+            `"${r.channel}"`,
+            `"${r.medium}"`,
+            `"${r.campaign}"`,
+            r.hasWebFunnel ? r.sessions : '',
+            r.hasWebFunnel ? r.cartAdds : '',
+            r.orders,
+            r.revenue.toFixed(2),
+            r.avgOrderValue.toFixed(2),
+            r.hasWebFunnel ? this.fmtPct(r.conversionRate) : 'N/A',
+            s.totalRevenue > 0 ? ((r.revenue / s.totalRevenue) * 100).toFixed(1) + '%' : '0%',
+        ].join(','));
+        const tf   = this.timeframe();
+        const date = new Date().toISOString().slice(0, 10);
+        const bom  = '\uFEFF';
+        const csv  = bom + [headers.join(','), ...lines].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `attribution-${tf}-${date}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     // ── Formatters ────────────────────────────────────────────────────────────

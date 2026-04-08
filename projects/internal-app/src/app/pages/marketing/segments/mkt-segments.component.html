@@ -93,9 +93,36 @@
             <!-- Docs-read transparency badge -->
             <div class="seg-kpi seg-kpi-meta">
                 <span class="skpi-val dim">{{ docsRead() }}</span>
-                <span class="skpi-lbl">Orders read</span>
+                <span class="skpi-lbl">Órdenes procesadas</span>
             </div>
         </div>
+
+        <!-- ── Segment distribution chart ────────────────────────────────────── -->
+        @if (totalCustomers() > 0) {
+            <div class="seg-chart-panel">
+                <div class="seg-chart-title">Distribución de segmentos</div>
+                <div class="seg-chart-bars">
+                    @for (item of segmentChart(); track item.seg) {
+                        @if (item.count > 0) {
+                            <div class="seg-chart-row"
+                                 [class.active]="activeSegment() === item.seg"
+                                 (click)="activeSegment.set(item.seg)">
+                                <span class="seg-chart-label">{{ item.label }}</span>
+                                <div class="seg-chart-bar-wrap">
+                                    <div class="seg-chart-bar"
+                                         [style.width.%]="item.pct"
+                                         [style.background]="item.color">
+                                    </div>
+                                </div>
+                                <span class="seg-chart-count" [style.color]="item.color">
+                                    {{ item.count }} <span class="seg-chart-pct">({{ item.pct }}%)</span>
+                                </span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
 
         <!-- ── Segment selector ───────────────────────────────────────────────── -->
         <div class="seg-chips-wrap">

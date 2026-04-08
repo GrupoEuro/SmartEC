@@ -25,6 +25,13 @@
     </div>
 </div>
 
+<!-- Error banner -->
+<div *ngIf="!isLoading() && hasError()" class="mhd-error-banner">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Error al cargar los KPIs. Verifica tu conexión e intenta nuevamente.</span>
+    <button class="mhd-retry-btn" (click)="loadKpis()">Reintentar</button>
+</div>
+
 <div *ngIf="!isLoading()" class="mhd-root">
 
     <!-- Header -->
@@ -61,6 +68,10 @@
             <div class="mhd-kpi-body">
                 <span class="mhd-kpi-val">{{ sessions() }}</span>
                 <span class="mhd-kpi-lbl">{{ 'MARKETING.DASHBOARD.KPI.SESSIONS' | translate }}</span>
+                <span class="mhd-kpi-delta" *ngIf="deltas().sessions !== null"
+                      [class.up]="deltas().sessions! > 0" [class.down]="deltas().sessions! < 0">
+                    {{ deltas().sessions! > 0 ? '↑' : '↓' }} {{ deltas().sessions! | number:'1.0-0' }}%
+                </span>
             </div>
         </div>
 
@@ -83,6 +94,10 @@
             <div class="mhd-kpi-body">
                 <span class="mhd-kpi-val green">{{ orders() }}</span>
                 <span class="mhd-kpi-lbl">{{ 'MARKETING.DASHBOARD.KPI.ORDERS' | translate }}</span>
+                <span class="mhd-kpi-delta" *ngIf="deltas().orders !== null"
+                      [class.up]="deltas().orders! > 0" [class.down]="deltas().orders! < 0">
+                    {{ deltas().orders! > 0 ? '↑' : '↓' }} {{ deltas().orders! | number:'1.0-0' }}%
+                </span>
             </div>
         </div>
 
@@ -94,6 +109,10 @@
             <div class="mhd-kpi-body">
                 <span class="mhd-kpi-val green">{{ fmtMXN(revenue()) }}</span>
                 <span class="mhd-kpi-lbl">{{ 'MARKETING.DASHBOARD.KPI.REVENUE' | translate }}</span>
+                <span class="mhd-kpi-delta" *ngIf="deltas().revenue !== null"
+                      [class.up]="deltas().revenue! > 0" [class.down]="deltas().revenue! < 0">
+                    {{ deltas().revenue! > 0 ? '↑' : '↓' }} {{ deltas().revenue! | number:'1.0-0' }}%
+                </span>
             </div>
         </div>
 
@@ -116,6 +135,10 @@
             <div class="mhd-kpi-body">
                 <span class="mhd-kpi-val red">{{ abandoned() }}</span>
                 <span class="mhd-kpi-lbl">{{ 'MARKETING.DASHBOARD.KPI.ABANDONED' | translate }}</span>
+                <span class="mhd-kpi-delta" *ngIf="deltas().abandoned !== null"
+                      [class.up]="deltas().abandoned! < 0" [class.down]="deltas().abandoned! > 0">
+                    {{ deltas().abandoned! > 0 ? '↑' : '↓' }} {{ deltas().abandoned! | number:'1.0-0' }}% vs periodo anterior
+                </span>
             </div>
         </div>
 

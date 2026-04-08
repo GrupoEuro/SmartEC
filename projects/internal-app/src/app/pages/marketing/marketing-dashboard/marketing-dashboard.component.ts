@@ -21,6 +21,7 @@ export class MarketingDashboardComponent implements OnInit {
     private fs = inject(Firestore);
 
     isLoading  = signal(true);
+    hasError   = signal(false);
     sessions   = signal(0);
     cartAdds   = signal(0);
     orders     = signal(0);
@@ -30,6 +31,14 @@ export class MarketingDashboardComponent implements OnInit {
 
     // Channel revenue breakdown for the mini bar chart (feature #9)
     channelRevenue = signal<{ channel: string; revenue: number; color: string }[]>([]);
+
+    // KPI deltas vs previous period (null = no prior data available)
+    deltas = signal<{
+        sessions: number | null;
+        orders:   number | null;
+        revenue:  number | null;
+        abandoned: number | null;
+    }>({ sessions: null, orders: null, revenue: null, abandoned: null });
 
     timeframe  = signal<DashTimeframe>('MTD');
 
@@ -72,29 +81,42 @@ export class MarketingDashboardComponent implements OnInit {
         const m   = now.getMonth();
 
         switch (this.timeframe()) {
-            case 'MTD':
-                return [new Date(y, m, 1), now];
-
-            case 'PAST_MONTH': {
-                const firstOfPrevMonth = new Date(y, m - 1, 1);
-                const lastOfPrevMonth  = new Date(y, m, 0, 23, 59, 59, 999);
-                return [firstOfPrevMonth, lastOfPrevMonth];
-            }
-
-            case 'YTD':
-                return [new Date(y, 0, 1), now];
+            case 'MTD':        return [new Date(y, m, 1), now];
+            case 'PAST_MONTH': return [new Date(y, m - 1, 1), new Date(y, m, 0, 23, 59, 59, 999)];
+            case 'YTD':        return [new Date(y, 0, 1), now];
         }
     }
 
-    private async loadKpis() {
-        this.isLoading.set(true);
+    /** Returns the equivalent prior period for delta calculation */
+    private getPrevDateRange(): [Date, Date] {
+        const now = new Date();
+        const y   = now.getFullYear();
+        const m   = now.getMonth();
+        const dayOfMonth = now.getDate();
 
-        const [from, to] = this.getDateRange();
-        const fromTs = Timestamp.fromDate(from);
-        const toTs   = Timestamp.fromDate(to);
+        switch (this.timeframe()) {
+            // MTD → same days of previous month
+            case 'MTD':        return [new Date(y, m - 1, 1), new Date(y, m - 1, dayOfMonth, 23, 59, 59)];
+            // PAST_MONTH → 2 months ago
+            case 'PAST_MONTH': return [new Date(y, m - 2, 1), new Date(y, m - 1, 0, 23, 59, 59)];
+            // YTD → same YTD last year
+            case 'YTD':        return [new Date(y - 1, 0, 1), new Date(y - 1, m, dayOfMonth, 23, 59, 59)];
+        }
+    }
+
+    async loadKpis() {
+        this.isLoading.set(true);
+        this.hasError.set(false);
+
+        const [from, to]         = this.getDateRange();
+        const [prevFrom, prevTo] = this.getPrevDateRange();
+        const fromTs    = Timestamp.fromDate(from);
+        const toTs      = Timestamp.fromDate(to);
+        const prevFromTs = Timestamp.fromDate(prevFrom);
+        const prevToTs   = Timestamp.fromDate(prevTo);
 
         try {
-            const [snapsSnap, ordersSnap] = await Promise.all([
+            const [snapsSnap, ordersSnap, prevSnapsSnap, prevOrdersSnap] = await Promise.all([
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
                     where('createdAt', '>=', fromTs),
@@ -107,8 +129,21 @@ export class MarketingDashboardComponent implements OnInit {
                     where('createdAt', '<=', toTs),
                     orderBy('createdAt', 'desc'),
                 )),
+                getDocs(query(
+                    collection(this.fs, 'cartSnapshots'),
+                    where('createdAt', '>=', prevFromTs),
+                    where('createdAt', '<=', prevToTs),
+                    orderBy('createdAt', 'desc'),
+                )),
+                getDocs(query(
+                    collection(this.fs, 'orders'),
+                    where('createdAt', '>=', prevFromTs),
+                    where('createdAt', '<=', prevToTs),
+                    orderBy('createdAt', 'desc'),
+                )),
             ]);
 
+            // ── Current period ────────────────────────────────────────────────
             const sessionSet = new Set<string>();
             let cartAdds = 0, abandonedCount = 0;
             const sourceMap = new Map<string, number>();
@@ -118,16 +153,14 @@ export class MarketingDashboardComponent implements OnInit {
                 if (d.sessionId) sessionSet.add(d.sessionId);
                 if (d.event === 'item_added') cartAdds++;
                 if (d.event === 'abandoned_detected') abandonedCount++;
-                // cartSnapshots are storefront-only — use UTM/referrer resolution
                 const src = d.attribution?.utm?.utm_source
                          ?? d.attribution?.referrerDomain
                          ?? 'direct';
                 sourceMap.set(src, (sourceMap.get(src) ?? 0) + 1);
             }
 
-            // Count orders by resolved channel (includes ML, POS, On-Behalf)
             const orderChannelMap = new Map<string, number>();
-            const channelRevMap   = new Map<string, number>(); // NEW: revenue by channel
+            const channelRevMap   = new Map<string, number>();
             let totalRev = 0;
             for (const doc of ordersSnap.docs) {
                 const d = doc.data() as any;
@@ -138,7 +171,6 @@ export class MarketingDashboardComponent implements OnInit {
                 channelRevMap.set(ch, (channelRevMap.get(ch) ?? 0) + rev);
             }
 
-            // Merge order channels into sourceMap so topSource reflects all revenue
             for (const [ch, cnt] of orderChannelMap) {
                 sourceMap.set(ch, (sourceMap.get(ch) ?? 0) + cnt);
             }
@@ -155,7 +187,6 @@ export class MarketingDashboardComponent implements OnInit {
             this.topSource.set(topSrc);
             this.abandoned.set(abandonedCount);
 
-            // Build channel revenue breakdown: sorted by revenue desc, top 6
             const chanRevArr = [...channelRevMap.entries()]
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 6)
@@ -165,8 +196,33 @@ export class MarketingDashboardComponent implements OnInit {
                     color: this.channelColor(channel),
                 }));
             this.channelRevenue.set(chanRevArr);
+
+            // ── Previous period ───────────────────────────────────────────────
+            const prevSessionSet = new Set<string>();
+            let prevAbandoned = 0;
+            for (const doc of prevSnapsSnap.docs) {
+                const d = doc.data() as any;
+                if (d.sessionId) prevSessionSet.add(d.sessionId);
+                if (d.event === 'abandoned_detected') prevAbandoned++;
+            }
+            let prevRev = 0;
+            for (const doc of prevOrdersSnap.docs) {
+                const d = doc.data() as any;
+                prevRev += d.total ?? d.totalAmount ?? 0;
+            }
+
+            const pct = (cur: number, prev: number): number | null =>
+                prev === 0 ? null : Math.round(((cur - prev) / prev) * 100);
+
+            this.deltas.set({
+                sessions: pct(sessionSet.size,    prevSessionSet.size),
+                orders:   pct(ordersSnap.size,    prevOrdersSnap.size),
+                revenue:  pct(totalRev,            prevRev),
+                abandoned: pct(abandonedCount,    prevAbandoned),
+            });
         } catch (e) {
             console.error('[MarketingDashboard] KPI load error:', e);
+            this.hasError.set(true);
         } finally {
             this.isLoading.set(false);
         }

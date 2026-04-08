@@ -116,13 +116,10 @@ export class QrReportComponent implements OnInit {
                 this.svc.getCoupon(this.couponId),
                 this.svc.getScansForCoupon(this.couponId),
             ]);
-            console.log('[QrReport] coupon:', coupon);
-            console.log('[QrReport] scans loaded:', scans.length, scans);
             this.coupon.set(coupon);
             this.scans.set(scans);
-            const computed = this.svc.computeStats(scans);
-            console.log('[QrReport] stats computed:', computed);
-            this.stats.set(computed);
+            const computedStats = this.svc.computeStats(scans);
+            this.stats.set(computedStats);
         } catch (e) {
             console.error('[QR Report] Failed to load:', e);
         } finally {

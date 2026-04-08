@@ -6,6 +6,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 
+declare let gtag: Function;
+function fireGtag(event: string, params: object) {
+    try { if (typeof gtag !== 'undefined') gtag('event', event, params); } catch { /* non-critical */ }
+}
+
 import { ProductService, LanguageService } from '@lib/core';
 import { CartService } from '../../core/services/cart.service';
 import { MetaService } from '../../core/services/meta.service';
@@ -151,5 +156,18 @@ export class ProductDetailComponent implements OnInit {
         this.metaService.updateTags(meta);
         const structuredData = this.metaService.generateProductStructuredData(product, currentLang);
         this.metaService.addStructuredData(structuredData);
+
+        // GA4: view_item
+        fireGtag('view_item', {
+            currency: 'MXN',
+            value: product.price,
+            items: [{
+                item_id:    product.sku || product.id,
+                item_name:  product.name?.[currentLang] || product.name?.es,
+                item_brand: product.brand,
+                price:      product.price,
+                quantity:   1,
+            }]
+        });
     }
 }

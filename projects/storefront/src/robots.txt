@@ -3,5 +3,6 @@ Allow: /
 Disallow: /admin/
 Disallow: /view/
 Disallow: /auth/
+Disallow: /account/
 
-Sitemap: https://tiendapraxis.web.app/sitemap.xml
+Sitemap: https://importadoraeuro.com/sitemap.xml

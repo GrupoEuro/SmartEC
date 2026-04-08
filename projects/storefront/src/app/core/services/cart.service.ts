@@ -12,6 +12,12 @@ import { AttributionService, stripUndefined } from './attribution.service';
 import { SessionService } from './session.service';
 import { environment } from '../../../environments/environment';
 
+// GA4 e-commerce helper — lightweight, no service dependency
+declare let gtag: Function;
+function fireGtag(event: string, params: object) {
+    try { if (typeof gtag !== 'undefined') gtag('event', event, params); } catch { /* non-critical */ }
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -306,6 +312,19 @@ export class CartService {
             clearedItems: undefined,
         });
 
+        // GA4: add_to_cart
+        fireGtag('add_to_cart', {
+            currency: 'MXN',
+            value: product.price * quantity,
+            items: [{
+                item_id:   product.sku || product.id,
+                item_name: product.name?.es || product.name?.en,
+                item_brand: product.brand,
+                price:     product.price,
+                quantity,
+            }]
+        });
+
         // Write snapshot (debounced fire-and-forget)
         this.writeSnapshotDebounced(existingIdx > -1 ? 'quantity_changed' : 'item_added', updatedItems, delta);
     }
@@ -316,6 +335,18 @@ export class CartService {
         this.updateState(updatedItems);
         if (removed.length) {
             this.writeSnapshotDebounced('item_removed', updatedItems, { removed });
+            // GA4: remove_from_cart
+            fireGtag('remove_from_cart', {
+                currency: 'MXN',
+                value: removed.reduce((s, i) => s + i.product.price * i.quantity, 0),
+                items: removed.map(i => ({
+                    item_id:    i.product.sku || i.product.id,
+                    item_name:  i.product.name?.es || i.product.name?.en,
+                    item_brand: i.product.brand,
+                    price:      i.product.price,
+                    quantity:   i.quantity,
+                }))
+            });
         }
     }
 
@@ -374,6 +405,19 @@ export class CartService {
             checkoutStartedAt: new Date().toISOString(),
         });
         this.writeSnapshotDebounced('checkout_started', current.items);
+
+        // GA4: begin_checkout
+        fireGtag('begin_checkout', {
+            currency: 'MXN',
+            value: this.cartSubtotal(),
+            items: current.items.map(i => ({
+                item_id:    i.product.sku || i.product.id,
+                item_name:  i.product.name?.es || i.product.name?.en,
+                item_brand: i.product.brand,
+                price:      i.product.price,
+                quantity:   i.quantity,
+            }))
+        });
     }
 
     /**

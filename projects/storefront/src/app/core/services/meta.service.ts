@@ -25,8 +25,8 @@ export class MetaService {
   private platformId = inject(PLATFORM_ID);
 
   private readonly SITE_NAME = 'Importadora Eurollantas';
-  private readonly DEFAULT_IMAGE = 'assets/social-share.jpg';
-  private readonly DOMAIN = 'https://tiendapraxis.web.app';
+  private readonly DEFAULT_IMAGE = 'assets/images/social-share.jpg';
+  private readonly DOMAIN = 'https://importadoraeuro.com';
   private readonly TWITTER_HANDLE = '@eurollantas';
 
   /**

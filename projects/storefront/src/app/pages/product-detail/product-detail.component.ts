@@ -6,7 +6,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 
-import { ProductService } from '@lib/core';
+import { ProductService, LanguageService } from '@lib/core';
 import { CartService } from '../../core/services/cart.service';
 import { MetaService } from '../../core/services/meta.service';
 import { Product } from '@lib/core';
@@ -31,12 +31,18 @@ import { WishlistService } from '../../core/services/wishlist.service';
     styleUrl: './product-detail.component.css'
 })
 export class ProductDetailComponent implements OnInit {
-    private route = inject(ActivatedRoute);
-    private router = inject(Router);
+    private route          = inject(ActivatedRoute);
+    private router         = inject(Router);
     private productService = inject(ProductService);
-    private metaService = inject(MetaService);
-    private cartService = inject(CartService);
+    private metaService    = inject(MetaService);
+    private cartService    = inject(CartService);
     readonly wishlistService = inject(WishlistService);
+    /** Active language signal — use as lang() in template */
+    protected readonly lang  = inject(LanguageService).currentLang;
+    /** Typed getter for strict-mode template indexing — 'es' | 'en' */
+    protected get activeLang(): 'es' | 'en' {
+        return (this.lang() === 'en') ? 'en' : 'es';
+    }
 
     product$!: Observable<Product | null>;
     relatedProducts$!: Observable<Product[]>;
@@ -140,12 +146,10 @@ export class ProductDetailComponent implements OnInit {
      * Update SEO meta tags and structured data for product
      */
     private updateSEO(product: Product) {
-        // Update meta tags
-        const meta = this.metaService.generateProductMeta(product, 'es');
+        const currentLang = this.lang() as 'es' | 'en';
+        const meta = this.metaService.generateProductMeta(product, currentLang);
         this.metaService.updateTags(meta);
-
-        // Add structured data
-        const structuredData = this.metaService.generateProductStructuredData(product, 'es');
+        const structuredData = this.metaService.generateProductStructuredData(product, currentLang);
         this.metaService.addStructuredData(structuredData);
     }
 }

@@ -5,14 +5,14 @@
         <div class="modal-body">
             <!-- Image Side -->
             <div class="product-image-container">
-                <img [src]="getProductImage(product)" [alt]="product.name.en" width="500" height="500" loading="eager"
+                <img [src]="getProductImage(product)" [alt]="product.name[activeLang]" width="500" height="500" loading="eager"
                     class="product-image">
             </div>
 
             <!-- Details Side -->
             <div class="product-details">
                 <div class="brand-badge">{{ product.brand }}</div>
-                <h2 class="product-title">{{ product.name.en }}</h2>
+                <h2 class="product-title">{{ product.name[activeLang] }}</h2>
 
                 <div class="price-section">
                     <span class="price">{{ product.price | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>

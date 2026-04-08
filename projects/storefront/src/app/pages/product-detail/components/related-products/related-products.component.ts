@@ -1,8 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { Product } from '@lib/core';
+import { Product, LanguageService } from '@lib/core';
 
 @Component({
     selector: 'app-related-products',
@@ -13,4 +13,9 @@ import { Product } from '@lib/core';
 })
 export class RelatedProductsComponent {
     @Input() products: Product[] = [];
+    protected readonly lang = inject(LanguageService).currentLang;
+    /** Typed getter for strict-mode template indexing — 'es' | 'en' */
+    protected get activeLang(): 'es' | 'en' {
+        return (this.lang() === 'en') ? 'en' : 'es';
+    }
 }

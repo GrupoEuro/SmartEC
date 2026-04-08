@@ -5,14 +5,14 @@
         <span class="separator">›</span>
         <a routerLink="/catalog">{{ 'PRODUCT_DETAIL.BREADCRUMB_CATALOG' | translate }}</a>
         <span class="separator">›</span>
-        <span class="current">{{ product.name.es }}</span>
+        <span class="current">{{ product.name[activeLang] || product.name.es }}</span>
     </nav>
 
     <!-- Hero Section -->
     <div class="product-hero">
         <!-- Image Gallery -->
         <div class="hero-left">
-            <app-image-gallery [images]="getProductImages(product)" [productName]="product.name.es">
+            <app-image-gallery [images]="getProductImages(product)" [productName]="product.name[activeLang] || product.name.es">
             </app-image-gallery>
         </div>
 
@@ -21,7 +21,7 @@
             <div class="product-header">
                 <div>
                     <span class="product-brand-badge">{{ product.brand }}</span>
-                    <h1 class="product-title">{{ product.name.es }}</h1>
+                    <h1 class="product-title">{{ product.name[activeLang] || product.name.es }}</h1>
                 </div>
                 <div class="stock-status-pill" [class.in-stock]="product.inStock" [class.out-stock]="!product.inStock">
                     <div class="status-dot"></div>
@@ -185,14 +185,14 @@
             <!-- Overview Tab -->
             <div class="tab-panel" *ngIf="activeTab === 'overview'">
                 <h3>{{ 'PRODUCT_DETAIL.DESCRIPTION' | translate }}</h3>
-                <p class="description-text">{{ product.description.es }}</p>
+                <p class="description-text">{{ product.description[activeLang] || product.description.es }}</p>
             </div>
 
             <!-- Features Tab -->
             <div class="tab-panel" *ngIf="activeTab === 'features'">
                 <h3>{{ 'PRODUCT_DETAIL.KEY_FEATURES' | translate }}</h3>
                 <ul class="features-list">
-                    <li *ngFor="let feature of product.features.es">{{ feature }}</li>
+                    <li *ngFor="let feature of (product.features[activeLang] || product.features.es || [])">{{ feature }}</li>
                 </ul>
             </div>
         </div>
@@ -201,7 +201,7 @@
     <!-- Mobile Sticky Buy Bar -->
     <div class="sticky-buy-bar" *ngIf="product$ | async as product">
         <div class="sticky-info">
-            <span class="sticky-title">{{ product.name.es }}</span>
+            <span class="sticky-title">{{ product.name[activeLang] || product.name.es }}</span>
             <span class="sticky-price">{{ product.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
         </div>
         <button class="btn-sticky-add" (click)="addToCart(product)" [disabled]="!product.inStock">

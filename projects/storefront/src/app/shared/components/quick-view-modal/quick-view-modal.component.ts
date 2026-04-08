@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { Product } from '../../../core/models/product.model';
 import { CartService } from '../../../core/services/cart.service';
+import { LanguageService } from '@lib/core';
 
 @Component({
     selector: 'app-quick-view-modal',
@@ -16,7 +17,12 @@ export class QuickViewModalComponent {
     @Input({ required: true }) product!: Product;
     @Output() close = new EventEmitter<void>();
 
-    private cartService = inject(CartService);
+    private cartService      = inject(CartService);
+    protected readonly lang  = inject(LanguageService).currentLang;
+    /** Typed getter for strict-mode template indexing */
+    protected get activeLang(): 'es' | 'en' {
+        return (this.lang() === 'en') ? 'en' : 'es';
+    }
 
     addToCart() {
         this.cartService.addToCart(this.product);

@@ -34,7 +34,7 @@ export const DEFAULT_TRACKING_CONFIG: TrackingConfig = {
 @Injectable({ providedIn: 'root' })
 export class TrackingConfigService {
     private firestore = inject(Firestore);
-    private readonly DOC_PATH = 'settings/tracking';
+    private readonly DOC_PATH = 'config/tracking';
 
     async load(): Promise<TrackingConfig> {
         try {

@@ -101,13 +101,6 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
-    // Site settings (tracking pixels, etc.) — public read (storefront injects scripts),
-    // SUPER_ADMIN write only (pixel IDs are sensitive configuration).
-    match /settings/{document} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
     // ── Users ─────────────────────────────────────────────────────────────────
     //
     // C2 FIX: Users can only read/update their own profile.

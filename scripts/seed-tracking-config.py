@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed initial tracking config to Firestore settings/tracking
+Seed initial tracking config to Firestore config/tracking
 with existing GA4 and Clarity IDs already enabled.
 All other pixels start disabled until configured in admin.
 """
@@ -37,14 +37,14 @@ def to_firestore_value(v):
 fs_fields = {k: to_firestore_value(v) for k, v in config.items()}
 body = json.dumps({"fields": fs_fields}).encode()
 
-url = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)/documents/settings/tracking"
+url = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)/documents/config/tracking"
 req = urllib.request.Request(url, data=body, method="PATCH")
 req.add_header("Authorization", f"Bearer {TOKEN}")
 req.add_header("Content-Type", "application/json")
 
 try:
     resp = urllib.request.urlopen(req)
-    print("✅ settings/tracking seeded successfully")
+    print("✅ config/tracking seeded successfully")
     print(f"   GA4 enabled: G-DS1P5LCE99")
     print(f"   Clarity enabled: ur5ya510na")
     print(f"   All other platforms: disabled (configure in admin /admin/tracking)")

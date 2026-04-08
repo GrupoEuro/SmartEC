@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TrackingConfig, TrackingConfigService, DEFAULT_TRACKING_CONFIG, PixelConfig } from '../../../../core/services/tracking-config.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ToastService } from '../../../../core/services/toast.service';
 
 // Re-export for template usage
 export { PixelConfig };
@@ -99,19 +100,26 @@ const PLATFORMS: Platform[] = [
 export class TrackingPixelsComponent implements OnInit {
     private configSvc = inject(TrackingConfigService);
     private auth      = inject(AuthService);
+    private toast     = inject(ToastService);
 
     platforms        = PLATFORMS;
     config           = signal<TrackingConfig>({ ...DEFAULT_TRACKING_CONFIG });
     isSaving         = signal(false);
     saveSuccess      = signal(false);
+    saveError        = signal<string | null>(null);
     isLoading        = signal(true);
     showIds          = signal<Record<string, boolean>>({});
 
     async ngOnInit() {
         this.isLoading.set(true);
-        const loaded = await this.configSvc.load();
-        this.config.set(loaded);
-        this.isLoading.set(false);
+        try {
+            const loaded = await this.configSvc.load();
+            this.config.set(loaded);
+        } catch (e) {
+            this.toast.error('No se pudo cargar la configuración de tracking');
+        } finally {
+            this.isLoading.set(false);
+        }
     }
 
     getPixel(key: string): PixelConfig {
@@ -148,13 +156,20 @@ export class TrackingPixelsComponent implements OnInit {
 
     async save() {
         this.isSaving.set(true);
+        this.saveError.set(null);
         try {
             const user = this.auth.currentUser();
             await this.configSvc.save(this.config(), user?.email ?? undefined);
             this.saveSuccess.set(true);
+            this.toast.success('Configuración de tracking guardada');
             setTimeout(() => this.saveSuccess.set(false), 3000);
-        } catch (e) {
-            console.error('Failed to save tracking config:', e);
+        } catch (e: any) {
+            const msg = e?.code === 'permission-denied'
+                ? 'Sin permisos para guardar. Asegúrate de tener rol SUPER_ADMIN.'
+                : 'Error al guardar. Intenta de nuevo.';
+            this.saveError.set(msg);
+            this.toast.error(msg);
+            console.error('[TrackingPixels] save failed:', e);
         } finally {
             this.isSaving.set(false);
         }

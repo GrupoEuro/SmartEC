@@ -438,6 +438,17 @@ h1 {
 
 .save-success svg { width: 16px; height: 16px; fill: #4ade80; }
 
+.save-error {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    color: #f87171;
+    animation: fadeIn .3s ease;
+}
+
+.save-error svg { width: 16px; height: 16px; fill: #f87171; }
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to   { opacity: 1; transform: translateY(0); }

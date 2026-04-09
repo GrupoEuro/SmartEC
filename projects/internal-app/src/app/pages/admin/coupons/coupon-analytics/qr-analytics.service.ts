@@ -3,7 +3,7 @@ import {
     Firestore,
     collection, collectionGroup,
     doc, getDoc,
-    query, where, orderBy, limit,
+    query, where, limit,
     getDocs,
 } from '@angular/fire/firestore';
 
@@ -104,7 +104,9 @@ export class QrAnalyticsService {
     // ── Load all scans for one coupon ─────────────────────────────────────────
     async getScansForCoupon(couponId: string): Promise<QrScan[]> {
         const scansRef = collection(this.fs, `coupons/${couponId}/scans`);
-        const snap = await getDocs(query(scansRef, orderBy('scannedAt', 'desc'), limit(500)));
+        // No orderBy here — docs lacking 'scannedAt' would be silently dropped by Firestore.
+        // Client-side sort already handles ordering. Limit raised to 2000 to cover high-volume coupons.
+        const snap = await getDocs(query(scansRef, limit(2000)));
 
         const rawScans: QrScan[] = snap.docs.map(d => {
             const data = d.data();

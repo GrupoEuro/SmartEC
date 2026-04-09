@@ -401,7 +401,6 @@
 .mh-content {
     flex: 1;
     padding: 2rem 1.75rem;
-    overflow-y: auto;
 }
 
 /* ── Responsiveness ───────────────────────────────────────────────────────── */

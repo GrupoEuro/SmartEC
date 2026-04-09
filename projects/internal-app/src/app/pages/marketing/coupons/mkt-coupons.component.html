@@ -129,14 +129,20 @@
 
                     <!-- Code + type -->
                     <div class="cp-code-row">
-                        <span class="cp-code">{{ c.code }}</span>
-                        <span class="cp-type-pill">
-                            {{ c.type === 'percentage' ? c.value + '%' : fmtMXN(c.value) }}
-                        </span>
+                        <span class="cp-code">{{ c.code || c.id }}</span>
+                        @if (c.value > 0) {
+                            <span class="cp-type-pill">
+                                {{ c.type === 'percentage' ? c.value + '%' : fmtMXN(c.value) }}
+                            </span>
+                        } @else if (!c.type && !c.value) {
+                            <span class="cp-type-pill" style="opacity:.5">Sin descuento</span>
+                        }
                     </div>
 
                     @if (c.description) {
                         <p class="cp-desc">{{ c.description }}</p>
+                    } @else if (!c.code) {
+                        <p class="cp-desc" style="opacity:.45; font-style:italic">ID: {{ c.id }}</p>
                     }
 
                     <!-- Usage bar -->
@@ -145,17 +151,17 @@
                             <div class="cp-usage-bar-wrap">
                                 <div class="cp-usage-bar" [style.width]="usagePct(c) + '%'"></div>
                             </div>
-                            <span class="cp-usage-lbl">{{ c.usageCount }} / {{ c.usageLimit }} usos</span>
+                            <span class="cp-usage-lbl">{{ c.usageCount ?? 0 }} / {{ c.usageLimit }} usos</span>
                         </div>
                     } @else {
                         <div class="cp-usage">
-                            <span class="cp-usage-lbl">{{ c.usageCount }} usos · sin límite</span>
+                            <span class="cp-usage-lbl">{{ c.usageCount ?? 0 }} usos · sin límite</span>
                         </div>
                     }
 
                     <!-- QR + scan stats -->
                     <div class="cp-metrics">
-                        @if (c.scanCount) {
+                        @if ((c.scanCount ?? 0) > 0) {
                             <div class="cp-metric">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/></svg>
                                 {{ c.scanCount }} escaneos
@@ -183,13 +189,11 @@
                                 }
                             </button>
                         }
-                        <!-- QR Report — only if scans exist -->
-                        @if (c.scanCount) {
-                            <a [routerLink]="['/marketing/coupons/qr', c.id]" class="cp-qr-btn" title="Ver reporte QR completo">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
-                                Reporte QR
-                            </a>
-                        }
+                        <!-- QR Report — always visible so legacy coupons (missing scanCount) are accessible -->
+                        <a [routerLink]="['/marketing/coupons/qr', c.id]" class="cp-qr-btn" title="Ver reporte QR completo">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
+                            Reporte QR
+                        </a>
                         <!-- Edit — routerLink to admin (not href!) -->
                         <a [routerLink]="adminEditRoute(c.id!)" class="cp-edit-btn">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>

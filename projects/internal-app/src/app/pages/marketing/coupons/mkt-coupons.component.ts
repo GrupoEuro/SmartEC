@@ -73,7 +73,7 @@ export class MktCouponsComponent implements OnInit {
             if (f === 'inactive' && (c.isActive || isExpired || isPending))  return false;
             if (f === 'expired'  && !isExpired)                              return false;
             if (f === 'pending'  && !isPending)                              return false;
-            if (q && !c.code.toLowerCase().includes(q) && !(c.description?.toLowerCase().includes(q))) return false;
+            if (q && !c.code?.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false;
             return true;
         });
     });

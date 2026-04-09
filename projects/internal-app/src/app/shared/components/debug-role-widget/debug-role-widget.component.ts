@@ -1,52 +1,109 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-debug-role-widget',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { style: 'display:contents' },
+  styles: [`
+    .dbg-wrap {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 99999;
+      background: rgba(15,23,42,.97);
+      border: 1px solid rgba(99,102,241,.4);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.6);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .75rem;
+      min-width: 240px;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+    .dbg-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(99,102,241,.1);
+      cursor: default;
+    }
+    .dbg-title {
+      color: #a5b4fb;
+      font-size: .65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .dbg-actions { display: flex; gap: .25rem; }
+    .dbg-btn {
+      all: unset;
+      box-sizing: border-box;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 5px;
+      color: #94a3b8;
+      cursor: pointer !important;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .9rem;
+      line-height: 1;
+      pointer-events: auto !important;
+    }
+    .dbg-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .dbg-btn.cls:hover { background: rgba(239,68,68,.15); color: #f87171; border-color: rgba(239,68,68,.4); }
+    .dbg-body {
+      padding: .75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .dbg-row { display: flex; flex-direction: column; gap: .15rem; }
+    .dbg-lbl { color: #475569; font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; }
+    .dbg-val { color: #94a3b8; font-size: .7rem; word-break: break-all; }
+    .dbg-val.email { color: #34d399; }
+    .dbg-pill {
+      display: inline-block;
+      padding: .2rem .6rem;
+      background: rgba(99,102,241,.2);
+      border: 1px solid rgba(99,102,241,.4);
+      border-radius: 5px;
+      color: #a5b4fb;
+      font-size: .7rem;
+      font-weight: 700;
+    }
+  `],
   template: `
-    @if (profile) {
-      <div class="fixed bottom-4 right-4 z-[9999] bg-slate-900/95 backdrop-blur-md border border-slate-700/50 p-4 rounded-xl shadow-2xl min-w-[250px] animate-in slide-in-from-bottom-4">
-        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/50">
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Debug: Auth Context</h3>
+    @if (profile() && !dismissed) {
+      <div class="dbg-wrap">
+        <div class="dbg-header">
+          <span class="dbg-title">⚙ Auth Context</span>
+          <div class="dbg-actions">
+            <button type="button" class="dbg-btn" (click)="toggle()" [title]="minimized ? 'Expandir' : 'Minimizar'">
+              {{ minimized ? '▲' : '▼' }}
+            </button>
+            <button type="button" class="dbg-btn cls" (click)="close()" title="Cerrar">✕</button>
           </div>
-          <button (click)="toggleMinimize()" class="text-slate-500 hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path *ngIf="!minimized" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              <path *ngIf="minimized" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
         </div>
-
         @if (!minimized) {
-          <div class="space-y-2 text-sm font-mono">
-            <div class="flex flex-col">
-              <span class="text-slate-500 text-xs uppercase">Email</span>
-              <span class="text-emerald-400 font-medium truncate" title="{{ profile?.email }}">{{ profile?.email }}</span>
+          <div class="dbg-body">
+            <div class="dbg-row">
+              <span class="dbg-lbl">Email</span>
+              <span class="dbg-val email">{{ profile()?.email }}</span>
             </div>
-            
-            <div class="flex flex-col">
-              <span class="text-slate-500 text-xs uppercase">UID</span>
-              <span class="text-slate-300 text-xs truncate" title="{{ profile?.uid }}">{{ profile?.uid }}</span>
+            <div class="dbg-row">
+              <span class="dbg-lbl">UID</span>
+              <span class="dbg-val">{{ profile()?.uid }}</span>
             </div>
-
-            <div class="flex flex-col pt-1">
-              <span class="text-slate-500 text-xs uppercase mb-1">Assigned Role</span>
-              <div class="inline-flex items-center gap-1">
-                <span class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded text-xs font-bold">
-                  {{ profile?.role || 'NONE' }}
-                </span>
-              </div>
-            </div>
-
-            <div class="mt-3 pt-3 border-t border-slate-700/50">
-              <p class="text-[10px] text-slate-500 italic">
-                Permissions dictate access to /operations, /command-center, and /admin segments based on route guards.
-              </p>
+            <div class="dbg-row">
+              <span class="dbg-lbl">Rol asignado</span>
+              <span class="dbg-pill">{{ profile()?.role || 'NONE' }}</span>
             </div>
           </div>
         }
@@ -55,14 +112,20 @@ import { AuthService } from '../../../core/services/auth.service';
   `
 })
 export class DebugRoleWidgetComponent {
-  public authService: AuthService = inject(AuthService);
-  minimized = false;
+  private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
-  get profile(): any {
-    return this.authService.currentProfile();
+  profile = this.authService.currentProfile;
+  minimized = false;
+  dismissed = false;
+
+  toggle() {
+    this.minimized = !this.minimized;
+    this.cdr.markForCheck();
   }
 
-  toggleMinimize() {
-    this.minimized = !this.minimized;
+  close() {
+    this.dismissed = true;
+    this.cdr.markForCheck();
   }
 }

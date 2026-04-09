@@ -9,13 +9,27 @@ import { Warehouse, WarehouseZone, StorageStructure, StorageLocation } from '../
 export class WarehouseService {
     private firestore = inject('FIRESTORE' as any) as Firestore;
 
-    // Collections
+    // --- helpers: subcollection paths under warehouses/{warehouseId} ---
     private warehousesColl = collection(this.firestore, 'warehouses');
-    private zonesColl = collection(this.firestore, 'warehouse_zones');
-    private structuresColl = collection(this.firestore, 'warehouse_structures');
-    private locationsColl = collection(this.firestore, 'warehouse_locations');
-    private obstaclesColl = collection(this.firestore, 'warehouse_obstacles');
-    private doorsColl = collection(this.firestore, 'warehouse_doors');
+
+    private zonesColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/zones`);
+    }
+    private structuresColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/structures`);
+    }
+    private locationsColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/locations`);
+    }
+    private obstaclesColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/obstacles`);
+    }
+    private doorsColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/doors`);
+    }
+    private scaleMarkersColl(warehouseId: string) {
+        return collection(this.firestore, `warehouses/${warehouseId}/scaleMarkers`);
+    }
 
     // --- Warehouses ---
 
@@ -45,7 +59,6 @@ export class WarehouseService {
     }
 
     async deleteWarehouse(id: string): Promise<void> {
-        // Soft delete usually, but here simple active flag update
         const ref = doc(this.firestore, `warehouses/${id}`);
         await updateDoc(ref, {
             isActive: false,
@@ -56,156 +69,166 @@ export class WarehouseService {
     // --- Zones ---
 
     getZones(warehouseId: string): Observable<WarehouseZone[]> {
-        const q = query(this.zonesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
+        return collectionData(this.zonesColl(warehouseId), { idField: 'id' }).pipe(
             map(data => data.map(item => this.convertTimestamps(item) as WarehouseZone))
         );
     }
 
-    async createZone(zone: Partial<WarehouseZone>): Promise<string> {
+    async createZone(zone: Partial<WarehouseZone> & { warehouseId: string }): Promise<string> {
         if (zone.id) {
-            const ref = doc(this.firestore, `warehouse_zones/${zone.id}`);
+            const ref = doc(this.firestore, `warehouses/${zone.warehouseId}/zones/${zone.id}`);
             await setDoc(ref, zone);
             return zone.id;
         }
-        const ref = await addDoc(this.zonesColl, zone);
+        const ref = await addDoc(this.zonesColl(zone.warehouseId), zone);
         return ref.id;
     }
 
-    async updateZone(id: string, updates: Partial<WarehouseZone>): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_zones/${id}`);
+    async updateZone(warehouseId: string, zoneId: string, updates: Partial<WarehouseZone>): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/zones/${zoneId}`);
         await updateDoc(ref, updates);
     }
 
-    async deleteZone(id: string): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_zones/${id}`);
+    async deleteZone(warehouseId: string, zoneId: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/zones/${zoneId}`);
         await deleteDoc(ref);
     }
 
     // --- Obstacles ---
 
     getObstacles(warehouseId: string): Observable<any[]> {
-        const q = query(this.obstaclesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
+        return collectionData(this.obstaclesColl(warehouseId), { idField: 'id' }).pipe(
             map(data => data.map(item => this.convertTimestamps(item)))
         );
     }
 
-    async createObstacle(obstacle: any): Promise<string> {
+    async createObstacle(obstacle: any & { warehouseId: string }): Promise<string> {
         if (obstacle.id) {
-            const ref = doc(this.firestore, `warehouse_obstacles/${obstacle.id}`);
+            const ref = doc(this.firestore, `warehouses/${obstacle.warehouseId}/obstacles/${obstacle.id}`);
             await setDoc(ref, obstacle);
             return obstacle.id;
         }
-        const ref = await addDoc(this.obstaclesColl, obstacle);
+        const ref = await addDoc(this.obstaclesColl(obstacle.warehouseId), obstacle);
         return ref.id;
     }
 
-    async updateObstacle(id: string, updates: any): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_obstacles/${id}`);
+    async updateObstacle(warehouseId: string, obstacleId: string, updates: any): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/obstacles/${obstacleId}`);
         await updateDoc(ref, updates);
     }
 
-    async deleteObstacle(id: string): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_obstacles/${id}`);
+    async deleteObstacle(warehouseId: string, obstacleId: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/obstacles/${obstacleId}`);
         await deleteDoc(ref);
     }
 
     // --- Doors ---
 
     getDoors(warehouseId: string): Observable<any[]> {
-        const q = query(this.doorsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
+        return collectionData(this.doorsColl(warehouseId), { idField: 'id' }).pipe(
             map(data => data.map(item => this.convertTimestamps(item)))
         );
     }
 
-    async createDoor(door: any): Promise<string> {
+    async createDoor(door: any & { warehouseId: string }): Promise<string> {
         if (door.id) {
-            const ref = doc(this.firestore, `warehouse_doors/${door.id}`);
+            const ref = doc(this.firestore, `warehouses/${door.warehouseId}/doors/${door.id}`);
             await setDoc(ref, door);
             return door.id;
         }
-        const ref = await addDoc(this.doorsColl, door);
+        const ref = await addDoc(this.doorsColl(door.warehouseId), door);
         return ref.id;
     }
 
-    async updateDoor(id: string, updates: any): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_doors/${id}`);
+    async updateDoor(warehouseId: string, doorId: string, updates: any): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/doors/${doorId}`);
         await updateDoc(ref, updates);
     }
 
-    async deleteDoor(id: string): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_doors/${id}`);
+    async deleteDoor(warehouseId: string, doorId: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/doors/${doorId}`);
         await deleteDoc(ref);
     }
 
     // --- Structures (Racks) ---
 
     getStructures(warehouseId: string, zoneId?: string): Observable<StorageStructure[]> {
-        let q = query(this.structuresColl, where('warehouseId', '==', warehouseId));
-        if (zoneId) {
-            q = query(q, where('zoneId', '==', zoneId));
-        }
+        let coll = this.structuresColl(warehouseId);
+        let q = zoneId
+            ? query(coll, where('zoneId', '==', zoneId))
+            : query(coll);
         return collectionData(q, { idField: 'id' }).pipe(
             map(data => data.map(item => this.convertTimestamps(item) as StorageStructure))
         );
     }
 
-    async createStructure(structure: Partial<StorageStructure>): Promise<string> {
+    async createStructure(structure: Partial<StorageStructure> & { warehouseId: string }): Promise<string> {
         if (structure.id) {
-            const ref = doc(this.firestore, `warehouse_structures/${structure.id}`);
+            const ref = doc(this.firestore, `warehouses/${structure.warehouseId}/structures/${structure.id}`);
             await setDoc(ref, structure);
             return structure.id;
         }
-        const ref = await addDoc(this.structuresColl, structure);
+        const ref = await addDoc(this.structuresColl(structure.warehouseId), structure);
         return ref.id;
     }
 
-    async updateStructure(id: string, updates: Partial<StorageStructure>): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_structures/${id}`);
+    async updateStructure(warehouseId: string, structureId: string, updates: Partial<StorageStructure>): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/structures/${structureId}`);
         await updateDoc(ref, updates);
     }
 
-    async deleteStructure(id: string): Promise<void> {
-        const ref = doc(this.firestore, `warehouse_structures/${id}`);
+    async deleteStructure(warehouseId: string, structureId: string): Promise<void> {
+        const ref = doc(this.firestore, `warehouses/${warehouseId}/structures/${structureId}`);
         await deleteDoc(ref);
     }
 
     // --- Locations (Bins) ---
 
     // NOTE: This can return thousands of docs. Use with caution/limits.
-    async getLocations(structureId: string): Promise<StorageLocation[]> {
-        const q = query(this.locationsColl, where('structureId', '==', structureId));
+    async getLocations(warehouseId: string, structureId: string): Promise<StorageLocation[]> {
+        const q = query(this.locationsColl(warehouseId), where('structureId', '==', structureId));
         const snap = await getDocs(q);
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as StorageLocation));
     }
 
     getOccupiedLocations(warehouseId: string): Observable<StorageLocation[]> {
-        // Query ALL locations for warehouse (avoid composite index requirement)
-        const q = query(this.locationsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
+        return collectionData(this.locationsColl(warehouseId), { idField: 'id' }).pipe(
             map(locs => (locs as StorageLocation[]).filter(l => l.status === 'full'))
         );
     }
 
     async getProductLocation(warehouseId: string, productId: string): Promise<StorageLocation | null> {
-        // Query across all locations in this warehouse (requires collection group index or root collection query usually)
-        // But here locations are in root `warehouse_locations`.
-        // So we filter by warehouseId AND productId.
-        const q = query(this.locationsColl, where('warehouseId', '==', warehouseId), where('productId', '==', productId), limit(1));
+        const q = query(
+            this.locationsColl(warehouseId),
+            where('productId', '==', productId),
+            limit(1)
+        );
         const snap = await getDocs(q);
         if (snap.empty) return null;
-        const doc = snap.docs[0];
-        return { id: doc.id, ...doc.data() } as StorageLocation;
+        const d = snap.docs[0];
+        return { id: d.id, ...d.data() } as StorageLocation;
     }
 
-    // Bulk create locations (batching handled by implementation usually, here simple loop for MVP)
-    async createLocation(location: Partial<StorageLocation>): Promise<string> {
-        const ref = await addDoc(this.locationsColl, location);
+    async createLocation(warehouseId: string, location: Partial<StorageLocation>): Promise<string> {
+        const ref = await addDoc(this.locationsColl(warehouseId), location);
         return ref.id;
     }
 
+    // --- Scale Markers ---
+
+    getScaleMarkers(warehouseId: string): Observable<any[]> {
+        return collectionData(this.scaleMarkersColl(warehouseId), { idField: 'id' });
+    }
+
+    async createScaleMarker(marker: any & { warehouseId: string }): Promise<string> {
+        if (marker.id) {
+            const ref = doc(this.firestore, `warehouses/${marker.warehouseId}/scaleMarkers/${marker.id}`);
+            await setDoc(ref, marker);
+            return marker.id;
+        }
+        const ref = await addDoc(this.scaleMarkersColl(marker.warehouseId), marker);
+        return ref.id;
+    }
 
     // Helper
     private convertTimestamps(item: any): any {

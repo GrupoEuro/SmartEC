@@ -318,10 +318,9 @@ export class ReceivingService {
         // TODO: Implement smarter logic (ABC analysis, bin capacity, proximity)
         // For now, find first available bin with capacity
 
-        const locationsCollection = collection(this.firestore, 'warehouse_locations');
+        const locationsCollection = collection(this.firestore, `warehouses/${warehouseId}/locations`);
         const q = query(
             locationsCollection,
-            where('warehouseId', '==', warehouseId),
             where('occupied', '==', false),
             orderBy('code', 'asc')
         );
@@ -339,10 +338,9 @@ export class ReceivingService {
      */
     private async updateInventory(productId: string, binCode: string, quantity: number, warehouseId: string): Promise<void> {
         // Find the bin location
-        const locationsCollection = collection(this.firestore, 'warehouse_locations');
+        const locationsCollection = collection(this.firestore, `warehouses/${warehouseId}/locations`);
         const q = query(
             locationsCollection,
-            where('warehouseId', '==', warehouseId),
             where('code', '==', binCode)
         );
 

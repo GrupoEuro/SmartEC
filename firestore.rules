@@ -135,6 +135,12 @@ service cloud.firestore {
       }
     }
 
+    // Staff profiles — internal team extended profiles (read by staff, written by admin)
+    match /staff_profiles/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     // ── Catalogue (C1 FIX) ────────────────────────────────────────────────────
     // Products, banners, blog, categories, etc. — all need ADMIN+ to write
 
@@ -148,11 +154,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /posts/{document} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
+    // blog_posts — the single authoritative blog collection (posts rule was removed; nothing used it)
     match /blog_posts/{document} {
       allow read: if true;
       allow write: if isAdmin();
@@ -336,40 +338,18 @@ service cloud.firestore {
     }
 
     // ── Warehouse Layout ──────────────────────────────────────────────────────
+    // All warehouse sub-entities (zones, structures, locations, obstacles,
+    // doors, scaleMarkers) are now subcollections under warehouses/{warehouseId}.
+    // The {=**} wildcard covers the root doc AND any depth of subcollections.
 
-    match /warehouses/{document} {
-      allow read: if true;
+    match /warehouses/{warehouseId} {
+      allow read: if true;          // warehouse list shown on storefront
       allow write: if isAdmin();
-    }
 
-    match /warehouse_zones/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /warehouse_structures/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /warehouse_locations/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /warehouse_obstacles/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /warehouse_doors/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
-    }
-
-    match /warehouse_scale_markers/{document} {
-      allow read: if isStaff();
-      allow write: if isAdmin();
+      match /{subCollection}/{document} {
+        allow read: if isStaff();   // staff-only: layout is internal tooling
+        allow write: if isAdmin();
+      }
     }
 
     // ── Media ─────────────────────────────────────────────────────────────────

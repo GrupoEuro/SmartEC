@@ -350,15 +350,15 @@ export class DatabaseOutlookComponent implements OnInit {
             isExpanded: false,
             items: [
                 { name: 'Warehouses', count: null, color: 'orange', icon: 'home', collection: 'warehouses' },
-                { name: 'Zones', count: null, color: 'orange', icon: 'map', collection: 'warehouse_zones' },
-                { name: 'Structures', count: null, color: 'orange', icon: 'server', collection: 'warehouse_structures', description: 'Racks & Shelves' },
-                { name: 'Bins (Primary)', count: null, color: 'orange', icon: 'target', collection: 'warehouse_locations', description: 'Main Bin Storage' },
+                { name: 'Zones', count: null, color: 'orange', icon: 'map', collection: 'warehouses/MAIN/zones' },
+                { name: 'Structures', count: null, color: 'orange', icon: 'server', collection: 'warehouses/MAIN/structures', description: 'Racks & Shelves' },
+                { name: 'Bins (Primary)', count: null, color: 'orange', icon: 'target', collection: 'warehouses/MAIN/locations', description: 'Main Bin Storage' },
                 { name: 'Bins (Legacy)', count: null, color: 'red', icon: 'alert-circle', collection: 'locations', description: 'Old Location Data' },
                 { name: 'Inv. Ledger', count: null, color: 'red', icon: 'book', collection: 'inventory_ledger', description: 'Immutable Kardex' },
                 { name: 'Balances', count: null, color: 'amber', icon: 'database', collection: 'inventory_balances', description: 'Fast-read cache' },
-                { name: 'Doors', count: null, color: 'orange', icon: 'maximize', collection: 'warehouse_doors' },
-                { name: 'Obstacles', count: null, color: 'orange', icon: 'slash', collection: 'warehouse_obstacles' },
-                { name: 'Scale Markers', count: null, color: 'orange', icon: 'ruler', collection: 'warehouse_scale_markers' },
+                { name: 'Doors', count: null, color: 'orange', icon: 'maximize', collection: 'warehouses/MAIN/doors' },
+                { name: 'Obstacles', count: null, color: 'orange', icon: 'slash', collection: 'warehouses/MAIN/obstacles' },
+                { name: 'Scale Markers', count: null, color: 'orange', icon: 'ruler', collection: 'warehouses/MAIN/scaleMarkers' },
             ]
         },
         {

@@ -277,22 +277,25 @@ export class DataSeederService {
     private async clearWarehouseData(onLog?: (message: string) => void): Promise<void> {
         this.log('[Seeder] Clearing warehouse data...', onLog);
 
-        const collections = [
-            'warehouses',
-            'warehouse_zones',
-            'warehouse_structures',
-            'warehouse_locations',
-            'warehouse_doors',
-            'warehouse_obstacles',
-            'warehouse_scale_markers'
-        ];
+        // First clear warehouses root docs
+        const warehousesDeleted = await this.deleteCollection('warehouses');
+        if (warehousesDeleted > 0) {
+            this.log(`[Seeder] Deleted ${warehousesDeleted} documents from warehouses`, onLog);
+        }
 
-        let totalDeleted = 0;
-        for (const collectionName of collections) {
-            const deleted = await this.deleteCollection(collectionName);
-            if (deleted > 0) {
-                this.log(`[Seeder] Deleted ${deleted} documents from ${collectionName}`, onLog);
-                totalDeleted += deleted;
+        // Then clear each known warehouseId subcollections
+        const knownWarehouseIds = ['MAIN', 'VIRTUAL_FBA', 'VIRTUAL_MELI', 'VIRTUAL_RETURNS'];
+        const subCollections = ['zones', 'structures', 'locations', 'doors', 'obstacles', 'scaleMarkers'];
+
+        let totalDeleted = warehousesDeleted;
+        for (const warehouseId of knownWarehouseIds) {
+            for (const sub of subCollections) {
+                const path = `warehouses/${warehouseId}/${sub}`;
+                const deleted = await this.deleteCollection(path);
+                if (deleted > 0) {
+                    this.log(`[Seeder] Deleted ${deleted} documents from ${path}`, onLog);
+                    totalDeleted += deleted;
+                }
             }
         }
 
@@ -1210,7 +1213,7 @@ export class DataSeederService {
         ];
 
         zones.forEach(z => {
-            batch.set(doc(this.firestore, `warehouse_zones/${z.id}`), z);
+            batch.set(doc(this.firestore, `warehouses/${warehouseId}/zones/${z.id}`), z);
         });
 
         this.log(`[Seeder] Created ${zones.length} operational zones`, onLog);
@@ -1280,7 +1283,7 @@ export class DataSeederService {
         ];
 
         doors.forEach(d => {
-            batch.set(doc(this.firestore, `warehouse_doors/${d.id}`), d);
+            batch.set(doc(this.firestore, `warehouses/${warehouseId}/doors/${d.id}`), d);
         });
 
         this.log(`[Seeder] Created ${doors.length} doors and access points`, onLog);
@@ -1335,7 +1338,7 @@ export class DataSeederService {
         ];
 
         obstacles.forEach(o => {
-            batch.set(doc(this.firestore, `warehouse_obstacles/${o.id}`), o);
+            batch.set(doc(this.firestore, `warehouses/${warehouseId}/obstacles/${o.id}`), o);
         });
 
         this.log(`[Seeder] Created ${obstacles.length} obstacles and restricted areas`, onLog);
@@ -1381,7 +1384,7 @@ export class DataSeederService {
         }
 
         scaleMarkers.forEach(marker => {
-            batch.set(doc(this.firestore, `warehouse_scale_markers/${marker.id}`), marker);
+            batch.set(doc(this.firestore, `warehouses/${warehouseId}/scaleMarkers/${marker.id}`), marker);
         });
 
         this.log(`[Seeder] Created ${scaleMarkers.length} scale markers for measurement reference`, onLog);
@@ -1504,7 +1507,7 @@ export class DataSeederService {
 
         // Save all structures
         structures.forEach(struct => {
-            batch.set(doc(this.firestore, `warehouse_structures/${struct.id}`), struct);
+            batch.set(doc(this.firestore, `warehouses/${warehouseId}/structures/${struct.id}`), struct);
         });
 
         await batch.commit();
@@ -1594,7 +1597,7 @@ export class DataSeederService {
                         createdAt: Timestamp.now()
                     };
 
-                    locBatch.set(doc(this.firestore, `warehouse_locations/${locId}`), loc);
+                    locBatch.set(doc(this.firestore, `warehouses/${warehouseId}/locations/${locId}`), loc);
                     locCount++;
                     if (assignedProduct) occupiedCount++;
 

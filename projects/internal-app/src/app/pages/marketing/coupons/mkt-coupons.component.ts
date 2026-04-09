@@ -3,7 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
-import { Firestore, collection, collectionData, query, orderBy, Timestamp, getDocs, where } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, Timestamp, getDocs, query, where } from '@angular/fire/firestore';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Coupon } from '../../../core/models/coupon.model';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
@@ -30,12 +30,23 @@ export class MktCouponsComponent implements OnInit {
     copiedId       = signal<string | null>(null);
     orderUsageMap  = signal<Map<string, { orders: number; savedAmount: number }>>(new Map());
 
+    // ⚠️ No orderBy — Firestore silently omits docs that lack the sorted
+    // field. Old coupons may have no createdAt, so we sort client-side.
     private allCoupons: Signal<Coupon[]> = toSignal(
         collectionData(
-            query(collection(this.firestore, 'coupons'), orderBy('createdAt', 'desc')),
+            collection(this.firestore, 'coupons'),
             { idField: 'id' }
         ) as any,
         { initialValue: [] as Coupon[] }
+    );
+
+    // Newest first; ties broken alphabetically by code
+    private readonly sortedCoupons = computed<Coupon[]>(() =>
+        [...this.allCoupons()].sort((a, b) => {
+            const ta = (a.createdAt as any)?.toDate?.()?.getTime?.() ?? new Date(a.createdAt as any || 0).getTime();
+            const tb = (b.createdAt as any)?.toDate?.()?.getTime?.() ?? new Date(b.createdAt as any || 0).getTime();
+            return tb - ta;
+        })
     );
 
     filter = signal<CouponFilter>('all');
@@ -54,7 +65,8 @@ export class MktCouponsComponent implements OnInit {
         const q   = this.search().toLowerCase();
         const now = new Date();
 
-        return this.allCoupons().filter((c: Coupon) => {
+
+        return this.sortedCoupons().filter((c: Coupon) => {
             const isExpired  = c.endDate ? this.toDate(c.endDate) < now : false;
             const isPending  = c.status === 'pending';
             if (f === 'active'   && (!c.isActive || isExpired || isPending)) return false;

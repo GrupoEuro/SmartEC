@@ -397,16 +397,20 @@ service cloud.firestore {
 
     // ── Analytics (append-only, public) ───────────────────────────────────────
 
-    match /search_logs/{document} {
-      allow create: if true;
-      allow read: if isStaff();
-      allow update, delete: if false;
+    // search_events — unified query + click tracking (replaces search_logs + search_clicks)
+    match /search_events/{document} {
+      allow create: if true;          // storefront writes anonymously
+      allow read:   if isStaff();
+      allow update, delete: if false; // append-only
     }
-
-    match /search_clicks/{document} {
-      allow create: if true;
+    // Legacy collections kept read-accessible while old data is still present
+    match /search_logs/{document} {
       allow read: if isStaff();
-      allow update, delete: if false;
+      allow create, update, delete: if false; // no new writes
+    }
+    match /search_clicks/{document} {
+      allow read: if isStaff();
+      allow create, update, delete: if false; // no new writes
     }
 
     // ── Commerce: Carts ───────────────────────────────────────────────────────

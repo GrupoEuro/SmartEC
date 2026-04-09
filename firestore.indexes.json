@@ -28,32 +28,68 @@
                 }
             ]
         },
+        // cartSnapshots — analytics from marketing dashboard (date range scans)
         {
-            "collectionGroup": "warehouse_locations",
+            "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                {
-                    "fieldPath": "warehouseId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "status",
-                    "order": "ASCENDING"
-                }
+                { "fieldPath": "createdAt", "order": "DESCENDING" },
+                { "fieldPath": "event",     "order": "ASCENDING" }
             ]
         },
+        // cartSnapshots — per-user engagement history (customer timeline)
         {
-            "collectionGroup": "warehouse_locations",
+            "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                {
-                    "fieldPath": "warehouseId",
-                    "order": "ASCENDING"
-                },
-                {
-                    "fieldPath": "productId",
-                    "order": "ASCENDING"
-                }
+                { "fieldPath": "userId",    "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
+            ]
+        },
+        // cartSnapshots — session-based journey (QR analytics + attribution)
+        {
+            "collectionGroup": "cartSnapshots",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "sessionId", "order": "ASCENDING" },
+                { "fieldPath": "event",     "order": "ASCENDING" }
+            ]
+        },
+        // cartSnapshots — date + event for marketing funnel analysis
+        {
+            "collectionGroup": "cartSnapshots",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "event",     "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
+            ]
+        },
+        // search_events — type + date (query vs click breakdown over time)
+        {
+            "collectionGroup": "search_events",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "type",      "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        // search_events — normalizedTerm + type (zero-result analysis per term)
+        {
+            "collectionGroup": "search_events",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "normalizedTerm", "order": "ASCENDING" },
+                { "fieldPath": "type",           "order": "ASCENDING" },
+                { "fieldPath": "timestamp",      "order": "DESCENDING" }
+            ]
+        },
+        // whatsappClicks — userId + clickedAt (customer timeline query)
+        {
+            "collectionGroup": "whatsappClicks",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId",    "order": "ASCENDING" },
+                { "fieldPath": "clickedAt", "order": "DESCENDING" }
             ]
         },
         {

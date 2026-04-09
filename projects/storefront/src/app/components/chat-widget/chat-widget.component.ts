@@ -2,6 +2,7 @@ import { Component, HostListener, Inject, OnInit, PLATFORM_ID, signal, inject, e
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
+import { AuthService } from '../../core/services/auth.service';
 import { AttributionService, stripUndefined } from '../../core/services/attribution.service';
 import { Firestore, collection, addDoc, Timestamp } from '@angular/fire/firestore';
 
@@ -17,6 +18,7 @@ export class ChatWidgetComponent implements OnInit {
   private hasScrolled = false;
   private router         = inject(Router);
   private cartService    = inject(CartService);
+  private authService    = inject(AuthService);
   private attributionSvc = inject(AttributionService);
   private firestore      = inject(Firestore);
 
@@ -111,10 +113,12 @@ export class ChatWidgetComponent implements OnInit {
 
     // ── Log click to Firestore (fire-and-forget) ──────────────────────────
     if (isPlatformBrowser(this.platformId)) {
+      const userId = this.authService.currentUser()?.uid ?? null;
       addDoc(collection(this.firestore, 'whatsappClicks'), stripUndefined({
         clickedAt:    Timestamp.now(),
         page:         url,
         sessionId,
+        userId:       userId ?? undefined,   // written when authenticated
         cartValue:    cartValue > 0 ? cartValue : undefined,
         cartItems:    cartItems.length > 0 ? cartItems.length : undefined,
         geo:          attr?.geo         ?? undefined,

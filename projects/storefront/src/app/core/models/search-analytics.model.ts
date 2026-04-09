@@ -1,18 +1,36 @@
 import { Timestamp } from 'firebase/firestore';
 
-export interface SearchLog {
-    term: string;
-    normalizedTerm: string; // "michelin" (lowercase, trimmed)
-    timestamp: Timestamp;
-    resultCount: number;
-    userId?: string | null; // Optional, if logged in
-    sessionId?: string; // For guest tracking
+/**
+ * Unified search event document written to `search_events`.
+ * type = 'query'  → replaces search_logs
+ * type = 'click'  → replaces search_clicks
+ */
+export interface SearchEvent {
+    type:           'query' | 'click';
+    term:           string;
+    normalizedTerm: string;           // lowercase + trimmed, for aggregation
+    timestamp:      Timestamp;
+    sessionId?:     string;
+    userId?:        string | null;
+
+    // type = 'query' only
+    resultCount?:   number;
+
+    // type = 'click' only
+    productId?:     string;
+    productName?:   string;
+    position?:      number;           // rank in result list (1-based)
 }
 
-export interface SearchClick {
-    term: string;
-    productId: string;
+// Legacy aliases kept for backwards compatibility during transition
+/** @deprecated Use SearchEvent with type='query' */
+export type SearchLog = Omit<SearchEvent, 'type' | 'productId' | 'productName' | 'position'> & {
+    resultCount: number;
+};
+
+/** @deprecated Use SearchEvent with type='click' */
+export type SearchClick = Omit<SearchEvent, 'type' | 'resultCount'> & {
+    productId:   string;
     productName: string;
-    timestamp: Timestamp;
-    position: number; // Rank in search results (1st, 2nd...)
-}
+    position:    number;
+};

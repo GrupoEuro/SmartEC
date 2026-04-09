@@ -1,13 +1,13 @@
 import { Injectable, inject, Injector } from '@angular/core';
 import { Firestore, collection, addDoc, Timestamp } from '@angular/fire/firestore';
 import { AuthService } from './auth.service';
-import { SearchLog, SearchClick } from '../models/search-analytics.model';
+import { SearchEvent } from '../models/search-analytics.model';
 
 @Injectable({
     providedIn: 'root'
 })
 export class SearchAnalyticsService {
-    private injector = inject(Injector);
+    private injector    = inject(Injector);
     private authService = inject(AuthService);
     private _firestore?: Firestore;
 
@@ -16,56 +16,58 @@ export class SearchAnalyticsService {
         return this._firestore!;
     }
 
-    // Collections
-    private readonly LOGS_COLLECTION = 'search_logs';
-    private readonly CLICKS_COLLECTION = 'search_clicks';
+    // Single unified collection (replaces search_logs + search_clicks)
+    private readonly EVENTS_COLLECTION = 'search_events';
 
     /**
-     * Logs a search query to Firestore.
-     * @param term The user's search query
-     * @param resultCount How many items were found (Crucial for Zero-Result analysis)
+     * Logs a search query to search_events (type = 'query').
+     * Replaces the old search_logs write.
      */
-    async logSearch(term: string, resultCount: number) {
-        if (!term || term.trim().length < 2) return; // Ignore single chars
+    async logSearch(term: string, resultCount: number): Promise<void> {
+        if (!term || term.trim().length < 2) return;
 
         const user = this.authService.currentUser();
-        console.log('SearchAnalytics: Attempting to log search:', { term, resultCount, userId: user?.uid });
 
-        const log: SearchLog = {
-            term: term.trim(),
+        const event: SearchEvent = {
+            type:          'query',
+            term:          term.trim(),
             normalizedTerm: term.trim().toLowerCase(),
-            timestamp: Timestamp.now(),
+            timestamp:     Timestamp.now(),
             resultCount,
-            userId: user?.uid || null,
-            sessionId: this.getSessionId()
+            userId:        user?.uid ?? null,
+            sessionId:     this.getSessionId()
         };
 
         try {
-            const ref = await addDoc(collection(this.firestore, this.LOGS_COLLECTION), log);
-            console.log('SearchAnalytics: Logged search successfully. ID:', ref.id);
+            await addDoc(collection(this.firestore, this.EVENTS_COLLECTION), event);
         } catch (error) {
-            console.error('SearchAnalytics: Error logging search analytics:', error);
-            // Non-blocking error, don't alert user
+            console.error('[SearchAnalytics] Error logging search query:', error);
         }
     }
 
     /**
-     * Logs when a user clicks a result from search.
-     * Links Intent (Term) -> Action (Product)
+     * Logs a search result click to search_events (type = 'click').
+     * Replaces the old search_clicks write.
      */
-    async logClick(term: string, productId: string, productName: string, position: number) {
-        const click: SearchClick = {
+    async logClick(term: string, productId: string, productName: string, position: number): Promise<void> {
+        const user = this.authService.currentUser();
+
+        const event: SearchEvent = {
+            type:          'click',
             term,
+            normalizedTerm: term.toLowerCase(),
+            timestamp:     Timestamp.now(),
             productId,
             productName,
-            timestamp: Timestamp.now(),
-            position
+            position,
+            userId:        user?.uid ?? null,
+            sessionId:     this.getSessionId()
         };
 
         try {
-            await addDoc(collection(this.firestore, this.CLICKS_COLLECTION), click);
+            await addDoc(collection(this.firestore, this.EVENTS_COLLECTION), event);
         } catch (error) {
-            console.error('Error logging search click:', error);
+            console.error('[SearchAnalytics] Error logging search click:', error);
         }
     }
 

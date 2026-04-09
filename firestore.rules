@@ -233,6 +233,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // pricing_templates was referenced in code but lacked a rule — would silently deny.
+    match /pricing_templates/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
     match /pdfs/{document} {

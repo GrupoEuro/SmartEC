@@ -27,6 +27,12 @@ export const MARKETING_ROUTES: Routes = [
                 title: 'Marketing Hub | Attribution'
             },
             {
+                path: 'whatsapp',
+                loadComponent: () => import('./whatsapp-engagement/whatsapp-engagement.component')
+                    .then(m => m.WhatsappEngagementComponent),
+                title: 'Marketing Hub | WhatsApp Engagement'
+            },
+            {
                 path: 'abandoned-carts',
                 loadComponent: () => import('../admin/marketing/abandoned-carts/abandoned-carts.component')
                     .then(m => m.AbandonedCartsComponent),

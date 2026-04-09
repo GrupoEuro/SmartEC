@@ -44,6 +44,13 @@ export const MARKETING_NAVIGATION_CONFIG: NavItem[] = [
                 route: '/marketing/attribution',
             },
             {
+                id: 'mh_whatsapp',
+                title: 'MARKETING.SIDEBAR.WHATSAPP',
+                icon: 'message-circle',
+                route: '/marketing/whatsapp',
+                badge: { text: 'WA', color: 'bg-emerald-500' }
+            },
+            {
                 id: 'mh_abandoned_carts',
                 title: 'MARKETING.SIDEBAR.ABANDONED_CARTS',
                 icon: 'shopping-cart',

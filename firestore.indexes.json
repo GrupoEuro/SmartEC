@@ -92,6 +92,14 @@
                 { "fieldPath": "clickedAt", "order": "DESCENDING" }
             ]
         },
+        // whatsappClicks — clickedAt DESC (marketing engagement report date range)
+        {
+            "collectionGroup": "whatsappClicks",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clickedAt", "order": "DESCENDING" }
+            ]
+        },
         {
             "collectionGroup": "pricing_strategies",
             "queryScope": "COLLECTION",

@@ -1,91 +1,101 @@
-<!-- Active Coupons Context Widget – read-only mirror for Operations -->
-@if (!isLoading() && coupons().length === 0) {
-    <!-- Render nothing if no active coupons — no noise -->
-}
-
+<!-- Cupones Activos — diseño idéntico a las tarjetas del Operations Dashboard -->
 @if (isLoading() || coupons().length > 0) {
-<div class="acw-container">
+<div class="bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
 
-    <!-- Header / toggle -->
-    <div class="acw-header" (click)="toggle()">
-        <div class="acw-header-left">
-            <div class="acw-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                    <line x1="7" y1="7" x2="7.01" y2="7"/>
-                </svg>
-            </div>
-            <div>
-                <h3 class="acw-title">Active Coupons</h3>
-                @if (!isLoading()) {
-                    <span class="acw-count">{{ coupons().length }} active right now</span>
-                }
-            </div>
-        </div>
-        <div class="acw-controls">
-            <a routerLink="/marketing/coupons" class="acw-hub-link" (click)="$event.stopPropagation()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    <!-- Header -->
+    <div class="bg-zinc-900/50 p-4 border-b border-zinc-700 flex items-center justify-between cursor-pointer select-none"
+         (click)="toggle()">
+        <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300">
+            <app-icon name="tag" [size]="18" class="mr-2 text-purple-400"></app-icon>
+            Cupones Activos
+            @if (!isLoading()) {
+                <span class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/20 normal-case tracking-normal">
+                    {{ coupons().length }}
+                </span>
+            }
+        </h3>
+        <div class="flex items-center gap-3">
+            <a routerLink="/marketing/coupons"
+               (click)="$event.stopPropagation()"
+               class="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors">
+                <app-icon name="external-link" [size]="11"></app-icon>
                 Marketing Hub
             </a>
-            <svg class="acw-chevron" [class.rotated]="isCollapsed()" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-            </svg>
+            <app-icon [name]="isCollapsed() ? 'chevron-down' : 'chevron-up'"
+                [size]="14" class="text-zinc-500 transition-transform"></app-icon>
         </div>
     </div>
 
     <!-- Body -->
     @if (!isCollapsed()) {
-        <div class="acw-body">
+    <div class="p-4">
 
-            <!-- Loading skeleton -->
-            @if (isLoading()) {
-                <div class="acw-skeleton">
-                    <div class="skeleton sk-h-card sk-w-full" style="border-radius:10px"></div>
-                    <div class="skeleton sk-h-card sk-w-full" style="border-radius:10px"></div>
-                </div>
-            }
+        <!-- Loading skeleton -->
+        @if (isLoading()) {
+            <div class="flex flex-col gap-2">
+                <div class="h-16 bg-zinc-700/40 rounded-lg animate-pulse"></div>
+                <div class="h-16 bg-zinc-700/40 rounded-lg animate-pulse"></div>
+            </div>
+        }
 
-            <!-- Coupon cards -->
-            @if (!isLoading()) {
-                <div class="acw-coupons">
-                    @for (c of coupons(); track c.id) {
-                        <div class="acw-coupon" [class]="urgencyClass(c)">
-                            <!-- Code + discount -->
-                            <div class="acw-coupon-top">
-                                <div class="acw-coupon-code">
-                                    <span class="acw-code-badge">{{ c.code }}</span>
-                                    <span class="acw-discount">{{ fmtDiscount(c) }} off</span>
-                                </div>
-                                <!-- Urgency indicator -->
-                                @if (c.endDate) {
-                                    <span class="acw-days" [class]="urgencyClass(c)">
-                                        {{ daysLeft(c.endDate) }}d left
-                                    </span>
-                                } @else {
-                                    <span class="acw-days safe">No expiry</span>
-                                }
+        <!-- Coupon cards grid -->
+        @if (!isLoading()) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                @for (c of coupons(); track c.id) {
+                    <div class="bg-zinc-900/40 border border-zinc-700/50 rounded-lg p-3 flex flex-col gap-2 hover:border-purple-500/30 transition-colors"
+                         [ngClass]="{
+                            'border-l-2 border-l-red-500':    urgencyClass(c) === 'urgent',
+                            'border-l-2 border-l-amber-500':  urgencyClass(c) === 'soon',
+                            'border-l-2 border-l-emerald-500':urgencyClass(c) === 'safe'
+                         }">
+
+                        <!-- Code + days left -->
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-sm font-black text-purple-300 tracking-wide">{{ c.code }}</span>
+                                <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 px-1.5 py-0.5 rounded">
+                                    {{ fmtDiscount(c) }}
+                                </span>
                             </div>
-
-                            @if (c.description) {
-                                <p class="acw-desc">{{ c.description }}</p>
-                            }
-
-                            <!-- Usage bar -->
-                            @if (c.usageLimit > 0) {
-                                <div class="acw-usage-wrap">
-                                    <div class="acw-usage-bar">
-                                        <div class="acw-usage-fill" [style.width]="usagePct(c) + '%'"></div>
-                                    </div>
-                                    <span class="acw-usage-text">{{ c.usageCount }}/{{ c.usageLimit }}</span>
-                                </div>
+                            @if (c.endDate) {
+                                <span class="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0"
+                                    [ngClass]="{
+                                        'bg-red-500/10 text-red-400':     urgencyClass(c) === 'urgent',
+                                        'bg-amber-500/10 text-amber-400': urgencyClass(c) === 'soon',
+                                        'bg-emerald-500/10 text-emerald-400': urgencyClass(c) === 'safe'
+                                    }">
+                                    {{ daysLeft(c.endDate) }}d
+                                </span>
                             } @else {
-                                <span class="acw-usage-text">{{ c.usageCount }} uses · unlimited</span>
+                                <span class="text-[10px] text-zinc-500">Sin venc.</span>
                             }
                         </div>
-                    }
-                </div>
-            }
-        </div>
+
+                        <!-- Description -->
+                        @if (c.description) {
+                            <p class="text-xs text-zinc-500 leading-tight m-0">{{ c.description }}</p>
+                        }
+
+                        <!-- Usage bar -->
+                        @if (c.usageLimit > 0) {
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 bg-zinc-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full transition-all duration-500"
+                                         [style.width]="usagePct(c) + '%'">
+                                    </div>
+                                </div>
+                                <span class="text-[10px] text-zinc-500 whitespace-nowrap">{{ c.usageCount }}/{{ c.usageLimit }}</span>
+                            </div>
+                        } @else {
+                            <span class="text-[10px] text-zinc-600">{{ c.usageCount }} usos · ilimitado</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
     }
+
 </div>
 }

@@ -7,13 +7,13 @@ import {
     orderBy, Timestamp,
 } from '@angular/fire/firestore';
 import { Coupon } from '../../../../core/models/coupon.model';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-active-coupons-widget',
     standalone: true,
-    imports: [CommonModule, DatePipe, RouterModule, TranslateModule],
+    imports: [CommonModule, DatePipe, RouterModule, TranslateModule, AppIconComponent],
     templateUrl: './active-coupons-widget.component.html',
-    styleUrls: ['./active-coupons-widget.component.css'],
 })
 export class ActiveCouponsWidgetComponent implements OnInit {
     private fs = inject(Firestore);

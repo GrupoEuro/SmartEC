@@ -1,5 +1,7 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { TrackingConfigService, TrackingConfig } from './tracking-config.service';
 
 /** Universal event params for cross-platform normalisation */
@@ -28,14 +30,29 @@ declare const ttq: any;
 export class TrackingService {
     private configSvc  = inject(TrackingConfigService);
     private platformId = inject(PLATFORM_ID);
+    private router     = inject(Router);
     private config: TrackingConfig | null = null;
+    private initialized = false;
 
-    /** Call once from AppComponent.ngOnInit */
+    /** Call once from AppComponent — injects pixel scripts and wires page_view to the router */
     async init(): Promise<void> {
+        if (this.initialized) return;
+        this.initialized = true;
         if (!isPlatformBrowser(this.platformId)) return;
 
         this.config = await this.configSvc.load();
         this.injectScripts(this.config);
+        this.wirePageViews();
+    }
+
+    /** Subscribe to router NavigationEnd to fire page_view on every route change */
+    private wirePageViews() {
+        this.router.events.pipe(
+            filter(e => e instanceof NavigationEnd)
+        ).subscribe((e) => {
+            const url = (e as NavigationEnd).urlAfterRedirects;
+            this.trackPageView(url);
+        });
     }
 
     // ── Script Injection ────────────────────────────────────────────────────
@@ -43,17 +60,15 @@ export class TrackingService {
     private injectScripts(cfg: TrackingConfig) {
         if (cfg.gtm?.enabled && cfg.gtm.id) {
             this.injectGTM(cfg.gtm.id);
-            // When GTM is active it manages everything — skip individual scripts
-            return;
+            return; // GTM manages all other pixels
         }
-
-        if (cfg.ga4?.enabled && cfg.ga4.id)           this.injectGA4(cfg.ga4.id);
-        if (cfg.meta?.enabled && cfg.meta.id)          this.injectMeta(cfg.meta.id);
-        if (cfg.clarity?.enabled && cfg.clarity.id)   this.injectClarity(cfg.clarity.id);
-        if (cfg.tiktok?.enabled && cfg.tiktok.id)     this.injectTikTok(cfg.tiktok.id);
+        if (cfg.ga4?.enabled && cfg.ga4.id)             this.injectGA4(cfg.ga4.id);
+        if (cfg.meta?.enabled && cfg.meta.id)           this.injectMeta(cfg.meta.id);
+        if (cfg.clarity?.enabled && cfg.clarity.id)     this.injectClarity(cfg.clarity.id);
+        if (cfg.tiktok?.enabled && cfg.tiktok.id)       this.injectTikTok(cfg.tiktok.id);
         if (cfg.pinterest?.enabled && cfg.pinterest.id) this.injectPinterest(cfg.pinterest.id);
-        if (cfg.snapchat?.enabled && cfg.snapchat.id)  this.injectSnapchat(cfg.snapchat.id);
-        if (cfg.gads?.enabled && cfg.gads.id)          this.injectGoogleAds(cfg.gads.id);
+        if (cfg.snapchat?.enabled && cfg.snapchat.id)   this.injectSnapchat(cfg.snapchat.id);
+        if (cfg.gads?.enabled && cfg.gads.id)           this.injectGoogleAds(cfg.gads.id);
     }
 
     private injectGA4(id: string) {

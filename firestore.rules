@@ -371,6 +371,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /meli_listings/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     match /meli_fbm_inventory/{document} {
       allow read: if isStaff();
       allow write: if isAdmin();
@@ -380,6 +385,7 @@ service cloud.firestore {
       allow read: if isStaff();
       allow write: if isAdmin();
     }
+
 
     // ── Notifications ─────────────────────────────────────────────────────────
 

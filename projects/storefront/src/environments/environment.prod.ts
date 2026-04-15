@@ -6,7 +6,8 @@ export const environment = {
         projectId: "tiendapraxis",
         storageBucket: "tiendapraxis.firebasestorage.app",
         messagingSenderId: "320158502362",
-        appId: "1:320158502362:web:e485f992f130d318bb04e3",
-        measurementId: "G-LTEXCRY0J5"
+        appId: "1:320158502362:web:e485f992f130d318bb04e3"
+        // NOTE: GA4 Measurement ID is managed via /admin/tracking → Firestore config/tracking
+        // Do NOT hardcode measurementId here — the TrackingService reads the ID you enter in the admin portal.
     }
 };

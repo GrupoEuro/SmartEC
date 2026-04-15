@@ -436,18 +436,18 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 5px 9px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
     border-radius: 8px;
-    color: #d4d4d8;
+    color: #e4e4e7;
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.72rem;
     transition: all 0.2s;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.05em;
 }
-.lang-btn-ops:hover { background: rgba(255,255,255,0.09); color: #fff; }
+.lang-btn-ops:hover { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.3); }
 
 .lang-code-ops { font-size: 0.72rem; font-weight: 700; }
 

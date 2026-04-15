@@ -7,13 +7,13 @@ import {
     orderBy, Timestamp,
 } from '@angular/fire/firestore';
 import { Campaign } from '../../../../core/models/campaign.model';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-active-campaigns-widget',
     standalone: true,
-    imports: [CommonModule, RouterModule, TranslateModule],
+    imports: [CommonModule, RouterModule, TranslateModule, AppIconComponent],
     templateUrl: './active-campaigns-widget.component.html',
-    styleUrls: ['./active-campaigns-widget.component.css'],
 })
 export class ActiveCampaignsWidgetComponent implements OnInit {
     private fs = inject(Firestore);

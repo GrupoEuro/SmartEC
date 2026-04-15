@@ -13,6 +13,7 @@ export interface PendingFile {
   tags: string; // local model for input
   status: 'pending' | 'uploading' | 'success' | 'error';
   progress: number;
+  errorMessage?: string;
 }
 
 @Component({
@@ -34,6 +35,9 @@ export class MediaUploadComponent {
 
   // State
   pendingFiles = signal<PendingFile[]>([]);
+  isUploading = signal(false);
+  uploadDone = signal(false);
+  uploadSummary = signal<{ success: number; error: number }>({ success: 0, error: 0 });
   globalTags = ''; // For bulk applying tags
   selectedCategory = 'site-assets';
   readonly CATEGORIES = ['products', 'banners', 'site-assets', 'documents', 'blog', 'icons'];
@@ -82,6 +86,8 @@ export class MediaUploadComponent {
 
   removeFile(index: number) {
     this.pendingFiles.update(files => files.filter((_, i) => i !== index));
+    // Reset done state when queue changes
+    if (this.uploadDone()) this.uploadDone.set(false);
   }
 
   applyGlobalTags() {
@@ -98,12 +104,16 @@ export class MediaUploadComponent {
     const filesToUpload = this.pendingFiles().filter(f => f.status === 'pending' || f.status === 'error');
     if (filesToUpload.length === 0) return;
 
+    this.isUploading.set(true);
+    this.uploadDone.set(false);
+
     // Mark all pending/error files as 'uploading'
     this.pendingFiles.update(files => files.map(f =>
-      (f.status === 'pending' || f.status === 'error') ? { ...f, status: 'uploading', progress: 0 } : f
+      (f.status === 'pending' || f.status === 'error') ? { ...f, status: 'uploading', progress: 0, errorMessage: undefined } : f
     ));
 
     const completedAssets: MediaAsset[] = [];
+    let errorCount = 0;
 
     for (const pf of filesToUpload) {
       // Capture the file object for stable identity inside the closure
@@ -116,7 +126,7 @@ export class MediaUploadComponent {
             this.pendingFiles.update(files => {
               const updated = files.map(f => {
                 if (f.file !== fileRef) return f;
-                const next = { ...f, progress: Math.round(event.progress) };
+                const next: PendingFile = { ...f, progress: Math.round(event.progress) };
                 if (event.asset) {
                   next.status = 'success' as const;
                   completedAssets.push(event.asset);
@@ -127,9 +137,14 @@ export class MediaUploadComponent {
             });
           },
           error: (err) => {
-            console.error('Upload error', err);
+            console.error('[MediaUpload] Upload error for file:', fileRef.name, err);
+            // Try to extract a meaningful error
+            const msg = err?.message || err?.code || 'Upload failed';
+            errorCount++;
             this.pendingFiles.update(files =>
-              files.map(f => f.file === fileRef ? { ...f, status: 'error' as const, progress: 0 } : f)
+              files.map(f => f.file === fileRef
+                ? { ...f, status: 'error' as const, progress: 0, errorMessage: msg }
+                : f)
             );
             resolve();
           },
@@ -138,11 +153,20 @@ export class MediaUploadComponent {
       });
     }
 
+    this.isUploading.set(false);
+    this.uploadSummary.set({ success: completedAssets.length, error: errorCount });
+    this.uploadDone.set(true);
+
     if (completedAssets.length > 0) {
       this.uploadComplete.emit(completedAssets);
+      // Auto-clear successful files after a short delay
       setTimeout(() => {
         this.pendingFiles.update(files => files.filter(f => f.status !== 'success'));
-      }, 1500);
+        // If no errors remain, also clear the done state
+        if (errorCount === 0) {
+          this.uploadDone.set(false);
+        }
+      }, 2000);
     }
   }
 

@@ -6,14 +6,10 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 
-declare let gtag: Function;
-function fireGtag(event: string, params: object) {
-    try { if (typeof gtag !== 'undefined') gtag('event', event, params); } catch { /* non-critical */ }
-}
-
 import { ProductService, LanguageService } from '@lib/core';
 import { CartService } from '../../core/services/cart.service';
 import { MetaService } from '../../core/services/meta.service';
+import { TrackingService } from '../../core/services/tracking.service';
 import { Product } from '@lib/core';
 import { ImageGalleryComponent } from './components/image-gallery/image-gallery.component';
 import { RelatedProductsComponent } from './components/related-products/related-products.component';
@@ -36,12 +32,13 @@ import { WishlistService } from '../../core/services/wishlist.service';
     styleUrl: './product-detail.component.css'
 })
 export class ProductDetailComponent implements OnInit {
-    private route          = inject(ActivatedRoute);
-    private router         = inject(Router);
-    private productService = inject(ProductService);
-    private metaService    = inject(MetaService);
-    private cartService    = inject(CartService);
-    readonly wishlistService = inject(WishlistService);
+    private route             = inject(ActivatedRoute);
+    private router            = inject(Router);
+    private productService    = inject(ProductService);
+    private metaService       = inject(MetaService);
+    private cartService       = inject(CartService);
+    private trackingService   = inject(TrackingService);
+    readonly wishlistService   = inject(WishlistService);
     /** Active language signal — use as lang() in template */
     protected readonly lang  = inject(LanguageService).currentLang;
     /** Typed getter for strict-mode template indexing — 'es' | 'en' */
@@ -157,17 +154,15 @@ export class ProductDetailComponent implements OnInit {
         const structuredData = this.metaService.generateProductStructuredData(product, currentLang);
         this.metaService.addStructuredData(structuredData);
 
-        // GA4: view_item
-        fireGtag('view_item', {
-            currency: 'MXN',
-            value: product.price,
-            items: [{
-                item_id:    product.sku || product.id,
-                item_name:  product.name?.[currentLang] || product.name?.es,
+        // Fire view_item across all enabled platforms (GA4, Meta, TikTok)
+        this.trackingService.trackViewItem('MXN', product.price, [
+            {
+                item_id:    product.sku || product.id || '',
+                item_name:  product.name?.[currentLang] || product.name?.es || '',
                 item_brand: product.brand,
                 price:      product.price,
                 quantity:   1,
-            }]
-        });
+            }
+        ]);
     }
 }

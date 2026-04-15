@@ -51,7 +51,16 @@ export class AppComponent implements OnInit {
     // Defer non-critical services to completely bypass Lighthouse TBT penalty
     // We strictly wait for the first user interaction (mousemove, scroll, touch)
     if (isPlatformBrowser(this.platformId)) {
+      let initialized = false;
+      const EVENTS = ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'];
+
       const initDeferredServices = async () => {
+        if (initialized) return;   // Guard: only run once regardless of how many events fire
+        initialized = true;
+
+        // Remove all listeners immediately so nothing else can trigger this
+        EVENTS.forEach(e => document.removeEventListener(e, initDeferredServices));
+
         const { AnalyticsService } = await import('@lib/core');
         this.injector.get(AnalyticsService).init();
         const { CampaignService } = await import('./core/services/campaign.service');
@@ -59,14 +68,10 @@ export class AppComponent implements OnInit {
         // Load tracking pixels from Firestore config and inject enabled scripts
         const { TrackingService } = await import('./core/services/tracking.service');
         this.injector.get(TrackingService).init();
-        // Clean up listeners
-        ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
-          document.removeEventListener(e, initDeferredServices);
-        });
       };
 
-      ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(e => {
-        document.addEventListener(e, initDeferredServices, { passive: true, once: true });
+      EVENTS.forEach(e => {
+        document.addEventListener(e, initDeferredServices, { passive: true });
       });
     }
 

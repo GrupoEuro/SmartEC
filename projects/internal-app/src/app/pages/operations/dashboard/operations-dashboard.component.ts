@@ -254,9 +254,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     }
 
     // Chart instances
-    private slaChart?: Chart;
+    private topProductsChart?: Chart;
     private priorityChart?: Chart;
     private trendChart?: Chart;
+
+    topProducts = signal<{ name: string; units: number; revenue: number }[]>([]);
 
     ngOnInit() {
         this.loadDashboardData();
@@ -269,7 +271,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     ngOnDestroy() {
         // Cleanup charts
-        this.slaChart?.destroy();
+        this.topProductsChart?.destroy();
         this.priorityChart?.destroy();
         this.trendChart?.destroy();
     }
@@ -281,7 +283,17 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     private getTimestampMillis(timestamp: any): number {
         if (!timestamp) return Date.now();
-        return timestamp.toMillis ? timestamp.toMillis() : new Date(timestamp).getTime();
+        // Firestore Timestamp object
+        if (timestamp && typeof timestamp.toMillis === 'function') return timestamp.toMillis();
+        // Firestore server-timestamp sentinels are plain objects without toMillis — return now
+        if (timestamp && typeof timestamp === 'object' && !timestamp._seconds && !timestamp.seconds) return Date.now();
+        // Date object
+        if (timestamp instanceof Date) return isNaN(timestamp.getTime()) ? Date.now() : timestamp.getTime();
+        // Numeric millis
+        if (typeof timestamp === 'number') return isNaN(timestamp) ? Date.now() : timestamp;
+        // String ISO — parse safely
+        const parsed = new Date(timestamp).getTime();
+        return isNaN(parsed) ? Date.now() : parsed;
     }
 
     setTimeframe(tf: 'MTD' | 'YTD') {
@@ -341,6 +353,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.calculatePriorityStats(filteredOrders);
         this.calculateStaffWorkload(filteredOrders);
         this.calculateOverdueOrders(filteredOrders);
+        this.calculateTopProducts(filteredOrders);
         this.generateHeatmapData(filteredOrders);
 
         this.recentOrders.set(filteredOrders.slice(0, 5));
@@ -351,10 +364,10 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         this.chartRenderTimeout = setTimeout(() => {
             if (document.getElementById('trendChart')) {
-                this.createSLAChart();
-                this.createPriorityChart();
-                this.createTrendChart(filteredOrders);
-            }
+                    this.createTopProductsChart();
+                    this.createPriorityChart();
+                    this.createTrendChart(filteredOrders);
+                }
         }, 150);
     }
 
@@ -596,101 +609,157 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     async calculateSLAStats(orders: Order[]) {
         try {
+            // ── Priority overrides (only for non-MeLi orders) ────────────────────
             let startDate = new Date();
             let endDate = new Date();
             if (orders.length > 0) {
-                // Since orders are pre-sorted by date in the UI, we can just grab bounds
                 const dates = orders.map(o => this.getTimestampMillis(o.createdAt || o.updatedAt));
                 startDate = new Date(Math.min(...dates));
                 endDate = new Date(Math.max(...dates));
             } else {
-                 if (this.timeframe() === 'MTD') {
-                     startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-                 } else {
-                     startDate = new Date(startDate.getFullYear(), 0, 1);
-                 }
+                startDate = this.timeframe() === 'MTD'
+                    ? new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+                    : new Date(startDate.getFullYear(), 0, 1);
             }
 
-            // Fetch any custom SLA overrides (like rush/express upgrades) applied to orders in this timeframe
-            const priorityOverridesMap = await this.priorityService.getSLAOverridesMap(startDate, endDate);
-            
+            let priorityOverridesMap = new Map<string, number>();
+            try {
+                priorityOverridesMap = await this.priorityService.getSLAOverridesMap(startDate, endDate);
+            } catch (overridesError: any) {
+                console.warn('[SLA] Could not load priority overrides.', overridesError?.message ?? overridesError);
+            }
+
             const now = Date.now();
             const sixHoursFromNow = now + (6 * 60 * 60 * 1000);
-            
+
             let onTime = 0;
             let overdue = 0;
             let approaching = 0;
             let validOrdersForSLA = 0;
 
+            // Diagnostic counters
+            let dbg = { meli_platform: 0, meli_delayed: 0, meli_completed_ok: 0, meli_active_nativeSla: 0, meli_active_no_sla: 0, nonMeli: 0, skipped_cancelled: 0 };
+
             orders.forEach(order => {
-                // Ignore cancelled, refunded, or returned orders entirely from SLA compliance
+                // ── Skip terminal non-actionable statuses ────────────────────────
                 if (['cancelled', 'refunded', 'returned'].includes(order.status)) {
+                    dbg.skipped_cancelled++;
                     return;
                 }
-                
-                validOrdersForSLA++;
 
-                let slaDeadline: number;
-                
-                // 1. Check for custom priority override from the database
-                if (order.id && priorityOverridesMap.has(order.id)) {
-                    slaDeadline = priorityOverridesMap.get(order.id)!;
-                }
-                // 2. Check for native marketplace SLA (e.g. MercadoLibre handling time)
+                const isMeli = order.sourceChannel === 'mercadolibre';
                 // @ts-ignore
-                else if (order.nativeSla) {
-                    // @ts-ignore
-                    slaDeadline = this.getTimestampMillis(order.nativeSla);
-                } 
-                // 3. Fallback to standard 48/72 timeframe based on priority tier
-                else {
-                    const defaultSLAHours = order.priorityLevel === 'rush' ? 24 : (order.priorityLevel === 'express' ? 48 : 72);
-                    const createdAt = this.getTimestampMillis(order.createdAt);
-                    slaDeadline = createdAt + (defaultSLAHours * 60 * 60 * 1000);
-                }
+                const nativeSla: any = order.nativeSla ?? null;
+                // @ts-ignore
+                const meliDelayed: boolean = order.meliDelayed === true;
+                const isCompleted = ['shipped', 'delivered'].includes(order.status);
 
-                // If order was fulfilled by the platform directly (MeLi Full, Amazon FBA), don't penalize our warehouse SLA
+                // ── 1. MeLi Full / Platform-fulfilled — always on time (MeLi handles logistics) ──
                 if (order.fulfillmentType === 'platform') {
+                    dbg.meli_platform++;
+                    validOrdersForSLA++;
                     onTime++;
                     return;
                 }
 
-                // If order is already completed, compare the deadline against when it was actually shipped/delivered
-                if (['shipped', 'delivered'].includes(order.status)) {
-                    let completionTime: number;
-                    let shippedEvent = null;
-
-                    if (order.history && Array.isArray(order.history)) {
-                        // Find the first time it was marked shipped or delivered
-                        shippedEvent = order.history.find(h => h.status === 'shipped' || h.status === 'delivered');
-                    }
-
-                    if (shippedEvent && shippedEvent.timestamp) {
-                        completionTime = this.getTimestampMillis(shippedEvent.timestamp);
-                    } else if (order.shipments && order.shipments.length > 0 && order.shipments[0].shippedDate) {
-                        completionTime = this.getTimestampMillis(order.shipments[0].shippedDate);
-                    } else {
-                        completionTime = this.getTimestampMillis(order.updatedAt || order.createdAt);
-                    }
-
-                    if (completionTime > slaDeadline) {
+                // ── 2. MeLi orders ───────────────────────────────────────────────
+                if (isMeli) {
+                    // MeLi's delay flag is THE authoritative signal — only trust for active orders.
+                    // Completed orders with delay flag that still shipped are edge cases; skip flag.
+                    if (meliDelayed && !isCompleted) {
+                        dbg.meli_delayed++;
+                        validOrdersForSLA++;
                         overdue++;
-                    } else {
-                        onTime++;
+                        return;
                     }
+
+                    // Completed MeLi orders:
+                    // If MeLi didn't flag it as delayed → it shipped on time by MeLi's own system.
+                    // DO NOT attempt timestamp comparison: nativeSla is the DISPATCH DEADLINE (past date
+                    // for completed orders), and shippedAt is frequently null even when shipped.
+                    // MeLi is the SLA authority — trust their system.
+                    if (isCompleted) {
+                        dbg.meli_completed_ok++;
+                        validOrdersForSLA++;
+                        onTime++;
+                        return;
+                    }
+
+                    // Active MeLi orders (pending / processing):
+                    // Use nativeSla ONLY IF it's a FUTURE deadline (i.e., dispatch window is still open).
+                    // If nativeSla is in the past but MeLi hasn't flagged meliDelayed → MeLi considers
+                    // it in-progress, not overdue. Exclude from scoring to prevent false positives.
+                    if (nativeSla) {
+                        const slaMs = this.getTimestampMillis(nativeSla);
+                        const isFutureDeadline = slaMs > (now - 2 * 60 * 60 * 1000); // allow 2h grace
+                        if (isFutureDeadline) {
+                            dbg.meli_active_nativeSla++;
+                            validOrdersForSLA++;
+                            if (now > slaMs) {
+                                overdue++;
+                            } else if (slaMs <= sixHoursFromNow) {
+                                approaching++;
+                                onTime++;
+                            } else {
+                                onTime++;
+                            }
+                        } else {
+                            // nativeSla is old/past but MeLi hasn't flagged it → exclude from scoring
+                            // MeLi would have set meliDelayed if it was truly late
+                            dbg.meli_active_no_sla++;
+                        }
+                        return;
+                    }
+
+                    // Active MeLi with no nativeSla → no reliable deadline, exclude from scoring
+                    dbg.meli_active_no_sla++;
+                    return;
+                }
+
+                // ── 3. Non-MeLi orders ───────────────────────────────────────────
+                dbg.nonMeli++;
+                let slaDeadlineMs: number | null = null;
+
+                // Manual staff override takes precedence
+                if (order.id && priorityOverridesMap.has(order.id)) {
+                    slaDeadlineMs = priorityOverridesMap.get(order.id)!;
                 } else {
-                    // For active orders, compare against current time
-                    if (now > slaDeadline) {
+                    // Completed non-MeLi: check if shipped within SLA window
+                    const defaultSLAHours = order.priorityLevel === 'rush' ? 24 : (order.priorityLevel === 'express' ? 48 : 72);
+                    const createdAt = this.getTimestampMillis(order.createdAt);
+                    slaDeadlineMs = createdAt + (defaultSLAHours * 60 * 60 * 1000);
+                }
+
+                if (isCompleted) {
+                    // For completed non-MeLi: check updatedAt as proxy for ship time
+                    const completionTime = this.getTimestampMillis((order as any).shippedAt || order.updatedAt || order.createdAt);
+                    validOrdersForSLA++;
+                    if (completionTime > slaDeadlineMs!) {
                         overdue++;
-                    } else if (slaDeadline <= sixHoursFromNow) {
-                        approaching++;
                     } else {
                         onTime++;
                     }
+                    return;
+                }
+
+                // Active non-MeLi
+                validOrdersForSLA++;
+                if (now > slaDeadlineMs!) {
+                    overdue++;
+                } else if (slaDeadlineMs! <= sixHoursFromNow) {
+                    approaching++;
+                    onTime++;
+                } else {
+                    onTime++;
                 }
             });
 
-            const complianceRate = validOrdersForSLA > 0 ? ((onTime + approaching) / validOrdersForSLA) * 100 : 100;
+            const complianceRate = validOrdersForSLA > 0
+                ? ((onTime + approaching) / validOrdersForSLA) * 100
+                : 100;
+
+            console.log(`[SLA] Total=${orders.length} Valid=${validOrdersForSLA} | onTime=${onTime} approaching=${approaching} overdue=${overdue} | compliance=${Math.round(complianceRate)}%`);
+            console.log(`[SLA] Breakdown: platform=${dbg.meli_platform} meliDelayed=${dbg.meli_delayed} meliCompletedOK=${dbg.meli_completed_ok} meliActiveWithSLA=${dbg.meli_active_nativeSla} meliNoSLA=${dbg.meli_active_no_sla} nonMeli=${dbg.nonMeli} cancelled=${dbg.skipped_cancelled}`);
 
             this.slaStats.set({
                 total: validOrdersForSLA,
@@ -700,14 +769,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 complianceRate: Math.round(complianceRate * 100) / 100
             });
 
-            if (this.slaChart) {
-                this.updateSLAChart();
+            if (this.topProductsChart) {
+                this.updateTopProductsChart();
             }
+
         } catch (error) {
             console.error('Error calculating SLA stats:', error);
             this.toast.error('Error calculating SLA validation');
         }
     }
+
 
     calculatePriorityStats(orders: Order[]) {
         try {
@@ -764,25 +835,35 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     calculateOverdueOrders(orders: Order[]) {
         try {
-            // Re-evaluate overdue locally to match SLA chart computation instead of relying on the DB flag
             const now = Date.now();
             const overdue = orders.filter(o => {
-                if (o.status === 'shipped' || o.status === 'delivered' || o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded') return false;
-                
-                let slaDeadline: number;
+                // Completed / cancelled orders are never "actively overdue"
+                if (['shipped', 'delivered', 'cancelled', 'returned', 'refunded'].includes(o.status)) return false;
+
+                const isMeli = o.sourceChannel === 'mercadolibre';
                 // @ts-ignore
-                if (o.nativeSla) {
-                    // @ts-ignore
-                    slaDeadline = this.getTimestampMillis(o.nativeSla);
-                } else {
-                    const defaultSLAHours = o.priorityLevel === 'rush' ? 24 : (o.priorityLevel === 'express' ? 48 : 72);
-                    const createdAt = this.getTimestampMillis(o.createdAt);
-                    slaDeadline = createdAt + (defaultSLAHours * 60 * 60 * 1000);
+                const meliDelayed: boolean = o.meliDelayed === true;
+                // @ts-ignore
+                const nativeSla: any = o.nativeSla ?? null;
+
+                // MeLi's own delay flag — most authoritative signal
+                if (meliDelayed) return true;
+
+                // Has a real dispatch deadline from MeLi
+                if (nativeSla) {
+                    return now > this.getTimestampMillis(nativeSla);
                 }
-                
-                return now > slaDeadline;
+
+                // MeLi order with no nativeSla and no delay flag → NOT overdue
+                // (we have no reliable deadline; MeLi is the SLA authority)
+                if (isMeli) return false;
+
+                // Non-MeLi active order: use 72h calendar fallback
+                const defaultSLAHours = o.priorityLevel === 'rush' ? 24 : (o.priorityLevel === 'express' ? 48 : 72);
+                const createdAt = this.getTimestampMillis(o.createdAt);
+                return now > createdAt + (defaultSLAHours * 60 * 60 * 1000);
             });
-            this.overdueOrders.set(overdue.slice(0, 5)); // Top 5 overdue
+            this.overdueOrders.set(overdue.slice(0, 5));
         } catch (error) {
             console.error('Error calculating overdue orders:', error);
         }
@@ -804,64 +885,120 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }
     }
 
+    calculateTopProducts(orders: Order[]) {
+        const productMap = new Map<string, { units: number; revenue: number }>();
+
+        orders.forEach(order => {
+            if (['cancelled', 'refunded', 'returned'].includes(order.status)) return;
+            (order.items || []).forEach((item: any) => {
+                const key = item.productName || item.name || item.sku || 'Producto sin nombre';
+                const units = item.quantity || 1;
+                const revenue = (item.price || 0) * units;
+                const existing = productMap.get(key);
+                if (existing) {
+                    existing.units += units;
+                    existing.revenue += revenue;
+                } else {
+                    productMap.set(key, { units, revenue });
+                }
+            });
+        });
+
+        const sorted = Array.from(productMap.entries())
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a, b) => b.units - a.units)
+            .slice(0, 5);
+
+        this.topProducts.set(sorted);
+
+        // Update chart if already rendered
+        if (this.topProductsChart) {
+            this.updateTopProductsChart();
+        }
+    }
+
     // Chart creation methods
-    private createSLAChart() {
-        const canvas = document.getElementById('slaChart') as HTMLCanvasElement;
+    private createTopProductsChart() {
+        const canvas = document.getElementById('topProductsChart') as HTMLCanvasElement;
         if (!canvas) return;
 
-        // Force native chart destruction
-        if (this.slaChart) {
-            this.slaChart.destroy();
-            this.slaChart = undefined;
+        if (this.topProductsChart) {
+            this.topProductsChart.destroy();
+            this.topProductsChart = undefined;
         }
 
-        // Hard unmount any ghost instances locked to this canvas ID globally
-        for (let id in Chart.instances) {
+        for (const id in Chart.instances) {
             const instance = Chart.instances[id];
-            if (instance && instance.canvas && instance.canvas.id === 'slaChart') {
+            if (instance && instance.canvas && instance.canvas.id === 'topProductsChart') {
                 instance.destroy();
             }
         }
 
-        const stats = this.slaStats();
+        const products = this.topProducts();
+        if (products.length === 0) return;
+
+        // Truncate long product names for readability
+        const truncate = (s: string, n: number) => s.length > n ? s.slice(0, n) + '…' : s;
+        const labels = products.map(p => truncate(p.name, 28));
+        const units  = products.map(p => p.units);
+        const palette = [
+            '#818cf8', // indigo-400
+            '#a78bfa', // violet-400
+            '#c084fc', // purple-400
+            '#e879f9', // fuchsia-400
+            '#f472b6', // pink-400
+        ];
+
         const config: ChartConfiguration = {
-            type: 'doughnut',
+            type: 'bar',
             data: {
-                labels: [
-                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.ON_TIME'),
-                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.APPROACHING'),
-                    this.translate.instant('OPERATIONS.DASHBOARD.METRICS.OVERDUE')
-                ],
+                labels,
                 datasets: [{
-                    data: [stats.onTime, stats.approaching, stats.overdue],
-                    backgroundColor: [
-                        '#10b981', // emerald-500
-                        '#f59e0b', // amber-500
-                        '#ef4444'  // red-500
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
+                    label: 'Unidades vendidas',
+                    data: units,
+                    backgroundColor: palette,
+                    borderRadius: 6,
+                    borderSkipped: false
                 }]
             },
             options: {
+                indexAxis: 'y' as const,
                 responsive: true,
                 maintainAspectRatio: false,
-                // @ts-ignore - Chart.js v3+ typings mismatch, bypass TS2353 crash
-                cutout: '70%',
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#a1a1aa', // text-zinc-400
-                            usePointStyle: true,
-                            padding: 20
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx: any) => {
+                                const p = products[ctx.dataIndex];
+                                const rev = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(p.revenue);
+                                return ` ${p.units} uds · ${rev}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: '#3f3f46' },
+                        ticks: {
+                            color: '#a1a1aa',
+                            stepSize: 1,
+                            precision: 0
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#e4e4e7',
+                            font: { size: 11 }
                         }
                     }
                 }
             }
         };
 
-        this.slaChart = new Chart(canvas, config);
+        this.topProductsChart = new Chart(canvas, config);
     }
 
     private createPriorityChart() {
@@ -1168,11 +1305,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.trendChart = new Chart(canvas, config);
     }
 
-    private updateSLAChart() {
-        if (!this.slaChart) return;
-        const stats = this.slaStats();
-        this.slaChart.data.datasets[0].data = [stats.onTime, stats.approaching, stats.overdue];
-        this.slaChart.update();
+    private updateTopProductsChart() {
+        if (!this.topProductsChart) return;
+        const products = this.topProducts();
+        const truncate = (s: string, n: number) => s.length > n ? s.slice(0, n) + '\u2026' : s;
+        this.topProductsChart.data.labels = products.map(p => truncate(p.name, 28));
+        this.topProductsChart.data.datasets[0].data = products.map(p => p.units);
+        this.topProductsChart.update();
     }
 
     private updatePriorityChart() {

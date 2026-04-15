@@ -889,5 +889,10 @@
       "TITLE": "Admin Portal"
     },
     "LOGOUT": "Log Out"
+  },
+  "CAMPAIGN": {
+    "ENDS_IN": "Ends In:",
+    "TERMINATES_IN": "Terminates In:",
+    "DONT_MISS": "Don't Miss Out"
   }
 }

@@ -35,11 +35,6 @@
 
 <div class="dashboard-container p-6 max-w-7xl mx-auto space-y-8">
 
-    <!-- ── Active Campaigns Context Widget (Marketing Hub mirror) ──────────── -->
-    <app-active-campaigns-widget></app-active-campaigns-widget>
-
-    <!-- ── Active Coupons Context Widget (Marketing Hub mirror) ───────────── -->
-    <app-active-coupons-widget></app-active-coupons-widget>
 
     <!-- Stats Cards -->
     @if (!isLoading()) {
@@ -147,39 +142,49 @@
         <!-- SLA Compliance -->
         <div
             class="metric-card sla-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
-            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
-                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300"><app-icon
-                        name="clock" [size]="18" class="mr-2 text-emerald-400"></app-icon> {{
-                    'OPERATIONS.DASHBOARD.METRICS.SLA_COMPLIANCE' | translate }}
+            <div class="metric-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white flex items-center justify-between">
+                <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300">
+                    <app-icon name="clock" [size]="18" class="mr-2 text-emerald-400"></app-icon>
+                    SLA Compliance
                 </h3>
+                <!-- Live: active orders past deadline RIGHT NOW -->
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    [ngClass]="overdueOrders().length > 0
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse'
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'">
+                    {{ overdueOrders().length === 0 ? '✓ Sin retrasos activos' : overdueOrders().length + ' activos atrasados' }}
+                </span>
             </div>
             <div class="metric-body p-6">
-                <div class="sla-gauge flex flex-col items-center justify-center mb-6">
+                <div class="sla-gauge flex flex-col items-center justify-center mb-4">
                     <div class="gauge-value text-4xl font-black mb-1" [style.color]="getSLAComplianceColor()">
                         {{ slaStats().complianceRate }}%
                     </div>
-                    <div class="gauge-label text-xs uppercase tracking-wider text-zinc-500 font-semibold">{{
-                        'OPERATIONS.DASHBOARD.METRICS.COMPLIANCE_RATE' | translate }}</div>
+                    <div class="gauge-label text-xs uppercase tracking-wider text-zinc-500 font-semibold">
+                        Tasa de Cumplimiento · {{ timeframe() }}
+                    </div>
                 </div>
                 <div class="sla-breakdown grid grid-cols-3 gap-2 border-t border-zinc-700 pt-4">
                     <div class="sla-stat flex flex-col items-center text-center">
-                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">{{
-                            'OPERATIONS.DASHBOARD.METRICS.ON_TIME' | translate }}:</span>
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">A Tiempo:</span>
                         <span class="stat-value text-lg font-bold text-emerald-400">{{ slaStats().onTime }}</span>
                     </div>
                     <div class="sla-stat flex flex-col items-center text-center">
-                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">{{
-                            'OPERATIONS.DASHBOARD.METRICS.APPROACHING' | translate }}:</span>
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">Por Vencer:</span>
                         <span class="stat-value text-lg font-bold text-amber-400">{{ slaStats().approaching }}</span>
                     </div>
                     <div class="sla-stat flex flex-col items-center text-center">
-                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">{{
-                            'OPERATIONS.DASHBOARD.METRICS.OVERDUE' | translate }}:</span>
+                        <span class="stat-label text-[10px] uppercase text-zinc-500 mb-1">Retrasados:</span>
                         <span class="stat-value text-lg font-bold text-red-400">{{ slaStats().overdue }}</span>
                     </div>
                 </div>
+                <!-- Clarification footer -->
+                <p class="text-[9px] text-zinc-600 text-center mt-3 leading-tight">
+                    Métricas históricas del período {{ timeframe() }}. El badge superior muestra órdenes activas atrasadas en este momento.
+                </p>
             </div>
         </div>
+
 
         <!-- Priority Distribution -->
         <div
@@ -286,7 +291,13 @@
                         <div class="order-info flex flex-col">
                             <span class="order-number font-mono font-bold text-red-400 text-sm">{{ order.orderNumber
                                 }}</span>
-                            <span class="customer-name text-xs text-zinc-400">{{ order.customer.name }}</span>
+                            <span class="customer-name text-xs text-zinc-400">
+                                {{ $any(order.customer).originalName || order.customer.name }}
+                            </span>
+                            <span *ngIf="$any(order.customer).originalName && $any(order.customer).originalName !== order.customer.name"
+                                class="text-[10px] text-zinc-600 mt-0.5" [title]="'ID MercadoLibre: ' + order.customer.name">
+                                {{ order.customer.name }}
+                            </span>
                         </div>
                         <a [routerLink]="['/operations/orders', order.id]"
                             class="btn-view-small px-3 py-1 bg-zinc-800 text-zinc-300 text-xs rounded hover:bg-zinc-700 transition-colors">
@@ -334,16 +345,27 @@
 
         <!-- Secondary Charts Grid (2 columns) -->
         <div class="charts-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- SLA Compliance Chart -->
+            <!-- Top 5 Products Chart -->
             <div class="chart-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700">
-                <div class="chart-header bg-zinc-900/50 p-4 border-b border-zinc-700 text-white">
-                    <h3 class="flex items-center text-sm font-semibold text-zinc-300"><app-icon name="pie-chart"
-                            [size]="18" class="mr-2"></app-icon> {{ 'OPERATIONS.DASHBOARD.METRICS.SLA_COMPLIANCE' |
-                        translate }}</h3>
+                <div class="chart-header bg-zinc-900/50 p-4 border-b border-zinc-700 flex justify-between items-center text-white">
+                    <h3 class="flex items-center text-sm font-semibold text-zinc-300">
+                        <app-icon name="trending-up" [size]="18" class="mr-2"></app-icon>
+                        Top 5 Productos
+                    </h3>
+                    <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                        por unidades vendidas
+                    </span>
                 </div>
-                <div class="chart-body">
-                    <canvas id="slaChart"></canvas>
-                </div>
+                @if (topProducts().length > 0) {
+                    <div class="chart-body">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                } @else {
+                    <div class="flex flex-col items-center justify-center py-12 text-zinc-600">
+                        <app-icon name="package" [size]="32" class="mb-3 opacity-40"></app-icon>
+                        <p class="text-sm">Sin datos de productos en este período</p>
+                    </div>
+                }
             </div>
 
             <!-- Priority Distribution Chart -->
@@ -595,7 +617,17 @@
                         <td class="py-4 px-6">
                             <span class="order-number font-mono font-bold text-white">{{ order.orderNumber }}</span>
                         </td>
-                        <td class="py-4 px-6">{{ order.customer.name }}</td>
+                        <td class="py-4 px-6">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-zinc-200">
+                                    {{ $any(order.customer).originalName || order.customer.name }}
+                                </span>
+                                <span *ngIf="$any(order.customer).originalName && $any(order.customer).originalName !== order.customer.name"
+                                    class="text-[10px] text-zinc-600 mt-0.5" [title]="'Nombre en MercadoLibre'">
+                                    {{ order.customer.name }}
+                                </span>
+                            </div>
+                        </td>
                         <td class="py-4 px-6">{{ formatDate(order.createdAt) }}</td>
                         <td class="py-4 px-6">
                             <span class="total-amount font-bold text-emerald-400">{{ formatCurrency(order.total)
@@ -629,4 +661,19 @@
         <p>{{ 'OPERATIONS.DASHBOARD.LOADING' | translate }}</p>
     </div>
     }
+
+
+    <!-- ── Contexto de Marketing ──────────────────────────────────────────── -->
+    <div class="mt-10">
+
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-3 px-1">
+            Contexto de Marketing
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <app-active-campaigns-widget></app-active-campaigns-widget>
+            <app-active-coupons-widget></app-active-coupons-widget>
+        </div>
+    </div>
+
+
 </div>

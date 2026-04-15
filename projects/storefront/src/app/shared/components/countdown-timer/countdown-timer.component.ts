@@ -1,19 +1,19 @@
 import { Component, inject, signal, computed, effect, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { CampaignService } from '../../../core/services/campaign.service';
 import { interval, Subscription } from 'rxjs';
-import { map } from 'rxjs/operators';
 
 @Component({
     selector: 'app-countdown-timer',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, TranslateModule],
     template: `
     @if (isActive() && timeRemaining()) {
         <div class="bg-gradient-to-r from-red-600 to-pink-600 text-white py-2 px-4 text-center font-bold text-sm md:text-base flex items-center justify-center gap-4 animate-in slide-in-from-top duration-500 shadow-md relative z-50">
-            <span class="hidden md:inline">{{ campaignName() }} Terminates In:</span>
-            <span class="md:hidden">Ends In:</span>
-            
+            <span class="hidden md:inline">{{ campaignName() }} {{ 'CAMPAIGN.TERMINATES_IN' | translate }}</span>
+            <span class="md:hidden">{{ 'CAMPAIGN.ENDS_IN' | translate }}</span>
+
             <div class="flex items-center gap-2 font-mono text-lg tracking-wider bg-black/20 px-3 py-1 rounded-lg">
                 <div class="flex flex-col items-center leading-none">
                     <span>{{ timeRemaining().days }}</span>
@@ -35,8 +35,8 @@ import { map } from 'rxjs/operators';
                     <span class="text-[9px] opacity-70 font-sans">s</span>
                 </div>
             </div>
-            
-            <span class="hidden md:inline text-xs bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider">Don't Miss Out</span>
+
+            <span class="hidden md:inline text-xs bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider">{{ 'CAMPAIGN.DONT_MISS' | translate }}</span>
         </div>
     }
   `

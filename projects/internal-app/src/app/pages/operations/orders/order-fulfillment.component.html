@@ -57,9 +57,17 @@
             <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
                 'OPERATIONS.ORDERS.CUSTOMER_INFO' | translate }}</h3>
             <div class="space-y-3 flex-1">
-                <div class="flex justify-between items-center text-sm">
+                <div class="flex justify-between items-start text-sm">
                     <span class="text-zinc-400">{{ 'OPERATIONS.ORDERS.NAME' | translate }}:</span>
-                    <span class="font-medium text-zinc-200 text-right">{{ order()!.customer.name }}</span>
+                    <div class="flex flex-col items-end text-right ml-4">
+                        <span class="font-medium text-zinc-200">
+                            {{ $any(order()!.customer).originalName || order()!.customer.name }}
+                        </span>
+                        <span *ngIf="$any(order()!.customer).originalName && $any(order()!.customer).originalName !== order()!.customer.name"
+                            class="text-[10px] text-zinc-600 mt-0.5" title="Nombre en MercadoLibre">
+                            {{ order()!.customer.name }}
+                        </span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-zinc-400">{{ 'OPERATIONS.ORDERS.EMAIL' | translate }}:</span>

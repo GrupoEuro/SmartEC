@@ -24,10 +24,13 @@ service firebase.storage {
       return request.resource.size <= 50 * 1024 * 1024;
     }
 
-    // ── Media Library (images) ───────────────────────────────────────────────
+    // ── Media Library (images + PDFs) ──────────────────────────────────────
     match /media/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuth() && isImageType() && withinImageSizeLimit();
+      allow write: if isAuth() && (
+        (isImageType() && withinImageSizeLimit()) ||
+        (isPdfType() && withinPdfSizeLimit())
+      );
     }
 
     // ── PDF files ───────────────────────────────────────────────────────────

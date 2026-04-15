@@ -889,5 +889,10 @@
       "TITLE": "Portal de Administración"
     },
     "LOGOUT": "Cerrar Sesión"
+  },
+  "CAMPAIGN": {
+    "ENDS_IN": "Termina En:",
+    "TERMINATES_IN": "Termina En:",
+    "DONT_MISS": "¡No te lo pierdas!"
   }
 }

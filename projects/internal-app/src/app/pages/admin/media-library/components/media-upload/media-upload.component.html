@@ -79,7 +79,8 @@
                         <app-icon name="check" [size]="20"></app-icon>
                     </div>
                     <div *ngIf="item.status === 'error'"
-                        class="absolute inset-0 bg-red-500/80 flex items-center justify-center text-white backdrop-blur-[1px]">
+                        class="absolute inset-0 bg-red-500/80 flex items-center justify-center text-white backdrop-blur-[1px]"
+                        [title]="item.errorMessage || 'Upload failed'">
                         <app-icon name="alert-circle" [size]="20"></app-icon>
                     </div>
                 </div>
@@ -94,6 +95,16 @@
                             (item.file.size / 1024 /
                             1024).toFixed(2) }} MB</span>
                     </div>
+                    <!-- Progress bar -->
+                    <div *ngIf="item.status === 'uploading'" class="w-full h-1 bg-slate-700 rounded-full mb-1.5 overflow-hidden">
+                        <div class="h-full bg-indigo-500 rounded-full transition-all duration-200"
+                            [style.width.%]="item.progress"></div>
+                    </div>
+                    <!-- Error message -->
+                    <p *ngIf="item.status === 'error' && item.errorMessage"
+                        class="text-[10px] text-red-400 mb-1 truncate" [title]="item.errorMessage">
+                        {{ item.errorMessage }}
+                    </p>
                     <input type="text" [(ngModel)]="item.tags" placeholder="Add tags..."
                         [disabled]="item.status !== 'pending'"
                         class="w-full bg-transparent border-0 border-b border-white/10 py-1 px-0 text-xs focus:ring-0 focus:border-indigo-500 placeholder-slate-600 text-slate-300 transition-colors hover:border-white/20">
@@ -118,21 +129,44 @@
     </div>
 
     <!-- Footer Actions -->
-    <div class="px-6 py-4 border-t border-white/5 bg-slate-950/50 flex justify-between items-center"
+    <div class="px-6 py-4 border-t border-white/5 bg-slate-950/50 flex-col gap-3"
         *ngIf="pendingFiles().length > 0">
-        <div class="text-xs text-slate-400 font-medium">
-            <span class="text-white">{{ pendingFiles().length }}</span> files ready
+
+        <!-- Upload Done Banner -->
+        <div *ngIf="uploadDone()" class="mb-3 px-4 py-2.5 rounded-lg flex items-center gap-3 animate-in fade-in duration-200"
+            [class.bg-emerald-500_15]="uploadSummary().error === 0"
+            [class.border-emerald-500_30]="uploadSummary().error === 0"
+            [class.bg-red-500_10]="uploadSummary().error > 0"
+            [class.border-red-500_30]="uploadSummary().error > 0"
+            [class.border]="true">
+            <app-icon [name]="uploadSummary().error === 0 ? 'check-circle' : 'alert-circle'" [size]="18"
+                [class]="uploadSummary().error === 0 ? 'text-emerald-400' : 'text-red-400'"></app-icon>
+            <span class="text-sm font-medium" [class.text-emerald-300]="uploadSummary().error === 0" [class.text-red-300]="uploadSummary().error > 0">
+                <ng-container *ngIf="uploadSummary().error === 0">
+                    ✓ {{ uploadSummary().success }} file(s) uploaded successfully
+                </ng-container>
+                <ng-container *ngIf="uploadSummary().error > 0">
+                    {{ uploadSummary().success }} uploaded · {{ uploadSummary().error }} failed — check error details above
+                </ng-container>
+            </span>
         </div>
-        <div class="flex gap-3">
-            <button (click)="pendingFiles.set([])"
-                class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                Clear All
-            </button>
-            <button (click)="uploadAll()" [disabled]="pendingFiles().length === 0"
-                class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all">
-                <span>Start Upload</span>
-                <app-icon name="arrow_right" [size]="16"></app-icon>
-            </button>
+
+        <div class="flex justify-between items-center">
+            <div class="text-xs text-slate-400 font-medium">
+                <span class="text-white">{{ pendingFiles().length }}</span> files ready
+            </div>
+            <div class="flex gap-3">
+                <button (click)="pendingFiles.set([]); uploadDone.set(false)"
+                    class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                    Clear All
+                </button>
+                <button (click)="uploadAll()" [disabled]="pendingFiles().length === 0 || isUploading()"
+                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all">
+                    <span *ngIf="isUploading()" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>{{ isUploading() ? 'Uploading...' : 'Start Upload' }}</span>
+                    <app-icon *ngIf="!isUploading()" name="arrow_right" [size]="16"></app-icon>
+                </button>
+            </div>
         </div>
     </div>
 </div>

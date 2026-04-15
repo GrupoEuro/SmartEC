@@ -1,27 +1,22 @@
-import { Component, OnInit, OnDestroy, inject, Injector } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router, RouterModule } from '@angular/router';
 import { LanguageService } from '../../core/services/language.service';
+import { CampaignService } from '../../core/services/campaign.service';
 import {
     Firestore,
-    collection,
-    query,
-    where,
-    orderBy,
-    limit,
-    onSnapshot,
     doc,
     updateDoc,
     increment
 } from '@angular/fire/firestore';
 
 export interface HeroSlide {
-    index: number;          // Position within slides array
-    imageUrl: string;
+    index: number;
+    type: 'hero' | 'banner';   // 'hero' = default branded slide, 'banner' = campaign image
+    imageUrl?: string;          // Only for 'banner' type
     ctaUrl?: string;
     ctaLabel?: string;
-    active: boolean;
 }
 
 @Component({
@@ -35,105 +30,72 @@ export class HeroComponent implements OnInit, OnDestroy {
     private translate = inject(TranslateService);
     private languageService = inject(LanguageService);
     private router = inject(Router);
-    private injector = inject(Injector);
-    private _firestore: Firestore | null = null;
-
-    private get firestore(): Firestore {
-        if (!this._firestore) {
-            this._firestore = this.injector.get('FIRESTORE' as any) as Firestore;
-        }
-        return this._firestore!;
-    }
+    private firestore = inject(Firestore);
+    private campaignService = inject(CampaignService);
 
     slides: HeroSlide[] = [];
     currentIndex = 0;
-    hasActiveCampaign = false;       // default hero shows until campaign is confirmed
     activeCampaignId: string | null = null;
 
     private autoplayTimer: any;
-    private unsubscribe: (() => void) | null = null;
     private readonly INTERVAL = 5000;
+
+    constructor() {
+        // React to campaign changes in real-time via the shared CampaignService signal
+        effect(() => {
+            const campaign = this.campaignService.activeCampaign();
+            this.buildSlides(campaign);
+        });
+    }
 
     ngOnInit() {
         this.translate.use(this.languageService.currentLang());
-        this.loadActiveCampaign();
+        // Ensure CampaignService has been initialized
+        this.campaignService.init();
     }
 
     ngOnDestroy() {
         this.stopAutoplay();
-        this.unsubscribe?.();
     }
 
-    private loadActiveCampaign() {
-        const campaignsRef = collection(this.firestore, 'campaigns');
-        const q = query(
-            campaignsRef,
-            where('isActive', '==', true),
-            orderBy('priority', 'desc'),
-            limit(1)
-        );
+    private buildSlides(campaign: any) {
+        // Slide 0 is always the default hero
+        const heroSlide: HeroSlide = { index: 0, type: 'hero' };
 
-        this.unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                if (snapshot.empty) {
-                    // No active campaign → fall back to default hero
-                    this.hasActiveCampaign = false;
-                    this.slides = [];
-                    this.stopAutoplay();
-                    return;
-                }
+        if (!campaign) {
+            // No campaign — just the branded hero, no carousel
+            this.slides = [heroSlide];
+            this.stopAutoplay();
+            return;
+        }
 
-                const campaignDoc = snapshot.docs[0];
-                this.activeCampaignId = campaignDoc.id;
+        this.activeCampaignId = campaign.id || null;
 
-                const data = campaignDoc.data();
-                const allSlides: any[] = data['slides'] || [];
+        const campaignBanners: HeroSlide[] = (campaign.slides || [])
+            .filter((s: any) => s.active && s.imageUrl)
+            .sort((a: any, b: any) => a.order - b.order)
+            .map((s: any, i: number) => ({
+                index: i + 1,   // hero is 0, banners start at 1
+                type: 'banner' as const,
+                imageUrl: s.imageUrl,
+                ctaUrl: s.ctaUrl || undefined,
+                ctaLabel: s.ctaLabel || undefined
+            }));
 
-                const mapped = allSlides
-                    .filter((s: any) => s.active)
-                    .sort((a: any, b: any) => a.order - b.order)
-                    .map((s: any, i: number) => ({
-                        index: i,
-                        imageUrl: s.imageUrl,
-                        ctaUrl: s.ctaUrl || undefined,
-                        ctaLabel: s.ctaLabel || undefined,
-                        active: s.active
-                    }));
+        this.slides = [heroSlide, ...campaignBanners];
 
-                if (mapped.length === 0) {
-                    // Campaign exists but has no active slides → show default hero
-                    this.hasActiveCampaign = false;
-                    this.slides = [];
-                    return;
-                }
-
-                this.slides = mapped;
-                this.hasActiveCampaign = true;
-
-                if (this.currentIndex >= this.slides.length) {
-                    this.currentIndex = 0;
-                }
-                if (this.slides.length > 1) {
-                    this.restartAutoplay();
-                }
-            },
-            (err) => {
-                // Firestore error (missing index, permissions, etc.) — show default hero
-                console.warn('[Hero] Campaign query failed, showing default hero:', err.message);
-                this.hasActiveCampaign = false;
-                this.slides = [];
-            }
-        );
+        // Only autoplay when there are multiple slides
+        if (this.currentIndex >= this.slides.length) {
+            this.currentIndex = 0;
+        }
+        if (this.slides.length > 1) {
+            this.restartAutoplay();
+        }
     }
 
     onSlideClick(slide: HeroSlide) {
-        if (!slide.ctaUrl) return;
-
-        // Track click analytics
+        if (slide.type === 'hero' || !slide.ctaUrl) return;
         this.trackClick(slide.index);
-
-        // Navigate
         if (slide.ctaUrl.startsWith('http')) {
             window.open(slide.ctaUrl, '_blank');
         } else {
@@ -144,8 +106,6 @@ export class HeroComponent implements OnInit, OnDestroy {
     private trackClick(slideIndex: number) {
         if (!this.activeCampaignId) return;
         const campaignRef = doc(this.firestore, 'campaigns', this.activeCampaignId);
-        // Firestore doesn't support array element field updates directly,
-        // so we use the slide's position and a denormalized counter map
         updateDoc(campaignRef, {
             [`slideClicks.${slideIndex}`]: increment(1)
         }).catch(err => console.warn('Click tracking failed:', err));
@@ -177,3 +137,4 @@ export class HeroComponent implements OnInit, OnDestroy {
         document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
     }
 }
+

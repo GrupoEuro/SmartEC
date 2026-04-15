@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.processPayment = void 0;
+exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpWebhook = exports.processPayment = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -8,65 +8,146 @@ admin.initializeApp();
 const db = admin.firestore();
 // ─── MercadoPago Payment Processing ─────────────────────────────────────────
 exports.processPayment = functions.https.onCall(async (data, context) => {
-    var _a;
+    var _a, _b, _c, _d;
     if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to process a payment.');
+        console.warn('[processPayment] Guest checkout — no Firebase auth. Validating inputs.');
     }
-    const { token, amount, email, description, orderId, installments, paymentMethodId, issuerId } = data;
+    const { token, amount, email, description, orderId, orderNumber, installments, paymentMethodId, issuerId } = data;
     if (!token || !amount || !email) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required payment parameters.');
     }
+    // Load MP credentials + installments policy from Firestore
     let accessToken = process.env.MP_ACCESS_TOKEN;
+    let installmentsEnabled = false;
+    let maxInstallments = 1;
     try {
         const integrationsDoc = await db.collection('config').doc('integrations').get();
         if (integrationsDoc.exists) {
             const mpConfig = ((_a = integrationsDoc.data()) === null || _a === void 0 ? void 0 : _a.mercadopago) || {};
-            if (mpConfig.accessToken) {
+            if (mpConfig.accessToken)
                 accessToken = mpConfig.accessToken;
-            }
+            installmentsEnabled = (_b = mpConfig.installmentsEnabled) !== null && _b !== void 0 ? _b : false;
+            maxInstallments = (_c = mpConfig.maxInstallments) !== null && _c !== void 0 ? _c : 1;
         }
     }
     catch (err) {
-        console.warn('Could not read MP keys from config/integrations', err);
+        console.warn('Could not read MP config from Firestore:', err);
     }
     if (!accessToken) {
-        console.error("Missing MP_ACCESS_TOKEN");
         throw new functions.https.HttpsError('internal', 'Server configuration error. Missing Access Token.');
     }
-    const client = new mercadopago_1.MercadoPagoConfig({ accessToken, options: { timeout: 5000 } });
+    // Enforce installments policy
+    let finalInstallments = 1;
+    if (installmentsEnabled) {
+        finalInstallments = Math.min(Number(installments) || 1, maxInstallments);
+    }
+    const client = new mercadopago_1.MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
     const payment = new mercadopago_1.Payment(client);
     try {
         const paymentData = {
             transaction_amount: Number(amount),
-            token: token,
-            description: description || 'Storefront Order',
-            installments: Number(installments) || 1,
+            token,
+            description: description || `Orden ${orderNumber || orderId || ''} — Storefront`,
+            installments: finalInstallments,
             payment_method_id: paymentMethodId,
             issuer_id: issuerId,
-            payer: { email },
-            metadata: { order_id: orderId || '' }
+            three_d_secure_mode: 'optional',
+            payer: {
+                email,
+                identification: { type: 'RFC', number: 'XAXX010101000' }
+            },
+            metadata: { order_id: orderId || '', order_number: orderNumber || '' }
         };
         const result = await payment.create({ body: paymentData });
+        // 3DS challenge required
+        if (result.status === 'pending' && result.status_detail === 'pending_challenge') {
+            const challengeUrl = (_d = result.three_ds_info) === null || _d === void 0 ? void 0 : _d.external_resource_url;
+            console.log(`[processPayment] 3DS challenge for order ${orderId}`);
+            if (orderId) {
+                await db.collection('orders').doc(orderId).update({
+                    paymentStatus: 'pending_3ds',
+                    paymentId: result.id,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                }).catch(e => console.error('Failed to update order for 3DS:', e));
+            }
+            return { success: false, requires3DS: true, challengeUrl, paymentId: result.id,
+                status: result.status, statusDetail: result.status_detail };
+        }
+        // Payment approved/rejected/in_process
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: result.status,
                 paymentId: result.id,
                 paymentMethod: result.payment_method_id,
+                installments: result.installments,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.error("Failed to update order status:", err));
+            }).catch(e => console.error('Failed to update order status:', e));
         }
-        return { success: true, status: result.status, paymentId: result.id, statusDetail: result.status_detail };
+        return { success: true, status: result.status, paymentId: result.id,
+            statusDetail: result.status_detail };
     }
     catch (error) {
-        console.error('MercadoPago Payment Create Error:', error);
+        console.error('MercadoPago Payment Error:', error);
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: 'rejected',
-                paymentError: error.message || 'Unknown processing error',
+                paymentError: error.message || 'Unknown error',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }).catch(err => console.error("Failed to update rejected status:", err));
+            }).catch(e => console.error('Failed to update rejected status:', e));
         }
         throw new functions.https.HttpsError('internal', error.message || 'Payment processing failed.');
+    }
+});
+// ─── MercadoPago Webhook ──────────────────────────────────────────────────────
+// Receives payment status updates from MP's notification system.
+// Register this URL in MP Developer Panel → Notifications → Webhook:
+//   https://us-central1-tiendapraxis.cloudfunctions.net/mpWebhook
+exports.mpWebhook = functions.https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
+    try {
+        const topic = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.type) || req.query['topic'];
+        const resourceId = ((_c = (_b = req.body) === null || _b === void 0 ? void 0 : _b.data) === null || _c === void 0 ? void 0 : _c.id) || req.query['id'];
+        console.log('[mpWebhook] Received:', topic, resourceId);
+        if (topic !== 'payment' || !resourceId) {
+            res.status(200).send('OK');
+            return;
+        }
+        let accessToken = process.env.MP_ACCESS_TOKEN;
+        try {
+            const snap = await db.collection('config').doc('integrations').get();
+            const t = (_e = (_d = snap.data()) === null || _d === void 0 ? void 0 : _d.mercadopago) === null || _e === void 0 ? void 0 : _e.accessToken;
+            if (t)
+                accessToken = t;
+        }
+        catch (e) { /* fall back to env */ }
+        if (!accessToken) {
+            res.status(500).send('No access token');
+            return;
+        }
+        const mpClient = new mercadopago_1.MercadoPagoConfig({ accessToken });
+        const paymentApi = new mercadopago_1.Payment(mpClient);
+        const paymentData = await paymentApi.get({ id: String(resourceId) });
+        const orderId = (_f = paymentData.metadata) === null || _f === void 0 ? void 0 : _f.order_id;
+        if (!orderId) {
+            res.status(200).send('No order_id in metadata');
+            return;
+        }
+        const statusMap = {
+            approved: 'approved', rejected: 'rejected', cancelled: 'cancelled',
+            refunded: 'refunded', pending: 'pending', in_process: 'pending', authorized: 'pending'
+        };
+        const newStatus = (_g = statusMap[paymentData.status || '']) !== null && _g !== void 0 ? _g : 'unknown';
+        await db.collection('orders').doc(orderId).update(Object.assign(Object.assign({ paymentStatus: newStatus, paymentId: paymentData.id, paymentMethod: paymentData.payment_method_id, installments: paymentData.installments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, (newStatus === 'approved' ? { status: 'paid' } : {})), (newStatus === 'rejected' ? { status: 'payment_failed' } : {})));
+        console.log(`[mpWebhook] Order ${orderId} payment → ${newStatus}`);
+        res.status(200).send('OK');
+    }
+    catch (err) {
+        console.error('[mpWebhook] Error:', err);
+        res.status(500).send('Internal Error');
     }
 });
 // ─── Firebase Custom Claims: Role Sync ───────────────────────────────────────
@@ -746,6 +827,82 @@ async function getMeliConfig() {
     }
     return config;
 }
+/**
+ * Refreshes the MeLi access token if it is expired or expiring within 30 minutes.
+ * Returns the current valid access token string.
+ * Throws if no refresh token is available or the refresh fails.
+ */
+async function getValidMeliToken() {
+    var _a;
+    const configDoc = await db.collection('config').doc('integrations').get();
+    const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+    if (!meliConfig || !meliConfig.accessToken) {
+        throw new Error('MercadoLibre not connected. No access token found.');
+    }
+    // Proactively refresh if: no expiresAt stored, or token expires in <30 min
+    const thirtyMin = 30 * 60 * 1000;
+    const needsRefresh = !meliConfig.expiresAt || (meliConfig.expiresAt - Date.now()) < thirtyMin;
+    if (!needsRefresh) {
+        console.log('[Meli] Token is valid, no refresh needed.');
+        return meliConfig.accessToken;
+    }
+    console.log('[Meli] Token expired or expiring soon — attempting refresh...');
+    if (!meliConfig.refreshToken) {
+        console.warn('[Meli] No refresh token available. User must re-authenticate.');
+        // Return current token anyway — let the caller fail gracefully if it's truly dead
+        return meliConfig.accessToken;
+    }
+    // Get app credentials for the refresh call
+    const appId = meliConfig.appId;
+    const clientSecret = meliConfig.clientSecret;
+    if (!appId || !clientSecret) {
+        console.warn('[Meli] Missing app credentials for refresh. Using existing token.');
+        return meliConfig.accessToken;
+    }
+    try {
+        const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+            },
+            body: new URLSearchParams({
+                grant_type: 'refresh_token',
+                client_id: appId,
+                client_secret: clientSecret,
+                refresh_token: meliConfig.refreshToken,
+            }).toString(),
+        });
+        const tokenData = await tokenRes.json();
+        if (!tokenRes.ok || !tokenData.access_token) {
+            console.error('[Meli] Token refresh failed:', JSON.stringify(tokenData));
+            if (tokenData.error === 'invalid_grant') {
+                // Refresh token itself is dead — mark as disconnected
+                await db.collection('config').doc('integrations').set({ meli: { connected: false } }, { merge: true });
+                throw new Error('MeLi refresh token expired. Please re-authenticate in /admin/integrations.');
+            }
+            // Non-fatal: use the existing token and hope it still works
+            console.warn('[Meli] Falling back to existing token.');
+            return meliConfig.accessToken;
+        }
+        const newExpiresAt = Date.now() + (tokenData.expires_in * 1000);
+        await db.collection('config').doc('integrations').set({
+            meli: {
+                accessToken: tokenData.access_token,
+                refreshToken: tokenData.refresh_token,
+                expiresAt: newExpiresAt,
+                connected: true,
+            }
+        }, { merge: true });
+        console.log('[Meli] Token refreshed successfully. Expires at:', new Date(newExpiresAt).toISOString());
+        return tokenData.access_token;
+    }
+    catch (err) {
+        console.error('[Meli] Token refresh error:', err.message);
+        // Fall back to existing token
+        return meliConfig.accessToken;
+    }
+}
 // 1. Generate Auth URL (Callable)
 exports.meliAuthUrl = functions.https.onCall(async (data, context) => {
     if (!context.auth)
@@ -864,7 +1021,7 @@ exports.meliRefreshTokenScheduled = functions.pubsub.schedule('every 4 hours').o
 });
 // Helper: Parse and construct Eurollantas Order object from a Meli Order, Ship Data, and Billing Info
 function parseAndSaveMeliOrder(mo, shipData, billingData) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9;
     let internalStatus = 'pending';
     if (mo.status === 'paid')
         internalStatus = 'processing';
@@ -877,20 +1034,39 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
         internalStatus = 'delivered';
     if (mo.status === 'cancelled' || mo.status === 'invalid' || realShippingStatus === 'cancelled')
         internalStatus = 'cancelled';
-    const isMeliFull = (shipData === null || shipData === void 0 ? void 0 : shipData.logistic_type) === 'fulfillment' || (mo.tags && mo.tags.includes('fulfillment'));
-    const fType = isMeliFull ? 'platform' : 'merchant';
-    // Extract Handling Limit (Native Meli SLA Dispatch Deadline)
-    // MercadoLibre provides this in shipping_option.estimated_handling_limit.date
+    // Detect fulfillment type using 3 signals in priority order:
+    // 1. shipment.logistic.type  (nested — correct path per ML /shipments API docs)
+    // 2. shipment.logistic_type  (top-level fallback — field exists on items/.., sometimes null here)
+    // 3. order item logistic_type (item-level fallback when shipment fetch silently failed)
+    const logisticType = (_d = (_c = (_b = shipData === null || shipData === void 0 ? void 0 : shipData.logistic) === null || _b === void 0 ? void 0 : _b.type // ← correct nested path
+    ) !== null && _c !== void 0 ? _c : shipData === null || shipData === void 0 ? void 0 : shipData.logistic_type // ← top-level fallback
+    ) !== null && _d !== void 0 ? _d : (_g = (_f = (_e = mo.order_items) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.item) === null || _g === void 0 ? void 0 : _g.logistic_type; // ← item-level last resort
+    const fType = logisticType === 'fulfillment' ? 'platform' : // MELI Full — ML warehouse packs & ships
+        logisticType === 'self_service' ? 'flex' : // MELI Flex — seller packs, same-day delivery
+            'merchant'; // Classic   — seller packs, standard MercadoEnvíos
+    // ── Extract Handling Limit (Native MeLi SLA Dispatch Deadline) ──────────
+    // With x-format-new:true, the field is shipping_option.estimated_handling_limit.date
     let nativeSla = null;
-    if ((_c = (_b = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _b === void 0 ? void 0 : _b.estimated_handling_limit) === null || _c === void 0 ? void 0 : _c.date) {
+    if ((_j = (_h = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _h === void 0 ? void 0 : _h.estimated_handling_limit) === null || _j === void 0 ? void 0 : _j.date) {
         nativeSla = new Date(shipData.shipping_option.estimated_handling_limit.date);
     }
-    else if ((_e = (_d = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _d === void 0 ? void 0 : _d.estimated_delivery_time) === null || _e === void 0 ? void 0 : _e.date) {
-        // Fallback to delivery time if handling limit is absent
+    else if ((_l = (_k = shipData === null || shipData === void 0 ? void 0 : shipData.shipping_option) === null || _k === void 0 ? void 0 : _k.estimated_delivery_time) === null || _l === void 0 ? void 0 : _l.date) {
         nativeSla = new Date(shipData.shipping_option.estimated_delivery_time.date);
     }
-    // Build timeline history map
+    // ── MeLi Delay flag — most authoritative source ────────────────────────
+    // The 'delay' array on shipment object (x-format-new) contains entries like
+    // { type: 'shipping_delayed' } when MeLi has officially flagged a dispatch delay.
+    const meliDelayTypes = ((shipData === null || shipData === void 0 ? void 0 : shipData.delay) || []).map((d) => d.type || d).filter(Boolean);
+    const meliDelayed = meliDelayTypes.length > 0;
+    // ── Build timeline history ─────────────────────────────────────────────
     const history = [];
+    // Actual ship & delivery dates from status_history (new format) or dates object (old format)
+    const rawDateShipped = (_q = (_o = (_m = shipData === null || shipData === void 0 ? void 0 : shipData.status_history) === null || _m === void 0 ? void 0 : _m.date_shipped // new format (x-format-new)
+    ) !== null && _o !== void 0 ? _o : (_p = shipData === null || shipData === void 0 ? void 0 : shipData.dates) === null || _p === void 0 ? void 0 : _p.date_shipped // old format fallback
+    ) !== null && _q !== void 0 ? _q : null;
+    const rawDateDelivered = (_u = (_s = (_r = shipData === null || shipData === void 0 ? void 0 : shipData.status_history) === null || _r === void 0 ? void 0 : _r.date_delivered // new format
+    ) !== null && _s !== void 0 ? _s : (_t = shipData === null || shipData === void 0 ? void 0 : shipData.dates) === null || _t === void 0 ? void 0 : _t.date_delivered // old format fallback
+    ) !== null && _u !== void 0 ? _u : null;
     if (mo.date_created) {
         history.push({
             status: 'pending',
@@ -908,27 +1084,25 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
             updatedBy: 'system'
         });
     }
-    if (shipData && shipData.status_history) {
-        if (shipData.status_history.date_shipped) {
-            history.push({
-                status: 'shipped',
-                timestamp: new Date(shipData.status_history.date_shipped),
-                note: 'Shipped via ' + (shipData.tracking_method || 'MercadoEnvíos'),
-                carrier: shipData.tracking_method || 'MercadoEnvíos',
-                trackingNumber: shipData.tracking_number || '',
-                updatedBy: 'system'
-            });
-        }
-        if (shipData.status_history.date_delivered) {
-            history.push({
-                status: 'delivered',
-                timestamp: new Date(shipData.status_history.date_delivered),
-                note: 'Delivered to buyer',
-                updatedBy: 'system'
-            });
-        }
+    if (rawDateShipped) {
+        history.push({
+            status: 'shipped',
+            timestamp: new Date(rawDateShipped),
+            note: 'Shipped via ' + ((shipData === null || shipData === void 0 ? void 0 : shipData.tracking_method) || 'MercadoEnvíos'),
+            carrier: (shipData === null || shipData === void 0 ? void 0 : shipData.tracking_method) || 'MercadoEnvíos',
+            trackingNumber: (shipData === null || shipData === void 0 ? void 0 : shipData.tracking_number) || '',
+            updatedBy: 'system'
+        });
     }
-    else if (hasDeliveredTag) {
+    if (rawDateDelivered) {
+        history.push({
+            status: 'delivered',
+            timestamp: new Date(rawDateDelivered),
+            note: 'Delivered to buyer',
+            updatedBy: 'system'
+        });
+    }
+    else if (!rawDateShipped && hasDeliveredTag) {
         history.push({
             status: 'delivered',
             timestamp: mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp(),
@@ -962,14 +1136,41 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
             updatedBy: 'system'
         });
     }
-    return Object.assign(Object.assign({ id: `meli_${mo.id}`, orderNumber: `ML-${mo.id}`, sourceChannel: 'mercadolibre', fulfillmentType: fType, shippingId: ((_f = mo.shipping) === null || _f === void 0 ? void 0 : _f.id) ? String(mo.shipping.id) : '', externalOrderId: String(mo.id), 
+    // ── Smart buyer name extraction ──────────────────────────────────────────────
+    // MeLi anonymizes buyer names: "Juan Garcia" → "SAJU960995" or "VALENCIALIZ20220830234831"
+    // Detection: ALL_UPPERCASE string with digits, no spaces → it's an anonymized code.
+    const isAnonymizedMeliName = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+    const rawFirstName = ((_v = mo.buyer) === null || _v === void 0 ? void 0 : _v.first_name) || '';
+    const rawLastName = ((_w = mo.buyer) === null || _w === void 0 ? void 0 : _w.last_name) || '';
+    const rawFullName = `${rawFirstName} ${rawLastName}`.trim();
+    const nickname = ((_x = mo.buyer) === null || _x === void 0 ? void 0 : _x.nickname) || '';
+    // Priority: readable full name → readable nickname → anonymized code → fallback
+    let buyerDisplayName;
+    if (rawFullName && !isAnonymizedMeliName(rawFullName)) {
+        buyerDisplayName = rawFullName; // "Juan Carlos Saucedo Chavez"
+    }
+    else if (nickname && !isAnonymizedMeliName(nickname)) {
+        buyerDisplayName = nickname; // Readable nickname (e.g. "juansaucedo99")
+    }
+    else {
+        buyerDisplayName = rawFullName || nickname || 'Meli Buyer'; // Anonymized, best we have
+    }
+    const buyerIsAnonymized = isAnonymizedMeliName(buyerDisplayName);
+    return Object.assign(Object.assign({ id: `meli_${mo.id}`, orderNumber: `ML-${mo.id}`, sourceChannel: 'mercadolibre', fulfillmentType: fType, shippingId: ((_y = mo.shipping) === null || _y === void 0 ? void 0 : _y.id) ? String(mo.shipping.id) : '', externalOrderId: String(mo.id), 
         // Store pack_id separately — since 2024 all MeLi orders belong to a pack.
         // pack_id is what webhooks typically reference; mo.id is the seller-visible order ID.
         meliPackId: mo.pack_id ? String(mo.pack_id) : null, customer: {
-            id: `ml_${(_g = mo.buyer) === null || _g === void 0 ? void 0 : _g.id}`,
-            name: mo.buyer ? `${mo.buyer.first_name || ''} ${mo.buyer.last_name || ''}`.trim() || mo.buyer.nickname || 'Meli Buyer' : 'Meli Buyer',
-            email: ((_h = mo.buyer) === null || _h === void 0 ? void 0 : _h.email) || `${(_j = mo.buyer) === null || _j === void 0 ? void 0 : _j.id}@mercadolibre.com`,
-            phone: ((_l = (_k = mo.buyer) === null || _k === void 0 ? void 0 : _k.phone) === null || _l === void 0 ? void 0 : _l.number) || ((_o = (_m = mo.buyer) === null || _m === void 0 ? void 0 : _m.phone) === null || _o === void 0 ? void 0 : _o.area_code) ? `${((_q = (_p = mo.buyer) === null || _p === void 0 ? void 0 : _p.phone) === null || _q === void 0 ? void 0 : _q.area_code) || ''}${((_s = (_r = mo.buyer) === null || _r === void 0 ? void 0 : _r.phone) === null || _s === void 0 ? void 0 : _s.number) || ''}` : '',
+            id: `ml_${(_z = mo.buyer) === null || _z === void 0 ? void 0 : _z.id}`,
+            // current name — may transition from real name to anonymized code over time
+            name: buyerDisplayName,
+            // originalName: first readable version captured — the write logic preserves this on updates
+            originalName: buyerDisplayName,
+            // Extra MeLi identity fields — stored for UI display and support
+            meliNickname: nickname || null,
+            meliAnonymizedId: isAnonymizedMeliName(rawFullName) ? rawFullName : (isAnonymizedMeliName(nickname) ? nickname : null),
+            isAnonymized: buyerIsAnonymized,
+            email: ((_0 = mo.buyer) === null || _0 === void 0 ? void 0 : _0.email) || `${(_1 = mo.buyer) === null || _1 === void 0 ? void 0 : _1.id}@mercadolibre.com`,
+            phone: ((_3 = (_2 = mo.buyer) === null || _2 === void 0 ? void 0 : _2.phone) === null || _3 === void 0 ? void 0 : _3.number) || ((_5 = (_4 = mo.buyer) === null || _4 === void 0 ? void 0 : _4.phone) === null || _5 === void 0 ? void 0 : _5.area_code) ? `${((_7 = (_6 = mo.buyer) === null || _6 === void 0 ? void 0 : _6.phone) === null || _7 === void 0 ? void 0 : _7.area_code) || ''}${((_9 = (_8 = mo.buyer) === null || _8 === void 0 ? void 0 : _8.phone) === null || _9 === void 0 ? void 0 : _9.number) || ''}` : '',
             isGuest: true
         }, status: internalStatus, history: history, items: (mo.order_items || []).map((item) => ({
             productId: item.item.id,
@@ -1009,7 +1210,11 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
                 country: 'MX',
                 recipientName: ''
             };
-        })(), createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(), updatedAt: mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp(), nativeSla: nativeSla }, (billingData && !billingData.error ? (() => {
+        })(), createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(), updatedAt: mo.date_last_updated ? new Date(mo.date_last_updated) : admin.firestore.FieldValue.serverTimestamp(), nativeSla: nativeSla, 
+        // Top-level ship/delivery timestamps for fast SLA evaluation without scanning history
+        shippedAt: rawDateShipped ? new Date(rawDateShipped) : null, deliveredAt: rawDateDelivered ? new Date(rawDateDelivered) : null, 
+        // meliDelayed: true means MercadoLibre's own system flagged this as a dispatch delay
+        meliDelayed: meliDelayed, meliDelayTypes: meliDelayTypes }, (billingData && !billingData.error ? (() => {
         var _a, _b, _c, _d, _e;
         // MeLi returns different shapes in v1 vs v2. Normalize both.
         const bi = billingData.billing_info || billingData;
@@ -1053,15 +1258,17 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
 // 4. Sync Orders (Callable)
 // Syncs orders from last sync date to now, using a date cursor for accuracy.
 exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall(async (data, context) => {
-    var _a, _b;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     if (!context.auth)
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     try {
         const configDoc = await db.collection('config').doc('integrations').get();
         const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
-        if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
+        if (!meliConfig || !meliConfig.userId) {
             throw new Error('MercadoLibre is not connected or missing tokens.');
         }
+        // Auto-refresh token before sync
+        const accessToken = await getValidMeliToken();
         // Use lastSyncDate cursor to get only new orders since last run
         const lastSyncDate = meliConfig.lastSyncDate
             ? new Date(meliConfig.lastSyncDate)
@@ -1071,7 +1278,7 @@ exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall
         console.log(`[Meli] Syncing orders since: ${dateFrom}`);
         const res = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${meliConfig.accessToken}`
+                'Authorization': `Bearer ${accessToken}`
             }
         });
         const json = await res.json();
@@ -1080,30 +1287,60 @@ exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall
             throw new Error(JSON.stringify(json));
         }
         const meliOrders = json.results || [];
-        // Fetch shipments + billing_info in parallel
+        // Fetch shipments + shipment costs + billing_info in parallel
         const shipmentsMap = {};
+        const shipmentCostsMap = {}; // senders[0].cost = real seller shipping deduction
         const billingMap = {};
         await Promise.all(meliOrders
             .map(async (mo) => {
-            var _a;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
             try {
-                // Shipment
+                // Shipment details (status, address, SLA, logistic type)
                 if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
                     const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${accessToken}`, 'x-format-new': 'true' }
                     });
-                    if (sRes.ok)
+                    if (sRes.ok) {
                         shipmentsMap[mo.shipping.id] = await sRes.json();
+                    }
+                    else {
+                        console.warn(`[Meli Sync] Shipment ${mo.shipping.id} fetch failed: ${sRes.status}`);
+                        shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: (_c = (_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.logistic_type) !== null && _c !== void 0 ? _c : null };
+                    }
+                    // ── Shipment Costs (seller-absorbed shipping fee) ──────────────────
+                    // /shipments/{id}/costs → senders[0].cost = exact MXN taken from seller
+                    // Only available for non-Full, non-pickup shipments after payment.
+                    // For MeLi Full (fulfillment), this returns cost=0 (logistics pre-paid).
+                    try {
+                        const cRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}/costs`, {
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                        if (cRes.ok) {
+                            const costsJson = await cRes.json();
+                            // senders[0].cost = net cost after MeLi seller-reputation discount
+                            const senderCost = (_f = (_e = (_d = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.cost) !== null && _f !== void 0 ? _f : 0;
+                            const grossAmount = (_g = costsJson === null || costsJson === void 0 ? void 0 : costsJson.gross_amount) !== null && _g !== void 0 ? _g : 0;
+                            // Sum all discounts that MeLi covers (loyalty, mandatory subsidies)
+                            const meliSubsidy = (((_j = (_h = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _h === void 0 ? void 0 : _h[0]) === null || _j === void 0 ? void 0 : _j.discounts) || [])
+                                .reduce((sum, d) => sum + (d.promoted_amount || 0), 0);
+                            shipmentCostsMap[mo.shipping.id] = {
+                                seller_cost: senderCost,
+                                gross_amount: grossAmount,
+                                meli_subsidy: meliSubsidy, // what MeLi covers
+                            };
+                        }
+                    }
+                    catch (_) { /* non-critical — skip */ }
                 }
                 // Billing info (try v2 for Mexico, fallback v1)
                 const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
-                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'x-version': '2' }
                 });
                 if (bRes.ok)
                     billingMap[mo.id] = await bRes.json();
                 else {
                     const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
-                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
                     });
                     if (bRes1.ok)
                         billingMap[mo.id] = await bRes1.json();
@@ -1112,12 +1349,52 @@ exports.meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.onCall
             catch (e) { /* skip non-critical */ }
         }));
         let importedCount = 0;
+        // Pre-fetch existing originalName for all orders in parallel (non-blocking)
+        const existingNameMap = new Map();
+        await Promise.all(meliOrders.map(async (mo) => {
+            var _a, _b;
+            try {
+                const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
+                const orig = (_b = (_a = snap.data()) === null || _a === void 0 ? void 0 : _a.customer) === null || _b === void 0 ? void 0 : _b.originalName;
+                if (orig)
+                    existingNameMap.set(String(mo.id), orig);
+            }
+            catch (_) { /* skip */ }
+        }));
         for (const mo of meliOrders) {
             const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
             const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
+            const shipCosts = ((_c = mo.shipping) === null || _c === void 0 ? void 0 : _c.id) ? shipmentCostsMap[mo.shipping.id] : null;
             // Construct Eurollantas Order object using helper
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
-            await orderRef.set(newOrder, { merge: true });
+            // ── Shipping cost deducted from seller ──────────────────────────────────
+            // For Classic/Flex + "Envío Gratis": seller absorbs shipping
+            //   → senders[0].cost from /shipments/{id}/costs
+            // For MeLi Full (fulfillment): cost = 0 (MeLi handles logistics)
+            // For pickup / no envíos: cost = 0
+            const shippingSellerCost = (_d = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.seller_cost) !== null && _d !== void 0 ? _d : 0;
+            const shippingGrossAmount = (_e = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.gross_amount) !== null && _e !== void 0 ? _e : 0;
+            const shippingMeliSubsidy = (_f = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.meli_subsidy) !== null && _f !== void 0 ? _f : 0;
+            // net_receipt = what seller actually receives after all MeLi deductions
+            // = order total − MeLi commission − seller-absorbed shipping cost
+            const meliCommission = (_g = newOrder.marketplaceFee) !== null && _g !== void 0 ? _g : 0;
+            const totalAmount = (_h = newOrder.total) !== null && _h !== void 0 ? _h : 0;
+            const netReceipt = Math.max(0, totalAmount - meliCommission - shippingSellerCost);
+            // Merge financials into the order via spread (avoids TS strict type errors)
+            const orderWithFinancials = Object.assign(Object.assign({}, newOrder), { shipping_seller_cost: shippingSellerCost, shipping_gross_amount: shippingGrossAmount, shipping_meli_subsidy: shippingMeliSubsidy, net_receipt: netReceipt });
+            // Preserve the first human-readable name — MeLi anonymizes buyer names on older orders
+            const preserved = existingNameMap.get(String(mo.id));
+            const isAnon = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+            if (preserved && !isAnon(preserved)) {
+                orderWithFinancials.customer.originalName = preserved;
+            }
+            else if (preserved && isAnon(preserved) && orderWithFinancials.customer.originalName && !isAnon(orderWithFinancials.customer.originalName)) {
+                // Stored was anonymized but new name is readable — upgrade!
+            }
+            else if (preserved) {
+                orderWithFinancials.customer.originalName = preserved;
+            }
+            await orderRef.set(orderWithFinancials, { merge: true });
             importedCount++;
         }
         // Save lastSyncDate cursor to Firestore
@@ -1186,14 +1463,19 @@ exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1
         const billingMap = {};
         await Promise.all(meliOrders
             .map(async (mo) => {
-            var _a;
+            var _a, _b, _c;
             try {
                 if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
                     const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
                     });
-                    if (sRes.ok)
+                    if (sRes.ok) {
                         shipmentsMap[mo.shipping.id] = await sRes.json();
+                    }
+                    else {
+                        console.warn(`[Meli Historical] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                        shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: (_c = (_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.logistic_type) !== null && _c !== void 0 ? _c : null };
+                    }
                 }
                 const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                     headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -1211,10 +1493,34 @@ exports.meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memory: '1
             catch (e) { /* skip */ }
         }));
         const batch = db.batch();
+        // Pre-fetch existing originalNames in parallel before batch-writing
+        const origNameMap = new Map();
+        await Promise.all(meliOrders.map(async (mo) => {
+            var _a, _b;
+            try {
+                const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
+                const orig = (_b = (_a = snap.data()) === null || _a === void 0 ? void 0 : _a.customer) === null || _b === void 0 ? void 0 : _b.originalName;
+                if (orig)
+                    origNameMap.set(String(mo.id), orig);
+            }
+            catch (_) { /* skip */ }
+        }));
         for (const mo of meliOrders) {
             const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
             const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
+            // Restore the original readable name if we already have one stored
+            const isAnonH = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+            const preservedOrig = origNameMap.get(String(mo.id));
+            if (preservedOrig && !isAnonH(preservedOrig)) {
+                newOrder.customer.originalName = preservedOrig;
+            }
+            else if (preservedOrig && isAnonH(preservedOrig) && !isAnonH(newOrder.customer.originalName)) {
+                // Upgrade: stored was anonymized, new is readable
+            }
+            else if (preservedOrig) {
+                newOrder.customer.originalName = preservedOrig;
+            }
             // Upsert the order
             batch.set(orderRef, newOrder, { merge: true });
         }
@@ -1252,7 +1558,7 @@ exports.testMeliApi = functions.runWith({ timeoutSeconds: 120 }).https.onRequest
         let individualShipment = null;
         if ((_c = (_b = orders[0]) === null || _b === void 0 ? void 0 : _b.shipping) === null || _c === void 0 ? void 0 : _c.id) {
             const sRes = await fetch(`https://api.mercadolibre.com/shipments/${orders[0].shipping.id}`, {
-                headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
             });
             individualShipment = await sRes.json();
         }
@@ -1294,8 +1600,8 @@ exports.meliGetShippingLabel = functions.runWith({ timeoutSeconds: 60 }).https.o
     }
 });
 // ─── MercadoLibre Full Inventory Sync ───────────────────────────────────────
-exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => {
-    var _a, _b;
+exports.meliSyncFullInventory = functions.runWith({ timeoutSeconds: 300, memory: '512MB' }).https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e, _f;
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to sync FBM inventory.');
     }
@@ -1305,9 +1611,7 @@ exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => 
         if (!meliConfig || !meliConfig.accessToken || !meliConfig.userId) {
             throw new functions.https.HttpsError('failed-precondition', 'MercadoLibre is not connected or missing tokens.');
         }
-        // @ts-ignore
-        const fetch = require('node-fetch');
-        // 1. Fetch fulfillment items by paging through user items
+        // 1. Fetch ALL fulfillment item IDs (paginated)
         let offset = 0;
         const limit = 50;
         const allItemIds = [];
@@ -1329,16 +1633,17 @@ exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => 
         if (allItemIds.length === 0) {
             return { success: true, message: 'No FBM items found.', syncedCount: 0 };
         }
-        // 2. Fetch full item details in chunks of 20 (max per MULTIGET api)
+        console.log(`[Meli FBM] Found ${allItemIds.length} Full items. Fetching details + real stock...`);
+        // 2. Fetch full item details in chunks of 20 (MULTIGET API limit)
         const chunkSize = 20;
         let syncedCount = 0;
-        const batch = db.batch();
+        const firestoreBatch = db.batch();
         for (let i = 0; i < allItemIds.length; i += chunkSize) {
             const chunk = allItemIds.slice(i, i + chunkSize);
             const itemsUrl = `https://api.mercadolibre.com/items?ids=${chunk.join(',')}`;
             const itemsRes = await fetch(itemsUrl, { headers: { Authorization: `Bearer ${meliConfig.accessToken}` } });
             if (!itemsRes.ok) {
-                console.error(`[Meli FBM] Failed to fetch items chunk ${i}`, await itemsRes.text());
+                console.error(`[Meli FBM] Failed to fetch items chunk starting at ${i}`, await itemsRes.text());
                 continue;
             }
             const itemsJson = await itemsRes.json();
@@ -1346,32 +1651,367 @@ exports.meliSyncFullInventory = functions.https.onCall(async (data, context) => 
                 if (itemObj.code !== 200 || !itemObj.body)
                     continue;
                 const body = itemObj.body;
-                // Extract SKU
+                // Extract SKU from SELLER_SKU attribute
                 const skuAttr = (_b = body.attributes) === null || _b === void 0 ? void 0 : _b.find((a) => a.id === 'SELLER_SKU');
                 const sku = skuAttr ? skuAttr.value_name : null;
+                // Extract user_product_id — may be at root or inside first variation
+                const userProductId = body.user_product_id ||
+                    ((_d = (_c = body.variations) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.user_product_id) ||
+                    null;
+                // 3. Query REAL Full warehouse stock via /user-products/{id}/stock
+                let fullStock = body.available_quantity || 0;
+                let fullStockReserved = 0;
+                if (userProductId) {
+                    try {
+                        const stockRes = await fetch(`https://api.mercadolibre.com/user-products/${userProductId}/stock`, { headers: { Authorization: `Bearer ${meliConfig.accessToken}` } });
+                        if (stockRes.ok) {
+                            const stockJson = await stockRes.json();
+                            const meliFacility = (stockJson.locations || []).find((l) => l.type === 'meli_facility');
+                            if (meliFacility) {
+                                fullStock = (_e = meliFacility.available_quantity) !== null && _e !== void 0 ? _e : fullStock;
+                                fullStockReserved = (_f = meliFacility.not_available_quantity) !== null && _f !== void 0 ? _f : 0;
+                            }
+                        }
+                        else {
+                            console.warn(`[Meli FBM] Stock fetch failed for user_product_id=${userProductId}: ${stockRes.status}`);
+                        }
+                    }
+                    catch (stockErr) {
+                        console.warn(`[Meli FBM] Stock fetch error for ${userProductId}:`, stockErr);
+                    }
+                }
                 // Firestore document IDs cannot contain forward slashes
                 // Some SKUs like "80/90-17-EY..." contain them.
                 const rawDocId = String(sku || body.id);
                 const safeDocId = rawDocId.replace(/\//g, '_');
                 const inventoryRef = db.collection('meli_fbm_inventory').doc(safeDocId);
-                batch.set(inventoryRef, {
+                firestoreBatch.set(inventoryRef, {
                     mlItemId: body.id,
                     sku: sku,
                     title: body.title,
+                    status: body.status || 'active',
+                    price: body.price || 0,
+                    permalink: body.permalink || null,
+                    thumbnail: body.thumbnail || null,
                     inventoryId: body.inventory_id || null,
-                    availableQuantity: body.available_quantity || 0,
+                    userProductId: userProductId,
+                    availableQuantity: fullStock,
+                    fullStock: fullStock,
+                    fullStockReserved: fullStockReserved,
                     lastUpdated: admin.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
                 syncedCount++;
             }
         }
-        // 3. Commit batch to Firestore
-        await batch.commit();
+        // 4. Commit batch to Firestore
+        await firestoreBatch.commit();
+        console.log(`[Meli FBM] Synced ${syncedCount} FBM items with real warehouse stock.`);
         return { success: true, syncedCount };
     }
     catch (e) {
         console.error('Error in meliSyncFullInventory:', e);
-        throw new functions.https.HttpsError('internal', 'sync failed');
+        throw new functions.https.HttpsError('internal', e.message || 'sync failed');
+    }
+});
+// ─── MercadoLibre Listings Sync (Publications Price Analyzer) ────────────────
+// Fetches ALL seller listings + calculates published price, MeLi fees, and net receipt.
+// Results stored in meli_listings/{item_id} for the Publications tab in the Hub.
+exports.meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory: '512MB' }).https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    try {
+        // ── Auto-refresh token if expired or expiring soon ────────────────────────
+        // MeLi tokens expire every 6h. getValidMeliToken() refreshes proactively
+        // if expiry is within 30 min, so syncs never fail due to stale tokens.
+        const accessToken = await getValidMeliToken();
+        // Still need userId from config
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+        if (!meliConfig || !meliConfig.userId) {
+            throw new functions.https.HttpsError('failed-precondition', 'MercadoLibre not connected.');
+        }
+        const authHeaders = { Authorization: `Bearer ${accessToken}` };
+        // ── Step 1: Collect ALL item IDs via offset pagination (robust for any catalog size) ─
+        const allItemIds = [];
+        const pageLimit = 100;
+        let offset = 0;
+        let totalFromApi = 0;
+        console.log('[Meli Listings] Starting item ID collection via offset pagination...');
+        while (true) {
+            const searchUrl = `https://api.mercadolibre.com/users/${meliConfig.userId}/items/search?limit=${pageLimit}&offset=${offset}`;
+            const searchRes = await fetch(searchUrl, { headers: authHeaders });
+            if (!searchRes.ok) {
+                const errText = await searchRes.text();
+                console.error('[Meli Listings] Search page failed:', searchRes.status, errText);
+                break;
+            }
+            const searchJson = await searchRes.json();
+            const results = searchJson.results || [];
+            totalFromApi = ((_b = searchJson.paging) === null || _b === void 0 ? void 0 : _b.total) || totalFromApi;
+            console.log(`[Meli Listings] Page offset=${offset}: got ${results.length} ids, total=${totalFromApi}`);
+            if (results.length === 0)
+                break;
+            allItemIds.push(...results);
+            offset += results.length;
+            if (results.length < pageLimit || allItemIds.length >= totalFromApi)
+                break;
+            // Small rate-limit buffer between pages
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        if (allItemIds.length === 0) {
+            console.warn('[Meli Listings] No item IDs found via offset pagination.');
+            return { success: true, syncedCount: 0, message: 'No listings found in account.' };
+        }
+        console.log(`[Meli Listings] Collected ${allItemIds.length} item IDs. Fetching details + fees...`);
+        // Listing type display name map (MLM)
+        const listingTypeNames = {
+            'gold_pro': 'Premium',
+            'gold_special': 'Clásica',
+            'gold': 'Oro',
+            'free': 'Gratis',
+            'bronze': 'Bronce',
+            'silver': 'Plata',
+        };
+        // ── Step 2: Multiget item details in chunks of 20 ────────────────────
+        const chunkSize = 20;
+        const BATCH_LIMIT = 400; // Firestore max is 500; keep margin
+        let syncedCount = 0;
+        let currentBatch = db.batch();
+        let batchCount = 0;
+        // Fee cache: key = "${listingTypeId}_${roundedPrice}_${categoryId}" → fee data
+        // ⚠️ /listing_prices returns an ARRAY — one entry per listing type.
+        //    We filter to find the entry matching the item's listing_type_id.
+        // Fields stored:
+        //   selling_fee_amount → total MeLi commission in MXN
+        //   selling_fee_percent → commission % (from API, not recalculated)
+        //   fixed_fee → fixed per-unit charge (often 0 in MLM)
+        //   financing_fee → cost MeLi deducts when buyers pay in MSI installments
+        //                    (can be 2–3% of sale price — real money!)
+        const feeCache = new Map();
+        for (let i = 0; i < allItemIds.length; i += chunkSize) {
+            const chunk = allItemIds.slice(i, i + chunkSize);
+            const itemsRes = await fetch(`https://api.mercadolibre.com/items?ids=${chunk.join(',')}`, { headers: authHeaders });
+            if (!itemsRes.ok) {
+                console.error(`[Meli Listings] Multiget chunk i=${i} failed:`, itemsRes.status);
+                continue;
+            }
+            const itemsJson = await itemsRes.json();
+            for (const wrapper of itemsJson) {
+                if (wrapper.code !== 200 || !wrapper.body)
+                    continue;
+                const item = wrapper.body;
+                const price = item.price || 0;
+                const listingTypeId = item.listing_type_id || 'free';
+                const categoryId = item.category_id || '';
+                // ── Step 3: Fee lookup (cached per unique price+type+category combo) ─
+                const feeCacheKey = `${Math.round(price)}_${listingTypeId}_${categoryId}`;
+                let feeData = feeCache.get(feeCacheKey);
+                if (!feeData) {
+                    try {
+                        // listing_prices requires auth for seller-specific rates and returns an ARRAY
+                        let feeUrl = `https://api.mercadolibre.com/sites/MLM/listing_prices?price=${price}&listing_type_id=${listingTypeId}`;
+                        if (categoryId)
+                            feeUrl += `&category_id=${categoryId}`;
+                        const feeRes = await fetch(feeUrl, { headers: authHeaders }); // auth for seller-specific rates
+                        if (feeRes.ok) {
+                            // Response is an array — find the entry for our listing_type_id
+                            const feeArray = await feeRes.json();
+                            const feeEntry = Array.isArray(feeArray)
+                                ? feeArray.find((e) => e.listing_type_id === listingTypeId)
+                                : feeArray; // fallback: treat as single object (old format)
+                            if (feeEntry) {
+                                // ── CONFIRMED real API response format for MLM ────────────
+                                // {
+                                //   "sale_fee_amount": 463.27,          ← NOTE: sale_, not selling_
+                                //   "sale_fee_details": {
+                                //     "percentage_fee": 16.5,           ← direct number
+                                //     "fixed_fee": 0,                   ← direct number
+                                //     "gross_amount": 463.27
+                                //   }
+                                // }
+                                // ─────────────────────────────────────────────────────────
+                                // Commission total in MXN — field is "sale_fee_amount" in real API
+                                const commissionAmount = (_d = (_c = feeEntry.sale_fee_amount // real API field
+                                ) !== null && _c !== void 0 ? _c : feeEntry.selling_fee_amount // fallback alias
+                                ) !== null && _d !== void 0 ? _d : 0;
+                                const rawDetails = (_e = feeEntry.sale_fee_details) !== null && _e !== void 0 ? _e : {};
+                                let pct = 0;
+                                let fixedFee = 0;
+                                let financing = 0;
+                                if (Array.isArray(rawDetails)) {
+                                    // Older array format: [{name:'percentage_fee', value:16.5}, ...]
+                                    const pctEntry = rawDetails.find((d) => d.name === 'percentage_fee');
+                                    const fixEntry = rawDetails.find((d) => d.name === 'fixed_fee');
+                                    const finEntry = rawDetails.find((d) => d.name === 'financing_add_on_fee' || d.name === 'financing_fee');
+                                    pct = Number((_g = (_f = pctEntry === null || pctEntry === void 0 ? void 0 : pctEntry.percentage_fee) !== null && _f !== void 0 ? _f : pctEntry === null || pctEntry === void 0 ? void 0 : pctEntry.value) !== null && _g !== void 0 ? _g : 0);
+                                    fixedFee = Number((_j = (_h = fixEntry === null || fixEntry === void 0 ? void 0 : fixEntry.amount) !== null && _h !== void 0 ? _h : fixEntry === null || fixEntry === void 0 ? void 0 : fixEntry.value) !== null && _j !== void 0 ? _j : 0);
+                                    financing = Number((_l = (_k = finEntry === null || finEntry === void 0 ? void 0 : finEntry.amount) !== null && _k !== void 0 ? _k : finEntry === null || finEntry === void 0 ? void 0 : finEntry.value) !== null && _l !== void 0 ? _l : 0);
+                                }
+                                else if (rawDetails && typeof rawDetails === 'object') {
+                                    // Current object format: {percentage_fee: 16.5, fixed_fee: 0, ...}
+                                    // Values are DIRECT NUMBERS, not nested objects
+                                    pct = Number((_m = rawDetails['percentage_fee']) !== null && _m !== void 0 ? _m : 0);
+                                    fixedFee = Number((_o = rawDetails['fixed_fee']) !== null && _o !== void 0 ? _o : 0);
+                                    financing = Number((_q = (_p = rawDetails['financing_add_on_fee']) !== null && _p !== void 0 ? _p : rawDetails['financing_fee']) !== null && _q !== void 0 ? _q : 0);
+                                }
+                                // If API gave us %, use it; otherwise derive from amount/price
+                                const sellingFeePercent = pct > 0
+                                    ? pct
+                                    : (price > 0 ? Math.round((commissionAmount / price) * 1000) / 10 : 0);
+                                feeData = {
+                                    selling_fee_amount: commissionAmount,
+                                    selling_fee_percent: sellingFeePercent,
+                                    fixed_fee: fixedFee,
+                                    financing_fee: financing,
+                                };
+                                // Log first fee lookup per sync
+                                if (feeCache.size === 0) {
+                                    console.log(`[Meli Listings] ✅ Fee [${listingTypeId}] @ $${price}: commission=$${commissionAmount} (${sellingFeePercent}%), fixed=$${fixedFee}, financing=$${financing}`);
+                                    console.log(`[Meli Listings] Raw feeEntry:`, JSON.stringify(feeEntry).substring(0, 600));
+                                }
+                            }
+                            else {
+                                console.warn(`[Meli Listings] No fee entry for listing_type_id=${listingTypeId} in response for item ${item.id}`);
+                                feeData = { selling_fee_amount: 0, selling_fee_percent: 0, fixed_fee: 0, financing_fee: 0 };
+                            }
+                            feeCache.set(feeCacheKey, feeData);
+                        }
+                        else {
+                            const errText = await feeRes.text();
+                            console.warn(`[Meli Listings] Fee API returned ${feeRes.status} for ${item.id}:`, errText.substring(0, 200));
+                            feeData = { selling_fee_amount: 0, selling_fee_percent: 0, fixed_fee: 0, financing_fee: 0 };
+                        }
+                    }
+                    catch (feeErr) {
+                        console.warn(`[Meli Listings] Fee fetch failed for ${item.id}:`, feeErr);
+                        feeData = { selling_fee_amount: 0, selling_fee_percent: 0, fixed_fee: 0, financing_fee: 0 };
+                    }
+                }
+                // ── Step 4: Calculate net_amount ─────────────────────────────
+                // NOTE on shipping:
+                // The /listing_prices endpoint does NOT give us a reliable per-listing
+                // shipping cost because it varies dynamically by buyer location, weight,
+                // and volume. What we CAN tell is:
+                //   - item.shipping.free_shipping = seller absorbs cost of shipping
+                //   - item.shipping.logistic_type  = 'fulfillment' | 'me2' | 'not_specified'
+                // Actual shipping cost per sale comes from /shipments/{id} (order-level).
+                // Here we only include what the listing_prices API tells us for sure.
+                const totalSellerCost = feeData.selling_fee_amount
+                    + feeData.fixed_fee
+                    + feeData.financing_fee; // financing cost if buyers use MSI
+                const netAmount = Math.max(0, price - totalSellerCost);
+                const netPercent = price > 0 ? Math.round((netAmount / price) * 1000) / 10 : 0;
+                const feeHasData = feeData.selling_fee_amount > 0 || feeData.selling_fee_percent > 0;
+                // Shipping flags from item body
+                const freeShipping = ((_r = item.shipping) === null || _r === void 0 ? void 0 : _r.free_shipping) === true;
+                // Local pickup only (no Mercado Envíos)
+                const localPickupOnly = !freeShipping && (((_s = item.shipping) === null || _s === void 0 ? void 0 : _s.logistic_type) === 'not_specified' || !((_t = item.shipping) === null || _t === void 0 ? void 0 : _t.logistic_type));
+                // Extract logistic type
+                const logisticType = ((_u = item.shipping) === null || _u === void 0 ? void 0 : _u.logistic_type) || 'not_specified';
+                const isFull = logisticType === 'fulfillment';
+                // Extract user_product_id
+                const userProductId = item.user_product_id || ((_w = (_v = item.variations) === null || _v === void 0 ? void 0 : _v[0]) === null || _w === void 0 ? void 0 : _w.user_product_id) || null;
+                // ── Kit / Combo / Bundle detection ───────────────────────────
+                // Three reliable signals from MeLi (checked in priority order):
+                //
+                // 1. PACK_CONTENT attribute — MeLi's own classification for packs/kits.
+                //    E.g. "2 llantas" or "4 piezas" written by seller explicitly.
+                // 2. bundle_items array — explicit bundle components linked by MeLi.
+                // 3. item_relations with type 'pack' or 'bundle' — cross-links to
+                //    component items.
+                const itemAttributes = item.attributes || [];
+                const packContentAttr = itemAttributes.find((a) => a.id === 'PACK_CONTENT' || a.id === 'ITEM_AMOUNT');
+                const hasPackAttribute = packContentAttr && packContentAttr.value_name
+                    && packContentAttr.value_name !== '1';
+                const itemRelations = item.item_relations || [];
+                const bundleItems = item.bundle_items || [];
+                const hasBundleItems = bundleItems.length > 0;
+                const hasRelations = itemRelations.some((r) => r.type === 'pack' || r.type === 'bundle' || r.type === 'PACK');
+                // Explicit boolean — Firestore rejects undefined
+                const isCombo = Boolean(hasBundleItems || hasRelations || hasPackAttribute);
+                const bundleComponents = hasBundleItems
+                    ? bundleItems.map((b) => ({ item_id: b.item_id || b.id, quantity: b.quantity || 1 }))
+                    : itemRelations
+                        .filter((r) => r.type === 'pack' || r.type === 'bundle' || r.type === 'PACK')
+                        .map((r) => ({ item_id: r.id, quantity: r.quantity || 1 }));
+                // item_type: 'kit' when MeLi bundle_items or PACK attribute,
+                //            'combo' when item_relations pack,
+                //            'single' otherwise
+                const itemType = isCombo
+                    ? (hasBundleItems || Boolean(hasPackAttribute) ? 'kit' : 'combo')
+                    : 'single';
+                // Pack quantity from attribute (e.g. "2" for a 2-pack) — null, never undefined
+                const rawPackQty = packContentAttr ? parseInt(packContentAttr.value_name, 10) : NaN;
+                const packQty = isNaN(rawPackQty) ? null : rawPackQty;
+                // ── Step 5: Batch write to meli_listings/{item_id} ───────────
+                const listingRef = db.collection('meli_listings').doc(item.id);
+                currentBatch.set(listingRef, {
+                    id: item.id,
+                    title: item.title,
+                    status: item.status || 'active',
+                    price: price,
+                    currency_id: item.currency_id || 'MXN',
+                    listing_type_id: listingTypeId,
+                    listing_type_name: listingTypeNames[listingTypeId] || listingTypeId,
+                    sold_quantity: item.sold_quantity || 0,
+                    available_quantity: item.available_quantity || 0,
+                    health: (_x = item.health) !== null && _x !== void 0 ? _x : null,
+                    logistic_type: logisticType,
+                    is_full: isFull,
+                    // ── Shipping info ────────────────────────────────────
+                    // free_shipping: true = seller absorbs shipping cost (envío gratis al comprador)
+                    // logistic_type: 'fulfillment' | 'me2' | 'not_specified'
+                    // Note: exact per-sale shipping $ cost is dynamic (per order, per buyer location)
+                    //       and is only available at order time via /shipments/{id}
+                    free_shipping: freeShipping,
+                    local_pickup_only: localPickupOnly,
+                    user_product_id: userProductId,
+                    category_id: categoryId,
+                    seller_custom_field: item.seller_custom_field || null,
+                    permalink: item.permalink || null,
+                    thumbnail: item.thumbnail || null,
+                    // ── Fee breakdown from /sites/MLM/listing_prices (with auth) ───────
+                    selling_fee_amount: feeData.selling_fee_amount,
+                    selling_fee_percent: feeData.selling_fee_percent,
+                    fixed_fee: feeData.fixed_fee,
+                    financing_fee: feeData.financing_fee,
+                    net_amount: netAmount,
+                    net_percent: netPercent,
+                    fee_has_data: feeHasData,
+                    // ── Kit / Combo / Bundle ────────────────────────────────
+                    item_type: itemType,
+                    is_combo: isCombo,
+                    pack_qty: packQty,
+                    bundle_components: bundleComponents,
+                    lastSync: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                syncedCount++;
+                batchCount++;
+                // Commit if approaching Firestore batch limit
+                if (batchCount >= BATCH_LIMIT) {
+                    await currentBatch.commit();
+                    console.log(`[Meli Listings] Committed batch of ${batchCount} docs (total so far: ${syncedCount})`);
+                    currentBatch = db.batch();
+                    batchCount = 0;
+                }
+            }
+            // Rate limit buffer between chunks
+            if (i + chunkSize < allItemIds.length) {
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+        }
+        // Commit any remaining docs
+        if (batchCount > 0) {
+            await currentBatch.commit();
+        }
+        console.log(`[Meli Listings] Synced ${syncedCount} listings. Unique fee combos cached: ${feeCache.size}.`);
+        return { success: true, syncedCount, featureCombos: feeCache.size };
+    }
+    catch (e) {
+        console.error('[Meli Listings] Sync failed:', e);
+        throw new functions.https.HttpsError('internal', e.message || 'listings sync failed');
     }
 });
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
@@ -1401,14 +2041,19 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
         const billingMap = {};
         await Promise.all(meliOrders
             .map(async (mo) => {
-            var _a;
+            var _a, _b, _c;
             try {
                 if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
                     const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                        headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
                     });
-                    if (sRes.ok)
+                    if (sRes.ok) {
                         shipmentsMap[mo.shipping.id] = await sRes.json();
+                    }
+                    else {
+                        console.warn(`[Meli Cron] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                        shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: (_c = (_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.logistic_type) !== null && _c !== void 0 ? _c : null };
+                    }
                 }
                 const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                     headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -1426,10 +2071,33 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
             catch (e) { /* skip */ }
         }));
         let importedCount = 0;
+        // Pre-fetch existing originalNames in parallel to protect against ML name anonymization
+        const cronOrigNames = new Map();
+        await Promise.all(meliOrders.map(async (mo) => {
+            var _a, _b;
+            try {
+                const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
+                const orig = (_b = (_a = snap.data()) === null || _a === void 0 ? void 0 : _a.customer) === null || _b === void 0 ? void 0 : _b.originalName;
+                if (orig)
+                    cronOrigNames.set(String(mo.id), orig);
+            }
+            catch (_) { /* skip */ }
+        }));
         for (const mo of meliOrders) {
             const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
             const shipData = ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) ? shipmentsMap[mo.shipping.id] : null;
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
+            const isAnonC = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+            const preservedCron = cronOrigNames.get(String(mo.id));
+            if (preservedCron && !isAnonC(preservedCron)) {
+                newOrder.customer.originalName = preservedCron;
+            }
+            else if (preservedCron && isAnonC(preservedCron) && !isAnonC(newOrder.customer.originalName)) {
+                // Upgrade: stored was anonymized, new is readable
+            }
+            else if (preservedCron) {
+                newOrder.customer.originalName = preservedCron;
+            }
             await orderRef.set(newOrder, { merge: true });
             importedCount++;
         }
@@ -1526,11 +2194,13 @@ async function processAndSaveMeliOrderById(orderId, token, headers) {
     await processAndSaveMeliOrderFromData(mo, token, headers);
 }
 async function processAndSaveMeliOrderFromData(mo, token, headers) {
-    var _a;
+    var _a, _b, _c;
     // Fetch shipment
     let shipData = null;
     if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
-        const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, { headers });
+        const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+            headers: Object.assign(Object.assign({}, headers), { 'x-format-new': 'true' })
+        });
         if (sRes.ok)
             shipData = await sRes.json();
     }
@@ -1552,6 +2222,27 @@ async function processAndSaveMeliOrderFromData(mo, token, headers) {
     const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
     // Use the REAL individual order id (what the seller sees on MeLi) as the doc key
     const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+    // Preserve the original human-readable buyer name on webhook updates.
+    // MeLi anonymizes buyer.first_name/last_name on older orders — we protect the
+    // first name received so the UI always shows the readable version.
+    try {
+        const existingSnap = await orderRef.get();
+        const existingOrigName = (_c = (_b = existingSnap.data()) === null || _b === void 0 ? void 0 : _b.customer) === null || _c === void 0 ? void 0 : _c.originalName;
+        const isAnonW = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+        if (existingOrigName && !isAnonW(existingOrigName)) {
+            // Keep the stored readable name
+            newOrder.customer.originalName = existingOrigName;
+        }
+        else if (existingOrigName && isAnonW(existingOrigName) && !isAnonW(newOrder.customer.originalName)) {
+            // Upgrade: stored was anonymized, new is readable — keep new one
+        }
+        else if (existingOrigName) {
+            // Both anonymized — keep stored one for stability
+            newOrder.customer.originalName = existingOrigName;
+        }
+        // If no originalName yet → this is the first write, keep the current name as originalName
+    }
+    catch (_) { /* non-critical — proceed without preservation */ }
     await orderRef.set(newOrder, { merge: true });
     console.log(`[Meli Webhook] Saved order ML-${mo.id} (pack_id: ${mo.pack_id || 'n/a'})`);
 }
@@ -1645,5 +2336,116 @@ exports.getMeliRawOrderDebug = functions.https.onRequest(async (req, res) => {
     catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+// ─── Phase 3: Abandoned Cart Detector ────────────────────────────────────────
+//
+// Scheduled function that runs every 30 minutes.
+// Scans `carts/` and `guestCarts/` for docs where:
+//   - status is 'active' or 'checkout_started'
+//   - lastUpdated is older than ABANDON_THRESHOLD_MS (60 minutes)
+//
+// On match: sets status = 'abandoned' and writes a cartSnapshot event.
+//
+// Deploy with: firebase deploy --only functions:detectAbandonedCarts
+//
+// ─────────────────────────────────────────────────────────────────────────────
+const ABANDON_THRESHOLD_MS = 60 * 60 * 1000; // 60 minutes
+async function runAbandonedCartDetection() {
+    const now = Date.now();
+    const cutoff = admin.firestore.Timestamp.fromMillis(now - ABANDON_THRESHOLD_MS);
+    const batch = db.batch();
+    let cartCount = 0;
+    let guestCount = 0;
+    // Helper: write a cartSnapshot event doc
+    async function writeAbandonedSnapshot(data, collection_) {
+        var _a, _b, _c, _d, _e;
+        try {
+            const items = (_a = data.items) !== null && _a !== void 0 ? _a : [];
+            const cartValue = Array.isArray(items)
+                ? items.reduce((sum, i) => { var _a; return sum + (((_a = i.product) === null || _a === void 0 ? void 0 : _a.price) || 0) * (i.quantity || 1); }, 0)
+                : 0;
+            await db.collection('cartSnapshots').add({
+                sessionId: (_b = data.sessionId) !== null && _b !== void 0 ? _b : 'unknown',
+                userId: (_c = data.userId) !== null && _c !== void 0 ? _c : null,
+                email: (_d = data.email) !== null && _d !== void 0 ? _d : null,
+                event: 'abandoned_detected',
+                items: items,
+                cartValue,
+                attribution: (_e = data.attribution) !== null && _e !== void 0 ? _e : null,
+                createdAt: admin.firestore.Timestamp.now(),
+                source: collection_,
+            });
+        }
+        catch (e) {
+            console.warn('[AbandonDetect] Snapshot write failed:', e);
+        }
+    }
+    // ── Scan: carts/{uid} ──────────────────────────────────────────────────────
+    const cartSnap = await db.collection('carts')
+        .where('status', 'in', ['active', 'checkout_started'])
+        .where('lastUpdated', '<=', cutoff)
+        .limit(200)
+        .get();
+    for (const docSnap of cartSnap.docs) {
+        const data = docSnap.data();
+        // Guard: require at least one item
+        if (!Array.isArray(data.items) || data.items.length === 0)
+            continue;
+        batch.update(docSnap.ref, {
+            status: 'abandoned',
+            abandonedAt: admin.firestore.Timestamp.now(),
+            lastUpdated: admin.firestore.Timestamp.now(),
+        });
+        await writeAbandonedSnapshot(data, 'carts');
+        cartCount++;
+    }
+    // ── Scan: guestCarts/{sessionId} ───────────────────────────────────────────
+    const guestSnap = await db.collection('guestCarts')
+        .where('status', 'in', ['active', 'checkout_started'])
+        .where('lastUpdated', '<=', cutoff)
+        .limit(200)
+        .get();
+    for (const docSnap of guestSnap.docs) {
+        const data = docSnap.data();
+        if (!Array.isArray(data.items) || data.items.length === 0)
+            continue;
+        batch.update(docSnap.ref, {
+            status: 'abandoned',
+            abandonedAt: admin.firestore.Timestamp.now(),
+            lastUpdated: admin.firestore.Timestamp.now(),
+        });
+        await writeAbandonedSnapshot(data, 'guestCarts');
+        guestCount++;
+    }
+    await batch.commit();
+    const total = cartCount + guestCount;
+    console.log(`[AbandonDetect] Marked ${total} carts as abandoned (${cartCount} auth, ${guestCount} guest).`);
+    return { carts: cartCount, guests: guestCount, total };
+}
+// ── Scheduled: every 30 minutes ───────────────────────────────────────────────
+exports.detectAbandonedCarts = functions.pubsub
+    .schedule('every 30 minutes')
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+    try {
+        const result = await runAbandonedCartDetection();
+        console.log('[AbandonDetect] Run complete:', result);
+    }
+    catch (err) {
+        console.error('[AbandonDetect] Fatal error:', err.message);
+    }
+});
+// ── Manual HTTP trigger for testing (staff only — validate via token or restrict in rules) ──
+exports.detectAbandonedCartsHttp = functions.https.onCall(async (_data, context) => {
+    var _a;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const role = (_a = context.auth.token) === null || _a === void 0 ? void 0 : _a.role;
+    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(role)) {
+        throw new functions.https.HttpsError('permission-denied', 'Manager+ required.');
+    }
+    const result = await runAbandonedCartDetection();
+    return Object.assign({ success: true }, result);
 });
 //# sourceMappingURL=index.js.map

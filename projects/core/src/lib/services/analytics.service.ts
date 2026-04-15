@@ -1,6 +1,4 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
 
 declare let gtag: Function;
@@ -10,7 +8,6 @@ declare let clarity: Function;
     providedIn: 'root'
 })
 export class AnalyticsService {
-    private router = inject(Router);
     private platformId = inject(PLATFORM_ID);
     private isBrowser: boolean;
 
@@ -19,20 +16,14 @@ export class AnalyticsService {
     }
 
     /**
-     * Initialize analytics tracking
+     * Initialize analytics tracking.
+     * NOTE: page_view events are handled exclusively by TrackingService, which reads
+     * the enabled/disabled state from Firestore (config/tracking). Do NOT add a
+     * router subscription here — it would create duplicate page_view hits in GA4.
      */
     init(): void {
-        if (!this.isBrowser) {
-            return;
-        }
-
-        // Track page views on route changes
-        this.router.events.pipe(
-            filter(event => event instanceof NavigationEnd)
-        ).subscribe((event) => {
-            const navEnd = event as NavigationEnd;
-            this.trackPageView(navEnd.urlAfterRedirects);
-        });
+        // No-op: page tracking is owned by TrackingService.
+        // This method is kept for backwards compatibility with existing call sites.
     }
 
     /**

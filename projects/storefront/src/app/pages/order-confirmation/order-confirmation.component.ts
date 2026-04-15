@@ -3,11 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { CartService } from '../../core/services/cart.service';
-
-declare let gtag: Function;
-function fireGtag(event: string, params: object) {
-    try { if (typeof gtag !== 'undefined') gtag('event', event, params); } catch { /* non-critical */ }
-}
+import { TrackingService } from '../../core/services/tracking.service';
 
 @Component({
     selector: 'app-order-confirmation',
@@ -17,7 +13,8 @@ function fireGtag(event: string, params: object) {
     styleUrls: ['./order-confirmation.component.css']
 })
 export class OrderConfirmationComponent implements OnInit {
-    cartService   = inject(CartService);
+    cartService      = inject(CartService);
+    trackingService  = inject(TrackingService);
     orderId:      string | null = null;
     orderNumber:  string | null = null;
     email:        string | null = null;
@@ -34,26 +31,27 @@ export class OrderConfirmationComponent implements OnInit {
 
     ngOnInit() {
         if (this.orderId) {
-            // GA4: purchase — fire BEFORE clearing the cart so we still have the items
+            // Fire purchase BEFORE clearing the cart so we still have the items
             const items = this.cartService.cartItems();
             const total = this.cartService.cartSubtotal();
             const shippingCost = this.shipping?.isFree ? 0 : (this.shipping?.price ?? 0);
 
-            fireGtag('purchase', {
+            // Fires to GA4, Meta Pixel (Purchase), TikTok — all gated by Firestore config
+            this.trackingService.trackPurchase({
                 transaction_id: this.orderId,
-                currency:       'MXN',
                 value:          total + shippingCost,
                 shipping:       shippingCost,
+                currency:       'MXN',
                 items: items.map(i => ({
-                    item_id:    i.product.sku || i.product.id,
-                    item_name:  i.product.name?.es || i.product.name?.en,
+                    item_id:    i.product.sku || i.product.id || '',
+                    item_name:  i.product.name?.es || i.product.name?.en || '',
                     item_brand: i.product.brand,
                     price:      i.product.price,
                     quantity:   i.quantity,
                 }))
             });
 
-            // Real purchase — clear cart after firing event
+            // Clear cart after firing event
             this.cartService.clearCart();
         } else {
             // Direct navigation (bookmarked / shared link) — show fallback state

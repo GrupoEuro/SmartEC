@@ -1,72 +1,58 @@
-<!-- Marketing context bar — read-only, always visible on Operations Dashboard -->
-<div class="acw-root" [class.collapsed]="isCollapsed()">
+<!-- Campañas Activas — diseño idéntico a las tarjetas del Operations Dashboard -->
+<div class="bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
 
-    <!-- Header row -->
-    <div class="acw-header" (click)="toggle()">
-        <div class="acw-header-left">
-            <!-- Megaphone SVG -->
-            <div class="acw-header-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-                </svg>
-            </div>
-            <div class="acw-header-text">
-                <span class="acw-title">{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.TITLE' | translate }}</span>
-                <span *ngIf="!isLoading()" class="acw-count">
-                    {{ campaigns().length }} {{ 'OPERATIONS.ACTIVE_CAMPAIGNS.ACTIVE' | translate }}
-                </span>
-            </div>
-        </div>
-        <div class="acw-header-right">
-            <!-- Link to Marketing Hub -->
+    <!-- Header -->
+    <div class="bg-zinc-900/50 p-4 border-b border-zinc-700 flex items-center justify-between cursor-pointer select-none"
+         (click)="toggle()">
+        <h3 class="flex items-center text-sm font-semibold uppercase tracking-wider text-zinc-300">
+            <app-icon name="megaphone" [size]="18" class="mr-2 text-indigo-400"></app-icon>
+            Campañas Activas
+            <span *ngIf="!isLoading()"
+                class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 normal-case tracking-normal">
+                {{ campaigns().length }}
+            </span>
+        </h3>
+        <div class="flex items-center gap-3">
             <a routerLink="/marketing/campaigns"
-               class="acw-manage-link"
                (click)="$event.stopPropagation()"
-               [title]="'OPERATIONS.ACTIVE_CAMPAIGNS.MANAGE' | translate">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-                {{ 'OPERATIONS.ACTIVE_CAMPAIGNS.MANAGE' | translate }}
+               class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
+                <app-icon name="external-link" [size]="11"></app-icon>
+                Marketing Hub
             </a>
-            <!-- Chevron -->
-            <svg class="acw-chevron" [class.rotated]="isCollapsed()"
-                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="18 15 12 9 6 15"/>
-            </svg>
+            <app-icon [name]="isCollapsed() ? 'chevron-down' : 'chevron-up'"
+                [size]="14" class="text-zinc-500 transition-transform"></app-icon>
         </div>
     </div>
 
     <!-- Body -->
-    <div class="acw-body">
+    <div *ngIf="!isCollapsed()" class="p-4">
 
         <!-- Loading -->
-        <div *ngIf="isLoading()" class="acw-loading">
-            <div class="acw-spinner"></div>
-            <span>{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.LOADING' | translate }}</span>
+        <div *ngIf="isLoading()" class="flex items-center gap-2 text-sm text-zinc-500 py-2">
+            <div class="w-4 h-4 border-2 border-zinc-700 border-t-indigo-500 rounded-full animate-spin"></div>
+            Cargando campañas…
         </div>
 
         <!-- Empty -->
-        <div *ngIf="!isLoading() && campaigns().length === 0" class="acw-empty">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
-                <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
-            </svg>
-            <span>{{ 'OPERATIONS.ACTIVE_CAMPAIGNS.EMPTY' | translate }}</span>
+        <div *ngIf="!isLoading() && campaigns().length === 0"
+             class="flex items-center gap-2 text-sm text-zinc-500 py-2">
+            <app-icon name="info" [size]="16" class="text-zinc-600"></app-icon>
+            Sin campañas activas en este momento.
         </div>
 
         <!-- Campaign pills -->
-        <div *ngIf="!isLoading() && campaigns().length > 0" class="acw-pills">
-            <div *ngFor="let c of campaigns()" class="acw-pill" [class]="urgencyClass(daysLeft(c.endDate))">
+        <div *ngIf="!isLoading() && campaigns().length > 0" class="flex flex-wrap gap-2">
+            <div *ngFor="let c of campaigns()"
+                 class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap"
+                 [ngClass]="{
+                    'bg-emerald-500/10 border-emerald-500/25 text-emerald-400': urgencyClass(daysLeft(c.endDate)) === 'safe',
+                    'bg-amber-500/10  border-amber-500/25  text-amber-400':   urgencyClass(daysLeft(c.endDate)) === 'soon',
+                    'bg-red-500/10    border-red-500/25    text-red-400':     urgencyClass(daysLeft(c.endDate)) === 'urgent'
+                 }">
                 <!-- Pulse dot -->
-                <span class="acw-pulse-dot"></span>
-                <span class="acw-pill-name">{{ c.name }}</span>
-                <span class="acw-pill-days">
-                    {{ daysLeft(c.endDate) }}d
-                </span>
+                <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse flex-shrink-0"></span>
+                <span class="max-w-[180px] truncate">{{ c.name }}</span>
+                <span class="opacity-80 font-bold text-[10px]">{{ daysLeft(c.endDate) }}d</span>
             </div>
         </div>
 

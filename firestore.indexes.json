@@ -518,6 +518,17 @@
                 }
             ]
         },
+        // orderPriorities — createdAt range scan used by getSLAOverridesMap (SLA compliance dashboard)
+        {
+            "collectionGroup": "orderPriorities",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "createdAt",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
         {
             "collectionGroup": "products",
             "queryScope": "COLLECTION",

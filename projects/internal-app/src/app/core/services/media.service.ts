@@ -189,7 +189,12 @@ export class MediaService {
             }
         }
 
-        await this.recalculateStorageStats();
+        // Attempt stats recalc — requires ADMIN role on sys_counters, so fail gracefully
+        try {
+            await this.recalculateStorageStats();
+        } catch (e) {
+            console.warn('[MediaService] Could not update storage stats (insufficient permissions):', e);
+        }
         return stats;
     }
 
@@ -675,11 +680,20 @@ export class MediaService {
 
     private getImageDimensions(file: File): Promise<{ width: number, height: number }> {
         return new Promise((resolve) => {
+            const objectUrl = URL.createObjectURL(file);
             const img = new Image();
+            const cleanup = () => URL.revokeObjectURL(objectUrl);
             img.onload = () => {
+                cleanup();
                 resolve({ width: img.width, height: img.height });
             };
-            img.src = URL.createObjectURL(file);
+            // CRITICAL: without onerror the Promise never resolves, hanging the entire upload
+            img.onerror = () => {
+                cleanup();
+                console.warn('[MediaService] Could not read dimensions for:', file.name, '— defaulting to 0x0');
+                resolve({ width: 0, height: 0 });
+            };
+            img.src = objectUrl;
         });
     }
     private updateStats(sizeDelta: number, countDelta: number = 1) {

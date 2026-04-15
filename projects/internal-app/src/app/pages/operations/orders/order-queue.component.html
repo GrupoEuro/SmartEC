@@ -239,9 +239,30 @@
                     </td>
                     <td class="p-4">
                         <div class="customer-info flex flex-col">
-                            <span class="customer-name font-medium text-white">{{ order.customer.name }}</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="customer-name font-medium"
+                                    [ngClass]="$any(order.customer).isAnonymized ? 'text-zinc-400 font-mono text-xs' : 'text-white'">
+                                    {{ $any(order.customer).originalName || order.customer.name }}
+                                </span>
+                                <span *ngIf="$any(order.customer).isAnonymized"
+                                    class="text-[9px] px-1 py-0.5 rounded bg-zinc-700/60 text-zinc-500 border border-zinc-600/30"
+                                    title="MercadoLibre anonimizó este nombre">
+                                    anon
+                                </span>
+                            </div>
+                            <!-- Nickname as secondary when name is anonymized -->
+                            <span *ngIf="$any(order.customer).isAnonymized && $any(order.customer).meliNickname"
+                                class="text-[11px] text-zinc-400 mt-0.5">
+                                {{ $any(order.customer).meliNickname }}
+                            </span>
+                            <!-- Previous readable name shown as subtext when name changed -->
+                            <span *ngIf="!$any(order.customer).isAnonymized && $any(order.customer).originalName && $any(order.customer).originalName !== order.customer.name"
+                                class="text-[10px] text-zinc-600 mt-0.5" title="Nombre en MercadoLibre">
+                                {{ order.customer.name }}
+                            </span>
                             <span class="customer-email text-xs text-zinc-500">{{ order.customer.email }}</span>
                         </div>
+
                     </td>
                     <td class="p-4">{{ formatDate(order.createdAt) }}</td>
                     <td class="p-4">

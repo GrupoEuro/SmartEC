@@ -3125,3 +3125,187 @@ export const detectAbandonedCartsHttp = functions.https.onCall(async (_data, con
     const result = await runAbandonedCartDetection();
     return { success: true, ...result };
 });
+
+// ─── Monthly Stats Aggregation ─────────────────────────────────────────────────
+// Firestore structure: monthly_stats/{YYYY-MM}          ← month aggregate
+//                      monthly_stats/{YYYY-MM}/days/{DD} ← daily subcollection
+
+/**
+ * backfillMonthlyStats — callable (one-time per month range).
+ * Reads all orders in [fromMonth, toMonth] and writes monthly_stats aggregates
+ * including the daily subcollection. Safe to re-run: uses set() with merge.
+ *
+ * Input: { fromMonth: '2025-01', toMonth: '2025-02' }
+ */
+export const backfillMonthlyStats = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onCall(async (data, context) => {
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+        }
+        const role = context.auth.token?.role;
+        if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) {
+            throw new functions.https.HttpsError('permission-denied', 'Admin required.');
+        }
+
+        const { fromMonth, toMonth } = data as { fromMonth: string; toMonth: string };
+        if (!fromMonth || !toMonth) {
+            throw new functions.https.HttpsError('invalid-argument', 'fromMonth and toMonth required (format: YYYY-MM).');
+        }
+
+        // Build the list of months to process
+        const months: string[] = [];
+        let [year, mon] = fromMonth.split('-').map(Number);
+        const [toYear, toMon] = toMonth.split('-').map(Number);
+        while (year < toYear || (year === toYear && mon <= toMon)) {
+            months.push(`${year}-${String(mon).padStart(2, '0')}`);
+            mon++;
+            if (mon > 12) { mon = 1; year++; }
+        }
+
+        const results: Array<{ month: string; orders: number; sales: number; days: number }> = [];
+
+        for (const monthStr of months) {
+            const [y, m] = monthStr.split('-').map(Number);
+            const startDate = new Date(y, m - 1, 1, 0, 0, 0, 0);
+            const endDate   = new Date(y, m,     0, 23, 59, 59, 999); // last ms of month
+
+            const ordersSnap = await db.collection('orders')
+                .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startDate))
+                .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(endDate))
+                .get();
+
+            // Aggregate by day
+            const dayMap: Record<string, { sales: number; orders: number; pieces: number }> = {};
+            let monthSales = 0, monthOrders = 0, monthPieces = 0;
+
+            ordersSnap.docs.forEach(docSnap => {
+                const order = docSnap.data();
+                // Skip cancelled/refunded/returned — they don't count toward revenue
+                if (['cancelled', 'refunded', 'returned'].includes(order['status'])) return;
+
+                const orderDate: Date = order['createdAt']?.toDate?.() ?? new Date();
+                const dayKey = String(orderDate.getDate()).padStart(2, '0');
+
+                const total  = Number(order['total'] ?? 0);
+                const pieces = (order['items'] as any[] ?? [])
+                    .reduce((s: number, item: any) => s + (Number(item.quantity) || 1), 0);
+
+                if (!dayMap[dayKey]) dayMap[dayKey] = { sales: 0, orders: 0, pieces: 0 };
+                dayMap[dayKey].sales  += total;
+                dayMap[dayKey].orders += 1;
+                dayMap[dayKey].pieces += pieces;
+
+                monthSales  += total;
+                monthOrders += 1;
+                monthPieces += pieces;
+            });
+
+            // Write in batches (max 500 ops per batch; we only have ~31 days + 1 parent = fine)
+            const monthRef = db.collection('monthly_stats').doc(monthStr);
+            const batch = db.batch();
+
+            // Parent month aggregate
+            batch.set(monthRef, {
+                month:     monthStr,
+                sales:     monthSales,
+                orders:    monthOrders,
+                pieces:    monthPieces,
+                backfilled: true,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            // Daily subcollection docs
+            for (const [day, dayData] of Object.entries(dayMap)) {
+                const dayRef = monthRef.collection('days').doc(day);
+                batch.set(dayRef, {
+                    day,
+                    month: monthStr,
+                    sales:  dayData.sales,
+                    orders: dayData.orders,
+                    pieces: dayData.pieces,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
+
+            await batch.commit();
+
+            const entry = { month: monthStr, orders: monthOrders, sales: monthSales, days: Object.keys(dayMap).length };
+            results.push(entry);
+            console.log(`[Backfill] ${monthStr}: ${monthOrders} orders, $${monthSales.toFixed(0)}, ${Object.keys(dayMap).length} days`);
+        }
+
+        return { success: true, processed: months.length, results };
+    });
+
+/**
+ * aggregateDailyStats — scheduled nightly at 23:58 Mexico City time.
+ * Writes today's order totals to monthly_stats/{YYYY-MM}/days/{DD}
+ * and updates the parent month aggregate by re-summing all day docs.
+ */
+export const aggregateDailyStats = functions.pubsub
+    .schedule('58 23 * * *')
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+        const now = new Date();
+        const year  = now.getFullYear();
+        const month = now.getMonth();   // 0-based
+        const day   = now.getDate();    // 1-based
+
+        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const dayStr   = String(day).padStart(2, '0');
+
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay   = new Date(year, month, day, 23, 59, 59, 999);
+
+        // Read today's orders
+        const ordersSnap = await db.collection('orders')
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
+            .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
+            .get();
+
+        let sales = 0, orders = 0, pieces = 0;
+        ordersSnap.docs.forEach(docSnap => {
+            const order = docSnap.data();
+            if (['cancelled', 'refunded', 'returned'].includes(order['status'])) return;
+            sales  += Number(order['total'] ?? 0);
+            orders += 1;
+            pieces += (order['items'] as any[] ?? [])
+                .reduce((s: number, item: any) => s + (Number(item.quantity) || 1), 0);
+        });
+
+        const monthRef = db.collection('monthly_stats').doc(monthStr);
+        const dayRef   = monthRef.collection('days').doc(dayStr);
+
+        // Write today's daily doc
+        await dayRef.set({
+            day:    dayStr,
+            month:  monthStr,
+            sales,
+            orders,
+            pieces,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Re-sum ALL day docs to update the month aggregate accurately
+        // (handles retroactive cancellations updating daily docs via backfill)
+        const allDaysSnap = await monthRef.collection('days').get();
+        let mSales = 0, mOrders = 0, mPieces = 0;
+        allDaysSnap.docs.forEach(d => {
+            mSales  += Number(d.data()['sales']  ?? 0);
+            mOrders += Number(d.data()['orders'] ?? 0);
+            mPieces += Number(d.data()['pieces'] ?? 0);
+        });
+
+        await monthRef.set({
+            month:  monthStr,
+            sales:  mSales,
+            orders: mOrders,
+            pieces: mPieces,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        console.log(`[DailyStats] ${monthStr}/${dayStr}: orders=${orders}, sales=$${sales.toFixed(0)}, pieces=${pieces}`);
+        console.log(`[DailyStats] Month aggregate → orders=${mOrders}, sales=$${mSales.toFixed(0)}, pieces=${mPieces}`);
+    });
+

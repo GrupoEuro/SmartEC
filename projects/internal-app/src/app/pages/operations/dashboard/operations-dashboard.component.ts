@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, collection, getDocs } from '@angular/fire/firestore';
 
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
@@ -156,24 +156,32 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     }[]>([]);
 
     // — Year-over-Year comparison —
-    /** Raw LY period data fetched from monthly_stats (1–12 reads depending on MTD/YTD) */
+    /** Raw LY period data fetched from monthly_stats. Uses daily subcollection for exact date match. */
     lyPeriodStats = signal<{ sales: number; orders: number; pieces: number } | null>(null);
 
+    /** True when the current partial month uses a full-month aggregate fallback (no days/ subcollection yet). */
+    lyUsingApprox = signal<boolean>(false);
+
+    /** Per-day sales array for same-month LY (MTD overlay line). Index 0 = day 1. */
+    lyDailyData = signal<number[]>([]);
+
     /** Human-readable label for the LY period, adapts to MTD vs YTD.
-     *  MTD  → 'abr 2024'
-     *  YTD  → 'ene–abr 2024'
+     *  MTD exact  → 'abr 1–18, 2025'
+     *  YTD exact  → 'ene–abr 18, 2025'
+     *  Approx (no days/ subcollection yet) → '~abr 2025'
      */
     lyPeriodLabel = computed(() => {
         const now    = new Date();
         const lyYear = now.getFullYear() - 1;
+        const approx = this.lyUsingApprox() ? '~' : '';
         if (this.timeframe() === 'MTD') {
             const ly = new Date(lyYear, now.getMonth(), 1);
-            return ly.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+            const monthName = ly.toLocaleDateString('es-MX', { month: 'short' });
+            return `${approx}${monthName} 1–${now.getDate()}, ${lyYear}`;
         } else {
-            // YTD: 'ene–abr 2024'
             const start = new Date(lyYear, 0, 1).toLocaleDateString('es-MX', { month: 'short' });
-            const end   = new Date(lyYear, now.getMonth(), 1).toLocaleDateString('es-MX', { month: 'short' });
-            return `${start}–${end} ${lyYear}`;
+            const curMonthName = new Date(lyYear, now.getMonth(), 1).toLocaleDateString('es-MX', { month: 'short' });
+            return `${approx}${start}–${curMonthName} ${now.getDate()}, ${lyYear}`;
         }
     });
 
@@ -328,12 +336,22 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private priorityChart?: Chart;
     private trendChart?: Chart;
 
-    topProducts     = signal<{ name: string; units: number; revenue: number }[]>([]);
+    /** ALL products unsorted — set by calculateTopProducts(). */
+    private allProductsSorted = signal<{ name: string; units: number; revenue: number }[]>([]);
     topProductsMode = signal<'units' | 'amount'>('units');
+
+    /** Top 5 products re-computed whenever mode or underlying data changes. */
+    topProducts = computed(() => {
+        const mode = this.topProductsMode();
+        return [...this.allProductsSorted()]
+            .sort((a, b) => mode === 'amount' ? b.revenue - a.revenue : b.units - a.units)
+            .slice(0, 5);
+    });
 
     setTopProductsMode(mode: 'units' | 'amount') {
         if (this.topProductsMode() === mode) return;
         this.topProductsMode.set(mode);
+        // topProducts computed re-runs automatically; just sync the chart
         if (this.topProductsChart) this.updateTopProductsChart();
     }
 
@@ -402,8 +420,15 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             startDate = new Date(today.getFullYear(), 0, 1);
         }
 
-        // Kick off the LY comparison (1 read, independent of orders query)
+        // Reset LY daily overlay
+        this.lyDailyData.set([]);
+        this.lyUsingApprox.set(false);
+
+        // Kick off LY reads in parallel (non-blocking)
         this.loadLyComparison();
+        if (this.timeframe() === 'MTD') {
+            this.loadLyDailyForMTD();
+        }
 
         this.orderService.getOrdersByDateRange(startDate, endDate).subscribe({
             next: (orders) => {
@@ -427,47 +452,180 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
      *
      * Never throws — graceful degradation to null.
      */
+    /**
+     * Fetch last year's equivalent period using daily subcollection for exact date cut-off.
+     *
+     * MTD  → sum monthly_stats/{lyYear}-{MM}/days/01..today's day
+     *         Fallback to full month aggregate (sets lyUsingApprox=true) if no days/ yet.
+     * YTD  → full monthly aggregates for Jan..(currentMonth-1)
+     *         + exact days for current partial month (same fallback logic)
+     */
     private async loadLyComparison(): Promise<void> {
         try {
-            const now    = new Date();
-            const lyYear = now.getFullYear() - 1;
+            const now               = new Date();
+            const lyYear            = now.getFullYear() - 1;
             const currentMonthIndex = now.getMonth(); // 0-based
+            const todayDay          = now.getDate();  // 1-based
+            const lyMon             = String(currentMonthIndex + 1).padStart(2, '0');
 
-            if (this.timeframe() === 'MTD') {
-                // Single read: last year same month
-                const lyMon = String(currentMonthIndex + 1).padStart(2, '0');
-                const snap  = await getDoc(doc(this.firestore, `monthly_stats/${lyYear}-${lyMon}`));
-                if (snap.exists()) {
-                    const d = snap.data() as any;
-                    this.lyPeriodStats.set({ sales: d['sales'] ?? 0, orders: d['orders'] ?? 0, pieces: d['pieces'] ?? 0 });
-                } else {
-                    this.lyPeriodStats.set(null);
-                }
-            } else {
-                // YTD: fetch Jan → current month of last year in parallel (max 12 reads)
-                const monthIds: string[] = [];
-                for (let m = 0; m <= currentMonthIndex; m++) {
-                    monthIds.push(`${lyYear}-${String(m + 1).padStart(2, '0')}`);
-                }
-                const snaps = await Promise.all(
-                    monthIds.map(id => getDoc(doc(this.firestore, `monthly_stats/${id}`)))
-                );
-                let totalSales = 0, totalOrders = 0, totalPieces = 0, hasAny = false;
-                snaps.forEach(snap => {
-                    if (snap.exists()) {
-                        const d = snap.data() as any;
-                        totalSales  += d['sales']  ?? 0;
-                        totalOrders += d['orders'] ?? 0;
-                        totalPieces += d['pieces'] ?? 0;
+            // Helper: read daily subcollection up to todayDay, returns totals + whether any doc existed
+            const readDays = async (yearStr: number, monStr: string) => {
+                const dayIds  = Array.from({ length: todayDay }, (_, i) => String(i + 1).padStart(2, '0'));
+                const dayRefs = dayIds.map(d => doc(this.firestore, `monthly_stats/${yearStr}-${monStr}/days/${d}`));
+                const snaps   = await Promise.all(dayRefs.map(r => getDoc(r)));
+                let sales = 0, orders = 0, pieces = 0, hasAny = false;
+                snaps.forEach(s => {
+                    if (s.exists()) {
+                        const d = s.data() as any;
+                        sales  += d['sales']  ?? 0;
+                        orders += d['orders'] ?? 0;
+                        pieces += d['pieces'] ?? 0;
                         hasAny = true;
                     }
                 });
-                this.lyPeriodStats.set(hasAny ? { sales: totalSales, orders: totalOrders, pieces: totalPieces } : null);
+                return { sales, orders, pieces, hasAny };
+            };
+
+            // Helper: fallback to full-month aggregate
+            const readMonthAggregate = async (id: string) => {
+                const snap = await getDoc(doc(this.firestore, `monthly_stats/${id}`));
+                if (!snap.exists()) return null;
+                const d = snap.data() as any;
+                return { sales: d['sales'] ?? 0, orders: d['orders'] ?? 0, pieces: d['pieces'] ?? 0 };
+            };
+
+            if (this.timeframe() === 'MTD') {
+                // Try exact daily range first
+                const daily = await readDays(lyYear, lyMon);
+                if (daily.hasAny) {
+                    this.lyPeriodStats.set({ sales: daily.sales, orders: daily.orders, pieces: daily.pieces });
+                    this.lyUsingApprox.set(false);
+                } else {
+                    // Fallback: full month aggregate (over-counts but best available)
+                    const agg = await readMonthAggregate(`${lyYear}-${lyMon}`);
+                    this.lyPeriodStats.set(agg);
+                    this.lyUsingApprox.set(agg !== null);
+                }
+            } else {
+                // YTD: full months Jan → (currentMonth-1) + exact partial current month
+                const totals = { sales: 0, orders: 0, pieces: 0 };
+                let hasAny = false;
+                let partialApprox = false;
+
+                // Full completed months
+                if (currentMonthIndex > 0) {
+                    const ids = Array.from({ length: currentMonthIndex }, (_, i) =>
+                        `${lyYear}-${String(i + 1).padStart(2, '0')}`
+                    );
+                    const snaps = await Promise.all(ids.map(id => getDoc(doc(this.firestore, `monthly_stats/${id}`))));
+                    snaps.forEach(snap => {
+                        if (snap.exists()) {
+                            const d = snap.data() as any;
+                            totals.sales  += d['sales']  ?? 0;
+                            totals.orders += d['orders'] ?? 0;
+                            totals.pieces += d['pieces'] ?? 0;
+                            hasAny = true;
+                        }
+                    });
+                }
+
+                // Current partial month: try exact days first
+                const daily = await readDays(lyYear, lyMon);
+                if (daily.hasAny) {
+                    totals.sales  += daily.sales;
+                    totals.orders += daily.orders;
+                    totals.pieces += daily.pieces;
+                    hasAny = true;
+                } else {
+                    // Fallback to full month aggregate for the current month
+                    const agg = await readMonthAggregate(`${lyYear}-${lyMon}`);
+                    if (agg) {
+                        totals.sales  += agg.sales;
+                        totals.orders += agg.orders;
+                        totals.pieces += agg.pieces;
+                        hasAny = true;
+                        partialApprox = true;
+                    }
+                }
+
+                this.lyPeriodStats.set(hasAny ? totals : null);
+                this.lyUsingApprox.set(partialApprox);
             }
         } catch (err) {
             console.warn('[Dashboard] LY comparison read failed (non-critical):', err);
             this.lyPeriodStats.set(null);
+            this.lyUsingApprox.set(false);
         }
+    }
+
+    /**
+     * Load per-day LY sales for MTD overlay line on trend chart.
+     * Reads monthly_stats/{lyYear}-{currentMonth}/days/01..todayDay.
+     * Silently no-ops if docs don't exist yet.
+     */
+    private async loadLyDailyForMTD(): Promise<void> {
+        try {
+            const now    = new Date();
+            const lyYear = now.getFullYear() - 1;
+            const lyMon  = String(now.getMonth() + 1).padStart(2, '0');
+            const todayDay = now.getDate();
+
+            const dayIds  = Array.from({ length: todayDay }, (_, i) => String(i + 1).padStart(2, '0'));
+            const dayRefs = dayIds.map(d => doc(this.firestore, `monthly_stats/${lyYear}-${lyMon}/days/${d}`));
+            const snaps   = await Promise.all(dayRefs.map(r => getDoc(r)));
+
+            const dailySales: number[] = new Array(todayDay).fill(0);
+            let hasAny = false;
+            snaps.forEach((snap, i) => {
+                if (snap.exists()) {
+                    dailySales[i] = Number((snap.data() as any)['sales'] ?? 0);
+                    hasAny = true;
+                }
+            });
+
+            if (hasAny) {
+                this.lyDailyData.set(dailySales);
+                // If trend chart already rendered, push the overlay onto it
+                if (this.trendChart) this.updateTrendChartLyOverlay();
+            }
+        } catch (err) {
+            console.warn('[Dashboard] LY daily MTD read failed (non-critical):', err);
+        }
+    }
+
+    /** Add or update the dashed LY overlay line dataset on the trend chart. */
+    private updateTrendChartLyOverlay(): void {
+        if (!this.trendChart) return;
+        const lyData = this.lyDailyData();
+        if (lyData.length === 0) return;
+
+        const lyYear = new Date().getFullYear() - 1;
+        const datasets = this.trendChart.data.datasets as any[];
+        const existingIdx = datasets.findIndex(d => d['_isLY'] === true);
+
+        const lyDataset = {
+            type: 'line',
+            label: `Ventas ${lyYear}`,
+            data: lyData,
+            borderColor: '#94a3b8',       // slate-400 — neutral, clearly distinguishable
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            tension: 0.4,
+            spanGaps: true,
+            yAxisID: 'y1',
+            pointRadius: 3,
+            pointBackgroundColor: '#94a3b8',
+            order: 0,
+            _isLY: true,
+        };
+
+        if (existingIdx >= 0) {
+            datasets[existingIdx] = lyDataset;
+        } else {
+            datasets.unshift(lyDataset); // prepend so it renders first (behind bars)
+        }
+        this.trendChart.update();
     }
 
 
@@ -1096,14 +1254,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             });
         });
 
-        const sorted = Array.from(productMap.entries())
-            .map(([name, data]) => ({ name, ...data }))
-            .sort((a, b) => b.units - a.units)
-            .slice(0, 5);
+        // Store ALL products; topProducts computed signal will re-sort & slice by mode
+        const all = Array.from(productMap.entries())
+            .map(([name, data]) => ({ name, ...data }));
 
-        this.topProducts.set(sorted);
+        this.allProductsSorted.set(all);
 
-        // Update chart if already rendered
+        // Update chart if already rendered (topProducts() now reflects new data + current mode)
         if (this.topProductsChart) {
             this.updateTopProductsChart();
         }
@@ -1502,6 +1659,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         };
 
         this.trendChart = new Chart(canvas, config);
+
+        // If MTD and LY daily data already loaded, add overlay immediately
+        if (this.timeframe() === 'MTD' && this.lyDailyData().length > 0) {
+            this.updateTrendChartLyOverlay();
+        }
     }
 
     private updateTopProductsChart() {

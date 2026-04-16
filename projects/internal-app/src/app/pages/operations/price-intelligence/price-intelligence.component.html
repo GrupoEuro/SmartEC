@@ -2,7 +2,8 @@
 
   <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <div class="pi-header">
-    <div class="pi-header-inner">
+    <!-- Row 1: Title + Tab Nav (always fixed, never moves) -->
+    <div class="pi-header-row1">
       <div class="pi-title-section">
         <span class="pi-title-icon">🧠</span>
         <div>
@@ -11,35 +12,36 @@
         </div>
       </div>
 
-      <div class="pi-header-actions">
-        <!-- Tab Nav -->
-        <div class="tab-nav">
-          @for (tab of TABS; track tab.id) {
-            <button class="tab-btn" [class.active]="activeTab() === tab.id"
-                    (click)="activeTab.set(tab.id)" [id]="'tab-' + tab.id">
-              <app-icon [name]="tab.icon" [size]="14" />
-              {{ tab.label }}
-              @if (tab.id === 'scanner' && unreadAlerts().length > 0) {
-                <span class="tab-alert-badge">{{ unreadAlerts().length }}</span>
-              }
+      <!-- Tab Nav — always top-right -->
+      <div class="tab-nav">
+        @for (tab of TABS; track tab.id) {
+          <button class="tab-btn" [class.active]="activeTab() === tab.id"
+                  (click)="activeTab.set(tab.id)" [id]="'tab-' + tab.id">
+            <app-icon [name]="tab.icon" [size]="14" />
+            {{ tab.label }}
+            @if (tab.id === 'scanner' && unreadAlerts().length > 0) {
+              <span class="tab-alert-badge">{{ unreadAlerts().length }}</span>
+            }
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Row 2: Scanner-only action buttons -->
+    @if (activeTab() === 'scanner') {
+      <div class="pi-header-row2">
+        <!-- Category Selector -->
+        <div class="category-pills">
+          @for (cat of CATEGORIES; track cat.id) {
+            <button class="category-pill" [class.active]="categoryId() === cat.id"
+                    (click)="categoryId.set(cat.id); onSizeChange()">
+              {{ cat.emoji }} {{ cat.label }}
             </button>
           }
         </div>
 
-        <!-- Category Selector (scanner tab only) -->
-        @if (activeTab() === 'scanner') {
-          <div class="category-pills">
-            @for (cat of CATEGORIES; track cat.id) {
-              <button class="category-pill" [class.active]="categoryId() === cat.id"
-                      (click)="categoryId.set(cat.id); onSizeChange()">
-                {{ cat.emoji }} {{ cat.label }}
-              </button>
-            }
-          </div>
-        }
-
-        <!-- Portfolio Scan Button -->
-        @if (activeTab() === 'scanner') {
+        <div class="pi-header-row2-actions">
+          <!-- Portfolio Scan Button -->
           <button class="btn-portfolio" (click)="runPortfolioScan()"
                   [disabled]="portfolioState() === 'running'" id="btn-portfolio-scan">
             @if (portfolioState() === 'running') {
@@ -48,10 +50,8 @@
               <app-icon name="layers" [size]="14" /> Escanear portafolio
             }
           </button>
-        }
 
-        <!-- Scan Button -->
-        @if (activeTab() === 'scanner') {
+          <!-- Scan Button -->
           <button class="btn-scan" (click)="runScan(true)" [disabled]="scanState() === 'scanning'"
                   id="btn-scan-market">
             @if (scanState() === 'scanning') {
@@ -60,9 +60,9 @@
               <app-icon name="radar" [size]="16" /> Escanear mercado
             }
           </button>
-        }
+        </div>
       </div>
-    </div>
+    }
   </div>
 
   <!-- ── Body ─────────────────────────────────────────────────────────────── -->

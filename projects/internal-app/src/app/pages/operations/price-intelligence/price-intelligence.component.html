@@ -1,44 +1,59 @@
 <div class="pi-container">
 
-  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
   <div class="pi-header">
     <div class="pi-header-inner">
       <div class="pi-title-section">
         <span class="pi-title-icon">🧠</span>
         <div>
           <h1 class="pi-title">Price Intelligence</h1>
-          <p class="pi-subtitle">Análisis competitivo de mercado en MercadoLibre en tiempo real</p>
+          <p class="pi-subtitle">Análisis competitivo · Mapa de mercado · Calculadora de márgenes</p>
         </div>
       </div>
 
       <div class="pi-header-actions">
-        <!-- Category Selector -->
-        <div class="category-pills">
-          @for (cat of CATEGORIES; track cat.id) {
-            <button class="category-pill" [class.active]="categoryId() === cat.id"
-                    (click)="categoryId.set(cat.id); onSizeChange()">
-              {{ cat.emoji }} {{ cat.label }}
+        <!-- Tab Nav -->
+        <div class="tab-nav">
+          @for (tab of TABS; track tab.id) {
+            <button class="tab-btn" [class.active]="activeTab() === tab.id"
+                    (click)="activeTab.set(tab.id)" [id]="'tab-' + tab.id">
+              <app-icon [name]="tab.icon" [size]="14" />
+              {{ tab.label }}
             </button>
           }
         </div>
 
+        <!-- Category Selector (scanner tab only) -->
+        @if (activeTab() === 'scanner') {
+          <div class="category-pills">
+            @for (cat of CATEGORIES; track cat.id) {
+              <button class="category-pill" [class.active]="categoryId() === cat.id"
+                      (click)="categoryId.set(cat.id); onSizeChange()">
+                {{ cat.emoji }} {{ cat.label }}
+              </button>
+            }
+          </div>
+        }
+
         <!-- Scan Button -->
-        <button class="btn-scan" (click)="runScan(true)" [disabled]="scanState() === 'scanning'"
-                id="btn-scan-market">
-          @if (scanState() === 'scanning') {
-            <span class="spinner"></span> Escaneando...
-          } @else {
-            <app-icon name="radar" [size]="16" /> Escanear mercado
-          }
-        </button>
+        @if (activeTab() === 'scanner') {
+          <button class="btn-scan" (click)="runScan(true)" [disabled]="scanState() === 'scanning'"
+                  id="btn-scan-market">
+            @if (scanState() === 'scanning') {
+              <span class="spinner"></span> Escaneando...
+            } @else {
+              <app-icon name="radar" [size]="16" /> Escanear mercado
+            }
+          </button>
+        }
       </div>
     </div>
   </div>
 
-  <!-- ── Body ──────────────────────────────────────────────────────────────── -->
+  <!-- ── Body ─────────────────────────────────────────────────────────────── -->
   <div class="pi-body">
 
-    <!-- LEFT PANEL: Tire Size Selector + Quick Sizes + Alerts -->
+    <!-- ══ SIDEBAR ══ -->
     <aside class="pi-sidebar">
 
       <!-- Tire Size Input -->
@@ -53,24 +68,24 @@
 
           <div class="size-inputs">
             <div class="size-field">
-              <label>Ancho (mm)</label>
+              <label>Ancho</label>
               <input type="number" class="size-input" [ngModel]="tireWidth()"
                      (ngModelChange)="tireWidth.set($event); onSizeChange()"
-                     min="70" max="350" step="10" id="input-tire-width">
+                     min="50" max="350" step="10" id="input-tire-width">
             </div>
             <div class="size-sep">/</div>
             <div class="size-field">
-              <label>Perfil (%)</label>
+              <label>Perfil</label>
               <input type="number" class="size-input" [ngModel]="tireAspectRatio()"
                      (ngModelChange)="tireAspectRatio.set($event); onSizeChange()"
                      min="30" max="100" step="5" id="input-tire-aspect">
             </div>
             <div class="size-sep">R</div>
             <div class="size-field">
-              <label>Rin (pulg)</label>
+              <label>Rin</label>
               <input type="number" class="size-input" [ngModel]="tireDiameter()"
                      (ngModelChange)="tireDiameter.set($event); onSizeChange()"
-                     min="12" max="26" step="1" id="input-tire-diameter">
+                     min="10" max="26" step="1" id="input-tire-diameter">
             </div>
           </div>
 
@@ -89,14 +104,22 @@
       <div class="pi-card">
         <div class="pi-card-header">
           <app-icon name="zap" [size]="16" />
-          <span>Medidas frecuentes</span>
+          <span>Medidas rápidas</span>
         </div>
         <div class="pi-card-body quick-sizes">
-          @for (s of commonSizes; track s.width + '_' + s.aspectRatio + '_' + s.diameter) {
+          <!-- Structured metric -->
+          @for (s of structSizes; track s.width + '_' + s.aspectRatio + '_' + s.diameter) {
             <button class="quick-size-btn"
                     [class.active]="tireWidth() === s.width && tireAspectRatio() === s.aspectRatio && tireDiameter() === s.diameter"
-                    (click)="selectSize(s)">
+                    (click)="selectStructSize(s)">
               {{ s.width }}/{{ s.aspectRatio }}R{{ s.diameter }}
+            </button>
+          }
+          <!-- Imperial inch sizes -->
+          <div class="quick-sizes-divider">Medidas pulgadas</div>
+          @for (sz of quickSizesMoto; track sz) {
+            <button class="quick-size-btn quick-size-inch" (click)="quickScanMoto(sz)">
+              {{ sz }}
             </button>
           }
         </div>
@@ -106,20 +129,19 @@
       @if (recentAlerts().length > 0) {
         <div class="pi-card pi-card-alerts">
           <div class="pi-card-header">
-            <app-icon name="bell-ring" [size]="16" class="text-amber-400" />
-            <span>Alertas recientes</span>
+            <app-icon name="bell-ring" [size]="16" />
+            <span>Alertas</span>
             <span class="alert-badge">{{ recentAlerts().length }}</span>
           </div>
           <div class="pi-card-body alerts-list">
             @for (alert of recentAlerts(); track alert.id) {
               <div class="alert-item">
-                <div class="alert-size">{{ formatAlertSize(alert.tireSize) }}</div>
+                <div class="alert-size">{{ fmtAlertSize(alert.tireSize) }}</div>
                 <div class="alert-gap">{{ alert.gap }}</div>
                 <div class="alert-prices">
-                  Nuestro: {{ formatCurrency(alert.ourPrice) }} →
-                  Competidor: {{ formatCurrency(alert.competitorPrice) }}
+                  Nuestro: {{ fmt(alert.ourPrice) }} → Competidor: {{ fmt(alert.competitorPrice) }}
                 </div>
-                <div class="alert-date">{{ formatDate(alert.createdAt) }}</div>
+                <div class="alert-date">{{ fmtDate(alert.createdAt) }}</div>
               </div>
             }
           </div>
@@ -128,205 +150,402 @@
 
     </aside>
 
-    <!-- RIGHT PANEL: Market Results -->
+    <!-- ══ MAIN CONTENT ══ -->
     <main class="pi-main">
 
-      <!-- Error Banner -->
-      @if (scanState() === 'error') {
-        <div class="error-banner">
-          <app-icon name="alert-circle" [size]="18" />
-          <span>{{ scanError() }}</span>
-          <button class="btn-retry" (click)="runScan(true)">Reintentar</button>
-        </div>
-      }
+      <!-- ═══ TAB: SCANNER ═══ -->
+      @if (activeTab() === 'scanner') {
 
-      <!-- Empty State -->
-      @if (!marketScan() && scanState() !== 'scanning') {
-        <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
-          <h2>Sin datos para {{ displaySize() }}</h2>
-          <p>Presiona <strong>Escanear mercado</strong> para consultar MercadoLibre con los datos reales de tu token autenticado.</p>
-          <button class="btn-scan" (click)="runScan()" id="btn-scan-empty">
-            <app-icon name="radar" [size]="16" /> Iniciar escaneo
-          </button>
-        </div>
-      }
-
-      <!-- Scanning Animation -->
-      @if (scanState() === 'scanning') {
-        <div class="scanning-state">
-          <div class="scan-animation">
-            <div class="scan-ring"></div>
-            <div class="scan-ring scan-ring-2"></div>
-            <div class="scan-ring scan-ring-3"></div>
-            <span class="scan-icon">🏍️</span>
+        <!-- Error Banner -->
+        @if (scanState() === 'error') {
+          <div class="error-banner">
+            <app-icon name="alert-circle" [size]="18" />
+            <span>{{ scanError() }}</span>
+            <button class="btn-retry" (click)="runScan(true)">Reintentar</button>
           </div>
-          <h2>Consultando MercadoLibre...</h2>
-          <p>Buscando llantas <strong>{{ displaySize() }}</strong> en el mercado mexicano</p>
-        </div>
-      }
+        }
 
-      <!-- Results -->
-      @if (marketScan(); as scan) {
+        <!-- Empty State -->
+        @if (!marketScan() && scanState() !== 'scanning') {
+          <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <h2>Sin datos para {{ displaySize() }}</h2>
+            <p>Presiona <strong>Escanear mercado</strong> para consultar MercadoLibre con tu cuenta autenticada.</p>
+            <button class="btn-scan" (click)="runScan()" id="btn-scan-empty">
+              <app-icon name="radar" [size]="16" /> Iniciar escaneo
+            </button>
+          </div>
+        }
 
-        <!-- Stats Row -->
-        <div class="stats-row">
-
-          <!-- Market Position -->
-          <div class="stat-card" [class]="getStatusColor()">
-            <div class="stat-icon">📍</div>
-            <div class="stat-body">
-              <div class="stat-label">Posición en mercado</div>
-              <div class="stat-value">{{ getPositionLabel() }}</div>
-              <div class="stat-meta">{{ scan.listings.length }} listados encontrados</div>
+        <!-- Scanning Animation -->
+        @if (scanState() === 'scanning') {
+          <div class="scanning-state">
+            <div class="scan-animation">
+              <div class="scan-ring"></div>
+              <div class="scan-ring scan-ring-2"></div>
+              <div class="scan-ring scan-ring-3"></div>
+              <span class="scan-icon">{{ getCategoryEmoji() }}</span>
             </div>
+            <h2>Consultando MercadoLibre...</h2>
+            <p>Buscando llantas <strong>{{ displaySize() }}</strong> en el mercado mexicano</p>
           </div>
+        }
 
-          <!-- Our Price -->
-          <div class="stat-card">
-            <div class="stat-icon">🏷️</div>
-            <div class="stat-body">
-              <div class="stat-label">Nuestro precio (ML)</div>
-              <div class="stat-value accent-purple">{{ formatCurrency(stats()?.ourPrice) }}</div>
-              <div class="stat-meta">
-                @if (priceGapPercent() !== null) {
-                  <span [class]="(priceGapPercent() ?? 0) <= 0 ? 'text-green' : 'text-red'">
-                    {{ (priceGapPercent() ?? 0) > 0 ? '+' : '' }}{{ (priceGapPercent() ?? 0).toFixed(1) }}% vs. más barato
-                  </span>
-                } @else {
-                  No listado en ML
-                }
+        <!-- Results -->
+        @if (marketScan(); as scan) {
+
+          <!-- Stats Row -->
+          <div class="stats-row">
+            <div class="stat-card" [class]="getStatusClass()">
+              <div class="stat-icon">📍</div>
+              <div class="stat-body">
+                <div class="stat-label">Posición en mercado</div>
+                <div class="stat-value">{{ getPositionLabel() }}</div>
+                <div class="stat-meta">{{ scan.listings.length }} listados encontrados</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🏷️</div>
+              <div class="stat-body">
+                <div class="stat-label">Nuestro precio (ML)</div>
+                <div class="stat-value accent-purple">{{ fmt(stats()?.ourPrice) }}</div>
+                <div class="stat-meta">
+                  @if (priceGapPercent() !== null) {
+                    <span [class]="(priceGapPercent() ?? 0) <= 0 ? 'text-green' : 'text-red'">
+                      {{ (priceGapPercent() ?? 0) > 0 ? '+' : '' }}{{ (priceGapPercent() ?? 0).toFixed(1) }}% vs. más barato
+                    </span>
+                  } @else { No listado en ML }
+                </div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🎯</div>
+              <div class="stat-body">
+                <div class="stat-label">Precio para ganar</div>
+                <div class="stat-value accent-emerald">{{ fmt(stats()?.priceToWin) }}</div>
+                <div class="stat-meta">Precio más bajo del competidor</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📊</div>
+              <div class="stat-body">
+                <div class="stat-label">Rango del mercado</div>
+                <div class="stat-value-sm">
+                  <span class="text-green">{{ fmt(stats()?.lowestPrice) }}</span>
+                  <span class="range-sep">—</span>
+                  <span class="text-red">{{ fmt(stats()?.highestPrice) }}</span>
+                </div>
+                <div class="stat-meta">Mediana: {{ fmt(stats()?.medianPrice) }}</div>
               </div>
             </div>
           </div>
 
-          <!-- Price to Win -->
-          <div class="stat-card">
-            <div class="stat-icon">🎯</div>
-            <div class="stat-body">
-              <div class="stat-label">Precio para ganar</div>
-              <div class="stat-value accent-emerald">{{ formatCurrency(stats()?.priceToWin) }}</div>
-              <div class="stat-meta">Precio más bajo del competidor</div>
-            </div>
+          <!-- Scan Meta + Refresh -->
+          <div class="scan-meta-row">
+            <app-icon name="clock" [size]="14" />
+            <span>Escaneado: {{ fmtDate(scan.lastScanned) }}</span>
+            <span class="dot">·</span>
+            @if (lastScanMeta()?.cached) { <span class="cache-badge">📦 En caché</span> }
+            <button class="btn-refresh" (click)="runScan(true)" [disabled]="scanState() === 'scanning'">
+              <app-icon name="refresh-cw" [size]="12" /> Actualizar
+            </button>
           </div>
 
-          <!-- Market Range -->
-          <div class="stat-card">
-            <div class="stat-icon">📊</div>
-            <div class="stat-body">
-              <div class="stat-label">Rango del mercado</div>
-              <div class="stat-value-sm">
-                <span class="text-green">{{ formatCurrency(stats()?.lowestPrice) }}</span>
-                <span class="range-sep">—</span>
-                <span class="text-red">{{ formatCurrency(stats()?.highestPrice) }}</span>
+          <!-- Listings Table -->
+          <div class="pi-card results-card">
+            <div class="pi-card-header">
+              <app-icon name="list" [size]="16" />
+              <span>Listados — {{ displaySize() }}</span>
+              <div class="table-controls">
+                <label class="toggle-label">
+                  <input type="checkbox" [ngModel]="showOnlyCompetitors()"
+                         (ngModelChange)="showOnlyCompetitors.set($event)">
+                  Solo competidores
+                </label>
               </div>
-              <div class="stat-meta">Mediana: {{ formatCurrency(stats()?.medianPrice) }}</div>
+            </div>
+            <div class="table-wrapper">
+              <table class="listings-table">
+                <thead>
+                  <tr>
+                    <th class="th-rank">#</th>
+                    <th>Título</th>
+                    <th class="th-seller">Vendedor</th>
+                    <th class="th-sortable" (click)="setSort('listing')">
+                      Tipo <app-icon name="chevrons-up-down" [size]="12" />
+                    </th>
+                    <th class="th-sortable" (click)="setSort('sold')">
+                      Vendidos <app-icon name="chevrons-up-down" [size]="12" />
+                    </th>
+                    <th class="th-sortable th-price" (click)="setSort('price')">
+                      Precio <app-icon name="chevrons-up-down" [size]="12" />
+                    </th>
+                    <th class="th-actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (listing of filteredListings(); track listing.itemId; let i = $index) {
+                    <tr [class.our-row]="listing.isOurListing">
+                      <td class="td-rank">
+                        @if (i === 0) { 🥇 }
+                        @else if (i === 1) { 🥈 }
+                        @else if (i === 2) { 🥉 }
+                        @else { {{ i + 1 }} }
+                      </td>
+                      <td class="td-title">
+                        <div class="listing-title-row">
+                          <img [src]="listing.thumbnail" alt="" class="listing-thumb" loading="lazy">
+                          <div>
+                            <div class="listing-title">{{ listing.title }}</div>
+                            @if (listing.isOurListing) { <span class="badge-ours">🔵 Nuestra pub.</span> }
+                            @if (listing.isFreeShipping) { <span class="badge-freeship">🚚 Gratis</span> }
+                          </div>
+                        </div>
+                      </td>
+                      <td class="td-seller">
+                        <div [class]="'rep-dot ' + getReputationClass(listing.sellerReputation)"></div>
+                        {{ listing.sellerNickname || '—' }}
+                      </td>
+                      <td class="td-type">
+                        <span class="type-badge" [class.type-premium]="listing.listingType.includes('gold_pro')">
+                          {{ listing.listingType === 'gold_pro' ? 'Premium' : listing.listingType === 'gold_special' ? 'Clásica' : listing.listingType }}
+                        </span>
+                      </td>
+                      <td class="td-sold">{{ listing.soldQuantity }}</td>
+                      <td class="td-price">
+                        <span [class.price-winner]="i === 0 && !listing.isOurListing">
+                          {{ fmt(listing.price) }}
+                        </span>
+                      </td>
+                      <td class="td-actions">
+                        <a [href]="listing.permalink" target="_blank" rel="noopener" class="btn-view">
+                          <app-icon name="external-link" [size]="14" />
+                        </a>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              @if (filteredListings().length === 0) {
+                <div class="table-empty">Sin resultados con los filtros actuales.</div>
+              }
             </div>
           </div>
+        }
+      }
 
-        </div>
+      <!-- ═══ TAB: MOTOS ═══ -->
+      @if (activeTab() === 'motos') {
 
-        <!-- Last Scanned + Refresh -->
-        <div class="scan-meta-row">
-          <app-icon name="clock" [size]="14" />
-          <span>Escaneado: {{ formatDate(scan.lastScanned) }}</span>
-          <span class="dot">·</span>
-          @if (lastScanResult()?.cached) {
-            <span class="cache-badge">📦 En caché</span>
-          }
-          <button class="btn-refresh" (click)="runScan(true)" [disabled]="scanState() === 'scanning'">
-            <app-icon name="refresh-cw" [size]="12" /> Actualizar ahora
-          </button>
-        </div>
+        <!-- Motos for current scan size -->
+        @if (motosForCurrentSize().length > 0) {
+          <div class="section-banner section-banner-match">
+            <app-icon name="target" [size]="18" />
+            <div>
+              <strong>{{ motosForCurrentSize().length }} motos usan {{ displaySize() }}</strong>
+              <span class="banner-sub">Medida actualmente seleccionada en el scanner</span>
+            </div>
+            <div class="moto-match-chips">
+              @for (m of motosForCurrentSize(); track m.model) {
+                <span class="moto-chip">{{ m.brand }} {{ m.model }}</span>
+              }
+            </div>
+          </div>
+        }
 
-        <!-- Listings Table -->
-        <div class="pi-card results-card">
+        <!-- Filter -->
+        <div class="pi-card">
           <div class="pi-card-header">
-            <app-icon name="list" [size]="16" />
-            <span>Listados en MercadoLibre — {{ displaySize() }}</span>
+            <app-icon name="database" [size]="16" />
+            <span>Base de datos — Mercado Mexicano ({{ filteredMotos().length }} modelos)</span>
             <div class="table-controls">
-              <label class="toggle-label">
-                <input type="checkbox" [ngModel]="showOnlyCompetitors()"
-                       (ngModelChange)="showOnlyCompetitors.set($event)">
-                Solo competidores
-              </label>
+              <input type="text" class="search-input" placeholder="Filtrar marca, modelo, medida..."
+                     [ngModel]="motoFilterQuery()" (ngModelChange)="motoFilterQuery.set($event)"
+                     id="input-moto-filter">
             </div>
           </div>
           <div class="table-wrapper">
-            <table class="listings-table">
+            <table class="listings-table motos-table">
               <thead>
                 <tr>
-                  <th class="th-rank">#</th>
-                  <th>Título</th>
-                  <th class="th-seller">Vendedor</th>
-                  <th class="th-sortable" (click)="setSort('listing')">
-                    Tipo <app-icon name="chevrons-up-down" [size]="12" />
-                  </th>
-                  <th class="th-sortable" (click)="setSort('sold')">
-                    Vendidos <app-icon name="chevrons-up-down" [size]="12" />
-                  </th>
-                  <th class="th-sortable th-price" (click)="setSort('price')">
-                    Precio <app-icon name="chevrons-up-down" [size]="12" />
-                  </th>
+                  <th>Marca</th>
+                  <th>Modelo</th>
+                  <th>Segmento</th>
+                  <th>Delantera</th>
+                  <th>Trasera</th>
+                  <th>Rin</th>
+                  <th>Demanda</th>
                   <th class="th-actions"></th>
                 </tr>
               </thead>
               <tbody>
-                @for (listing of filteredListings(); track listing.itemId; let i = $index) {
-                  <tr [class.our-row]="listing.isOurListing">
-                    <td class="td-rank">
-                      @if (i === 0) { 🥇 }
-                      @else if (i === 1) { 🥈 }
-                      @else if (i === 2) { 🥉 }
-                      @else { {{ i + 1 }} }
+                @for (moto of filteredMotos(); track moto.brand + moto.model) {
+                  <tr>
+                    <td><strong class="brand-name">{{ moto.brand }}</strong></td>
+                    <td>
+                      {{ moto.model }}
+                      @if (moto.notes) { <span class="moto-note">{{ moto.notes }}</span> }
                     </td>
-                    <td class="td-title">
-                      <div class="listing-title-row">
-                        <img [src]="listing.thumbnail" alt="" class="listing-thumb" loading="lazy">
-                        <div>
-                          <div class="listing-title">{{ listing.title }}</div>
-                          @if (listing.isOurListing) {
-                            <span class="badge-ours">✅ Nuestra publicación</span>
-                          }
-                          @if (listing.isFreeShipping) {
-                            <span class="badge-freeship">🚚 Envío gratis</span>
-                          }
-                        </div>
-                      </div>
+                    <td><span class="segment-badge">{{ moto.segment }}</span></td>
+                    <td>
+                      <button class="size-link" (click)="quickScanFromMoto(moto, 'front')">
+                        {{ moto.frontSize }}
+                        <app-icon name="search" [size]="11" />
+                      </button>
                     </td>
-                    <td class="td-seller">
-                      <div [class]="'rep-dot ' + getReputationColor(listing.sellerReputation)"></div>
-                      {{ listing.sellerNickname || '—' }}
+                    <td>
+                      <button class="size-link" (click)="quickScanFromMoto(moto, 'rear')">
+                        {{ moto.rearSize }}
+                        <app-icon name="search" [size]="11" />
+                      </button>
                     </td>
-                    <td class="td-type">
-                      <span class="type-badge" [class.type-premium]="listing.listingType.includes('gold_pro')">
-                        {{ listing.listingType === 'gold_pro' ? 'Premium' : listing.listingType === 'gold_special' ? 'Clásica' : listing.listingType }}
-                      </span>
-                    </td>
-                    <td class="td-sold">{{ listing.soldQuantity }}</td>
-                    <td class="td-price">
-                      <span [class.price-winner]="i === 0 && !listing.isOurListing">
-                        {{ formatCurrency(listing.price) }}
-                      </span>
-                    </td>
+                    <td class="td-rin">{{ moto.rimSize }}"</td>
+                    <td><span [class]="'pop-badge ' + getPopularityClass(moto.popularity)">{{ moto.popularity }}</span></td>
                     <td class="td-actions">
-                      <a [href]="listing.permalink" target="_blank" rel="noopener"
-                         class="btn-view" title="Ver en MercadoLibre">
-                        <app-icon name="external-link" [size]="14" />
-                      </a>
+                      <button class="btn-view" title="Escanear delantera" (click)="quickScanFromMoto(moto, 'rear')">
+                        <app-icon name="radar" [size]="13" />
+                      </button>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
-
-            @if (filteredListings().length === 0) {
-              <div class="table-empty">Sin resultados con los filtros actuales.</div>
-            }
           </div>
         </div>
 
+        <!-- Popularity Legend -->
+        <div class="legend-row">
+          <span class="legend-title">Demanda en México:</span>
+          <span class="pop-badge pop-muy-alta">muy alta</span><span class="legend-text">Best-sellers, >50k unidades/año</span>
+          <span class="pop-badge pop-alta">alta</span><span class="legend-text">Ventas consistentes</span>
+          <span class="pop-badge pop-media">media</span><span class="legend-text">Nicho establecido</span>
+          <span class="pop-badge pop-nueva">nueva</span><span class="legend-text">Segmento emergente</span>
+        </div>
       }
+
+      <!-- ═══ TAB: COSTS ═══ -->
+      @if (activeTab() === 'costs') {
+        <div class="costs-grid">
+
+          <!-- Inputs -->
+          <div class="pi-card">
+            <div class="pi-card-header">
+              <app-icon name="package" [size]="16" />
+              <span>Parámetros</span>
+            </div>
+            <div class="pi-card-body costs-inputs">
+              <div class="cost-field">
+                <label class="cost-label">💰 Costo del producto (MXN)</label>
+                <div class="cost-input-wrap">
+                  <span class="cost-prefix">$</span>
+                  <input type="number" class="cost-number-input" [(ngModel)]="costInput"
+                         min="0" step="10" placeholder="0" id="input-cost">
+                </div>
+              </div>
+              <div class="cost-field">
+                <label class="cost-label">🏷️ Precio de venta (MXN)</label>
+                <div class="cost-input-wrap">
+                  <span class="cost-prefix">$</span>
+                  <input type="number" class="cost-number-input" [(ngModel)]="priceInput"
+                         min="0" step="10" placeholder="0" id="input-price">
+                </div>
+              </div>
+              <div class="cost-field">
+                <label class="cost-label">📊 Precio de mercado / competencia (MXN)</label>
+                <div class="cost-input-wrap">
+                  <span class="cost-prefix">$</span>
+                  <input type="number" class="cost-number-input" [(ngModel)]="marketPriceInput"
+                         min="0" step="10" placeholder="0" id="input-market-price">
+                </div>
+                @if (stats()?.medianPrice) {
+                  <button class="hint-btn" (click)="marketPriceInput = stats()!.medianPrice">
+                    Usar mediana ML: {{ fmt(stats()?.medianPrice) }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Channel Analysis -->
+          <div class="pi-card">
+            <div class="pi-card-header">
+              <app-icon name="bar-chart-2" [size]="16" />
+              <span>Utilidad neta por canal de venta</span>
+            </div>
+            <div class="pi-card-body channels-grid">
+              @for (ch of channelAnalysis(); track ch.id) {
+                <div class="channel-card" [class.channel-best]="ch.netProfit >= 0 && ch.netMarginPct === channelAnalysis()[0].netMarginPct">
+                  <div class="channel-header">
+                    <span class="channel-icon">{{ ch.icon }}</span>
+                    <span class="channel-name">{{ ch.label }}</span>
+                    <span class="channel-rate">{{ (ch.commissionRate * 100) | number:'1.1-1' }}%</span>
+                  </div>
+                  <div class="channel-lines">
+                    <div class="channel-line">
+                      <span>Precio venta</span>
+                      <span class="channel-val">{{ fmt(priceInput) }}</span>
+                    </div>
+                    @if (ch.commissionAmt > 0) {
+                      <div class="channel-line deduction">
+                        <span>Comisión</span>
+                        <span class="channel-val text-red">−{{ fmt(ch.commissionAmt) }}</span>
+                      </div>
+                    }
+                    @if (ch.fulfillmentFee > 0) {
+                      <div class="channel-line deduction">
+                        <span>Fulfillment</span>
+                        <span class="channel-val text-red">−{{ fmt(ch.fulfillmentFee) }}</span>
+                      </div>
+                    }
+                    <div class="channel-line deduction">
+                      <span>Costo</span>
+                      <span class="channel-val">−{{ fmt(costInput) }}</span>
+                    </div>
+                    <div class="channel-total" [class.profit]="ch.netProfit >= 0" [class.loss]="ch.netProfit < 0">
+                      <span>Utilidad neta</span>
+                      <span class="channel-total-val">{{ fmt(ch.netProfit) }}</span>
+                    </div>
+                    <div class="channel-margin" [class.margin-ok]="ch.netMarginPct >= 15" [class.margin-warn]="ch.netMarginPct >= 0 && ch.netMarginPct < 15" [class.margin-bad]="ch.netMarginPct < 0">
+                      Margen: {{ ch.netMarginPct | number:'1.1-1' }}%
+                    </div>
+                  </div>
+                  @if (marketPriceInput > 0) {
+                    <div class="channel-vs-market">
+                      <span [class]="priceInput <= marketPriceInput ? 'text-green' : 'text-amber'">
+                        {{ priceInput <= marketPriceInput ? '✓ Competitivo' : '▲ +' + fmt(priceInput - marketPriceInput) + ' sobre mercado' }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Break-Even -->
+          <div class="pi-card">
+            <div class="pi-card-header">
+              <app-icon name="target" [size]="16" />
+              <span>Precio mínimo de equilibrio por canal (margen mínimo 15%)</span>
+            </div>
+            <div class="pi-card-body breakeven-row">
+              @for (ch of breakEvenPrices(); track ch.id) {
+                <div class="breakeven-card">
+                  <div class="be-icon">{{ ch.icon }}</div>
+                  <div class="be-label">{{ ch.label }}</div>
+                  <div class="be-value">{{ fmt(ch.breakEven) }}</div>
+                  @if (priceInput > 0) {
+                    <div class="be-comparison" [class.be-ok]="priceInput >= ch.breakEven" [class.be-warn]="priceInput < ch.breakEven">
+                      {{ priceInput >= ch.breakEven ? '✓ OK' : '↑ falta ' + fmt(ch.breakEven - priceInput) }}
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+        </div>
+      }
+
     </main>
   </div>
 </div>

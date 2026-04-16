@@ -373,6 +373,12 @@
                 @if (sparklinePoints(); as sp) {
                   <!-- SVG Sparkline -->
                   <div class="sparkline-wrap">
+                    <!-- Legend ABOVE chart so date labels below SVG don't overlap it -->
+                    <div class="spark-legend">
+                      <span class="spark-leg spark-leg-lowest">▬ Mínimo mercado</span>
+                      <span class="spark-leg spark-leg-median">▬ Mediana</span>
+                      <span class="spark-leg spark-leg-ours">● Nuestro precio</span>
+                    </div>
                     <svg [attr.viewBox]="'0 0 ' + sp.W + ' ' + sp.H" class="sparkline-svg" preserveAspectRatio="none">
                       <!-- Market lowest (green) -->
                       <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" />
@@ -385,17 +391,11 @@
                           <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3" class="spark-ours-dot" />
                         }
                       }
-                      <!-- Date labels -->
+                      <!-- Date labels render at y=H+12 (below viewBox) — padding-bottom on wrap gives space -->
                       @for (lbl of sp.labels; track lbl.x) {
                         <text [attr.x]="lbl.x" [attr.y]="sp.H + 12" [attr.text-anchor]="lbl.anchor" class="spark-label">{{ lbl.label }}</text>
                       }
                     </svg>
-                    <!-- Legend -->
-                    <div class="spark-legend">
-                      <span class="spark-leg spark-leg-lowest">▬ Mínimo mercado</span>
-                      <span class="spark-leg spark-leg-median">▬ Mediana</span>
-                      <span class="spark-leg spark-leg-ours">● Nuestro precio</span>
-                    </div>
                   </div>
 
                   <!-- History table: last 7 days -->

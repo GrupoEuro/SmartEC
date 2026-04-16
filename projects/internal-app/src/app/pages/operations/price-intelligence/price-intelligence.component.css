@@ -1319,12 +1319,13 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    padding-bottom: 20px; /* space for date labels rendered below SVG viewBox */
 }
 
 .sparkline-svg {
     width: 100%;
     height: 76px;
-    overflow: visible;
+    overflow: visible; /* allows date labels at y=H+12 to show */
 }
 
 .spark-lowest { stroke: #10b981; stroke-width: 1.5; stroke-dasharray: 4 2; }

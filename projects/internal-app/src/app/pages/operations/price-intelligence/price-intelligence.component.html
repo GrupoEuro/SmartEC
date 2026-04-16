@@ -19,6 +19,9 @@
                     (click)="activeTab.set(tab.id)" [id]="'tab-' + tab.id">
               <app-icon [name]="tab.icon" [size]="14" />
               {{ tab.label }}
+              @if (tab.id === 'scanner' && unreadAlerts().length > 0) {
+                <span class="tab-alert-badge">{{ unreadAlerts().length }}</span>
+              }
             </button>
           }
         </div>
@@ -33,6 +36,18 @@
               </button>
             }
           </div>
+        }
+
+        <!-- Portfolio Scan Button -->
+        @if (activeTab() === 'scanner') {
+          <button class="btn-portfolio" (click)="runPortfolioScan()"
+                  [disabled]="portfolioState() === 'running'" id="btn-portfolio-scan">
+            @if (portfolioState() === 'running') {
+              <span class="spinner-sm"></span> Escaneando... {{ portfolioProgress()?.current }}/{{ portfolioProgress()?.total }}
+            } @else {
+              <app-icon name="layers" [size]="14" /> Escanear portafolio
+            }
+          </button>
         }
 
         <!-- Scan Button -->
@@ -125,28 +140,51 @@
         </div>
       </div>
 
-      <!-- Price Alerts -->
-      @if (recentAlerts().length > 0) {
-        <div class="pi-card pi-card-alerts">
-          <div class="pi-card-header">
-            <app-icon name="bell-ring" [size]="16" />
-            <span>Alertas</span>
-            <span class="alert-badge">{{ recentAlerts().length }}</span>
-          </div>
+      <!-- Price Alerts Inbox -->
+      <div class="pi-card pi-card-alerts" [class.has-unread]="unreadAlerts().length > 0">
+        <div class="pi-card-header">
+          <app-icon name="bell-ring" [size]="16" />
+          <span>Alertas de precio</span>
+          @if (unreadAlerts().length > 0) {
+            <span class="alert-badge alert-badge-unread">{{ unreadAlerts().length }} nuevas</span>
+          } @else if (recentAlerts().length > 0) {
+            <span class="alert-badge-read">✓ Al día</span>
+          }
+          @if (unreadAlerts().length > 0) {
+            <button class="btn-mark-all" (click)="markAllAlertsRead()" title="Marcar todas como leídas">
+              <app-icon name="check-check" [size]="12" />
+            </button>
+          }
+        </div>
+        @if (recentAlerts().length === 0) {
+          <div class="alerts-empty">No hay alertas recientes 🎉</div>
+        } @else {
           <div class="pi-card-body alerts-list">
-            @for (alert of recentAlerts(); track alert.id) {
-              <div class="alert-item">
-                <div class="alert-size">{{ fmtAlertSize(alert.tireSize) }}</div>
-                <div class="alert-gap">{{ alert.gap }}</div>
+            @for (alert of (showAllAlerts() ? recentAlerts() : recentAlerts().slice(0, 5)); track alert.id) {
+              <div class="alert-item" [class.alert-unread]="!alert.isRead">
+                <div class="alert-item-top">
+                  <span class="alert-size">{{ fmtAlertSize(alert.tireSize) }}</span>
+                  <span class="alert-gap" [class.gap-negative]="alert.gap.startsWith('-')">{{ alert.gap }}</span>
+                  @if (!alert.isRead && alert.id) {
+                    <button class="btn-dismiss" (click)="markAlertRead(alert.id)" title="Marcar como leída">
+                      <app-icon name="x" [size]="10" />
+                    </button>
+                  }
+                </div>
                 <div class="alert-prices">
-                  Nuestro: {{ fmt(alert.ourPrice) }} → Competidor: {{ fmt(alert.competitorPrice) }}
+                  Nuestro: {{ fmt(alert.ourPrice) }} → Comp: {{ fmt(alert.competitorPrice) }}
                 </div>
                 <div class="alert-date">{{ fmtDate(alert.createdAt) }}</div>
               </div>
             }
+            @if (recentAlerts().length > 5) {
+              <button class="btn-show-all-alerts" (click)="showAllAlerts.update(v => !v)">
+                {{ showAllAlerts() ? 'Mostrar menos' : 'Ver todas (' + recentAlerts().length + ')' }}
+              </button>
+            }
           </div>
-        </div>
-      }
+        }
+      </div>
 
     </aside>
 
@@ -165,15 +203,66 @@
           </div>
         }
 
+        <!-- Portfolio Scan Progress / Results -->
+        @if (portfolioState() === 'running' || portfolioState() === 'done') {
+          <div class="pi-card portfolio-card">
+            <div class="pi-card-header">
+              <app-icon name="layers" [size]="16" />
+              <span>Escaneo de portafolio</span>
+              @if (portfolioState() === 'running') {
+                <span class="portfolio-running-badge">
+                  <span class="spinner-sm"></span>
+                  {{ portfolioProgress()?.currentSize }} — {{ portfolioProgress()?.current }}/{{ portfolioProgress()?.total }}
+                </span>
+              } @else {
+                <span class="portfolio-done-badge">✅ Completado</span>
+                <button class="btn-portfolio-reset" (click)="portfolioState.set('idle'); portfolioResults.set([])">
+                  <app-icon name="x" [size]="12" />
+                </button>
+              }
+            </div>
+
+            @if (portfolioState() === 'running') {
+              <!-- Progress bar -->
+              <div class="portfolio-progress-bar-wrap">
+                <div class="portfolio-progress-bar"
+                     [style.width.%]="(portfolioProgress()?.current ?? 0) / (portfolioProgress()?.total ?? 1) * 100">
+                </div>
+              </div>
+            }
+
+            @if (portfolioResults().length > 0) {
+              <div class="pi-card-body portfolio-results">
+                @for (r of portfolioResults(); track r.fingerprint) {
+                  <div class="portfolio-result-item" [class.result-error]="r.status === 'error'"
+                       (click)="r.status === 'ok' && quickScanMoto(r.fingerprint.replace(/_/g,'/').replace('/R','R'))">
+                    <span class="result-size">{{ fmtAlertSize(r.fingerprint) }}</span>
+                    @if (r.status === 'ok') {
+                      <span class="result-count">{{ r.count }} listados</span>
+                    } @else {
+                      <span class="result-error-label">Error</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
         <!-- Empty State -->
         @if (!marketScan() && scanState() !== 'scanning') {
           <div class="empty-state">
             <div class="empty-state-icon">🔍</div>
             <h2>Sin datos para {{ displaySize() }}</h2>
             <p>Presiona <strong>Escanear mercado</strong> para consultar MercadoLibre con tu cuenta autenticada.</p>
-            <button class="btn-scan" (click)="runScan()" id="btn-scan-empty">
-              <app-icon name="radar" [size]="16" /> Iniciar escaneo
-            </button>
+            <div class="empty-state-actions">
+              <button class="btn-scan" (click)="runScan()" id="btn-scan-empty">
+                <app-icon name="radar" [size]="16" /> Iniciar escaneo
+              </button>
+              <button class="btn-portfolio-empty" (click)="runPortfolioScan()" [disabled]="portfolioState() === 'running'">
+                <app-icon name="layers" [size]="14" /> Escanear portafolio
+              </button>
+            </div>
           </div>
         }
 

@@ -2,7 +2,7 @@ import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular
 import { CommonModule, DecimalPipe, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-    Firestore, doc, docData, collectionData, collection, query, orderBy, limit
+    Firestore, doc, docData, collectionData, collection, query, orderBy, limit, updateDoc
 } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Observable, Subscription, of, timer } from 'rxjs';
@@ -142,12 +142,20 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     private scanSub: Subscription | null = null;
 
     // ── Alerts ────────────────────────────────────────────────────────────────
-    recentAlerts  = signal<PriceAlert[]>([]);
+    recentAlerts   = signal<PriceAlert[]>([]);
+    showAllAlerts  = signal<boolean>(false);
     private alertsSub: Subscription | null = null;
 
+    unreadAlerts = computed(() => this.recentAlerts().filter(a => !a.isRead));
+
+    // ── Portfolio Scan ────────────────────────────────────────────────────────
+    portfolioState    = signal<'idle' | 'running' | 'done' | 'error'>('idle');
+    portfolioProgress = signal<{ current: number; total: number; currentSize: string } | null>(null);
+    portfolioResults  = signal<{ fingerprint: string; count: number; status: 'ok' | 'error' }[]>([]);
+
     // ── Table Sort/Filter ─────────────────────────────────────────────────────
-    sortColumn        = signal<'price' | 'sold' | 'listing'>('price');
-    sortDir           = signal<'asc' | 'desc'>('asc');
+    sortColumn          = signal<'price' | 'sold' | 'listing'>('price');
+    sortDir             = signal<'asc' | 'desc'>('asc');
     showOnlyCompetitors = signal<boolean>(false);
 
     filteredListings = computed(() => {
@@ -514,5 +522,48 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     fmtAlertSize(fp: string): string {
         if (!fp) return '';
         return fp.replace(/_/g, '/').replace('/R', 'R');
+    }
+    async markAlertRead(alertId: string) {
+        try {
+            await updateDoc(doc(this.firestore, 'price_alerts', alertId), { isRead: true });
+        } catch { /* non-fatal */ }
+    }
+
+    async markAllAlertsRead() {
+        const unread = this.unreadAlerts();
+        await Promise.all(unread.map(a => a.id ? this.markAlertRead(a.id) : Promise.resolve()));
+        this.toastSvc.success(`✅ ${unread.length} alertas marcadas como leídas.`);
+    }
+
+    async runPortfolioScan() {
+        if (this.portfolioState() === 'running') return;
+        this.portfolioState.set('running');
+        this.portfolioProgress.set(null);
+        this.portfolioResults.set([]);
+
+        // Build portfolio from QUICK_SIZES_STRUCT (our core metric sizes)
+        const sizes = QUICK_SIZES_STRUCT;
+        const results: { fingerprint: string; count: number; status: 'ok' | 'error' }[] = [];
+        const fn = httpsCallable(this.functions, 'meliPriceScan');
+
+        for (let i = 0; i < sizes.length; i++) {
+            const s = sizes[i];
+            const displaySz = `${s.width}/${s.aspectRatio}R${s.diameter}`;
+            this.portfolioProgress.set({ current: i + 1, total: sizes.length, currentSize: displaySz });
+            try {
+                const res = await fn({ width: s.width, aspectRatio: s.aspectRatio, diameter: s.diameter, force: false });
+                const d = res.data as any;
+                results.push({ fingerprint: d.fingerprint, count: d.count ?? 0, status: 'ok' });
+            } catch {
+                results.push({ fingerprint: `${s.width}_${s.aspectRatio}_R${s.diameter}`, count: 0, status: 'error' });
+            }
+            // 1.5 s breathing room between calls to respect ML rate limits
+            if (i < sizes.length - 1) await new Promise(r => setTimeout(r, 1500));
+        }
+
+        this.portfolioResults.set(results);
+        this.portfolioState.set('done');
+        const ok = results.filter(r => r.status === 'ok').length;
+        this.toastSvc.success(`📊 Portafolio escaneado: ${ok}/${sizes.length} tamaños procesados.`);
     }
 }

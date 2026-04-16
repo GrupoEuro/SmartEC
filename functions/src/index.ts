@@ -2869,6 +2869,51 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
 });
 
 
+// ─── Price History Cleanup: Delete daily snapshots older than 90 days ─────────
+//
+// Scheduled: every day at 04:00 UTC.
+// Iterates all price_intelligence documents, queries their history subcollection
+// for docs with date < 90 days ago, and deletes them in batched writes.
+// This keeps the collection size bounded at ~3,600 docs/year per size.
+//
+export const prunePriceHistory = functions
+    .runWith({ timeoutSeconds: 300, memory: '256MB' })
+    .pubsub
+    .schedule('0 4 * * *')          // cron: daily at 04:00 UTC
+    .timeZone('America/Mexico_City')
+    .onRun(async (_ctx) => {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 90);
+        const cutoffStr = cutoffDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+        console.log(`[PruneHistory] Pruning history docs older than ${cutoffStr}`);
+
+        const fpSnap = await db.collection('price_intelligence').get();
+        let totalDeleted = 0;
+
+        for (const fpDoc of fpSnap.docs) {
+            const historyRef = fpDoc.ref.collection('history');
+            const oldDocs = await historyRef
+                .where('date', '<', cutoffStr)
+                .limit(500)
+                .get();
+
+            if (oldDocs.empty) continue;
+
+            // Batch delete in chunks of 400 (safe under 500 limit)
+            for (let i = 0; i < oldDocs.docs.length; i += 400) {
+                const batch = db.batch();
+                oldDocs.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                totalDeleted += Math.min(400, oldDocs.docs.length - i);
+            }
+            console.log(`[PruneHistory] ${fpDoc.id}: deleted ${oldDocs.size} old docs`);
+        }
+
+        console.log(`[PruneHistory] Done. Total deleted: ${totalDeleted}`);
+    });
+
+
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
 
 

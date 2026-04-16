@@ -519,6 +519,18 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
     }
 
+    toggleShowAllAlerts() {
+        this.showAllAlerts.update(v => !v);
+    }
+
+    /** Convert fingerprint "120_70_R17" → "120/70R17" for quickScanMoto */
+    fpToSize(fp: string): string {
+        if (!fp) return '';
+        const parts = fp.split('_');          // ["120","70","R17"]
+        if (parts.length === 3) return `${parts[0]}/${parts[1]}${parts[2]}`;
+        return fp.replace(/_/g, '/');
+    }
+
     fmtAlertSize(fp: string): string {
         if (!fp) return '';
         return fp.replace(/_/g, '/').replace('/R', 'R');

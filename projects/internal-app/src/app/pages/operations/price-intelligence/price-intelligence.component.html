@@ -178,7 +178,7 @@
               </div>
             }
             @if (recentAlerts().length > 5) {
-              <button class="btn-show-all-alerts" (click)="showAllAlerts.update(v => !v)">
+              <button class="btn-show-all-alerts" (click)="toggleShowAllAlerts()">
                 {{ showAllAlerts() ? 'Mostrar menos' : 'Ver todas (' + recentAlerts().length + ')' }}
               </button>
             }
@@ -235,7 +235,7 @@
               <div class="pi-card-body portfolio-results">
                 @for (r of portfolioResults(); track r.fingerprint) {
                   <div class="portfolio-result-item" [class.result-error]="r.status === 'error'"
-                       (click)="r.status === 'ok' && quickScanMoto(r.fingerprint.replace(/_/g,'/').replace('/R','R'))">
+                       (click)="r.status === 'ok' && quickScanMoto(fpToSize(r.fingerprint))">
                     <span class="result-size">{{ fmtAlertSize(r.fingerprint) }}</span>
                     @if (r.status === 'ok') {
                       <span class="result-count">{{ r.count }} listados</span>

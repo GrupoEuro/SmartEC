@@ -2721,7 +2721,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
             permalink: item.permalink || '',
             thumbnail: item.thumbnail || '',
             rank: idx + 1,
-            scrapedAt: admin.firestore.FieldValue.serverTimestamp(),
+            scrapedAt: new Date(),
         };
     }).filter((l: any) => l.price > 0)
       .sort((a: any, b: any) => a.price - b.price);

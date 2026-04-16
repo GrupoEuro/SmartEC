@@ -133,17 +133,20 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     loadSettings() {
         this.isLoading = true;
-        this.settingsService.settings$.subscribe({
-            next: (settings) => {
-                if (settings) {
-                    this.settingsForm.patchValue(settings);
+        this.settingsService.loadSettings().then(() => {
+            this.settingsService.settings$.subscribe({
+                next: (settings) => {
+                    if (settings) {
+                        this.settingsForm.patchValue(settings);
+                        this.settingsForm.markAsPristine();
+                    }
+                    this.isLoading = false;
+                },
+                error: (err) => {
+                    console.error('Error loading settings', err);
+                    this.isLoading = false;
                 }
-                this.isLoading = false;
-            },
-            error: (err) => {
-                console.error('Error loading settings', err);
-                this.isLoading = false;
-            }
+            });
         });
     }
 

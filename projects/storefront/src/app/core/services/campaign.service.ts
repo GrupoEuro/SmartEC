@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, Injector } from '@angular/core';
-import { Firestore, collection, query, where, orderBy, getDocs, Timestamp, onSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, query, where, orderBy, getDocs, getDoc, doc, Timestamp, onSnapshot } from '@angular/fire/firestore';
 import { Campaign, WebsiteTheme } from '../models/campaign.model';
+import { Coupon } from '../models/coupon.model';
 import { ThemeService } from './theme.service';
 import { AttributionService } from './attribution.service';
 
@@ -22,7 +23,10 @@ export class CampaignService {
     }
 
     // Active Campaign Signal (The "Winner" based on priority)
-    activeCampaign = signal<Campaign | null>(null);
+    activeCampaign  = signal<Campaign | null>(null);
+
+    /** The coupon linked to the active campaign, if any (validated: active + not expired) */
+    campaignCoupon  = signal<Coupon | null>(null);
 
     /** Call this to start listening — deferred from initial load */
     init() {
@@ -72,9 +76,17 @@ export class CampaignService {
                 if (winner.themeId) {
                     this.themeService.setTheme(winner.themeId);
                 }
+
+                // 🏷 Resolve linked coupon (non-blocking)
+                if (winner.activeCouponId) {
+                    this.resolveCampaignCoupon(winner.activeCouponId);
+                } else {
+                    this.campaignCoupon.set(null);
+                }
             } else {
                 console.log('⚪ No active campaigns. Keeping User Preference.');
                 this.activeCampaign.set(null);
+                this.campaignCoupon.set(null);
 
                 // Do NOT force reset to 'default' here. 
                 // This overrides the user's manual selection (or Studio theme).
@@ -90,5 +102,46 @@ export class CampaignService {
      */
     shouldShowPromo(): boolean {
         return !!this.activeCampaign();
+    }
+
+    /**
+     * Fetch the coupon linked to the active campaign and validate it.
+     * Sets campaignCoupon to null if not found, inactive, or expired.
+     */
+    private async resolveCampaignCoupon(couponId: string): Promise<void> {
+        try {
+            const couponRef  = doc(this.firestore, 'coupons', couponId);
+            const couponSnap = await getDoc(couponRef);
+
+            if (!couponSnap.exists()) {
+                this.campaignCoupon.set(null);
+                return;
+            }
+
+            const data = couponSnap.data() as any;
+
+            // Basic validation: must be active
+            if (!data['isActive']) { this.campaignCoupon.set(null); return; }
+
+            // Check expiry if endDate is set
+            if (data['endDate']) {
+                const end = data['endDate'] instanceof Timestamp
+                    ? data['endDate'].toDate()
+                    : new Date(data['endDate']);
+                if (end < new Date()) { this.campaignCoupon.set(null); return; }
+            }
+
+            // Check usage limit
+            if (data['usageLimit'] > 0 && data['usageCount'] >= data['usageLimit']) {
+                this.campaignCoupon.set(null);
+                return;
+            }
+
+            this.campaignCoupon.set({ ...data, id: couponSnap.id } as Coupon);
+            console.log('🏷 Campaign coupon resolved:', data['code']);
+        } catch (e) {
+            console.warn('[Campaign] Could not resolve campaign coupon:', e);
+            this.campaignCoupon.set(null);
+        }
     }
 }

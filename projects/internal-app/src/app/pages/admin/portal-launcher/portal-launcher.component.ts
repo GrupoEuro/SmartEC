@@ -66,10 +66,11 @@ export class PortalLauncherComponent implements OnInit {
             title: 'PORTAL.MARKETING.TITLE',
             route: '/marketing/dashboard',
             roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MARKETING'],
-            icon: 'bar_chart_4_bars',
+            icon: 'megaphone',
             description: 'PORTAL.MARKETING.DESC',
             badge: 'NEW'
         },
+
         {
             id: 'help',
             title: 'PORTAL.HELP.TITLE',

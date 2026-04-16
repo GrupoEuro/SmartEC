@@ -2593,7 +2593,8 @@
         "NET_SALES": "Net Sales",
         "PIECES_SOLD": "Pieces Sold ({{timeframe}})",
         "ORDERS_COUNT": "{{count}} orders",
-        "FDM_LABEL": "EOM Projection:"
+        "FDM_LABEL": "EOM Projection:",
+        "GEOGRAPHIC_DISTRIBUTION": "Geographic Sales Distribution"
       }
     },
     "ORDERS_REMOVED": {
@@ -4192,7 +4193,8 @@
       "AOV": "Avg. Order",
       "CONV": "Conv. Rate",
       "SHARE": "Revenue Share",
-      "EMPTY": "No attribution data for this period"
+      "EMPTY": "No attribution data for this period",
+      "EXPORT": "Export CSV"
     },
     "HOW": {
       "TITLE": "How Attribution Works",
@@ -4303,7 +4305,18 @@
       "SUBTITLE_LIVE": "RFM analysis — automatically updated from order history",
       "KPI_CUSTOMERS": "Customers",
       "KPI_REVENUE": "Total Revenue",
-      "KPI_AOV": "Avg. Order Value"
+      "KPI_AOV": "Avg. Order Value",
+      "FILTER_ALL": "All",
+      "CREATE_CAMPAIGN_FOR": "Create Campaign for",
+      "EMPTY_SEGMENT": "No customers in this segment for the selected period.",
+      "COL_CUSTOMER": "Customer",
+      "COL_SEGMENT": "Segment",
+      "COL_ORDERS": "Orders",
+      "COL_REVENUE": "Revenue",
+      "COL_LAST_ORDER": "Last Order",
+      "COL_SCORE": "Score",
+      "KPI_CHAMPIONS": "Champions",
+      "DOCS_PROCESSED": "Orders processed"
     },
     "CAMPAIGNS": {
       "TITLE": "Campaigns",
@@ -4316,7 +4329,16 @@
       "ACTIVE_NOW": "Active Now",
       "UPCOMING_LABEL": "Upcoming",
       "PAST_LABEL": "Past Campaigns",
-      "EMPTY_UPCOMING": "No upcoming campaigns scheduled."
+      "EMPTY_UPCOMING": "No upcoming campaigns scheduled.",
+      "ENDS_IN": "Ends in",
+      "DAYS_PLURAL": "days",
+      "PRIORITY": "Priority",
+      "STARTS": "Starts",
+      "EDIT": "Edit",
+      "VIEW": "View",
+      "NO_ACTIVE": "No active campaigns at this time.",
+      "NEW_SHORT": "+ New campaign",
+      "PREVIEW": "Preview in store"
     }
   }
 }

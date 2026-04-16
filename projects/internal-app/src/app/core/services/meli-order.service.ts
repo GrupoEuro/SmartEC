@@ -179,32 +179,81 @@ export class MeliOrderService {
 
     private mapOrder(mOrder: any, id: string, custId: string): any {
         const items = mOrder.order_items.map((i: any) => ({
-            productId: i.item.id, // Mapped to MELI ID initially. Should resolve to Local ID via MeliSyncService map.
+            productId:   i.item.id,
             productName: i.item.title,
-            quantity: i.quantity,
-            price: i.unit_price,
-            subtotal: i.unit_price * i.quantity
+            quantity:    i.quantity,
+            price:       i.unit_price,
+            subtotal:    i.unit_price * i.quantity,
+            listingTypeId: i.item.listing_type_id ?? null, // per-item listing type from MeLi API
         }));
 
+        // Derive listing tier from the first item's listing_type_id.
+        // MeLi returns listing_type_id on order_items[].item when the full order detail is fetched.
+        const firstListingTypeId: string = mOrder.order_items?.[0]?.item?.listing_type_id ?? '';
+        const meliListingType = this.resolveListingType(firstListingTypeId);
+
+        // Derive ship mode: 'fulfillment' = Meli Full, 'me2' = Flex / Classic merchant ship
+        const logisticType: string = mOrder.shipping?.logistic_type ?? '';
+        const meliShipMode = this.resolveShipMode(logisticType);
+
+        // fulfillmentType: 'platform' when MeLi handles packing/shipping (Meli Full)
+        const fulfillmentType = meliShipMode === 'fulfillment' ? 'platform' : 'merchant';
+
         return {
-            id: id,
-            orderNumber: `MELI-${mOrder.id}`,
-            customer: { id: custId, name: `${mOrder.buyer.first_name} ${mOrder.buyer.last_name}` },
-            status: this.mapStatus(mOrder),
-            channel: 'MELI_CLASSIC',
-            items: items,
-            total: mOrder.total_amount,
-            createdAt: Timestamp.fromDate(new Date(mOrder.date_created)),
-            updatedAt: Timestamp.now(),
-            paymentStatus: 'paid', // MeLi orders in search are usually paid
-            externalId: String(mOrder.id),
-            // Store raw for analytics
+            id,
+            orderNumber:     `MELI-${mOrder.id}`,
+            customer:        { id: custId, name: `${mOrder.buyer.first_name} ${mOrder.buyer.last_name}` },
+            status:          this.mapStatus(mOrder),
+            sourceChannel:   'mercadolibre',
+            fulfillmentType,
+            meliListingType,
+            meliShipMode,
+            items,
+            total:           mOrder.total_amount,
+            createdAt:       Timestamp.fromDate(new Date(mOrder.date_created)),
+            updatedAt:       Timestamp.now(),
+            paymentStatus:   'paid',
+            externalId:      String(mOrder.id),
             metadata: {
-                shipping_cost: mOrder.shipping?.cost || 0,
+                shipping_cost:   mOrder.shipping?.cost || 0,
                 original_status: mOrder.status,
-                shipping_status: mOrder.shipping?.status
-            }
+                shipping_status: mOrder.shipping?.status,
+                logistic_type:   logisticType,
+                listing_type_id: firstListingTypeId,
+            },
         };
+    }
+
+    /**
+     * Normalize MeLi's listing_type_id into our three-tier model.
+     *
+     * MeLi MX listing type IDs (as of 2025):
+     *   Premium  → gold_special, gold_pro
+     *   Classic  → gold_premium, gold_extra (confusingly named but this is the "Classic" tier)
+     *   Free     → free
+     *
+     * Fallback: anything unknown → 'classic' (safe default, avoids null breakage).
+     */
+    private resolveListingType(id: string): 'premium' | 'classic' | 'free' {
+        const lower = (id ?? '').toLowerCase();
+        if (!lower)                                               return 'classic';
+        if (lower === 'free')                                     return 'free';
+        if (lower === 'gold_special' || lower === 'gold_pro')     return 'premium';
+        // gold_premium and gold_extra are MeLi's "Classic" tier despite the name
+        return 'classic';
+    }
+
+    /**
+     * Map MeLi's logistic_type to our simplified ship mode.
+     *   'fulfillment'   → Meli Full (they warehouse + ship)
+     *   'me2'           → Flex / Classic (we ship, they provide label)
+     *   'not_specified' → fallback
+     */
+    private resolveShipMode(logisticType: string): 'me2' | 'fulfillment' | 'not_specified' {
+        const lower = (logisticType ?? '').toLowerCase();
+        if (lower === 'fulfillment') return 'fulfillment';
+        if (lower === 'me2' || lower === 'me1') return 'me2';
+        return 'not_specified';
     }
 
     private mapStatus(mOrder: any): 'pending' | 'processing' | 'shipped' | 'completed' | 'cancelled' {

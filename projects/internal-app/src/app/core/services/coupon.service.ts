@@ -39,6 +39,20 @@ export class CouponService {
     }
 
     /**
+     * Get ALL coupons without orderBy so legacy docs missing createdAt are included.
+     * Guarantees every returned coupon has a non-empty code (falls back to doc id).
+     */
+    getAllCoupons(): Observable<Coupon[]> {
+        return collectionData(this.couponsCollection, { idField: 'id' }).pipe(
+            map((coupons: any[]) =>
+                coupons
+                    .map(coupon => this.convertTimestamps(coupon))
+                    .map(c => ({ ...c, code: c.code?.trim() || c.id || '—' }))
+            )
+        );
+    }
+
+    /**
      * Get active coupons only
      */
     getActiveCoupons(): Observable<Coupon[]> {

@@ -1,10 +1,10 @@
-import { Component, inject, signal, computed, Signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
-import { Firestore, collection, collectionData, Timestamp, getDocs, query, where } from '@angular/fire/firestore';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Firestore, collection, getDocs, query, where } from '@angular/fire/firestore';
+import { Subscription } from 'rxjs';
 import { Coupon } from '../../../core/models/coupon.model';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { CouponService } from '../../../core/services/coupon.service';
@@ -20,35 +20,21 @@ type CouponFilter = 'all' | 'active' | 'inactive' | 'expired' | 'pending';
     templateUrl: './mkt-coupons.component.html',
     styleUrls: ['./mkt-coupons.component.css'],
 })
-export class MktCouponsComponent implements OnInit {
+export class MktCouponsComponent implements OnInit, OnDestroy {
     private firestore   = inject(Firestore);
     private couponSvc   = inject(CouponService);
     private auth        = inject(AuthService);
     private toast       = inject(ToastService);
 
-    // ── Live coupon stream ───────────────────────────────────────────────────
+    // ── State ────────────────────────────────────────────────────────────────
+    isLoading      = signal(true);
     copiedId       = signal<string | null>(null);
     orderUsageMap  = signal<Map<string, { orders: number; savedAmount: number }>>(new Map());
 
-    // ⚠️ No orderBy — Firestore silently omits docs that lack the sorted
-    // field. Old coupons may have no createdAt, so we sort client-side.
-    private allCoupons: Signal<Coupon[]> = toSignal(
-        collectionData(
-            collection(this.firestore, 'coupons'),
-            { idField: 'id' }
-        ) as any,
-        { initialValue: [] as Coupon[] }
-    );
+    private rawCoupons = signal<Coupon[]>([]);
+    private sub?: Subscription;
 
-    // Newest first; ties broken alphabetically by code
-    private readonly sortedCoupons = computed<Coupon[]>(() =>
-        [...this.allCoupons()].sort((a, b) => {
-            const ta = (a.createdAt as any)?.toDate?.()?.getTime?.() ?? new Date(a.createdAt as any || 0).getTime();
-            const tb = (b.createdAt as any)?.toDate?.()?.getTime?.() ?? new Date(b.createdAt as any || 0).getTime();
-            return tb - ta;
-        })
-    );
-
+    // ── Filters / Search ─────────────────────────────────────────────────────
     filter = signal<CouponFilter>('all');
     search = signal('');
 
@@ -60,40 +46,82 @@ export class MktCouponsComponent implements OnInit {
         { value: 'pending',  label: 'Pendientes' },
     ];
 
+    // ── Sorted & Filtered ─────────────────────────────────────────────────────
+    private readonly sortedCoupons = computed<Coupon[]>(() =>
+        [...this.rawCoupons()].sort((a, b) => {
+            const getTs = (d: any) =>
+                d instanceof Date ? d.getTime() :
+                d?.toDate?.()?.getTime?.() ?? 0;
+            return getTs(b.createdAt) - getTs(a.createdAt);
+        })
+    );
+
     readonly coupons = computed(() => {
         const f   = this.filter();
-        const q   = this.search().toLowerCase();
+        const q   = this.search().trim().toLowerCase();
         const now = new Date();
 
-
         return this.sortedCoupons().filter((c: Coupon) => {
-            const isExpired  = c.endDate ? this.toDate(c.endDate) < now : false;
-            const isPending  = c.status === 'pending';
+            const isExpired = c.endDate ? this.toDate(c.endDate) < now : false;
+            const isPending = c.status === 'pending';
             if (f === 'active'   && (!c.isActive || isExpired || isPending)) return false;
-            if (f === 'inactive' && (c.isActive || isExpired || isPending))  return false;
+            if (f === 'inactive' && (c.isActive  || isExpired || isPending)) return false;
             if (f === 'expired'  && !isExpired)                              return false;
             if (f === 'pending'  && !isPending)                              return false;
-            if (q && !c.code?.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false;
+            if (q && !c.code?.toLowerCase().includes(q) &&
+                !c.description?.toLowerCase().includes(q)) return false;
             return true;
         });
     });
 
     // ── KPIs ─────────────────────────────────────────────────────────────────
-    readonly totalActive  = computed(() => this.allCoupons().filter(c => c.isActive && !this.isExpired(c)).length);
-    readonly totalPending = computed(() => this.allCoupons().filter(c => c.status === 'pending').length);
-    readonly totalUses    = computed(() => this.allCoupons().reduce((s, c) => s + (c.usageCount || 0), 0));
-    readonly totalScans   = computed(() => this.allCoupons().reduce((s, c) => s + (c.scanCount  || 0), 0));
+    readonly totalActive  = computed(() => this.rawCoupons().filter(c => c.isActive && !this.isExpired(c) && c.status !== 'pending').length);
+    readonly totalPending = computed(() => this.rawCoupons().filter(c => c.status === 'pending').length);
+    readonly totalUses    = computed(() => this.rawCoupons().reduce((s, c) => s + (c.usageCount || 0), 0));
+    readonly totalScans   = computed(() => this.rawCoupons().reduce((s, c) => s + (c.scanCount  || 0), 0));
     readonly convRate     = computed(() => {
         const scans = this.totalScans();
         const uses  = this.totalUses();
         return scans > 0 ? Math.round((uses / scans) * 100) : 0;
     });
 
-    ngOnInit() { this.loadOrderUsage(); }
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    ngOnInit() {
+        this.isLoading.set(true);
+
+        // Use CouponService.getAllCoupons() — same tested path as admin list,
+        // converts timestamps, guarantees id is set, no orderBy exclusions.
+        this.sub = this.couponSvc.getAllCoupons().subscribe({
+            next: (coupons) => {
+                this.rawCoupons.set(coupons);
+                this.isLoading.set(false);
+            },
+            error: (err) => {
+                console.error('[MktCoupons] Firestore error:', err);
+                this.isLoading.set(false);
+            }
+        });
+
+        this.loadOrderUsage();
+    }
+
+    ngOnDestroy() {
+        this.sub?.unsubscribe();
+    }
 
     private async loadOrderUsage() {
+        // Limit to last 12 months to avoid full-collection scans on mature stores
+        const from = new Date();
+        from.setFullYear(from.getFullYear() - 1);
+        const { Timestamp: Ts, orderBy: ob } = await import('@angular/fire/firestore');
         const snap = await getDocs(
-            query(collection(this.firestore, 'orders'), where('couponCode', '!=', null))
+            query(
+                collection(this.firestore, 'orders'),
+                where('couponCode', '!=', null),
+                ob('couponCode'),
+                where('createdAt', '>=', Ts.fromDate(from)),
+                ob('createdAt', 'desc'),
+            )
         ).catch(() => null);
         if (!snap) return;
         const map = new Map<string, { orders: number; savedAmount: number }>();
@@ -127,7 +155,6 @@ export class MktCouponsComponent implements OnInit {
     showModal    = signal(false);
     isSubmitting = signal(false);
 
-    // Simple form model (no reactive forms dependency)
     form = signal({
         code:          '',
         type:          'percentage' as 'percentage' | 'fixed_amount',
@@ -188,8 +215,11 @@ export class MktCouponsComponent implements OnInit {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    toDate(d: Timestamp | Date): Date {
-        return d instanceof Date ? d : (d as Timestamp).toDate();
+    toDate(d: any): Date {
+        if (!d) return new Date(0);
+        if (d instanceof Date) return d;
+        if (typeof d?.toDate === 'function') return d.toDate();
+        return new Date(d);
     }
 
     isExpired(c: Coupon): boolean {
@@ -209,7 +239,7 @@ export class MktCouponsComponent implements OnInit {
     }
 
     fmtMXN(v: number): string {
-        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v);
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v ?? 0);
     }
 
     adminEditRoute(id: string): string[] {

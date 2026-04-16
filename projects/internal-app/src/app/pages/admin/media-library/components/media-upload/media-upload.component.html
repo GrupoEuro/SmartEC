@@ -74,6 +74,12 @@
                         class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
                         <span class="text-white text-[10px] font-bold">{{ item.progress }}%</span>
                     </div>
+                    <!-- Compressing Overlay -->
+                    <div *ngIf="item.status === 'compressing'"
+                        class="absolute inset-0 flex items-center justify-center backdrop-blur-[1px] overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-violet-600/60 via-indigo-500/60 to-violet-600/60 animate-[shimmer_1.2s_ease-in-out_infinite] bg-[length:200%_100%]"></div>
+                        <span class="relative text-white text-[9px] font-bold tracking-wide">⚡ WebP</span>
+                    </div>
                     <div *ngIf="item.status === 'success'"
                         class="absolute inset-0 bg-emerald-500/80 flex items-center justify-center text-white backdrop-blur-[1px]">
                         <app-icon name="check" [size]="20"></app-icon>
@@ -88,13 +94,23 @@
                 <!-- Fields -->
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start mb-1.5">
-                        <h4 class="text-sm font-medium text-slate-200 truncate pr-2" [title]="item.file.name">{{
-                            item.file.name }}</h4>
-                        <span
-                            class="text-[10px] text-slate-500 whitespace-nowrap font-mono bg-black/20 px-1.5 py-0.5 rounded">{{
-                            (item.file.size / 1024 /
-                            1024).toFixed(2) }} MB</span>
+                        <h4 class="text-sm font-medium text-slate-200 truncate pr-2" [title]="item.file.name">{{ item.file.name }}</h4>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <!-- Savings badge: appears after compression when file got smaller -->
+                            <ng-container *ngIf="item.compressedSize != null && item.compressedSize < item.originalSize">
+                                <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded px-1 py-0.5 whitespace-nowrap">
+                                    {{ formatBytes(item.originalSize) }} → {{ formatBytes(item.compressedSize) }}
+                                    ({{ ((1 - item.compressedSize / item.originalSize) * 100).toFixed(0) }}% saved)
+                                </span>
+                            </ng-container>
+                            <!-- Plain size before compression runs -->
+                            <span *ngIf="item.compressedSize == null"
+                                class="text-[10px] text-slate-500 whitespace-nowrap font-mono bg-black/20 px-1.5 py-0.5 rounded">
+                                {{ formatBytes(item.originalSize) }}
+                            </span>
+                        </div>
                     </div>
+
                     <!-- Progress bar -->
                     <div *ngIf="item.status === 'uploading'" class="w-full h-1 bg-slate-700 rounded-full mb-1.5 overflow-hidden">
                         <div class="h-full bg-indigo-500 rounded-full transition-all duration-200"
@@ -143,8 +159,11 @@
                 [class]="uploadSummary().error === 0 ? 'text-emerald-400' : 'text-red-400'"></app-icon>
             <span class="text-sm font-medium" [class.text-emerald-300]="uploadSummary().error === 0" [class.text-red-300]="uploadSummary().error > 0">
                 <ng-container *ngIf="uploadSummary().error === 0">
-                    ✓ {{ uploadSummary().success }} file(s) uploaded successfully
-                </ng-container>
+                        ✓ {{ uploadSummary().success }} file(s) uploaded
+                        <ng-container *ngIf="uploadSummary().savedBytes > 0">
+                            · <strong>{{ formatBytes(uploadSummary().savedBytes) }} saved</strong>
+                        </ng-container>
+                    </ng-container>
                 <ng-container *ngIf="uploadSummary().error > 0">
                     {{ uploadSummary().success }} uploaded · {{ uploadSummary().error }} failed — check error details above
                 </ng-container>

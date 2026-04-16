@@ -63,7 +63,7 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
     general: {
         companyName: 'Importadora Euro',
         phone: '+52 444 824 0757',
-        whatsapp: '+52 1 444 200 4677',
+        whatsapp: '+52 444 194 6502',
         email: 'ventas@importadoraeuro.com',
         address: 'San Luis Potosí, México',
         logo: '',
@@ -149,4 +149,47 @@ export class SettingsService {
     async updateSettings(settings: Partial<WebsiteSettings>): Promise<void> {
         return setDoc(this.configDocRef, settings, { merge: true });
     }
+
+    /**
+     * Returns a wa.me-compatible URL for the configured WhatsApp number.
+     * Accepts an optional pre-filled message (will be URI-encoded).
+     * Works regardless of how the number is stored in Firestore
+     * (e.g. "+52 444 194 6502", "5214441946502", "444-194-6502").
+     */
+    waUrl(message?: string): Observable<string> {
+        return this.settings$.pipe(
+            map(s => {
+                const phone = toWaPhone(s.general.whatsapp);
+                const base  = `https://wa.me/${phone}`;
+                return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+            })
+        );
+    }
 }
+
+/**
+ * Normalizes any common phone format to the digits-only string required by wa.me.
+ *
+ * Rules (Mexico-focused):
+ *   "+52 444 194 6502"  → "524441946502"
+ *   "444 194 6502"      → "524441946502"  (10-digit → prepend 52)
+ *   "524441946502"      → "524441946502"  (already correct)
+ *
+ * Exported so it can be used standalone (e.g. in unit tests or other services).
+ */
+export function toWaPhone(raw: string): string {
+    if (!raw) return '';
+    const digits = raw.replace(/\D/g, '');           // strip EVERYTHING except digits
+
+    // 10-digit local Mexican number → prepend country code
+    if (digits.length === 10) return `52${digits}`;
+
+    // Legacy "521XXXXXXXXXX" format (old Mexico mobile, 13 digits) → drop the "1"
+    if (digits.length === 13 && digits.startsWith('521')) {
+        return `52${digits.substring(3)}`;
+    }
+
+    // Already an international number (12 digits starting with 52) or unknown → use as-is
+    return digits;
+}
+

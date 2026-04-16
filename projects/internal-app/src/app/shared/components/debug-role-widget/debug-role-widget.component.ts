@@ -1,4 +1,4 @@
-import { Component, inject, signal, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -80,18 +80,18 @@ import { AuthService } from '../../../core/services/auth.service';
     }
   `],
   template: `
-    @if (profile() && !dismissed) {
+    @if (profile() && !dismissed()) {
       <div class="dbg-wrap">
         <div class="dbg-header">
           <span class="dbg-title">⚙ Auth Context</span>
           <div class="dbg-actions">
-            <button type="button" class="dbg-btn" (click)="toggle()" [title]="minimized ? 'Expandir' : 'Minimizar'">
-              {{ minimized ? '▲' : '▼' }}
+            <button type="button" class="dbg-btn" (click)="toggle()" [title]="minimized() ? 'Expandir' : 'Minimizar'">
+              {{ minimized() ? '▲' : '▼' }}
             </button>
             <button type="button" class="dbg-btn cls" (click)="close()" title="Cerrar">✕</button>
           </div>
         </div>
-        @if (!minimized) {
+        @if (!minimized()) {
           <div class="dbg-body">
             <div class="dbg-row">
               <span class="dbg-lbl">Email</span>
@@ -113,19 +113,12 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class DebugRoleWidgetComponent {
   private authService = inject(AuthService);
-  private cdr = inject(ChangeDetectorRef);
 
-  profile = this.authService.currentProfile;
-  minimized = false;
-  dismissed = false;
+  profile   = this.authService.currentProfile;
+  minimized = signal(false);
+  dismissed = signal(false);
 
-  toggle() {
-    this.minimized = !this.minimized;
-    this.cdr.markForCheck();
-  }
-
-  close() {
-    this.dismissed = true;
-    this.cdr.markForCheck();
-  }
+  toggle() { this.minimized.update(v => !v); }
+  close()  { this.dismissed.set(true); }
 }
+

@@ -7,6 +7,7 @@ import {
     orderBy, getDocs, Timestamp,
 } from '@angular/fire/firestore';
 import { MarketingChartsComponent } from './marketing-charts/marketing-charts.component';
+import { normalizeReferrerDomain } from '../attribution/attribution-report.service';
 
 export type DashTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD';
 
@@ -228,7 +229,8 @@ export class MarketingDashboardComponent implements OnInit {
         }
     }
 
-    /** Resolves channel label from an order doc — mirrors attribution-report.service logic */
+    /** Resolves channel label from an order doc — uses the shared normalizeReferrerDomain
+     *  so topSource and channelRevenue are consistent with the Attribution Report. */
     private resolveChannel(d: any): string {
         const sc = d.sourceChannel;
         if (sc === 'mercadolibre') {
@@ -239,10 +241,13 @@ export class MarketingDashboardComponent implements OnInit {
         if (sc === 'on_behalf') return d.metadata?.source ?? 'On-Behalf';
         if (sc === 'pos')       return 'POS';
         if (sc === 'amazon')    return 'Amazon';
-        // storefront or legacy: UTM → referrer → direct
-        return d.attribution?.utm?.utm_source
-            ?? d.attribution?.referrerDomain
-            ?? (d.channel === 'MELI_CLASSIC' ? 'MercadoLibre Classic' : 'direct');
+        // storefront or legacy: UTM → normalised referrer → direct
+        const utmSource = d.attribution?.utm?.utm_source;
+        if (utmSource) return utmSource;
+        const referrer = d.attribution?.referrerDomain;
+        if (referrer) return normalizeReferrerDomain(referrer);
+        if (d.channel === 'MELI_CLASSIC') return 'MercadoLibre Classic';
+        return 'direct';
     }
 
     /** Brand-consistent color per channel for the revenue breakdown chart */

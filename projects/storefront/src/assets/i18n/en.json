@@ -59,7 +59,8 @@
     "SUBTOTAL": "Subtotal",
     "TAX_NOTE": "Shipping & taxes calculated at checkout",
     "CHECKOUT_SECURELY": "Checkout Securely 🔒",
-    "CONFIRM_REMOVE": "Remove this item from cart?"
+    "CONFIRM_REMOVE": "Remove this item from cart?",
+    "TOTAL": "Total"
   },
   "CHECKOUT": {
     "IDENTITY": "Identity",
@@ -831,14 +832,30 @@
   "COMMAND_CENTER": {
     "TITLE": "Command Center",
     "DASHBOARD": "Dashboard",
-    "APPROVALS": { "TITLE": "Approvals" },
-    "FINANCIALS": { "TITLE": "Financials" },
-    "INCOME_STATEMENT": { "TITLE": "Income Statement" },
-    "INVENTORY_ANALYTICS": { "TITLE": "Inventory Analytics" },
-    "SALES_ANALYTICS": { "TITLE": "Sales Analytics" },
-    "CUSTOMER_INSIGHTS": { "TITLE": "Customer Insights" },
-    "OPERATIONAL_METRICS": { "TITLE": "Operational Metrics" },
-    "EXPENSES": { "TITLE": "Expense Management" },
+    "APPROVALS": {
+      "TITLE": "Approvals"
+    },
+    "FINANCIALS": {
+      "TITLE": "Financials"
+    },
+    "INCOME_STATEMENT": {
+      "TITLE": "Income Statement"
+    },
+    "INVENTORY_ANALYTICS": {
+      "TITLE": "Inventory Analytics"
+    },
+    "SALES_ANALYTICS": {
+      "TITLE": "Sales Analytics"
+    },
+    "CUSTOMER_INSIGHTS": {
+      "TITLE": "Customer Insights"
+    },
+    "OPERATIONAL_METRICS": {
+      "TITLE": "Operational Metrics"
+    },
+    "EXPENSES": {
+      "TITLE": "Expense Management"
+    },
     "ACTIONS": {
       "EXPORT": "Export CSV",
       "VIEW_DATA": "View Data"

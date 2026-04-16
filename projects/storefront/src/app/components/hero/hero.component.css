@@ -544,3 +544,104 @@
         transform: scale(0.9);
     }
 }
+
+/* ── Campaign Coupon Banner ────────────────────────────────────────────────── */
+.campaign-coupon-banner {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(167,139,250,0.08) 100%);
+    border-top: 1px solid rgba(167,139,250,0.2);
+    border-bottom: 1px solid rgba(167,139,250,0.15);
+    padding: 14px 24px;
+    animation: ccb-slide-in 0.5s cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes ccb-slide-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ccb-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.ccb-icon { font-size: 20px; flex-shrink: 0; }
+
+.ccb-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.ccb-headline {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #a78bfa;
+}
+.ccb-sub {
+    font-size: 14px;
+    color: #cbd5e1;
+    line-height: 1.5;
+}
+.ccb-code {
+    font-family: 'Courier New', monospace;
+    background: rgba(167,139,250,0.15);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 5px;
+    padding: 1px 7px;
+    color: #c4b5fd;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+}
+
+.ccb-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: rgba(167,139,250,0.15);
+    border: 1px solid rgba(167,139,250,0.3);
+    color: #c4b5fd;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.ccb-copy-btn:hover { background: rgba(167,139,250,0.25); }
+.ccb-copy-btn.ccb-copied {
+    background: rgba(74,222,128,0.15);
+    border-color: rgba(74,222,128,0.3);
+    color: #4ade80;
+}
+
+.ccb-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border-radius: 8px;
+    background: #7c3aed;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+}
+.ccb-cta-btn:hover { background: #6d28d9; transform: translateY(-1px); }
+
+@media (max-width: 768px) {
+    .ccb-inner { gap: 10px; }
+    .ccb-text { width: 100%; }
+    .ccb-copy-btn, .ccb-cta-btn { flex: 1; justify-content: center; }
+}

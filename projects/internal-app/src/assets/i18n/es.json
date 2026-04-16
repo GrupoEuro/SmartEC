@@ -1602,7 +1602,7 @@
       },
       "DASHBOARD": {
         "CHARTS_TITLE": "Analítica y Gráficas",
-      "CHANNEL_BREAKDOWN": "Ingresos por Canal",
+        "CHANNEL_BREAKDOWN": "Ingresos por Canal",
         "TF": {
           "MTD": "Mes Actual",
           "PAST_MONTH": "Mes Anterior",
@@ -4039,7 +4039,8 @@
         "NET_SALES": "Ventas Netas",
         "PIECES_SOLD": "Piezas Vendidas ({{timeframe}})",
         "ORDERS_COUNT": "{{count}} pedidos",
-        "FDM_LABEL": "Proyección FDM:"
+        "FDM_LABEL": "Proyección FDM:",
+        "GEOGRAPHIC_DISTRIBUTION": "Distribución Geográfica de Ventas"
       }
     },
     "ORDERS": {
@@ -5835,7 +5836,8 @@
       "AOV": "Ticket Promedio",
       "CONV": "Tasa Conv.",
       "SHARE": "Part. Ingresos",
-      "EMPTY": "Sin datos de atribución para este período"
+      "EMPTY": "Sin datos de atribución para este período",
+      "EXPORT": "Exportar CSV"
     },
     "HOW": {
       "TITLE": "Cómo Funciona la Atribución",
@@ -5946,7 +5948,18 @@
       "SUBTITLE_LIVE": "Análisis RFM — actualizado automáticamente del historial de pedidos",
       "KPI_CUSTOMERS": "Clientes",
       "KPI_REVENUE": "Ingresos Totales",
-      "KPI_AOV": "Ticket Promedio"
+      "KPI_AOV": "Ticket Promedio",
+      "FILTER_ALL": "Todos",
+      "CREATE_CAMPAIGN_FOR": "Crear Campaña para",
+      "EMPTY_SEGMENT": "No hay clientes en este segmento para el período seleccionado.",
+      "COL_CUSTOMER": "Cliente",
+      "COL_SEGMENT": "Segmento",
+      "COL_ORDERS": "Órdenes",
+      "COL_REVENUE": "Ingresos",
+      "COL_LAST_ORDER": "Último Pedido",
+      "COL_SCORE": "Puntaje",
+      "KPI_CHAMPIONS": "Champions",
+      "DOCS_PROCESSED": "Órdenes procesadas"
     },
     "CAMPAIGNS": {
       "TITLE": "Campañas",
@@ -5959,7 +5972,16 @@
       "ACTIVE_NOW": "Activas Ahora",
       "UPCOMING_LABEL": "Próximas",
       "PAST_LABEL": "Campañas Pasadas",
-      "EMPTY_UPCOMING": "No hay campañas próximas."
+      "EMPTY_UPCOMING": "No hay campañas próximas.",
+      "ENDS_IN": "Termina en",
+      "DAYS_PLURAL": "días",
+      "PRIORITY": "Prioridad",
+      "STARTS": "Inicia",
+      "EDIT": "Editar",
+      "VIEW": "Ver",
+      "NO_ACTIVE": "Ninguna campaña activa en este momento.",
+      "NEW_SHORT": "+ Nueva campaña",
+      "PREVIEW": "Ver en tienda"
     }
   }
 }

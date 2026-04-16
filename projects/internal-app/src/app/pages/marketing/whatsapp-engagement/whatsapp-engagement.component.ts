@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { WhatsappEngagementService, WaSummary, WaClick } from './whatsapp-engagement.service';
 
 export type WaTf = 'TODAY' | 'WEEK' | 'MTD' | 'PAST_MONTH' | 'L3M' | 'ALL';
@@ -7,10 +8,11 @@ export type WaTf = 'TODAY' | 'WEEK' | 'MTD' | 'PAST_MONTH' | 'L3M' | 'ALL';
 @Component({
     selector: 'app-whatsapp-engagement',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, TranslateModule],
     templateUrl: './whatsapp-engagement.component.html',
     styleUrls: ['./whatsapp-engagement.component.css'],
 })
+
 export class WhatsappEngagementComponent implements OnInit {
     private svc = inject(WhatsappEngagementService);
 

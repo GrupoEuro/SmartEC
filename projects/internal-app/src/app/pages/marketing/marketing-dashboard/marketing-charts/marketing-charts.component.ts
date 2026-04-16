@@ -95,9 +95,10 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
             for (const doc of snapsSnap.docs) {
                 const d = doc.data() as any;
-                const src = d.attribution?.utm?.utm_source
+                const rawSrc = d.attribution?.utm?.utm_source
                           ?? d.attribution?.referrerDomain
                           ?? 'direct';
+                const src = this.normalizeSource(rawSrc);
                 sourceMap.set(src, (sourceMap.get(src) ?? 0) + 1);
 
                 // bucket sessions by day
@@ -117,7 +118,7 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                     ordersByDay.set(day, (ordersByDay.get(day) ?? 0) + 1);
                 }
                 // Merge resolved channel into sourceMap so Channel Mix includes all orders
-                const ch = this.resolveChannel(d);
+                const ch = this.normalizeSource(this.resolveChannel(d));
                 sourceMap.set(ch, (sourceMap.get(ch) ?? 0) + 1);
             }
 
@@ -255,5 +256,28 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         return d.attribution?.utm?.utm_source
             ?? d.attribution?.referrerDomain
             ?? (d.channel === 'MELI_CLASSIC' ? 'MercadoLibre Classic' : 'direct');
+    }
+    /** Collapses known aliases into canonical channel names */
+    private normalizeSource(raw: string): string {
+        if (!raw || raw === 'direct') return 'Directo';
+        const s = raw.toLowerCase();
+        // Google family
+        if (s.includes('google') || s.includes('googlesyndication') || s.includes('googleadservices') || s.includes('doubleclick')) return 'Google';
+        // Meta / Facebook
+        if (s.includes('facebook') || s.includes('instagram') || s.includes('fb.com') || s.includes('meta')) return 'Meta';
+        // Other social
+        if (s.includes('tiktok') || s.includes('musical.ly')) return 'TikTok';
+        if (s.includes('youtube')) return 'YouTube';
+        if (s.includes('twitter') || s.includes('t.co')) return 'Twitter';
+        // Ecommerce
+        if (s.includes('mercadolibre') || s.includes('mercadopago') || s.includes('meli')) return 'MercadoLibre';
+        if (s.includes('amazon')) return 'Amazon';
+        // Email
+        if (s.includes('email') || s.includes('newsletter') || s.includes('mailchimp') || s.includes('sendgrid')) return 'Email';
+        // WhatsApp
+        if (s.includes('whatsapp') || s.includes('wa.me')) return 'WhatsApp';
+        // Pass through canonical named channels as-is
+        if (['MercadoLibre Full','MercadoLibre Flex','MercadoLibre Classic','POS','On-Behalf'].includes(raw)) return raw;
+        return raw;
     }
 }

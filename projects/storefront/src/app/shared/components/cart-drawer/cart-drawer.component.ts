@@ -96,6 +96,22 @@ import { CartService } from '../../../core/services/cart.service';
                             <span>{{ 'CART.SUBTOTAL' | translate }}</span>
                             <span class="amount">{{ cartService.cartSubtotal() | currency }}</span>
                         </div>
+
+                        <!-- Auto-applied campaign coupon badge -->
+                        @if (appliedCoupon) {
+                        <div class="coupon-applied-banner">
+                            <div class="coupon-applied-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="coupon-code">{{ appliedCoupon.code }}</span>
+                                <span class="coupon-auto-label">auto-aplicado</span>
+                            </div>
+                            <span class="coupon-saving">-{{ appliedCoupon.amount | currency }}</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span>{{ 'CART.TOTAL' | translate }}</span>
+                            <span class="amount total-amount">{{ (cartService.cartSubtotal() - appliedCoupon.amount) | currency }}</span>
+                        </div>
+                        }
                         <p class="tax-note">{{ 'CART.TAX_NOTE' | translate }}</p>
                         
                         <a routerLink="/checkout" (click)="close()" class="btn-checkout">
@@ -388,6 +404,58 @@ import { CartService } from '../../../core/services/cart.service';
             margin-bottom: 24px; 
             opacity: 0.7;
         }
+
+        /* Auto-applied campaign coupon badge */
+        .coupon-applied-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            margin: 8px 0;
+            padding: .55rem .85rem;
+            border-radius: 8px;
+            background: rgba(74, 222, 128, .08);
+            border: 1px solid rgba(74, 222, 128, .25);
+            animation: coupon-pop .4s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        @keyframes coupon-pop {
+            from { opacity: 0; transform: scale(.95) translateY(4px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .coupon-applied-left {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            color: #4ade80;
+        }
+        .coupon-code {
+            font-family: 'Courier New', monospace;
+            font-size: .8rem;
+            font-weight: 700;
+            color: #4ade80;
+            letter-spacing: .5px;
+        }
+        .coupon-auto-label {
+            font-size: .62rem;
+            background: rgba(74, 222, 128, .15);
+            border: 1px solid rgba(74, 222, 128, .2);
+            border-radius: 4px;
+            padding: .05rem .3rem;
+            color: rgba(74, 222, 128, .8);
+            font-weight: 600;
+        }
+        .coupon-saving {
+            font-size: .85rem;
+            font-weight: 800;
+            color: #4ade80;
+        }
+        .total-row {
+            border-top: 1px solid rgba(255,255,255,.06);
+            padding-top: 8px;
+            margin-top: 8px;
+            margin-bottom: 0;
+        }
+        .total-amount { color: #4ade80 !important; }
         .btn-checkout {
             display: flex;
             align-items: center;
@@ -471,5 +539,8 @@ export class CartDrawerComponent {
         const current = this.cartService.cartSubtotal();
         return Math.min(100, (current / threshold) * 100);
     }
+
+    /** Proxy to CartService appliedCoupon getter for template access */
+    get appliedCoupon() { return this.cartService.appliedCoupon; }
 }
 

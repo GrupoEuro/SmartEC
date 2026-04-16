@@ -69,6 +69,49 @@ function isWebFunnelChannel(channel: string): boolean {
     return !NO_FUNNEL_PREFIXES.some(p => c.startsWith(p));
 }
 
+/**
+ * Normalises a raw referrer domain into a clean, business-meaningful label.
+ * Exported as a standalone function so both AttributionReportService and
+ * MarketingDashboardComponent use identical logic (no drift).
+ *
+ * Rules (top-down):
+ *  1. *.safeframe.googlesyndication.com → "Google Display Ads"
+ *  2. google.com variants               → "Google Organic"
+ *  3. *.taboola.com / *.taboolanews.com → "Taboola"
+ *  4. *.facebook.com                   → "Facebook"
+ *  5. *.instagram.com                  → "Instagram"
+ *  6. *.tiktok.com                     → "TikTok"
+ *  7. *.bing.com                       → "Bing"
+ *  8. *.yahoo.com                      → "Yahoo"
+ *  9. Else: strip www/m/news/blog prefix
+ */
+export function normalizeReferrerDomain(raw: string): string {
+    if (!raw) return 'direct';
+    const d = raw.toLowerCase().trim();
+
+    if (d.endsWith('.safeframe.googlesyndication.com') ||
+        d === 'safeframe.googlesyndication.com' ||
+        d.includes('googlesyndication')) return 'Google Display Ads';
+
+    if (d === 'www.google.com' || d === 'google.com' ||
+        d.startsWith('www.google.') || d.startsWith('google.') ||
+        d.endsWith('.google.com')) return 'Google Organic';
+
+    if (d.endsWith('.taboola.com') || d.endsWith('.taboolanews.com') ||
+        d === 'taboola.com') return 'Taboola';
+
+    if (d.endsWith('.facebook.com') || d === 'facebook.com' ||
+        d === 'l.facebook.com' || d.endsWith('.fb.com')) return 'Facebook';
+
+    if (d.endsWith('.instagram.com') || d === 'instagram.com') return 'Instagram';
+    if (d.endsWith('.tiktok.com')    || d === 'tiktok.com')    return 'TikTok';
+    if (d.endsWith('.bing.com')      || d === 'bing.com')      return 'Bing';
+    if (d.endsWith('.yahoo.com')     || d === 'yahoo.com')     return 'Yahoo';
+
+    // Strip common subdomains -> registrable domain
+    return d.replace(/^(www|m|news|blog|amp|mobile|es|en)[.]/i, '');
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable({ providedIn: 'root' })
@@ -117,8 +160,16 @@ export class AttributionReportService {
 
         for (const doc of snapshotsSnap.docs) {
             const d = doc.data() as CartSnapshotDoc;
-            // cartSnapshots are always storefront — pass null sourceChannel
-            const key      = this.channelKey({ attribution: d.attribution });
+            // Normalise referrer domain before building the key so cartSnapshot
+            // sessions group under the same label as orders (e.g. "Google Display Ads")
+            const normalisedAttr = d.attribution ? {
+                ...d.attribution,
+                referrerDomain: d.attribution.referrerDomain
+                    ? this.normalizeReferrerDomain(d.attribution.referrerDomain)
+                    : undefined,
+            } : undefined;
+            const key      = this.channelKey({ attribution: normalisedAttr });
+
             const medium   = d.attribution?.utm?.utm_medium   ?? '';
             const campaign = d.attribution?.utm?.utm_campaign ?? '';
             if (!channelMeta.has(key)) channelMeta.set(key, { medium, campaign });
@@ -231,7 +282,9 @@ export class AttributionReportService {
         // (also falls here when sourceChannel is 'storefront' or absent)
         const utm = doc.attribution?.utm;
         if (utm?.utm_source) return utm.utm_source;
-        if (doc.attribution?.referrerDomain) return doc.attribution.referrerDomain;
+        if (doc.attribution?.referrerDomain) {
+            return this.normalizeReferrerDomain(doc.attribution.referrerDomain);
+        }
 
         // ── Legacy: old meli-order.service used 'channel' field ───────────────
         if ((doc as any).channel === 'MELI_CLASSIC') return 'MercadoLibre Classic';
@@ -239,6 +292,13 @@ export class AttributionReportService {
 
         return 'direct';
     }
+
+    /** Delegates to the exported standalone function for backward compat. */
+    normalizeReferrerDomain(raw: string): string {
+        return normalizeReferrerDomain(raw);
+    }
+
+
 
     private normalizeSocialSource(raw: string): string {
         const map: Record<string, string> = {

@@ -86,6 +86,10 @@ export interface Order {
     // [NEW] Multi-Channel Support & Architecture
     sourceChannel?: 'storefront' | 'mercadolibre' | 'amazon' | 'pos' | 'on_behalf';
     fulfillmentType?: 'merchant' | 'platform'; // 'merchant' (we pack) vs 'platform' (FBA/Meli Full packs)
+    /** MeLi listing tier: 'premium' = gold_special/gold_pro, 'classic' = gold_premium/gold_extra, 'free' = free */
+    meliListingType?: 'premium' | 'classic' | 'free';
+    /** MeLi shipping mode: 'me2' (Flex/Classic merchant ship) | 'fulfillment' (Meli Full) | 'not_specified' */
+    meliShipMode?: 'me2' | 'fulfillment' | 'not_specified';
     externalOrderId?: string; // ID from Amazon/ML (e.g., '114-1234567-1234567')
     shippingLabelUrl?: string; // PDF URL for shipping label from external provider
     nativeSla?: any;

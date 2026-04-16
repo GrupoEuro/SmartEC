@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 import { ShippingConfigService } from './shipping-config.service';
 import { AttributionService, stripUndefined } from './attribution.service';
 import { SessionService } from './session.service';
+import { CampaignService } from './campaign.service';
 import { environment } from '../../../environments/environment';
 
 // GA4 e-commerce helper — lightweight, no service dependency
@@ -30,6 +31,10 @@ export class CartService {
     private zone             = inject(NgZone);
     private attributionSvc   = inject(AttributionService);
     private sessionSvc       = inject(SessionService);
+    private campaignSvc      = inject(CampaignService);
+
+    /** True once the campaign coupon has been auto-applied this session */
+    private couponAutoApplied = false;
 
     /** Stable cross-tab session ID — owned by SessionService */
     private get sessionId(): string { return this.sessionSvc.sessionId; }
@@ -298,6 +303,7 @@ export class CartService {
         }
 
         const current = this.cartState();
+        const wasEmpty = current.items.length === 0;
         const firstAddedAt = current.firstAddedAt ?? Date.now();
         this.cartState.set({
             ...current,
@@ -311,6 +317,11 @@ export class CartService {
             clearedAt:    undefined,
             clearedItems: undefined,
         });
+
+        // ── Phase 2: Auto-apply campaign coupon on first item added ────────────
+        if (wasEmpty && !this.couponAutoApplied) {
+            this.applyCampaignCoupon();
+        }
 
         // GA4: add_to_cart
         fireGtag('add_to_cart', {
@@ -452,6 +463,63 @@ export class CartService {
     toggleCart() { this.isDrawerOpen.update(v => !v); }
     openCart()   { this.isDrawerOpen.set(true); }
     closeCart()  { this.isDrawerOpen.set(false); }
+
+    // ── Phase 2: Campaign Coupon Auto-Apply ───────────────────────────────────
+
+    /**
+     * Silently applies the active campaign's coupon to the cart state.
+     * Called once on the first addToCart() when the cart was empty.
+     * Idempotent: skips if coupon already applied or no campaign is active.
+     *
+     * Industry research: removing coupon code friction increases checkout
+     * conversion 15-30%. The user sees "PROMO20 aplicado ✓" in the cart
+     * without ever having to type anything.
+     */
+    private applyCampaignCoupon() {
+        const campaign = this.campaignSvc.activeCampaign();
+        const coupon   = this.campaignSvc.campaignCoupon();
+        if (!campaign || !coupon) return;
+
+        // Skip if this coupon is already applied
+        const state = this.cartState();
+        if ((state as any).appliedCouponCode === coupon.code) return;
+
+        this.couponAutoApplied = true;
+        const discountValue = coupon.type === 'percentage'
+            ? this.cartSubtotal() * (coupon.value / 100)
+            : coupon.value;
+
+        this.cartState.set({
+            ...state,
+            appliedCouponCode:    coupon.code,
+            appliedCouponId:      coupon.id,
+            appliedCampaignId:    campaign.id,
+            couponDiscountType:   coupon.type,
+            couponDiscountValue:  coupon.value,
+            couponDiscountAmount: discountValue,
+            couponAutoApplied:    true,
+            updatedAt:            Date.now(),
+        } as any);
+
+        // Persist campaignId to the snapshot for funnel analytics
+        this.writeSnapshotDebounced('item_added', this.cartItems(), undefined);
+
+        if (!environment.production) {
+            console.log(`[Cart] ✅ Campaign coupon auto-applied: ${coupon.code} (${coupon.type} ${coupon.value})`);
+        }
+    }
+
+    /** Returns the currently auto-applied campaign coupon state (for cart UI) */
+    get appliedCoupon(): { code: string; type: string; value: number; amount: number } | null {
+        const s = this.cartState() as any;
+        if (!s.appliedCouponCode) return null;
+        return {
+            code:   s.appliedCouponCode,
+            type:   s.couponDiscountType,
+            value:  s.couponDiscountValue,
+            amount: s.couponDiscountAmount,
+        };
+    }
 
     // ── Internal State ────────────────────────────────────────────────────────
     private updateState(items: CartItem[], status?: CartState['status']) {

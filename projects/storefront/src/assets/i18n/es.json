@@ -59,7 +59,8 @@
     "SUBTOTAL": "Subtotal",
     "TAX_NOTE": "Impuestos y envío calculados al finalizar compra",
     "CHECKOUT_SECURELY": "Pagar de forma Segura 🔒",
-    "CONFIRM_REMOVE": "¿Eliminar este producto del carrito?"
+    "CONFIRM_REMOVE": "¿Eliminar este producto del carrito?",
+    "TOTAL": "Total"
   },
   "PRODUCT_DETAIL": {
     "BREADCRUMB_HOME": "Inicio",
@@ -831,14 +832,30 @@
   "COMMAND_CENTER": {
     "TITLE": "Centro de Comando",
     "DASHBOARD": "Tablero",
-    "APPROVALS": { "TITLE": "Aprobaciones" },
-    "FINANCIALS": { "TITLE": "Finanzas" },
-    "INCOME_STATEMENT": { "TITLE": "Estado de Resultados" },
-    "INVENTORY_ANALYTICS": { "TITLE": "Análisis de Inventario" },
-    "SALES_ANALYTICS": { "TITLE": "Análisis de Ventas" },
-    "CUSTOMER_INSIGHTS": { "TITLE": "Análisis de Clientes" },
-    "OPERATIONAL_METRICS": { "TITLE": "Métricas Operacionales" },
-    "EXPENSES": { "TITLE": "Gestión de Gastos" },
+    "APPROVALS": {
+      "TITLE": "Aprobaciones"
+    },
+    "FINANCIALS": {
+      "TITLE": "Finanzas"
+    },
+    "INCOME_STATEMENT": {
+      "TITLE": "Estado de Resultados"
+    },
+    "INVENTORY_ANALYTICS": {
+      "TITLE": "Análisis de Inventario"
+    },
+    "SALES_ANALYTICS": {
+      "TITLE": "Análisis de Ventas"
+    },
+    "CUSTOMER_INSIGHTS": {
+      "TITLE": "Análisis de Clientes"
+    },
+    "OPERATIONAL_METRICS": {
+      "TITLE": "Métricas Operacionales"
+    },
+    "EXPENSES": {
+      "TITLE": "Gestión de Gastos"
+    },
     "ACTIONS": {
       "EXPORT": "Exportar CSV",
       "VIEW_DATA": "Ver Datos"

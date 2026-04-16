@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
-import { Observable, from, of } from 'rxjs';
-import { map, shareReplay, catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 export interface DayHours {
     open: string;    // "09:00"
@@ -97,7 +97,7 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
     general: {
         companyName: 'Importadora Euro',
         phone: '+52 444 824 0757',
-        whatsapp: '+52 1 444 200 4677',
+        whatsapp: '+52 444 194 6502',
         email: 'ventas@importadoraeuro.com',
         address: 'San Luis Potosí, México',
         logo: '',
@@ -161,49 +161,54 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
 })
 export class SettingsService {
     private firestore = inject(Firestore);
-    // Use 'as any' only if strict types block doc() creation, but try to avoid if possible.
-
 
     private get configDocRef() { return doc(this.firestore, 'config/website'); }
     private get shippingDocRef() { return doc(this.firestore, 'config/shipping'); }
 
-    // Observable that loads settings once on subscription
-    settings$: Observable<WebsiteSettings> = new Observable<WebsiteSettings>(observer => {
-        Promise.all([
-            getDoc(this.configDocRef),
-            getDoc(this.shippingDocRef)
-        ]).then(([webSnap, shipSnap]) => {
-            const data = webSnap.exists() ? webSnap.data() : {};
+    /** BehaviorSubject — emits null until first load, then the current settings. */
+    private _settings$ = new BehaviorSubject<WebsiteSettings | null>(null);
+
+    /** Observable that components subscribe to. Filters out the initial null. */
+    get settings$(): Observable<WebsiteSettings> {
+        return this._settings$.pipe(filter((s): s is WebsiteSettings => s !== null));
+    }
+
+    /** Fetches fresh data from Firestore and pushes it to the subject. */
+    async loadSettings(): Promise<void> {
+        try {
+            const [webSnap, shipSnap] = await Promise.all([
+                getDoc(this.configDocRef),
+                getDoc(this.shippingDocRef)
+            ]);
+            const data     = webSnap.exists()  ? webSnap.data()  : {};
             const shipData = shipSnap.exists() ? shipSnap.data() : {};
-            
-            observer.next({
-                general: { ...DEFAULT_SETTINGS.general, ...data['general'] },
-                social: { ...DEFAULT_SETTINGS.social, ...data['social'] },
-                businessHours: { ...DEFAULT_SETTINGS.businessHours, ...data['businessHours'] },
-                features: { ...DEFAULT_SETTINGS.features, ...data['features'] },
-                seo: { ...DEFAULT_SETTINGS.seo, ...data['seo'] },
+
+            this._settings$.next({
+                general:       { ...DEFAULT_SETTINGS.general,       ...data['general'] },
+                social:        { ...DEFAULT_SETTINGS.social,         ...data['social'] },
+                businessHours: { ...DEFAULT_SETTINGS.businessHours,  ...data['businessHours'] },
+                features:      { ...DEFAULT_SETTINGS.features,       ...data['features'] },
+                seo:           { ...DEFAULT_SETTINGS.seo,            ...data['seo'] },
                 shipping: {
                     origin: { ...DEFAULT_SETTINGS.shipping.origin, ...(shipData['origin'] || {}) },
                     rules:  { ...DEFAULT_SETTINGS.shipping.rules,  ...(shipData['rules']  || {}) }
                 }
             });
-            observer.complete();
-        }).catch(err => {
-            console.error('SettingsService Error:', err);
-            observer.next(DEFAULT_SETTINGS);
-            observer.complete();
-        });
-    }).pipe(shareReplay(1));
+        } catch (err) {
+            console.error('SettingsService.loadSettings error:', err);
+            // Emit defaults so the UI doesn't hang
+            this._settings$.next({ ...DEFAULT_SETTINGS });
+        }
+    }
 
     async updateSettings(settings: Partial<WebsiteSettings>): Promise<void> {
         const { shipping, ...websiteConfig } = settings;
 
-        const promises = [];
+        const promises: Promise<void>[] = [];
         if (Object.keys(websiteConfig).length > 0) {
             promises.push(setDoc(this.configDocRef, websiteConfig, { merge: true }));
         }
         if (shipping) {
-            // Persist both origin (for Cloud Function) and rules (for storefront checkout)
             const shipPayload: any = { updatedAt: new Date().toISOString() };
             if (shipping.origin) shipPayload.origin = shipping.origin;
             if (shipping.rules)  shipPayload.rules  = shipping.rules;
@@ -211,5 +216,7 @@ export class SettingsService {
         }
 
         await Promise.all(promises);
+        // Re-fetch so next subscriber gets fresh data
+        await this.loadSettings();
     }
 }

@@ -83,6 +83,7 @@ export class ChatWidgetComponent implements OnInit {
   }
 
   openChat() {
-    window.open('https://wa.me/5214442004677', '_blank');
+    window.open('https://wa.me/524441946502', '_blank');
+
   }
 }

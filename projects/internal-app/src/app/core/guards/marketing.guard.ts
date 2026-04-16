@@ -29,7 +29,7 @@ export const marketingGuard: CanActivateFn = (route, state) => {
                 return false;
             }
 
-            const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MARKETING', 'OPERATIONS'];
+            const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'MARKETING'];
             if (allowedRoles.includes(profile.role)) {
                 return true;
             }

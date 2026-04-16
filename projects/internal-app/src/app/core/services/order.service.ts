@@ -4,7 +4,9 @@ import {
     collection,
     collectionData,
     doc,
+    getDoc,
     addDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     getDocs,
@@ -13,8 +15,10 @@ import {
     orderBy,
     limit,
     Timestamp,
+    increment,
     DocumentReference
 } from '@angular/fire/firestore';
+
 import { Observable, map, from, tap } from 'rxjs';
 import { Order, OrderStatus } from '../models/order.model';
 import { StateRegistryService } from './state-registry.service';
@@ -185,7 +189,10 @@ export class OrderService {
 
             const docRef = await addDoc(this.ordersCollection, orderData);
 
-            // 3. UPDATE RESERVATIONS WITH REAL ORDER ID (Optional Polish)
+            // 3. Rollup: persist this order into the monthly_stats aggregate (1 write, 0 reads)
+            await this.updateMonthlyRollup(order, +1);
+
+            // 4. UPDATE RESERVATIONS WITH REAL ORDER ID (Optional Polish)
             // Currently they are linked to 'PENDING_ORDER'. 
             // Ideally we update the Ledger entries' referenceId. 
             // But that's expensive. 'PENDING_ORDER' checks might be confusing.
@@ -194,6 +201,7 @@ export class OrderService {
             // Let's rely on the fact that the Order exists now.
 
             return docRef.id;
+
 
         } catch (error) {
             console.error('Error creating order (Rolling back reservations):', error);
@@ -304,9 +312,66 @@ export class OrderService {
             }
 
             await updateDoc(orderDoc, updateData);
+
+            // Monthly rollup: adjust revenue when order enters or leaves a cancelled/refunded state.
+            const VOID_STATUSES: OrderStatus[] = ['cancelled', 'refunded', 'returned'];
+            const wasVoid  = VOID_STATUSES.includes(previousStatus);
+            const isVoid   = VOID_STATUSES.includes(status);
+            if (!wasVoid && isVoid) {
+                // Order is being cancelled/refunded → subtract its revenue from the rollup
+                await this.updateMonthlyRollup(currentOrder, -1);
+            } else if (wasVoid && !isVoid) {
+                // Order is being restored from cancelled → re-add revenue
+                await this.updateMonthlyRollup(currentOrder, +1);
+            }
+
         } catch (error) {
+
             console.error('Error updating order status:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Atomically update the monthly_stats/YYYY-MM rollup document.
+     *
+     * delta = +1  → add this order's contribution
+     * delta = -1  → subtract (cancellation / refund)
+     *
+     * Uses setDoc({ merge: true }) + increment() so:
+     *   • No reads required
+     *   • Concurrent writes are safe (Firestore server-side increment)
+     *   • Document is auto-created on first use
+     */
+    private async updateMonthlyRollup(order: Omit<Order, 'id'> | Order, delta: 1 | -1): Promise<void> {
+        try {
+            // Determine the month from order.createdAt (may be a Date, Timestamp, or null)
+            const createdAt: any = (order as any).createdAt;
+            let date: Date;
+            if (createdAt instanceof Date)       date = createdAt;
+            else if (createdAt?.toDate)          date = createdAt.toDate();
+            else                                 date = new Date();
+
+            const yyyyMm = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const channel = (order as any).sourceChannel ?? 'storefront';
+
+            // Revenue only counts for non-void orders (the caller controls delta direction)
+            const salesDelta = (order.total ?? 0) * delta;
+            const piecesDelta = (order.items ?? []).reduce((s: number, i: any) => s + (i.quantity ?? 0), 0) * delta;
+
+            const rollupRef = doc(this.firestore, `monthly_stats/${yyyyMm}`);
+            await setDoc(rollupRef, {
+                sales:   increment(salesDelta),
+                orders:  increment(delta),       // +1 or -1 to total order count
+                pieces:  increment(piecesDelta),
+                byChannel: {
+                    [channel]: increment(salesDelta),
+                },
+                updatedAt: Timestamp.now(),
+            }, { merge: true });
+        } catch (err) {
+            // Non-critical — log but never throw; the order itself has already been written
+            console.warn('[OrderService] monthly_stats rollup write failed (non-critical):', err);
         }
     }
 

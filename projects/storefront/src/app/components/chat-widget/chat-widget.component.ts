@@ -132,6 +132,7 @@ export class ChatWidgetComponent implements OnInit {
 
     // ── Open WhatsApp with pre-filled message ─────────────────────────────
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/5214442004677?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/524441946502?text=${encoded}`, '_blank');
+
   }
 }

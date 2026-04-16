@@ -40,24 +40,30 @@
         <div class="seg-skeleton">
             <!-- KPI strip -->
             <div class="sk-kpi-grid">
-                <div class="sk-kpi-card" *ngFor="let i of [1,2,3,4]">
+                @for (i of [1,2,3,4]; track i) {
+                <div class="sk-kpi-card">
                     <div class="skeleton sk-h-2xl sk-w-px"></div>
                     <div class="skeleton sk-h-xs sk-w-half"></div>
                 </div>
+                }
             </div>
             <!-- Chips -->
             <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-                <div class="skeleton" style="width:70px;height:30px;border-radius:50px" *ngFor="let i of [1,2,3,4,5,6,7]"></div>
+                @for (i of [1,2,3,4,5,6,7]; track i) {
+                <div class="skeleton" style="width:70px;height:30px;border-radius:50px"></div>
+                }
             </div>
             <!-- Table -->
             <div class="sk-table">
                 <div class="sk-table-head"><div class="skeleton sk-h-xs sk-w-full"></div></div>
-                <div class="sk-table-row" *ngFor="let i of [1,2,3,4,5,6,7]">
+                @for (i of [1,2,3,4,5,6,7]; track i) {
+                <div class="sk-table-row">
                     <div class="skeleton" style="width:34px;height:34px;border-radius:50%;flex-shrink:0"></div>
                     <div class="skeleton sk-h-sm" style="flex:2"></div>
                     <div class="skeleton sk-h-sm" style="flex:1"></div>
                     <div class="skeleton sk-h-sm" style="flex:1"></div>
                 </div>
+                }
             </div>
         </div>
     }
@@ -128,7 +134,7 @@
         <div class="seg-chips-wrap">
             <button class="seg-chip" [class.active]="activeSegment() === 'all'"
                     (click)="activeSegment.set('all')">
-                All ({{ totalCustomers() }})
+                {{ 'MARKETING.SEGMENTS.FILTER_ALL' | translate }} ({{ totalCustomers() }})
             </button>
             @for (key of segmentKeys; track key) {
                 <button class="seg-chip seg-chip--tip"
@@ -150,7 +156,7 @@
                 <span class="seg-desc-text">{{ getMeta(activeSegment())?.desc }}</span>
                 <button class="seg-campaign-btn" (click)="createCampaignForSegment()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-                    Create Campaign for {{ getMeta(activeSegment())?.label }}
+                    {{ 'MARKETING.SEGMENTS.CREATE_CAMPAIGN_FOR' | translate }} {{ getMeta(activeSegment())?.label }}
                 </button>
             </div>
         }
@@ -158,22 +164,22 @@
         <!-- ── Customer table ─────────────────────────────────────────────────── -->
         @if (filtered().length === 0) {
             <div class="seg-empty">
-                <p>No customers in this segment for the selected period.</p>
+                <p>{{ 'MARKETING.SEGMENTS.EMPTY_SEGMENT' | translate }}</p>
             </div>
         } @else {
             <div class="seg-table-wrap">
                 <table class="seg-table">
                     <thead>
                         <tr>
-                            <th>Customer</th>
-                            <th class="text-center">Segment</th>
-                            <th class="text-right">Orders</th>
-                            <th class="text-right">Revenue</th>
-                            <th class="text-right">Last Order</th>
+                            <th>{{ 'MARKETING.SEGMENTS.COL_CUSTOMER' | translate }}</th>
+                            <th class="text-center">{{ 'MARKETING.SEGMENTS.COL_SEGMENT' | translate }}</th>
+                            <th class="text-right">{{ 'MARKETING.SEGMENTS.COL_ORDERS' | translate }}</th>
+                            <th class="text-right">{{ 'MARKETING.SEGMENTS.COL_REVENUE' | translate }}</th>
+                            <th class="text-right">{{ 'MARKETING.SEGMENTS.COL_LAST_ORDER' | translate }}</th>
                             <th class="text-center">R</th>
                             <th class="text-center">F</th>
                             <th class="text-center">M</th>
-                            <th class="text-center">Score</th>
+                            <th class="text-center">{{ 'MARKETING.SEGMENTS.COL_SCORE' | translate }}</th>
                         </tr>
                     </thead>
                     <tbody>

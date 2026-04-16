@@ -8,56 +8,49 @@ import { interval, Subscription } from 'rxjs';
     selector: 'app-countdown-timer',
     standalone: true,
     imports: [CommonModule, TranslateModule],
-    template: `
-    @if (isActive() && timeRemaining()) {
-        <div class="bg-gradient-to-r from-red-600 to-pink-600 text-white py-2 px-4 text-center font-bold text-sm md:text-base flex items-center justify-center gap-4 animate-in slide-in-from-top duration-500 shadow-md relative z-50">
-            <span class="hidden md:inline">{{ campaignName() }} {{ 'CAMPAIGN.TERMINATES_IN' | translate }}</span>
-            <span class="md:hidden">{{ 'CAMPAIGN.ENDS_IN' | translate }}</span>
-
-            <div class="flex items-center gap-2 font-mono text-lg tracking-wider bg-black/20 px-3 py-1 rounded-lg">
-                <div class="flex flex-col items-center leading-none">
-                    <span>{{ timeRemaining().days }}</span>
-                    <span class="text-[9px] opacity-70 font-sans">d</span>
-                </div>
-                <span>:</span>
-                <div class="flex flex-col items-center leading-none">
-                    <span>{{ timeRemaining().hours }}</span>
-                    <span class="text-[9px] opacity-70 font-sans">h</span>
-                </div>
-                <span>:</span>
-                <div class="flex flex-col items-center leading-none">
-                    <span>{{ timeRemaining().minutes }}</span>
-                    <span class="text-[9px] opacity-70 font-sans">m</span>
-                </div>
-                <span>:</span>
-                <div class="flex flex-col items-center leading-none">
-                    <span class="text-yellow-300">{{ timeRemaining().seconds }}</span>
-                    <span class="text-[9px] opacity-70 font-sans">s</span>
-                </div>
-            </div>
-
-            <span class="hidden md:inline text-xs bg-white/20 px-2 py-0.5 rounded uppercase tracking-wider">{{ 'CAMPAIGN.DONT_MISS' | translate }}</span>
-        </div>
-    }
-  `
+    templateUrl: './countdown-timer.component.html',
+    styleUrl: './countdown-timer.component.css'
 })
 export class CountdownTimerComponent implements OnInit, OnDestroy {
     private campaignService = inject(CampaignService);
     private subscription?: Subscription;
 
     // Computed State
-    isActive = computed(() => !!this.campaignService.activeCampaign());
+    isActive     = computed(() => !!this.campaignService.activeCampaign());
     campaignName = computed(() => this.campaignService.activeCampaign()?.name || '');
+    coupon       = computed(() => this.campaignService.campaignCoupon());
 
     // Timer State
-    endDate: Date | null = null;
+    endDate       = signal<Date | null>(null);
     timeRemaining = signal<any>(null);
+    copied        = false;
+
+    async copyCode() {
+        const code = this.coupon()?.code;
+        if (!code) return;
+        try { await navigator.clipboard.writeText(code); } catch {
+            const ta = document.createElement('textarea');
+            ta.value = code; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        this.copied = true;
+        setTimeout(() => this.copied = false, 2500);
+    }
+
+    /** Returns "$ 250 off" or "20% off" depending on coupon type */
+    couponDiscountLabel(): string {
+        const c = this.coupon();
+        if (!c) return '';
+        return c.type === 'percentage'
+            ? `${c.value}% off`
+            : `$${c.value} MXN off`;
+    }
 
     constructor() {
         effect(() => {
             const campaign = this.campaignService.activeCampaign();
             if (campaign) {
-                this.endDate = campaign.endDate.toDate();
+                this.endDate.set(campaign.endDate.toDate());
                 this.startTimer();
             } else {
                 this.stopTimer();
@@ -73,12 +66,12 @@ export class CountdownTimerComponent implements OnInit, OnDestroy {
 
     private startTimer() {
         this.stopTimer();
-        if (!this.endDate) return;
+        const end = this.endDate();
+        if (!end) return;
 
         this.subscription = interval(1000).subscribe(() => {
-            const now = new Date().getTime();
-            const end = this.endDate!.getTime();
-            const distance = end - now;
+            const now      = new Date().getTime();
+            const distance = end.getTime() - now;
 
             if (distance < 0) {
                 this.timeRemaining.set(null);
@@ -86,14 +79,14 @@ export class CountdownTimerComponent implements OnInit, OnDestroy {
                 return;
             }
 
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const days    = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours   = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
             this.timeRemaining.set({
-                days: this.pad(days),
-                hours: this.pad(hours),
+                days:    this.pad(days),
+                hours:   this.pad(hours),
                 minutes: this.pad(minutes),
                 seconds: this.pad(seconds)
             });

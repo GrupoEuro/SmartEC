@@ -9,7 +9,9 @@ import { QrAnalyticsService, QrScan, QrFunnelStats, CartItem } from '../../../ad
 type SortCol  = 'scannedAt' | 'cartValue' | 'orderTotal' | 'cartStatus' | 'converted';
 type ScanFilter = 'all' | 'converted' | 'cart_only' | 'no_action' | 'wa_clicked';
 
-interface TimelinePoint { label: string; count: number; }
+interface TimelinePoint  { label: string; count: number; }
+interface HeatmapBucket  { hour: number; label: string; count: number; }
+
 
 @Component({
     selector: 'app-qr-report',
@@ -91,6 +93,69 @@ export class QrReportComponent implements OnInit {
     });
 
     timelineMax = computed(() => Math.max(1, ...this.timeline().map(p => p.count)));
+
+    // ── Time-of-day heatmap (24 buckets, local timezone) ──────────────────────
+    hourlyHeatmap = computed<HeatmapBucket[]>(() => {
+        const buckets = Array.from({ length: 24 }, (_, h) => ({
+            hour: h,
+            label: h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`,
+            count: 0,
+        }));
+        for (const s of this.scans()) {
+            if (!s.scannedAt) continue;
+            const h = new Date(s.scannedAt).getHours();
+            buckets[h].count++;
+        }
+        return buckets;
+    });
+
+    heatmapMax  = computed(() => Math.max(1, ...this.hourlyHeatmap().map(b => b.count)));
+    peakHour    = computed(() => {
+        const peak = this.hourlyHeatmap().reduce((best, b) => b.count > best.count ? b : best, this.hourlyHeatmap()[0]);
+        return peak.count > 0 ? peak : null;
+    });
+
+    // ── Repeat scan detection ─────────────────────────────────────────────────
+    repeatScans = computed(() => {
+        const freq = new Map<string, number>();
+        for (const s of this.scans()) {
+            freq.set(s.sessionId, (freq.get(s.sessionId) ?? 0) + 1);
+        }
+        return {
+            repeaters:    [...freq.values()].filter(v => v > 1).length,
+            totalSessions: freq.size,
+            repeatRate:   freq.size > 0
+                ? ([...freq.values()].filter(v => v > 1).length / freq.size) * 100
+                : 0,
+        };
+    });
+
+    // ── Scan-to-cart latency ──────────────────────────────────────────────────
+    /** Median minutes from first scan of a session to first cart add (sessions that converted to cart only) */
+    medianLatencyMin = computed(() => {
+        const cartScans = this.scans().filter(s => s.scannedAt && (s.cartValue ?? 0) > 0);
+        if (cartScans.length === 0) return null;
+
+        // Group by session, take earliest scan as reference
+        const sessionFirst = new Map<string, number>();
+        for (const s of this.scans()) {
+            if (!s.scannedAt) continue;
+            const prev = sessionFirst.get(s.sessionId);
+            if (!prev || s.scannedAt < prev) sessionFirst.set(s.sessionId, s.scannedAt);
+        }
+
+        const latencies: number[] = [];
+        for (const s of cartScans) {
+            const first = sessionFirst.get(s.sessionId) ?? s.scannedAt;
+            latencies.push((s.scannedAt - first) / 60000); // ms → minutes
+        }
+        latencies.sort((a, b) => a - b);
+        const mid = Math.floor(latencies.length / 2);
+        return latencies.length % 2 === 0
+            ? (latencies[mid - 1] + latencies[mid]) / 2
+            : latencies[mid];
+    });
+
 
     // Funnel steps
     funnelSteps(s: QrFunnelStats) {

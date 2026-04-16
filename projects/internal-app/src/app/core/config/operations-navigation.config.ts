@@ -137,6 +137,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                     text: 'BULK',
                     color: 'bg-emerald-600'
                 }
+            },
+            {
+                id: 'price_intelligence',
+                title: 'Price Intelligence',
+                icon: 'trending-up',
+                route: '/operations/price-intelligence',
+                badge: { text: 'Nuevo', color: 'bg-violet-600' }
             }
         ]
     },

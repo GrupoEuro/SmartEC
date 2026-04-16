@@ -40,134 +40,371 @@
     </div>
 
     <!-- ── Active Now ─────────────────────────────────────────────────────── -->
-    @if (active().length > 0) {
-        <section class="camp-section">
-            <div class="camp-section-label live">
-                <span class="live-dot"></span>
-                {{ 'MARKETING.CAMPAIGNS.ACTIVE_NOW' | translate }}
-            </div>
-            <div class="camp-list">
-                @for (c of active(); track c.id) {
-                    <div class="camp-card active-card" [style.--theme-color]="themeColor(c.themeId)">
-                        <div class="camp-card-left">
-                            <div class="camp-theme-dot" [style.background]="themeColor(c.themeId)"></div>
-                            <div>
-                                <span class="camp-name">{{ c.name }}</span>
-                                <div class="camp-meta">
-                                    <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
-                                    <span class="camp-dates">
-                                        Termina en {{ daysRemaining(c.endDate) }} días · Prioridad {{ c.priority }}
-                                    </span>
-                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
-                                        <span class="camp-perf-pill live">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
-                                            {{ perfFor(c.name).orders }} órdenes · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        <div class="camp-card-actions">
-                            <a [routerLink]="['edit', c.id]" class="camp-edit-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                Editar
-                            </a>
-                        </div>
+    <section class="camp-section">
+        <div class="camp-section-label live">
+            <span class="live-dot"></span>
+            {{ 'MARKETING.CAMPAIGNS.ACTIVE_NOW' | translate }}
+        </div>
+
+        @if (active().length === 0) {
+        <div class="camp-empty camp-empty--inline">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <p>{{ 'MARKETING.CAMPAIGNS.NO_ACTIVE' | translate }}</p>
+            <a routerLink="new" class="camp-new-btn sm">+ {{ 'MARKETING.CAMPAIGNS.NEW' | translate }}</a>
+        </div>
+        }
+
+        <div class="camp-grid">
+        @for (c of active(); track c.id) {
+        <div class="camp-card-v2 is-active" [style.--tc]="themeColor(c.themeId)">
+
+            <!-- ── Media column ────────────────────────────────────────── -->
+            <div class="camp-media">
+                <div class="camp-thumb">
+                    @if (slideThumb(c)) {
+                    <img [src]="slideThumb(c)" alt="{{ c.name }}" class="thumb-img" loading="lazy" />
+                    } @else {
+                    <div class="thumb-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>{{ c.themeId }}</span>
                     </div>
+                    }
+                    <div class="live-badge-overlay">
+                        <span class="live-dot-sm"></span> LIVE
+                    </div>
+                </div>
+
+                <!-- Slide strip -->
+                @if ((c.slides ?? []).length > 1) {
+                <div class="slide-strip">
+                    @for (s of (c.slides ?? []).slice(0, 3); track s.order) {
+                    <div class="slide-mini">
+                        <img [src]="s.imageUrl" alt="" loading="lazy" />
+                    </div>
+                    }
+                    @if ((c.slides ?? []).length > 3) {
+                    <div class="slide-mini-more">+{{ (c.slides ?? []).length - 3 }}</div>
+                    }
+                </div>
                 }
             </div>
-        </section>
-    } @else {
-        <section class="camp-section">
-            <div class="camp-section-label live">
-                <span class="live-dot"></span>
-                {{ 'MARKETING.CAMPAIGNS.ACTIVE_NOW' | translate }}
+
+            <!-- ── Info column ─────────────────────────────────────────── -->
+            <div class="camp-info">
+
+                <!-- Name row + status -->
+                <div class="camp-info-top">
+                    <div class="camp-name-block">
+                        <span class="camp-name-v2">{{ c.name }}</span>
+                        <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
+                    </div>
+                    <span class="days-badge days-badge--{{ urgencyClass(daysRemaining(c.endDate)) }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="9" height="9"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        {{ daysRemaining(c.endDate) }} días
+                    </span>
+                </div>
+
+                <!-- Timeline progress bar -->
+                <div class="camp-progress-wrap" [title]="campaignProgress(c) + '% completado'">
+                    <div class="camp-progress-bar" [style.width.%]="campaignProgress(c)"></div>
+                </div>
+
+                <!-- Dates row -->
+                <div class="camp-dates-v2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {{ c.startDate?.toDate() | date:'d MMM':'':'es' }} → {{ c.endDate?.toDate() | date:'d MMM yyyy':'':'es' }}
+                    <span class="dates-sep">·</span>
+                    {{ duration(c.startDate, c.endDate) }} días totales
+                    <span class="dates-sep">·</span>
+                    {{ campaignProgress(c) }}%
+                </div>
+
+                <!-- Description -->
+                @if (c.description) {
+                <p class="camp-desc-preview">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    {{ c.description }}
+                </p>
+                }
+
+                <!-- Promo strip preview -->
+                @if (c.promoStripText) {
+                <div class="camp-promo-preview">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9z"/></svg>
+                    {{ c.promoStripText }}
+                </div>
+                }
+
+                <!-- Chips: coupon · perf · slide stats -->
+                <div class="camp-chips">
+                    @if (couponsLoaded() && couponFor(c.activeCouponId); as cp) {
+                    <span class="camp-coupon-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {{ cp.code }}
+                        @if (cp.type === 'percentage') { · {{ cp.value }}% off }
+                        @else { · ${{ cp.value }} off }
+                    </span>
+                    }
+                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
+                    <span class="camp-perf-pill live">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                        {{ perfFor(c.name).orders }} órdenes · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    </span>
+                    }
+                    @if ((c.slides ?? []).length > 0) {
+                    <span class="stat-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                        {{ (c.slides ?? []).length }} slides
+                    </span>
+                    }
+                    @if (ctaCount(c) > 0) {
+                    <span class="stat-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        {{ ctaCount(c) }} CTAs
+                    </span>
+                    }
+                    @if (totalImpressions(c) > 0) {
+                    <span class="stat-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {{ totalImpressions(c) }} impresiones
+                    </span>
+                    }
+                    @if (ctr(c) !== null) {
+                    <span class="stat-chip accent">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        {{ ctr(c) }}% CTR
+                    </span>
+                    }
+                </div>
+
+                <!-- Conversion Funnel (only when we have at least impression data) -->
+                @if (!perfLoading() && totalImpressions(c) > 0) {
+                <div class="camp-funnel">
+                    <div class="cf-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Embudo de conversión
+                    </div>
+                    <div class="cf-steps">
+                        @for (step of funnelSteps(c); track step.label) {
+                        <div class="cf-step">
+                            <span class="cf-label">{{ step.label }}</span>
+                            <div class="cf-bar-wrap">
+                                <div class="cf-bar"
+                                     [style.width]="step.pct + '%'"
+                                     [style.background]="step.color">
+                                </div>
+                            </div>
+                            <span class="cf-val" [style.color]="step.color">{{ step.value }}</span>
+                            <span class="cf-pct">{{ step.pct.toFixed(1) }}%</span>
+                            @if (step.dropPct !== null && step.dropPct > 0) {
+                            <span class="cf-drop">↓ {{ step.dropPct.toFixed(0) }}%</span>
+                            }
+                        </div>
+                        }
+                    </div>
+                    @if (perfFor(c.name).revenue > 0) {
+                    <div class="cf-revenue">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+                        Ingreso atribuido: <strong>{{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}</strong>
+                    </div>
+                    }
+                </div>
+                }
+
+                <!-- Footer: priority + actions -->
+
+                <div class="camp-action-bar">
+                    <div class="priority-row">
+                        <div class="priority-dots">
+                            @for (i of priorityScale; track i) {
+                            <div class="p-dot" [class.filled]="i <= c.priority"></div>
+                            }
+                        </div>
+                        <span class="priority-txt">{{ 'MARKETING.CAMPAIGNS.PRIORITY' | translate }} {{ c.priority }}/10</span>
+                    </div>
+                    <div class="camp-btn-group">
+                        <a [routerLink]="['edit', c.id]" class="camp-btn camp-btn--primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            {{ 'MARKETING.CAMPAIGNS.EDIT' | translate }}
+                        </a>
+                        <a [href]="storefrontUrl(c)" target="_blank" rel="noopener" class="camp-btn camp-btn--ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            {{ 'MARKETING.CAMPAIGNS.PREVIEW' | translate }}
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="camp-empty camp-empty--inline">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <p>Ninguna campaña activa en este momento.</p>
-                <a routerLink="new" class="camp-new-btn sm">+ Nueva campaña</a>
-            </div>
-        </section>
-    }
+        </div>
+        }
+        </div>
+    </section>
 
     <!-- ── Upcoming ───────────────────────────────────────────────────────── -->
     <section class="camp-section">
         <div class="camp-section-label">{{ 'MARKETING.CAMPAIGNS.UPCOMING_LABEL' | translate }}</div>
+
         @if (upcoming().length === 0) {
-            <div class="camp-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <p>{{ 'MARKETING.CAMPAIGNS.EMPTY_UPCOMING' | translate }}</p>
-                <a routerLink="new" class="camp-new-btn sm">
-                    + {{ 'MARKETING.CAMPAIGNS.NEW' | translate }}
-                </a>
-            </div>
-        } @else {
-            <div class="camp-list">
-                @for (c of upcoming(); track c.id) {
-                    <div class="camp-card upcoming-card" [style.--theme-color]="themeColor(c.themeId)">
-                        <div class="camp-card-left">
-                            <div class="camp-theme-dot upcoming" [style.background]="themeColor(c.themeId)"></div>
-                            <div>
-                                <span class="camp-name dim">{{ c.name }}</span>
-                                <div class="camp-meta">
-                                    <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
-                                    <span class="camp-dates">
-                                        Inicia {{ c.startDate.toDate() | date:'mediumDate':'':'es' }} · {{ duration(c.startDate, c.endDate) }} días
-                                    </span>
-                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
-                                        <span class="camp-perf-pill">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
-                                            {{ perfFor(c.name).orders }} órdenes · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        <div class="camp-card-actions">
-                            <a [routerLink]="['edit', c.id]" class="camp-edit-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                Editar
-                            </a>
-                        </div>
+        <div class="camp-empty">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <p>{{ 'MARKETING.CAMPAIGNS.EMPTY_UPCOMING' | translate }}</p>
+            <a routerLink="new" class="camp-new-btn sm">+ {{ 'MARKETING.CAMPAIGNS.NEW' | translate }}</a>
+        </div>
+        }
+
+        <div class="camp-grid">
+        @for (c of upcoming(); track c.id) {
+        <div class="camp-card-v2 is-upcoming" [style.--tc]="themeColor(c.themeId)">
+
+            <!-- Media column -->
+            <div class="camp-media">
+                <div class="camp-thumb upcoming-thumb">
+                    @if (slideThumb(c)) {
+                    <img [src]="slideThumb(c)" alt="{{ c.name }}" class="thumb-img" loading="lazy" />
+                    } @else {
+                    <div class="thumb-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <span>{{ c.themeId }}</span>
                     </div>
+                    }
+                    <div class="upcoming-badge-overlay">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        PRÓXIMA
+                    </div>
+                </div>
+                @if ((c.slides ?? []).length > 1) {
+                <div class="slide-strip">
+                    @for (s of (c.slides ?? []).slice(0, 3); track s.order) {
+                    <div class="slide-mini upcoming-mini">
+                        <img [src]="s.imageUrl" alt="" loading="lazy" />
+                    </div>
+                    }
+                    @if ((c.slides ?? []).length > 3) {
+                    <div class="slide-mini-more">+{{ (c.slides ?? []).length - 3 }}</div>
+                    }
+                </div>
                 }
             </div>
+
+            <!-- Info column -->
+            <div class="camp-info">
+                <div class="camp-info-top">
+                    <div class="camp-name-block">
+                        <span class="camp-name-v2 dim">{{ c.name }}</span>
+                        <span class="theme-pill" [style.--c]="themeColor(c.themeId)">{{ c.themeId }}</span>
+                    </div>
+                </div>
+
+                <!-- Countdown chip -->
+                <div class="launch-countdown">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Lanza en {{ daysRemaining(c.startDate) }} días · {{ c.startDate?.toDate() | date:'d MMM yyyy':'':'es' }}
+                </div>
+
+                <!-- Dates + duration -->
+                <div class="camp-dates-v2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {{ c.startDate?.toDate() | date:'d MMM':'':'es' }} → {{ c.endDate?.toDate() | date:'d MMM yyyy':'':'es' }}
+                    <span class="dates-sep">·</span>
+                    {{ duration(c.startDate, c.endDate) }} días
+                </div>
+
+                @if (c.description) {
+                <p class="camp-desc-preview">{{ c.description }}</p>
+                }
+                @if (c.promoStripText) {
+                <div class="camp-promo-preview">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9z"/></svg>
+                    {{ c.promoStripText }}
+                </div>
+                }
+
+                <div class="camp-chips">
+                    @if (couponsLoaded() && couponFor(c.activeCouponId); as cp) {
+                    <span class="camp-coupon-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        {{ cp.code }} @if (cp.type === 'percentage') { · {{ cp.value }}% off } @else { · ${{ cp.value }} off }
+                    </span>
+                    }
+                    @if ((c.slides ?? []).length > 0) {
+                    <span class="stat-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                        {{ (c.slides ?? []).length }} slides
+                    </span>
+                    }
+                    @if (ctaCount(c) > 0) {
+                    <span class="stat-chip">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="9" height="9"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        {{ ctaCount(c) }} CTAs
+                    </span>
+                    }
+                </div>
+
+                <div class="camp-action-bar">
+                    <div class="priority-row">
+                        <div class="priority-dots">
+                            @for (i of priorityScale; track i) {
+                            <div class="p-dot" [class.filled]="i <= c.priority"></div>
+                            }
+                        </div>
+                        <span class="priority-txt">{{ 'MARKETING.CAMPAIGNS.PRIORITY' | translate }} {{ c.priority }}/10</span>
+                    </div>
+                    <div class="camp-btn-group">
+                        <a [routerLink]="['edit', c.id]" class="camp-btn camp-btn--primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            {{ 'MARKETING.CAMPAIGNS.EDIT' | translate }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
         }
+        </div>
     </section>
 
     <!-- ── Past ────────────────────────────────────────────────────────────── -->
     @if (past().length > 0) {
-        <details class="camp-past-details">
-            <summary class="camp-past-summary">
-                <span>{{ 'MARKETING.CAMPAIGNS.PAST_LABEL' | translate }} ({{ past().length }})</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" class="chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            </summary>
-            <div class="camp-list past-list">
-                @for (c of past(); track c.id) {
-                    <div class="camp-card past-card">
-                        <div class="camp-card-left">
-                            <div class="camp-theme-dot past"></div>
-                            <div>
-                                <span class="camp-name past-name">{{ c.name }}</span>
-                                <div class="camp-meta">
-                                    <span class="camp-dates">Terminó el {{ c.endDate.toDate() | date:'shortDate':'':'es' }}</span>
-                                    @if (!perfLoading() && perfFor(c.name).orders > 0) {
-                                        <span class="camp-perf-pill">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
-                                            {{ perfFor(c.name).orders }} órdenes · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                        <a [routerLink]="['edit', c.id]" class="camp-edit-btn ghost">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            Ver
-                        </a>
-                    </div>
+    <details class="camp-past-details">
+        <summary class="camp-past-summary">
+            <span>{{ 'MARKETING.CAMPAIGNS.PAST_LABEL' | translate }} ({{ past().length }})</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" class="chevron"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+
+        <div class="past-list">
+        @for (c of past(); track c.id) {
+        <div class="camp-card-past">
+            <!-- Mini thumb -->
+            <div class="past-thumb">
+                @if (slideThumb(c)) {
+                <img [src]="slideThumb(c)" alt="{{ c.name }}" loading="lazy" class="past-thumb-img" />
+                } @else {
+                <div class="past-thumb-placeholder" [style.background]="themeColor(c.themeId) + '22'">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" [style.color]="themeColor(c.themeId)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
                 }
             </div>
-        </details>
+
+            <!-- Past card info -->
+            <div class="past-info">
+                <span class="past-name">{{ c.name }}</span>
+                <span class="past-dates">{{ c.startDate?.toDate() | date:'d MMM':'':'es' }}–{{ c.endDate?.toDate() | date:'d MMM yyyy':'':'es' }} · {{ duration(c.startDate, c.endDate) }}d</span>
+            </div>
+
+            <!-- Past perf -->
+            @if (!perfLoading() && perfFor(c.name).orders > 0) {
+            <span class="camp-perf-pill">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ perfFor(c.name).orders }} órdenes · {{ $any(perfFor(c.name).revenue) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+            </span>
+            }
+
+            <a [routerLink]="['edit', c.id]" class="camp-btn camp-btn--ghost compact">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                {{ 'MARKETING.CAMPAIGNS.VIEW' | translate }}
+            </a>
+        </div>
+        }
+        </div>
+    </details>
     }
+
 </div>

@@ -56,3 +56,18 @@
 ::ng-deep .gm-style-iw-c > button {
     display: none !important;
 }
+/* ── Recent Orders collapsible list layout ────────────────────────── */
+.recent-orders-headers {
+    grid-template-columns: 32px 1fr 1fr 140px 120px 120px 100px;
+}
+
+.order-row-grid {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+}
+
+@media (min-width: 768px) {
+    .order-row-grid {
+        grid-template-columns: 32px 1fr 1fr 140px 120px 120px 100px;
+    }
+}

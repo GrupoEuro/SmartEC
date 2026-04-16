@@ -84,17 +84,23 @@ export class TrackingService {
     }
 
     private injectMeta(id: string) {
-        if ((window as any).fbq) return;
+        // Only skip if the real fbevents.js SDK is already fully loaded (fbq.loaded flag is set by FB's script).
+        // Do NOT skip just because window.fbq exists — index.html creates a queue stub intentionally.
         const f = window as any;
-        f.fbq = function(...a: any[]) { f.fbq.callMethod ? f.fbq.callMethod(...a) : f.fbq.queue.push(a); };
+        if (f.fbq?.loaded) return; // Already fully initialized
+
+        if (!f.fbq) {
+            f.fbq = function(...a: any[]) { f.fbq.callMethod ? f.fbq.callMethod(...a) : f.fbq.queue.push(a); };
+        }
         if (!f._fbq) f._fbq = f.fbq;
-        f.fbq.push = f.fbq; f.fbq.loaded = true; f.fbq.version = '2.0'; f.fbq.queue = [];
+        f.fbq.push = f.fbq; f.fbq.loaded = true; f.fbq.version = '2.0'; f.fbq.queue = f.fbq.queue || [];
         const s = document.createElement('script'); s.async = true;
         s.src = 'https://connect.facebook.net/en_US/fbevents.js';
         document.head.appendChild(s);
         f.fbq('init', id);
         f.fbq('track', 'PageView');
     }
+
 
     private injectClarity(id: string) {
         if ((window as any).clarity?.q) return;

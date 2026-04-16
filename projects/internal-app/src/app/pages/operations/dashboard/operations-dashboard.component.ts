@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
 import { OrderPriorityService } from '../../../core/services/order-priority.service';
@@ -123,15 +125,78 @@ const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
     styleUrls: ['./operations-dashboard.component.css']
 })
 export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
-    private orderService = inject(OrderService);
-    private priorityService = inject(OrderPriorityService);
+    private orderService      = inject(OrderService);
+    private priorityService   = inject(OrderPriorityService);
     private assignmentService = inject(OrderAssignmentService);
-    private toast = inject(ToastService);
-    private translate = inject(TranslateService);
+    private firestore         = inject(Firestore);
+    private toast             = inject(ToastService);
+    private translate         = inject(TranslateService);
+
 
     timeframe = signal<'MTD' | 'YTD'>('MTD');
     channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos'>('ALL');
     allFetchedOrders: Order[] = [];
+
+    // Channel breakdown — always computed on ALL orders regardless of active filter
+    channelBreakdown = signal<{
+        channel: string;
+        label: string;
+        icon: string;
+        color: string;
+        orders: number;
+        revenue: number;
+        pending: number;
+        // MeLi 2×2 segment matrix: fulfillment mode × listing tier
+        // Each order belongs to exactly ONE bucket.
+        meliFullClassic?:     number; // Meli Full + Classic listing
+        meliFullPremium?:     number; // Meli Full + Premium listing
+        meliMerchantClassic?: number; // We ship  + Classic listing
+        meliMerchantPremium?: number; // We ship  + Premium listing
+
+    }[]>([]);
+
+    // — Year-over-Year comparison —
+    /** Raw LY period data fetched from monthly_stats (1–12 reads depending on MTD/YTD) */
+    lyPeriodStats = signal<{ sales: number; orders: number; pieces: number } | null>(null);
+
+    /** Human-readable label for the LY period, adapts to MTD vs YTD.
+     *  MTD  → 'abr 2024'
+     *  YTD  → 'ene–abr 2024'
+     */
+    lyPeriodLabel = computed(() => {
+        const now    = new Date();
+        const lyYear = now.getFullYear() - 1;
+        if (this.timeframe() === 'MTD') {
+            const ly = new Date(lyYear, now.getMonth(), 1);
+            return ly.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+        } else {
+            // YTD: 'ene–abr 2024'
+            const start = new Date(lyYear, 0, 1).toLocaleDateString('es-MX', { month: 'short' });
+            const end   = new Date(lyYear, now.getMonth(), 1).toLocaleDateString('es-MX', { month: 'short' });
+            return `${start}–${end} ${lyYear}`;
+        }
+    });
+
+    /** YoY sales delta %. Positive = growth. null = no LY data. */
+    yoyDelta = computed<number | null>(() => {
+        const ly = this.lyPeriodStats();
+        if (!ly || ly.sales <= 0) return null;
+        return ((this.stats().monthlySales - ly.sales) / ly.sales) * 100;
+    });
+
+    /** YoY orders delta %. */
+    yoyOrdersDelta = computed<number | null>(() => {
+        const ly = this.lyPeriodStats();
+        if (!ly || ly.orders <= 0) return null;
+        return ((this.stats().totalOrders - ly.orders) / ly.orders) * 100;
+    });
+
+    /** YoY pieces delta %. */
+    yoyPiecesDelta = computed<number | null>(() => {
+        const ly = this.lyPeriodStats();
+        if (!ly || ly.pieces <= 0) return null;
+        return ((this.stats().monthlyPiecesSold - ly.pieces) / ly.pieces) * 100;
+    });
 
     stats = signal<DashboardStats>({
         totalOrders: 0,
@@ -183,7 +248,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     staffWorkload = signal<StaffWorkload[]>([]);
     overdueOrders = signal<Order[]>([]);
     recentOrders = signal<Order[]>([]);
+    expandedOrderId = signal<string | null>(null);
     isLoading = signal(true);
+
+    toggleOrderExpand(id: string) {
+        this.expandedOrderId.set(this.expandedOrderId() === id ? null : id);
+    }
 
     // Geographic Map Properties
     heatmapOptions: any = {
@@ -258,7 +328,15 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private priorityChart?: Chart;
     private trendChart?: Chart;
 
-    topProducts = signal<{ name: string; units: number; revenue: number }[]>([]);
+    topProducts     = signal<{ name: string; units: number; revenue: number }[]>([]);
+    topProductsMode = signal<'units' | 'amount'>('units');
+
+    setTopProductsMode(mode: 'units' | 'amount') {
+        if (this.topProductsMode() === mode) return;
+        this.topProductsMode.set(mode);
+        if (this.topProductsChart) this.updateTopProductsChart();
+    }
+
 
     ngOnInit() {
         this.loadDashboardData();
@@ -324,6 +402,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             startDate = new Date(today.getFullYear(), 0, 1);
         }
 
+        // Kick off the LY comparison (1 read, independent of orders query)
+        this.loadLyComparison();
+
         this.orderService.getOrdersByDateRange(startDate, endDate).subscribe({
             next: (orders) => {
                 this.allFetchedOrders = orders;
@@ -337,6 +418,58 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             }
         });
     }
+
+    /**
+     * Fetch last year's equivalent period from monthly_stats.
+     *
+     * MTD  → 1 getDoc  (last year same month)
+     * YTD  → up to 12 parallel getDoc calls (Jan through current month of last year), summed
+     *
+     * Never throws — graceful degradation to null.
+     */
+    private async loadLyComparison(): Promise<void> {
+        try {
+            const now    = new Date();
+            const lyYear = now.getFullYear() - 1;
+            const currentMonthIndex = now.getMonth(); // 0-based
+
+            if (this.timeframe() === 'MTD') {
+                // Single read: last year same month
+                const lyMon = String(currentMonthIndex + 1).padStart(2, '0');
+                const snap  = await getDoc(doc(this.firestore, `monthly_stats/${lyYear}-${lyMon}`));
+                if (snap.exists()) {
+                    const d = snap.data() as any;
+                    this.lyPeriodStats.set({ sales: d['sales'] ?? 0, orders: d['orders'] ?? 0, pieces: d['pieces'] ?? 0 });
+                } else {
+                    this.lyPeriodStats.set(null);
+                }
+            } else {
+                // YTD: fetch Jan → current month of last year in parallel (max 12 reads)
+                const monthIds: string[] = [];
+                for (let m = 0; m <= currentMonthIndex; m++) {
+                    monthIds.push(`${lyYear}-${String(m + 1).padStart(2, '0')}`);
+                }
+                const snaps = await Promise.all(
+                    monthIds.map(id => getDoc(doc(this.firestore, `monthly_stats/${id}`)))
+                );
+                let totalSales = 0, totalOrders = 0, totalPieces = 0, hasAny = false;
+                snaps.forEach(snap => {
+                    if (snap.exists()) {
+                        const d = snap.data() as any;
+                        totalSales  += d['sales']  ?? 0;
+                        totalOrders += d['orders'] ?? 0;
+                        totalPieces += d['pieces'] ?? 0;
+                        hasAny = true;
+                    }
+                });
+                this.lyPeriodStats.set(hasAny ? { sales: totalSales, orders: totalOrders, pieces: totalPieces } : null);
+            }
+        } catch (err) {
+            console.warn('[Dashboard] LY comparison read failed (non-critical):', err);
+            this.lyPeriodStats.set(null);
+        }
+    }
+
 
     private chartRenderTimeout: any;
 
@@ -355,6 +488,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.calculateOverdueOrders(filteredOrders);
         this.calculateTopProducts(filteredOrders);
         this.generateHeatmapData(filteredOrders);
+        this.calculateChannelBreakdown(this.allFetchedOrders); // always on ALL
 
         this.recentOrders.set(filteredOrders.slice(0, 5));
 
@@ -377,6 +511,64 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             this.infoWindow.open(marker);
         }
     }
+
+    /**
+     * Build per-channel stats from ALL fetched orders.
+     * Includes MeLi-specific sub-segments (Premium/Classic/Full/Merchant).
+     */
+    calculateChannelBreakdown(orders: Order[]) {
+        const CHANNELS = [
+            { channel: 'mercadolibre', label: 'MercadoLibre', icon: 'shopping-cart', color: '#ffe600' },
+            { channel: 'storefront',   label: 'Tienda Web',    icon: 'globe',         color: '#6366f1' },
+            { channel: 'pos',          label: 'POS / Mostrador', icon: 'credit-card', color: '#10b981' },
+            { channel: 'amazon',       label: 'Amazon',        icon: 'package',       color: '#f59e0b' },
+        ];
+
+        const breakdown = CHANNELS.map(ch => {
+            const chOrders = orders.filter(o =>
+                (o.sourceChannel ?? 'storefront') === ch.channel ||
+                // legacy: orders without sourceChannel default to storefront
+                (!o.sourceChannel && ch.channel === 'storefront')
+            );
+
+            const revenue = chOrders
+                .filter(o => !['cancelled', 'refunded', 'returned'].includes(o.status))
+                .reduce((s, o) => s + (o.total ?? 0), 0);
+
+            const pending = chOrders.filter(o => o.status === 'pending').length;
+
+            // MeLi-specific sub-segment counts
+            // MeLi 2×2 orthogonal segments: fulfillment mode × listing tier
+            // A is "Meli Full" when fulfillmentType === 'platform' (meliShipMode === 'fulfillment')
+            // A is "Merchant" when fulfillmentType === 'merchant' or unset (legacy)
+            // B is 'premium' | 'classic' | 'free' from meliListingType
+            const isMeli = ch.channel === 'mercadolibre';
+            const isFull     = (o: Order) => o.fulfillmentType === 'platform';
+            const isMerchant = (o: Order) => o.fulfillmentType !== 'platform'; // 'merchant' or undefined (legacy defaults to merchant)
+            const listingType = (o: Order) => (o as any).meliListingType as 'premium' | 'classic' | 'free' | undefined;
+
+            const meliFullClassic     = isMeli ? chOrders.filter(o => isFull(o)     && listingType(o) !== 'premium').length : undefined;
+            const meliFullPremium     = isMeli ? chOrders.filter(o => isFull(o)     && listingType(o) === 'premium').length : undefined;
+            const meliMerchantClassic = isMeli ? chOrders.filter(o => isMerchant(o) && listingType(o) !== 'premium').length : undefined;
+            const meliMerchantPremium = isMeli ? chOrders.filter(o => isMerchant(o) && listingType(o) === 'premium').length : undefined;
+
+
+            return {
+                ...ch,
+                orders:  chOrders.length,
+                revenue,
+                pending,
+                meliFullClassic,
+                meliFullPremium,
+                meliMerchantClassic,
+                meliMerchantPremium,
+            };
+
+        }).filter(ch => ch.orders > 0); // hide channels with zero activity
+
+        this.channelBreakdown.set(breakdown);
+    }
+
 
     toggleGeographicTable() {
         this.showGeographicTable.update(v => !v);
@@ -938,10 +1130,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         if (products.length === 0) return;
 
         // Truncate long product names for readability
+        const mode     = this.topProductsMode();
+        const isAmount = mode === 'amount';
         const truncate = (s: string, n: number) => s.length > n ? s.slice(0, n) + '…' : s;
-        const labels = products.map(p => truncate(p.name, 28));
-        const units  = products.map(p => p.units);
-        const palette = [
+        const labels   = products.map(p => truncate(p.name, 28));
+        const data     = isAmount ? products.map(p => p.revenue) : products.map(p => p.units);
+        const palette  = [
             '#818cf8', // indigo-400
             '#a78bfa', // violet-400
             '#c084fc', // purple-400
@@ -954,8 +1148,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             data: {
                 labels,
                 datasets: [{
-                    label: 'Unidades vendidas',
-                    data: units,
+                    label: isAmount ? 'Ingresos (MXN)' : 'Unidades vendidas',
+                    data,
                     backgroundColor: palette,
                     borderRadius: 6,
                     borderSkipped: false
@@ -972,7 +1166,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                             label: (ctx: any) => {
                                 const p = products[ctx.dataIndex];
                                 const rev = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(p.revenue);
-                                return ` ${p.units} uds · ${rev}`;
+                                return isAmount
+                                    ? ` ${rev} · ${p.units} uds`
+                                    : ` ${p.units} uds · ${rev}`;
                             }
                         }
                     }
@@ -983,8 +1179,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                         grid: { color: '#3f3f46' },
                         ticks: {
                             color: '#a1a1aa',
-                            stepSize: 1,
-                            precision: 0
+                            callback: isAmount
+                                ? (v: any) => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+                                : undefined,
+                            stepSize: isAmount ? undefined : 1,
+                            precision: isAmount ? undefined : 0
                         }
                     },
                     y: {
@@ -1307,12 +1506,26 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     private updateTopProductsChart() {
         if (!this.topProductsChart) return;
-        const products = this.topProducts();
-        const truncate = (s: string, n: number) => s.length > n ? s.slice(0, n) + '\u2026' : s;
+        const products  = this.topProducts();
+        const isAmount  = this.topProductsMode() === 'amount';
+        const truncate  = (s: string, n: number) => s.length > n ? s.slice(0, n) + '\u2026' : s;
         this.topProductsChart.data.labels = products.map(p => truncate(p.name, 28));
-        this.topProductsChart.data.datasets[0].data = products.map(p => p.units);
+        this.topProductsChart.data.datasets[0].data = isAmount
+            ? products.map(p => p.revenue)
+            : products.map(p => p.units);
+        this.topProductsChart.data.datasets[0].label = isAmount ? 'Ingresos (MXN)' : 'Unidades vendidas';
+        // Update x-axis tick format
+        const xAxis = this.topProductsChart.options?.scales?.['x'] as any;
+        if (xAxis?.ticks) {
+            xAxis.ticks.callback = isAmount
+                ? (v: any) => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+                : undefined;
+            xAxis.ticks.stepSize   = isAmount ? undefined : 1;
+            xAxis.ticks.precision  = isAmount ? undefined : 0;
+        }
         this.topProductsChart.update();
     }
+
 
     private updatePriorityChart() {
         if (!this.priorityChart) return;

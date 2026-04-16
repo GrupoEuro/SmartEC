@@ -36,24 +36,140 @@
 <div class="dashboard-container p-6 max-w-7xl mx-auto space-y-8">
 
 
-    <!-- Stats Cards -->
+    <!-- Stats Cards — Row 1: KPI metrics with YoY comparison -->
     @if (!isLoading()) {
-    <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="stats-grid grid grid-cols-1 md:grid-cols-3 gap-6">
+
         <!-- Total Orders -->
         <div
-            class="stat-card total bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-zinc-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            class="stat-card total bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-zinc-500 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
             <div class="stat-content flex items-center justify-between">
                 <div class="stat-icon text-zinc-400 p-3 bg-zinc-700/30 rounded-lg"><app-icon name="clipboard-list"
                         [size]="24"></app-icon></div>
-                <div class="stat-value text-3xl font-bold text-white">{{ stats().totalOrders }}</div>
+                <div class="flex flex-col items-end gap-1">
+                    <div class="stat-value text-3xl font-bold text-white">{{ stats().totalOrders }}</div>
+                    @if (yoyOrdersDelta() !== null) {
+                    <div class="flex flex-col items-end gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full"
+                                  [class]="yoyOrdersDelta()! >= 0
+                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                                      : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                                {{ yoyOrdersDelta()! >= 0 ? '▲' : '▼' }}
+                                {{ yoyOrdersDelta()! | number:'1.1-1' }}%
+                            </span>
+                            <span class="text-[10px] text-zinc-500">vs {{ lyPeriodLabel() }}</span>
+                        </div>
+                        <span class="text-[10px] text-zinc-600 font-mono">AA: {{ lyPeriodStats()!.orders }} pedidos</span>
+                    </div>
+                    } @else {
+                    <span class="text-[10px] text-zinc-600 italic">sin dato año anterior</span>
+                    }
+                </div>
             </div>
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
                 'OPERATIONS.DASHBOARD.TOTAL_ORDERS' | translate }} ({{ timeframe() }})</div>
         </div>
 
+        <!-- Monthly Sales -->
+        <div
+            class="stat-card sales bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-teal-400 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-teal-400 p-3 bg-teal-400/10 rounded-lg"><app-icon name="dollar-sign"
+                        [size]="24"></app-icon></div>
+                <div class="flex flex-col items-end gap-1">
+                    <div class="stat-value text-3xl font-bold text-white">{{ formatCurrency(stats().monthlySales) }}</div>
+                    <!-- YoY delta badge -->
+                    @if (yoyDelta() !== null) {
+                    <div class="flex flex-col items-end gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full"
+                                  [class]="yoyDelta()! >= 0
+                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                                      : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                                {{ yoyDelta()! >= 0 ? '▲' : '▼' }}
+                                {{ yoyDelta()! | number:'1.1-1' }}%
+                            </span>
+                            <span class="text-[10px] text-zinc-500">vs {{ lyPeriodLabel() }}</span>
+                        </div>
+                        <span class="text-[10px] text-zinc-600 font-mono">
+                            AA: {{ formatCurrency(lyPeriodStats()!.sales) }}
+                        </span>
+                    </div>
+                    } @else {
+                    <span class="text-[10px] text-zinc-600 italic">sin dato año anterior</span>
+                    }
+                </div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">
+                {{ 'OPERATIONS.DASHBOARD.METRICS.SALES' | translate: { timeframe: timeframe() } }}</div>
+            @if (mtdProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <app-icon name="trending-up" [size]="14" class="text-teal-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-teal-300">{{ formatCurrency(mtdProjection()!) }}</span>
+            </div>
+            }
+        </div>
+
+        <!-- Monthly Pieces Sold -->
+        <div
+            class="stat-card pieces bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-indigo-400 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-indigo-400 p-3 bg-indigo-400/10 rounded-lg"><app-icon name="shopping-bag"
+                        [size]="24"></app-icon></div>
+                <div class="flex flex-col items-end gap-1">
+                    <div class="stat-value text-3xl font-bold text-white">{{ stats().monthlyPiecesSold }}</div>
+                    @if (yoyPiecesDelta() !== null) {
+                    <div class="flex flex-col items-end gap-0.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full"
+                                  [class]="yoyPiecesDelta()! >= 0
+                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                                      : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                                {{ yoyPiecesDelta()! >= 0 ? '▲' : '▼' }}
+                                {{ yoyPiecesDelta()! | number:'1.1-1' }}%
+                            </span>
+                            <span class="text-[10px] text-zinc-500">vs {{ lyPeriodLabel() }}</span>
+                        </div>
+                        <span class="text-[10px] text-zinc-600 font-mono">AA: {{ lyPeriodStats()!.pieces }} pzas.</span>
+                    </div>
+                    } @else {
+                    <span class="text-[10px] text-zinc-600 italic">sin dato año anterior</span>
+                    }
+                </div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.METRICS.PIECES_SOLD' | translate: { timeframe: timeframe() } }}
+            </div>
+            @if (mtdPiecesProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <app-icon name="trending-up" [size]="14" class="text-indigo-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-indigo-300">{{ mtdPiecesProjection() }} pzs.</span>
+            </div>
+            }
+        </div>
+    </div>
+
+    <!-- Stats Cards — Row 2: Live operational statuses (no YoY — these are real-time, not period metrics) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Shipped Today -->
+        <div
+            class="stat-card shipped bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-emerald-500 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
+            <div class="stat-content flex items-center justify-between">
+                <div class="stat-icon text-emerald-500 p-3 bg-emerald-500/10 rounded-lg"><app-icon name="truck"
+                        [size]="24"></app-icon></div>
+                <div class="stat-value text-3xl font-bold text-white">{{ stats().shippedToday }}</div>
+            </div>
+            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
+                'OPERATIONS.DASHBOARD.SHIPPED_TODAY' | translate }}</div>
+        </div>
+
         <!-- Pending Orders -->
         <div
-            class="stat-card pending bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-amber-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            class="stat-card pending bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-amber-500 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
             <div class="stat-content flex items-center justify-between">
                 <div class="stat-icon text-amber-500 p-3 bg-amber-500/10 rounded-lg"><app-icon name="clock"
                         [size]="24"></app-icon></div>
@@ -69,7 +185,7 @@
 
         <!-- Processing Orders -->
         <div
-            class="stat-card processing bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-blue-500 relative flex flex-col gap-2 transition-transform hover:-tranzinc-y-1 hover:shadow-xl">
+            class="stat-card processing bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-blue-500 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
             <div class="stat-content flex items-center justify-between">
                 <div class="stat-icon text-blue-500 p-3 bg-blue-500/10 rounded-lg"><app-icon name="settings"
                         [size]="24"></app-icon></div>
@@ -82,62 +198,13 @@
                 {{ 'OPERATIONS.DASHBOARD.VIEW_ALL' | translate }} →
             </a>
         </div>
-
-        <!-- Shipped Today -->
-        <div
-            class="stat-card shipped bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-emerald-500 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
-            <div class="stat-content flex items-center justify-between">
-                <div class="stat-icon text-emerald-500 p-3 bg-emerald-500/10 rounded-lg"><app-icon name="truck"
-                        [size]="24"></app-icon></div>
-                <div class="stat-value text-3xl font-bold text-white">{{ stats().shippedToday }}</div>
-            </div>
-            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
-                'OPERATIONS.DASHBOARD.SHIPPED_TODAY' | translate }}</div>
-        </div>
-
-        <!-- Monthly Sales -->
-        <div
-            class="stat-card sales bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-teal-400 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
-            <div class="stat-content flex items-center justify-between">
-                <div class="stat-icon text-teal-400 p-3 bg-teal-400/10 rounded-lg"><app-icon name="dollar-sign"
-                        [size]="24"></app-icon></div>
-                <div class="stat-value text-3xl font-bold text-white">{{ formatCurrency(stats().monthlySales) }}</div>
-            </div>
-            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">
-                {{ 'OPERATIONS.DASHBOARD.METRICS.SALES' | translate: { timeframe: timeframe() } }}</div>
-            @if (mtdProjection() !== null) {
-            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
-                <app-icon name="trending-up" [size]="14" class="text-teal-400 shrink-0"></app-icon>
-                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
-                <span class="text-xs font-semibold text-teal-300">{{ formatCurrency(mtdProjection()!) }}</span>
-            </div>
-            }
-        </div>
-
-
-        <!-- Monthly Pieces Sold -->
-        <div
-            class="stat-card pieces bg-zinc-800 rounded-xl p-5 shadow-lg border-l-4 border-indigo-400 relative flex flex-col gap-2 transition-transform hover:-translate-y-1 hover:shadow-xl">
-            <div class="stat-content flex items-center justify-between">
-                <div class="stat-icon text-indigo-400 p-3 bg-indigo-400/10 rounded-lg"><app-icon name="shopping-bag"
-                        [size]="24"></app-icon></div>
-                <div class="stat-value text-3xl font-bold text-white">{{ stats().monthlyPiecesSold }}</div>
-            </div>
-            <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
-                'OPERATIONS.DASHBOARD.METRICS.PIECES_SOLD' | translate: { timeframe: timeframe() } }}
-            </div>
-            @if (mtdPiecesProjection() !== null) {
-            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
-                <app-icon name="trending-up" [size]="14" class="text-indigo-400 shrink-0"></app-icon>
-                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
-                <span class="text-xs font-semibold text-indigo-300">{{ mtdPiecesProjection() }} pzs.</span>
-            </div>
-            }
-        </div>
     </div>
     }
 
+
+
     <!-- New Metrics Widgets -->
+
     <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 transition-opacity duration-300">
         <!-- SLA Compliance -->
         <div
@@ -352,9 +419,28 @@
                         <app-icon name="trending-up" [size]="18" class="mr-2"></app-icon>
                         Top 5 Productos
                     </h3>
-                    <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                    <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold" *ngIf="false">
                         por unidades vendidas
                     </span>
+                    <!-- Units / Amount toggle -->
+                    <div class="flex items-center gap-1 bg-zinc-700/60 rounded-lg p-0.5">
+                        <button
+                            id="top5-btn-units"
+                            (click)="setTopProductsMode('units')"
+                            [class]="topProductsMode() === 'units'
+                                ? 'text-[10px] font-bold px-2.5 py-1 rounded-md bg-indigo-600 text-white transition-all'
+                                : 'text-[10px] font-semibold px-2.5 py-1 rounded-md text-zinc-400 hover:text-zinc-200 transition-all'">
+                            Unidades
+                        </button>
+                        <button
+                            id="top5-btn-amount"
+                            (click)="setTopProductsMode('amount')"
+                            [class]="topProductsMode() === 'amount'
+                                ? 'text-[10px] font-bold px-2.5 py-1 rounded-md bg-teal-600 text-white transition-all'
+                                : 'text-[10px] font-semibold px-2.5 py-1 rounded-md text-zinc-400 hover:text-zinc-200 transition-all'">
+                            Importe
+                        </button>
+                    </div>
                 </div>
                 @if (topProducts().length > 0) {
                     <div class="chart-body">
@@ -582,8 +668,105 @@
         </div>
     </div>
 
+    <!-- ── Channel Breakdown ────────────────────────────────────────────── -->
+    @if (channelBreakdown().length > 0) {
+    <div class="mb-8">
+        <div class="section-header flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <app-icon name="layers" [size]="20" class="text-indigo-400"></app-icon>
+                Canales de venta
+            </h2>
+            <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">
+                {{ timeframe() === 'MTD' ? 'Mes actual' : 'Año actual' }} — todos los canales
+            </span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            @for (ch of channelBreakdown(); track ch.channel) {
+            <div class="bg-zinc-800 rounded-xl border border-zinc-700 shadow-lg overflow-hidden"
+                 [style.border-left]="'4px solid ' + ch.color">
+                <!-- Channel header -->
+                <div class="px-4 pt-4 pb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="p-2 rounded-lg bg-zinc-900/70" [style.color]="ch.color">
+                            <app-icon [name]="ch.icon" [size]="16"></app-icon>
+                        </div>
+                        <span class="text-sm font-bold text-white">{{ ch.label }}</span>
+                    </div>
+                    @if (ch.pending > 0) {
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                        {{ ch.pending }} pend.
+                    </span>
+                    }
+                </div>
+
+                <!-- Main stats -->
+                <div class="px-4 pb-3 flex gap-4 border-b border-zinc-700/60">
+                    <div class="flex flex-col">
+                        <span class="text-2xl font-extrabold text-white leading-tight">{{ ch.orders }}</span>
+                        <span class="text-[10px] uppercase tracking-wider text-zinc-500">Órdenes</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-lg font-bold leading-tight" [style.color]="ch.color">
+                            {{ ch.revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                        </span>
+                        <span class="text-[10px] uppercase tracking-wider text-zinc-500">Ingresos</span>
+                    </div>
+                </div>
+
+                <!-- MeLi 2×2 segments: fulfillment mode × listing tier -->
+                @if (ch.channel === 'mercadolibre') {
+                <div class="px-4 py-2.5 flex flex-col gap-2 border-t border-zinc-700/40">
+
+                    <!-- Group A: Meli handles shipping (Meli Full) -->
+                    @if ((ch.meliFullClassic ?? 0) + (ch.meliFullPremium ?? 0) > 0) {
+                    <div class="flex items-start gap-1.5 flex-wrap">
+                        <span class="text-[9px] uppercase tracking-wider text-zinc-500 font-bold pt-0.5 whitespace-nowrap w-full">
+                            🟡 Meli envía
+                        </span>
+                        @if ((ch.meliFullClassic ?? 0) > 0) {
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-300 border border-yellow-600/25">
+                            Full · Classic {{ ch.meliFullClassic }}
+                        </span>
+                        }
+                        @if ((ch.meliFullPremium ?? 0) > 0) {
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-200 border border-yellow-500/40">
+                            Full · Premium ★ {{ ch.meliFullPremium }}
+                        </span>
+                        }
+                    </div>
+                    }
+
+                    <!-- Group B: We handle shipping (Merchant / Flex) -->
+                    @if ((ch.meliMerchantClassic ?? 0) + (ch.meliMerchantPremium ?? 0) > 0) {
+                    <div class="flex items-start gap-1.5 flex-wrap">
+                        <span class="text-[9px] uppercase tracking-wider text-zinc-500 font-bold pt-0.5 whitespace-nowrap w-full">
+                            🔵 Yo envío
+                        </span>
+                        @if ((ch.meliMerchantClassic ?? 0) > 0) {
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-600/25">
+                            Classic {{ ch.meliMerchantClassic }}
+                        </span>
+                        }
+                        @if ((ch.meliMerchantPremium ?? 0) > 0) {
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/40">
+                            Premium ★ {{ ch.meliMerchantPremium }}
+                        </span>
+                        }
+                    </div>
+                    }
+
+                </div>
+                }
+
+            </div>
+            }
+        </div>
+    </div>
+    }
+
     <!-- Recent Orders -->
     @if (recentOrders().length > 0) {
+
     <div class="recent-orders-section mb-8">
         <div class="section-header flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-white">{{ 'OPERATIONS.DASHBOARD.RECENT_ORDERS' | translate }}</h2>
@@ -593,66 +776,226 @@
             </a>
         </div>
 
-        <div class="orders-table-wrapper bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700 shadow-lg">
-            <table class="orders-table w-full text-left border-collapse">
-                <thead class="bg-zinc-900/50">
-                    <tr>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</th>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.CUSTOMER' | translate }}</th>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.DATE' | translate }}</th>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</th>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</th>
-                        <th class="py-4 px-6 text-xs uppercase text-zinc-400 font-semibold border-b border-zinc-700">
-                            {{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</th>
-                    </tr>
-                </thead>
-                <tbody class="text-zinc-300">
-                    @for (order of recentOrders(); track order.id) {
-                    <tr class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors">
-                        <td class="py-4 px-6">
-                            <span class="order-number font-mono font-bold text-white">{{ order.orderNumber }}</span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="flex flex-col">
-                                <span class="font-medium text-zinc-200">
-                                    {{ $any(order.customer).originalName || order.customer.name }}
-                                </span>
-                                <span *ngIf="$any(order.customer).originalName && $any(order.customer).originalName !== order.customer.name"
-                                    class="text-[10px] text-zinc-600 mt-0.5" [title]="'Nombre en MercadoLibre'">
-                                    {{ order.customer.name }}
+        <!-- Column Headers -->
+        <div class="recent-orders-headers hidden md:grid gap-2 px-4 pb-2 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+            <div></div>
+            <div>{{ 'OPERATIONS.ORDERS.ORDER_NUMBER' | translate }}</div>
+            <div>{{ 'OPERATIONS.ORDERS.CUSTOMER' | translate }}</div>
+            <div>{{ 'OPERATIONS.ORDERS.DATE' | translate }}</div>
+            <div>{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</div>
+            <div>{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}</div>
+            <div>{{ 'OPERATIONS.ORDERS.ACTIONS' | translate }}</div>
+        </div>
+
+        <div class="orders-list space-y-1.5">
+            @for (order of recentOrders(); track order.id) {
+            <div class="order-card bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden shadow">
+
+                <!-- Summary Row -->
+                <div class="order-row-grid gap-2 items-center px-4 py-3.5 cursor-pointer hover:bg-zinc-700/30 transition-colors select-none"
+                    [ngClass]="{'bg-zinc-700/20': expandedOrderId() === order.id}"
+                    (click)="toggleOrderExpand(order.id!)">
+
+                    <!-- Chevron -->
+                    <div class="flex items-center justify-center">
+                        <app-icon [name]="expandedOrderId() === order.id ? 'chevron-down' : 'chevron-right'"
+                            [size]="15" class="text-zinc-500"></app-icon>
+                    </div>
+
+                    <!-- Order # -->
+                    <div>
+                        <span class="font-mono font-bold text-white text-sm">{{ order.orderNumber }}</span>
+                    </div>
+
+                    <!-- Customer -->
+                    <div class="hidden md:flex flex-col min-w-0">
+                        <span class="font-medium text-zinc-200 text-sm truncate">
+                            {{ $any(order.customer).originalName || order.customer.name }}
+                        </span>
+                        <span *ngIf="$any(order.customer).originalName && $any(order.customer).originalName !== order.customer.name"
+                            class="text-[10px] text-zinc-600 truncate">{{ order.customer.name }}</span>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="hidden md:block text-xs text-zinc-400">{{ formatDate(order.createdAt) }}</div>
+
+                    <!-- Total -->
+                    <div class="hidden md:block font-bold text-emerald-400 text-sm font-mono">{{ formatCurrency(order.total) }}</div>
+
+                    <!-- Status -->
+                    <div class="hidden md:block">
+                        <span class="status-badge px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                            [ngClass]="getStatusBadgeClass(order.status)">
+                            {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
+                        </span>
+                    </div>
+
+                    <!-- Action -->
+                    <div class="hidden md:block" (click)="$event.stopPropagation()">
+                        <a [routerLink]="['/operations/orders', order.id]"
+                            class="text-blue-400 hover:text-blue-300 font-medium text-xs transition-colors">
+                            {{ 'OPERATIONS.ORDERS.VIEW_DETAILS' | translate }}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Expandable Detail Panel -->
+                @if (expandedOrderId() === order.id) {
+                <div class="border-t border-zinc-700/60 bg-zinc-900/60 p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+
+                    <!-- 1. Items -->
+                    <div class="md:col-span-2 xl:col-span-4">
+                        <p class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Productos</p>
+                        <div class="space-y-1.5">
+                            @for (item of order.items; track item.productId) {
+                            <div class="flex items-center justify-between bg-zinc-800/60 rounded-lg px-3 py-2 border border-zinc-700/40">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="shrink-0 text-xs font-mono font-bold text-zinc-500 w-5 text-right">{{ item.quantity }}×</span>
+                                    <span class="text-sm text-zinc-200 truncate">{{ item.productName || item.productId }}</span>
+                                    @if (item.sku) {
+                                    <span class="shrink-0 text-[10px] font-mono text-zinc-600 bg-zinc-700/40 px-1.5 py-0.5 rounded">{{ item.sku }}</span>
+                                    }
+                                </div>
+                                <div class="flex items-center gap-4 shrink-0 ml-4">
+                                    <span class="text-xs text-zinc-500">{{ formatCurrency(item.price) }}</span>
+                                    <span class="text-sm font-semibold text-white font-mono">{{ formatCurrency(item.subtotal || (item.price * item.quantity)) }}</span>
+                                </div>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- 2. Shipping Address -->
+                    <div>
+                        <p class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2 flex items-center gap-1.5">
+                            <app-icon name="map-pin" [size]="11"></app-icon> Envío
+                        </p>
+                        <div class="bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/40 text-sm text-zinc-300 space-y-0.5">
+                            @if (order.shippingAddress?.street) {
+                                <p class="font-medium text-zinc-100">
+                                    {{ order.shippingAddress!.street }} {{ order.shippingAddress!.exteriorNumber }}
+                                    @if (order.shippingAddress?.interiorNumber) { · Int. {{ order.shippingAddress!.interiorNumber }} }
+                                </p>
+                                @if (order.shippingAddress?.colonia) {
+                                <p class="text-zinc-400 text-xs">{{ order.shippingAddress!.colonia }}</p>
+                                }
+                                <p class="text-zinc-400 text-xs">
+                                    {{ order.shippingAddress!.city }}, {{ order.shippingAddress!.state }} {{ order.shippingAddress!.zipCode }}
+                                </p>
+                                @if ($any(order.shippingAddress)?.recipientName) {
+                                <p class="text-zinc-500 text-xs pt-1 border-t border-zinc-700/40 mt-1">
+                                    Recibe: {{ $any(order.shippingAddress).recipientName }}
+                                </p>
+                                }
+                            } @else {
+                                <p class="text-zinc-600 italic text-xs">Sin dirección registrada</p>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- 3. Order Meta -->
+                    <div>
+                        <p class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2 flex items-center gap-1.5">
+                            <app-icon name="info" [size]="11"></app-icon> Datos del Pedido
+                        </p>
+                        <div class="bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/40 space-y-2 text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="text-zinc-500">Canal</span>
+                                <span class="font-semibold text-zinc-200 capitalize">
+                                    {{ $any(order).sourceChannel || '—' }}
+                                    @if (order.fulfillmentType) {
+                                        · <span class="text-zinc-400">{{ order.fulfillmentType }}</span>
+                                    }
                                 </span>
                             </div>
-                        </td>
-                        <td class="py-4 px-6">{{ formatDate(order.createdAt) }}</td>
-                        <td class="py-4 px-6">
-                            <span class="total-amount font-bold text-emerald-400">{{ formatCurrency(order.total)
-                                }}</span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <!-- TODO: Refactor status badge to Tailwind completely or keep using shared component styles if available -->
-                            <span class="status-badge px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                            <div class="flex justify-between items-center">
+                                <span class="text-zinc-500">Pago</span>
+                                <span [ngClass]="$any(order).paymentStatus === 'approved' ? 'text-emerald-400 font-semibold' : 'text-amber-400'">
+                                    {{ $any(order).paymentStatus === 'approved' ? '✓ Aprobado' : ($any(order).paymentStatus || '—') }}
+                                </span>
+                            </div>
+                            @if (order.priorityLevel) {
+                            <div class="flex justify-between items-center">
+                                <span class="text-zinc-500">Prioridad</span>
+                                <span class="capitalize font-semibold"
+                                    [ngClass]="order.priorityLevel === 'rush' ? 'text-red-400' : order.priorityLevel === 'express' ? 'text-amber-400' : 'text-zinc-300'">
+                                    {{ order.priorityLevel }}
+                                </span>
+                            </div>
+                            }
+                            @if ($any(order).assignedToName) {
+                            <div class="flex justify-between items-center">
+                                <span class="text-zinc-500">Asignado a</span>
+                                <span class="text-zinc-200 font-medium">{{ $any(order).assignedToName }}</span>
+                            </div>
+                            }
+                            @if ($any(order).trackingNumber) {
+                            <div class="flex justify-between items-center border-t border-zinc-700/40 pt-2 mt-1">
+                                <span class="text-zinc-500">Tracking</span>
+                                <span class="font-mono text-blue-400 text-[11px]">{{ $any(order).trackingNumber }}</span>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- 4. Financial -->
+                    <div>
+                        <p class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2 flex items-center gap-1.5">
+                            <app-icon name="dollar-sign" [size]="11"></app-icon> Resumen Financiero
+                        </p>
+                        <div class="bg-zinc-800/60 rounded-lg px-3 py-2.5 border border-zinc-700/40 space-y-2 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">Subtotal</span>
+                                <span class="text-zinc-200 font-mono">{{ formatCurrency($any(order).subtotal || order.total) }}</span>
+                            </div>
+                            @if ($any(order).marketplaceFee) {
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">Comisión MeLi</span>
+                                <span class="text-red-400 font-mono">−{{ formatCurrency($any(order).marketplaceFee) }}</span>
+                            </div>
+                            }
+                            @if ($any(order).shipping_seller_cost) {
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">Costo Envío</span>
+                                <span class="text-red-400 font-mono">−{{ formatCurrency($any(order).shipping_seller_cost) }}</span>
+                            </div>
+                            }
+                            <div class="flex justify-between border-t border-zinc-700/40 pt-2 mt-1">
+                                <span class="text-zinc-400 font-semibold">Total</span>
+                                <span class="text-emerald-400 font-bold font-mono">{{ formatCurrency(order.total) }}</span>
+                            </div>
+                            @if ($any(order).net_receipt) {
+                            <div class="flex justify-between">
+                                <span class="text-zinc-500">Neto recibido</span>
+                                <span class="text-teal-400 font-bold font-mono">{{ formatCurrency($any(order).net_receipt) }}</span>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Mobile: show customer + status + action -->
+                    <div class="md:hidden flex items-center justify-between pt-2 border-t border-zinc-700/40 xl:col-span-4">
+                        <div class="flex flex-col">
+                            <span class="font-medium text-zinc-200 text-sm">{{ $any(order.customer).originalName || order.customer.name }}</span>
+                            <span class="status-badge mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit"
                                 [ngClass]="getStatusBadgeClass(order.status)">
                                 {{ 'OPERATIONS.ORDERS.STATUS.' + order.status.toUpperCase() | translate }}
                             </span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <a [routerLink]="['/operations/orders', order.id]"
-                                class="btn-view text-blue-400 hover:text-blue-300 font-medium text-sm transition-colors">
-                                {{ 'OPERATIONS.ORDERS.VIEW_DETAILS' | translate }}
-                            </a>
-                        </td>
-                    </tr>
-                    }
-                </tbody>
-            </table>
+                        </div>
+                        <a [routerLink]="['/operations/orders', order.id]" (click)="$event.stopPropagation()"
+                            class="text-blue-400 hover:text-blue-300 font-medium text-sm transition-colors">
+                            Ver detalles →
+                        </a>
+                    </div>
+
+                </div>
+                }
+            </div>
+            }
         </div>
     </div>
     }
+
 
     <!-- Loading State -->
     @if (isLoading()) {

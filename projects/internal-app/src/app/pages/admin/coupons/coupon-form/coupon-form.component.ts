@@ -117,7 +117,9 @@ export class CouponFormComponent implements OnInit {
             }
             
             const logoUrl = this.couponForm.get('qrLogoUrl')?.value;
-            this.qrTrackingUrl = `https://importadoraeuro.com/q/${code}`;
+            const utmParams = `utm_source=qr&utm_medium=print&utm_campaign=${encodeURIComponent(code)}`;
+            this.qrTrackingUrl = `https://importadoraeuro.com/q/${code}?${utmParams}`;
+
             
             this.qrImageDataUrl = await this.couponService.generateCompositeQR(code, logoUrl);
         } catch (err: any) {

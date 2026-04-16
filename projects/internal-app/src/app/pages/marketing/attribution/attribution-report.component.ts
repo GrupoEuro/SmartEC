@@ -152,19 +152,24 @@ export class AttributionReportComponent implements OnInit {
 
     channelIcon(channel: string): string {
         const c = channel.toLowerCase();
-        if (c === 'direct')                             return 'bookmark';
-        if (c.includes('mercadolibre'))                 return 'shopping-bag'; // covers Full, Classic, Flex
-        if (c === 'pos')                                return 'store';
-        if (c.includes('on-behalf') || c === 'on_behalf') return 'user-check';
-        if (c === 'amazon')                             return 'package';
-        if (c.includes('google') || c.includes('goog')) return 'search';
+        if (c === 'direct')                                       return 'bookmark';
+        if (c.includes('mercadolibre'))                           return 'shopping-bag';
+        if (c === 'pos')                                          return 'store';
+        if (c.includes('on-behalf') || c === 'on_behalf')         return 'user-check';
+        if (c === 'amazon')                                       return 'package';
+        if (c === 'google display ads')                           return 'monitor';
+        if (c === 'google organic' || c.includes('google'))       return 'search';
+        if (c === 'taboola')                                      return 'rss';
+        if (c === 'bing')                                         return 'search';
+        if (c === 'yahoo')                                        return 'search';
         if (c.includes('facebook') || c.includes('fb') || c.includes('instagram') || c.includes('ig')) return 'social';
-        if (c.includes('whatsapp') || c.includes('wa')) return 'whatsapp';
-        if (c.includes('tiktok'))                       return 'social';
-        if (c.includes('email') || c.includes('mail'))  return 'mail';
-        if (c.includes('qr')   || c.includes('coupon')) return 'qr';
-        if (c.includes('b2b'))                          return 'briefcase';
-        if (c.includes('walk'))                         return 'user';
+        if (c.includes('whatsapp') || c.includes('wa'))           return 'whatsapp';
+        if (c.includes('tiktok'))                                 return 'social';
+        if (c.includes('email') || c.includes('mail'))            return 'mail';
+        if (c.includes('qr')   || c.includes('coupon'))           return 'qr';
+        if (c.includes('b2b'))                                    return 'briefcase';
+        if (c.includes('walk'))                                   return 'user';
         return 'link';
     }
+
 }

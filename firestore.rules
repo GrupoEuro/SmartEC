@@ -459,5 +459,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Analytics: Monthly Sales Rollup ───────────────────────────────────────
+    // Pre-aggregated monthly totals used for YoY dashboard comparison.
+    // Document IDs are YYYY-MM (e.g. "2024-04").
+    // Written by order.service write hooks (admin) and the bootstrap tool.
+    // Read by the Operations Dashboard to compute the YoY delta badge.
+
+    match /monthly_stats/{monthId} {
+      allow read:  if isStaff();
+      allow write: if isAdmin();
+    }
+
   }
 }

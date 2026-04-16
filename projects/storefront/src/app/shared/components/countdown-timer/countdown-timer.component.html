@@ -1,0 +1,24 @@
+@if (isActive() && timeRemaining()) {
+    <div class="announcement-bar">
+        <span class="ab-campaign">{{ campaignName() }}</span>
+        <span class="ab-sep">·</span>
+        <span>{{ 'CAMPAIGN.TERMINATES_IN' | translate }}</span>
+        <span class="ab-timer">
+            {{ timeRemaining().days }}<small>d</small>
+            : {{ timeRemaining().hours }}<small>h</small>
+            : {{ timeRemaining().minutes }}<small>m</small>
+            : <span class="ab-s">{{ timeRemaining().seconds }}</span><small>s</small>
+        </span>
+        @if (coupon()) {
+            <span class="ab-sep">·</span>
+            <span class="ab-coupon-chip"
+                  [class.ab-copied]="copied"
+                  (click)="copyCode()">
+                🏷
+                <span class="ab-coupon-code">{{ coupon()!.code }}</span>
+                — {{ couponDiscountLabel() }}
+                @if (copied) { ✓ } @else { · copiar }
+            </span>
+        }
+    </div>
+}

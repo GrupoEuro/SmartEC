@@ -7,10 +7,12 @@ import { DataSeederService } from '../../../core/services/data-seeder.service';
 import { ProductTypeSeederService } from '../../../core/services/product-type-seeder.service';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { ConfirmDialogComponent } from '../../../components/shared/confirm-dialog/confirm-dialog.component';
+import { Firestore, doc, setDoc, Timestamp, getDocs, collection, query, orderBy } from '@angular/fire/firestore';
 import * as FileSaver from 'file-saver';
 import * as XLSX from 'xlsx';
 
 type Tab = 'DATABASE' | 'DOCUMENTS';
+
 
 @Component({
     selector: 'app-data-seeder',
@@ -115,7 +117,33 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
 
           </div>
     
+          <!-- Bootstrap Analytics Rollups -->
+          <div class="glass-panel p-4 mb-6 border border-indigo-900/40 bg-indigo-900/10 flex justify-between items-center gap-4">
+             <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded bg-indigo-900/30 flex items-center justify-center text-indigo-400 shrink-0">
+                    <app-icon name="bar-chart-2" [size]="20"></app-icon>
+                </div>
+                <div>
+                    <h4 class="text-indigo-300 font-bold text-sm">Bootstrap · monthly_stats</h4>
+                    <p class="text-indigo-300/50 text-xs">Genera los docs de rollup mensual desde las órdenes existentes (necesario una vez para activar el comparativo año anterior).</p>
+                    <p *ngIf="bootstrapLog()" class="text-xs mt-1 font-mono"
+                       [class]="bootstrapLog().startsWith('✅') ? 'text-emerald-400' : bootstrapLog().startsWith('❌') ? 'text-red-400' : 'text-zinc-400'">
+                        {{ bootstrapLog() }}
+                    </p>
+
+                </div>
+             </div>
+             <button
+                class="btn btn-primary shrink-0 bg-indigo-600 hover:bg-indigo-500"
+                (click)="bootstrapMonthlySales()"
+                [disabled]="isBootstrapping()">
+                <app-icon [name]="isBootstrapping() ? 'loader' : 'zap'" [size]="16"></app-icon>
+                {{ isBootstrapping() ? 'Procesando...' : 'Ejecutar Bootstrap' }}
+             </button>
+          </div>
+
           <!-- Maintenance Group -->
+
           <div class="glass-panel p-4 mb-8 border-red-900/30 bg-red-900/10 flex justify-between items-center">
              <div class="flex items-center gap-4">
                 <div class="w-10 h-10 rounded bg-red-900/20 flex items-center justify-center text-red-500">
@@ -275,9 +303,15 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
 })
 export class DataSeederComponent {
     // Force reload - Product Type Templates button added
-    seeder = inject(DataSeederService);
+    seeder         = inject(DataSeederService);
     productTypeSeeder = inject(ProductTypeSeederService);
     confirmService = inject(ConfirmDialogService);
+    private firestore = inject(Firestore);
+
+    // Bootstrap
+    isBootstrapping = signal(false);
+    bootstrapLog    = signal<string>('');
+
 
     // UI State
     activeTab = signal<Tab>('DATABASE');
@@ -370,9 +404,85 @@ export class DataSeederComponent {
         this.logs.update(prev => [...prev, { time, message, type }]);
     }
 
-    getSeederVersion() { return 'v5.1.0-staff-update'; }
+    getSeederVersion() { return 'v5.2.0-yoy-bootstrap'; }
+
 
     // Doc Generator Methods (Stubbed to keep file shorter, logic was in previous step)
     generateXml() { this.addLog('XML generation feature present (stub)'); }
     generateInternationalDoc() { this.addLog('Doc generation feature present (stub)'); }
+
+    /**
+     * One-time bootstrap: reads all existing orders and builds monthly_stats rollup docs.
+     * Costs N reads (orders already paid for historically) + ~M writes (one per unique month).
+     * Safe to run multiple times — uses { merge: true } so it won't overwrite if called twice;
+     * it will re-sum from scratch (intentional: treats each run as a clean recount).
+     */
+    async bootstrapMonthlySales() {
+        if (this.isBootstrapping()) return;
+        if (!await this.confirmService.confirm({
+            title: 'Bootstrap monthly_stats',
+            message: 'This reads ALL orders and writes one Firestore doc per month. Run once to enable the YoY comparison. Safe to re-run.',
+            type: 'info',
+            confirmText: 'Ejecutar'
+        })) return;
+
+        this.isBootstrapping.set(true);
+        this.bootstrapLog.set('Leyendo órdenes...');
+
+        try {
+            const snap = await getDocs(query(collection(this.firestore, 'orders'), orderBy('createdAt', 'asc')));
+            this.bootstrapLog.set(`✔ ${snap.size} órdenes encontradas. Agrupando por mes...`);
+
+            // Group by YYYY-MM
+            type MonthBucket = { sales: number; orders: number; pieces: number; byChannel: Record<string, number> };
+            const map = new Map<string, MonthBucket>();
+
+            const VOID = new Set(['cancelled', 'refunded', 'returned']);
+
+            snap.docs.forEach(d => {
+                const o = d.data() as any;
+                const ts = o.createdAt;
+                let date: Date;
+                if (ts?.toDate) date = ts.toDate();
+                else if (ts)    date = new Date(ts);
+                else            date = new Date();
+
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (!map.has(key)) map.set(key, { sales: 0, orders: 0, pieces: 0, byChannel: {} });
+
+                const bucket = map.get(key)!;
+                bucket.orders++;
+                if (!VOID.has(o.status ?? '')) {
+                    const revenue  = o.total ?? 0;
+                    const pieces   = (o.items ?? []).reduce((s: number, i: any) => s + (i.quantity ?? 0), 0);
+                    const channel  = o.sourceChannel ?? 'storefront';
+                    bucket.sales  += revenue;
+                    bucket.pieces += pieces;
+                    bucket.byChannel[channel] = (bucket.byChannel[channel] ?? 0) + revenue;
+                }
+            });
+
+            this.bootstrapLog.set(`✔ ${map.size} meses detectados. Escribiendo rollups...`);
+
+            // Write each month (batch by 20 to avoid limits)
+            const entries = [...map.entries()];
+            for (let i = 0; i < entries.length; i += 20) {
+                const chunk = entries.slice(i, i + 20);
+                await Promise.all(chunk.map(([yyyyMm, bucket]) =>
+                    setDoc(
+                        doc(this.firestore, `monthly_stats/${yyyyMm}`),
+                        { ...bucket, updatedAt: Timestamp.now() },
+                        { merge: false } // full replace for clean recount
+                    )
+                ));
+            }
+
+            this.bootstrapLog.set(`✅ Bootstrap completo: ${map.size} documentos escritos en monthly_stats.`);
+        } catch (err: any) {
+            this.bootstrapLog.set(`❌ Error: ${err?.message ?? err}`);
+            console.error('[Bootstrap] monthly_stats failed:', err);
+        } finally {
+            this.isBootstrapping.set(false);
+        }
+    }
 }

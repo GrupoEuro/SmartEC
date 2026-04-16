@@ -19,7 +19,17 @@ export interface CampaignSlide {
     ctaLabel?: string;          // Button label e.g. "Ver más"
     order: number;              // Sort order (0-based)
     active: boolean;            // Whether to show this slide
-    clickCount: number;         // Analytics: how many CTA clicks
+    /** @deprecated — use slideStats[order].clicks instead */
+    clickCount: number;         // Legacy: never reliably populated by storefront
+}
+
+/**
+ * Per-slide analytics counters — written by the storefront via Firestore atomic increments.
+ * Key is the slide's `order` value (stringified, e.g. '0', '1', '2').
+ */
+export interface CampaignSlideStats {
+    impressions: number;  // Times this slide was displayed to a user
+    clicks:      number;  // Times the CTA button was tapped/clicked
 }
 
 export interface Campaign {
@@ -34,6 +44,13 @@ export interface Campaign {
     // Visual Overrides
     themeId: WebsiteTheme;
     slides: CampaignSlide[];    // Hero carousel slides (replaces heroBannerId)
+
+    /**
+     * Per-slide analytics — written atomically by the storefront hero.
+     * Key = slide.order as string ('0', '1', '2', ...).
+     * Use Firestore increment() to avoid losing concurrent writes.
+     */
+    slideStats?: { [order: string]: CampaignSlideStats };
 
     // Promo Logic
     promoStripText?: string;

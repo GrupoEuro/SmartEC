@@ -64,6 +64,16 @@
                 { "fieldPath": "createdAt", "order": "DESCENDING" }
             ]
         },
+        // cartSnapshots — campaign funnel (auto-applied coupon tracking)
+        {
+            "collectionGroup": "cartSnapshots",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "appliedCampaignId", "order": "ASCENDING" },
+                { "fieldPath": "createdAt",         "order": "DESCENDING" }
+            ]
+        },
+
         // search_events — type + date (query vs click breakdown over time)
         {
             "collectionGroup": "search_events",
@@ -92,14 +102,8 @@
                 { "fieldPath": "clickedAt", "order": "DESCENDING" }
             ]
         },
-        // whatsappClicks — clickedAt DESC (marketing engagement report date range)
-        {
-            "collectionGroup": "whatsappClicks",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "clickedAt", "order": "DESCENDING" }
-            ]
-        },
+        // whatsappClicks — clickedAt DESC is a single-field index; managed automatically by Firestore
+
         {
             "collectionGroup": "pricing_strategies",
             "queryScope": "COLLECTION",
@@ -518,17 +522,8 @@
                 }
             ]
         },
-        // orderPriorities — createdAt range scan used by getSLAOverridesMap (SLA compliance dashboard)
-        {
-            "collectionGroup": "orderPriorities",
-            "queryScope": "COLLECTION",
-            "fields": [
-                {
-                    "fieldPath": "createdAt",
-                    "order": "ASCENDING"
-                }
-            ]
-        },
+        // orderPriorities — createdAt single-field index; managed automatically by Firestore
+
         {
             "collectionGroup": "products",
             "queryScope": "COLLECTION",
@@ -768,6 +763,52 @@
                 {
                     "fieldPath": "endDate",
                     "order": "ASCENDING"
+                }
+            ]
+        },
+        // campaigns — active campaigns sorted by endDate (widget + storefront)
+        {
+            "collectionGroup": "campaigns",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "isActive",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "endDate",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        // orders — status inequality (!=) + createdAt DESC: required by Segments RFM engine
+        // Firestore: inequality filters require orderBy on the same field first, then secondary sort
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        // orders — couponCode existence + createdAt (marketing coupon usage report with date filter)
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "couponCode",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
                 }
             ]
         }

@@ -1,5 +1,5 @@
-<!-- Skeleton -->
-<div *ngIf="isLoading()" class="attr-skeleton">
+@if (isLoading()) {
+<div class="attr-skeleton">
     <!-- Header row -->
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
         <div class="skeleton" style="width:52px;height:52px;border-radius:14px;flex-shrink:0"></div>
@@ -13,13 +13,15 @@
 
     <!-- KPI strip -->
     <div class="sk-kpi-grid" style="margin-bottom:1.25rem">
-        <div class="sk-kpi-card" *ngFor="let i of [1,2,3,4]">
+        @for (i of [1,2,3,4]; track i) {
+        <div class="sk-kpi-card">
             <div class="skeleton sk-h-xl" style="width:42px;border-radius:10px;flex-shrink:0"></div>
             <div class="sk-row" style="flex:1">
                 <div class="skeleton sk-h-lg sk-w-px"></div>
                 <div class="skeleton sk-h-xs sk-w-half"></div>
             </div>
         </div>
+        }
     </div>
 
     <!-- Chart area -->
@@ -28,8 +30,10 @@
         <div class="skeleton sk-h-chart sk-w-full"></div>
     </div>
 </div>
+}
 
-<div *ngIf="!isLoading()" class="attr-root">
+@if (!isLoading()) {
+<div class="attr-root">
 
     <!-- Header -->
     <div class="attr-header">
@@ -47,17 +51,19 @@
 
         <!-- Timeframe Toggle -->
         <div class="attr-tf-toggle">
-            <button *ngFor="let tf of timeframes"
-                    class="attr-tf-btn"
+            @for (tf of timeframes; track tf.value) {
+            <button class="attr-tf-btn"
                     [class.active]="timeframe() === tf.value"
                     (click)="setTimeframe(tf.value)">
                 {{ tf.labelKey | translate }}
             </button>
+            }
         </div>
     </div>
 
     <!-- KPI strip -->
-    <div class="kpi-strip" *ngIf="summary() as s">
+    @if (summary(); as s) {
+    <div class="kpi-strip">
         <!-- Total sessions -->
         <div class="kpi-card glass-panel">
             <div class="kpi-icon-wrap" style="--c:#6366f1">
@@ -131,14 +137,16 @@
             </div>
         </div>
     </div>
+    }
 
     <!-- Attribution table -->
-    <div class="glass-panel table-card" *ngIf="summary() as s">
+    @if (summary(); as s) {
+    <div class="glass-panel table-card">
         <div class="table-card-header">
             <h3 class="card-title mb-0">{{ 'ATTRIBUTION.TABLE.TITLE' | translate }} ({{ s.rows.length }})</h3>
             <button class="attr-export-btn" (click)="exportCsv()" title="Exportar CSV">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Exportar CSV
+                {{ 'ATTRIBUTION.TABLE.EXPORT' | translate }}
             </button>
         </div>
 
@@ -151,88 +159,133 @@
                         <th>{{ 'ATTRIBUTION.TABLE.CAMPAIGN' | translate }}</th>
                         <th (click)="sortBy('sessions')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.SESSIONS' | translate }}
-                            <svg *ngIf="sortCol() === 'sessions'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'sessions') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <th (click)="sortBy('cartAdds')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.CART_ADDS' | translate }}
-                            <svg *ngIf="sortCol() === 'cartAdds'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'cartAdds') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <th (click)="sortBy('orders')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.ORDERS' | translate }}
-                            <svg *ngIf="sortCol() === 'orders'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'orders') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <th (click)="sortBy('revenue')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.REVENUE' | translate }}
-                            <svg *ngIf="sortCol() === 'revenue'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'revenue') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <th (click)="sortBy('avgOrderValue')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.AOV' | translate }}
-                            <svg *ngIf="sortCol() === 'avgOrderValue'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'avgOrderValue') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <th (click)="sortBy('conversionRate')" class="sortable text-right">
                             {{ 'ATTRIBUTION.TABLE.CONV' | translate }}
-                            <svg *ngIf="sortCol() === 'conversionRate'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
-                                <polyline *ngIf="sortDir() === 'asc'"  points="18 15 12 9 6 15"/>
-                                <polyline *ngIf="sortDir() === 'desc'" points="6 9 12 15 18 9"/>
+                            @if (sortCol() === 'conversionRate') {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sort-svg">
+                                @if (sortDir() === 'asc')  { <polyline points="18 15 12 9 6 15"/> }
+                                @if (sortDir() === 'desc') { <polyline points="6 9 12 15 18 9"/> }
                             </svg>
+                            }
                         </th>
                         <!-- Revenue share bar -->
                         <th>{{ 'ATTRIBUTION.TABLE.SHARE' | translate }}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let row of sortedRows()" class="attr-row">
+                    @for (row of sortedRows(); track row.channel) {
+                    <tr class="attr-row">
                         <!-- Channel -->
                         <td>
                             <div class="channel-cell">
                                 <div class="ch-icon-wrap">
                                     <!-- Search engine -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'search'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    @if (channelIcon(row.channel) === 'search') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    }
                                     <!-- Social (Facebook, Instagram, TikTok) -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'social'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                    @if (channelIcon(row.channel) === 'social') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                    }
                                     <!-- WhatsApp / messaging -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'whatsapp'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    @if (channelIcon(row.channel) === 'whatsapp') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    }
                                     <!-- Email -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'mail'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    @if (channelIcon(row.channel) === 'mail') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                    }
                                     <!-- QR / coupon -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'qr'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
+                                    @if (channelIcon(row.channel) === 'qr') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none"/><rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none"/></svg>
+                                    }
                                     <!-- Direct / bookmark -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'bookmark'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                    @if (channelIcon(row.channel) === 'bookmark') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                    }
                                     <!-- MercadoLibre (shopping bag) -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'shopping-bag'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                                    @if (channelIcon(row.channel) === 'shopping-bag') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                                    }
                                     <!-- POS / store -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'store'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                    @if (channelIcon(row.channel) === 'store') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                    }
                                     <!-- On-Behalf (user-check) -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'user-check'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                                    @if (channelIcon(row.channel) === 'user-check') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+                                    }
                                     <!-- Amazon / package -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'package'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                    @if (channelIcon(row.channel) === 'package') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                    }
                                     <!-- B2B (briefcase) -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'briefcase'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                    @if (channelIcon(row.channel) === 'briefcase') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                    }
                                     <!-- Walk-In / user -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'user'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    @if (channelIcon(row.channel) === 'user') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    }
                                     <!-- Generic link fallback -->
-                                    <svg *ngIf="channelIcon(row.channel) === 'link'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                    @if (channelIcon(row.channel) === 'link') {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                    }
                                 </div>
                                 <span class="ch-name">{{ row.channel }}</span>
                             </div>
                         </td>
-                        <td><span class="medium-pill" *ngIf="row.medium">{{ row.medium }}</span><span class="dim" *ngIf="!row.medium">—</span></td>
-                        <td><span class="campaign-name" *ngIf="row.campaign" [title]="row.campaign">{{ row.campaign | slice:0:28 }}{{ row.campaign.length > 28 ? '…' : '' }}</span><span class="dim" *ngIf="!row.campaign">—</span></td>
+                        <td>
+                            @if (row.medium) { <span class="medium-pill">{{ row.medium }}</span> }
+                            @else { <span class="dim">—</span> }
+                        </td>
+                        <td>
+                            @if (row.campaign) { <span class="campaign-name" [title]="row.campaign">{{ row.campaign | slice:0:28 }}{{ row.campaign.length > 28 ? '…' : '' }}</span> }
+                            @else { <span class="dim">—</span> }
+                        </td>
                         <td class="text-right mono">
                             @if (row.hasWebFunnel) { {{ row.sessions }} }
                             @else { <span class="dim" title="No web funnel for this channel">—</span> }
@@ -254,22 +307,28 @@
                             }
                         </td>
                         <!-- Revenue share bar -->
-                        <td class="share-cell" *ngIf="summary() as s">
+                        @if (summary(); as s2) {
+                        <td class="share-cell">
                             <div class="share-bar-wrap">
-                                <div class="share-bar" [style.width]="s.totalRevenue > 0 ? ((row.revenue / s.totalRevenue) * 100) + '%' : '0%'"></div>
+                                <div class="share-bar" [style.width]="s2.totalRevenue > 0 ? ((row.revenue / s2.totalRevenue) * 100) + '%' : '0%'"></div>
                             </div>
                         </td>
+                        }
                     </tr>
+                    }
                 </tbody>
             </table>
         </div>
 
         <!-- Empty -->
-        <div class="empty-state" *ngIf="sortedRows().length === 0">
+        @if (sortedRows().length === 0) {
+        <div class="empty-state">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="empty-svg"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             <p>{{ 'ATTRIBUTION.TABLE.EMPTY' | translate }}</p>
         </div>
+        }
     </div>
+    }
 
     <!-- Session Events panel -->
     <div class="glass-panel info-card">
@@ -310,3 +369,4 @@
     </div>
 
 </div>
+}

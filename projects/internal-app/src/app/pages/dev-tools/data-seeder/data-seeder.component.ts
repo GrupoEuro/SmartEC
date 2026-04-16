@@ -404,7 +404,7 @@ export class DataSeederComponent {
         this.logs.update(prev => [...prev, { time, message, type }]);
     }
 
-    getSeederVersion() { return 'v5.2.0-yoy-bootstrap'; }
+    getSeederVersion() { return 'v5.3.0-daily-subcollection'; }
 
 
     // Doc Generator Methods (Stubbed to keep file shorter, logic was in previous step)
@@ -412,16 +412,18 @@ export class DataSeederComponent {
     generateInternationalDoc() { this.addLog('Doc generation feature present (stub)'); }
 
     /**
-     * One-time bootstrap: reads all existing orders and builds monthly_stats rollup docs.
-     * Costs N reads (orders already paid for historically) + ~M writes (one per unique month).
-     * Safe to run multiple times — uses { merge: true } so it won't overwrite if called twice;
-     * it will re-sum from scratch (intentional: treats each run as a clean recount).
+     * One-time bootstrap: reads all existing orders and builds:
+     *   - monthly_stats/{YYYY-MM}          ← month aggregate (sales, orders, pieces)
+     *   - monthly_stats/{YYYY-MM}/days/{DD} ← daily subcollection (for exact YoY comparison)
+     *
+     * Safe to run multiple times (re-counts from scratch each time).
+     * No Firestore reads cost — orders already paid for historically.
      */
     async bootstrapMonthlySales() {
         if (this.isBootstrapping()) return;
         if (!await this.confirmService.confirm({
-            title: 'Bootstrap monthly_stats',
-            message: 'This reads ALL orders and writes one Firestore doc per month. Run once to enable the YoY comparison. Safe to re-run.',
+            title: 'Bootstrap monthly_stats + daily subcollection',
+            message: 'Reads ALL orders → writes monthly_stats/{MM} aggregates AND monthly_stats/{MM}/days/{DD} subcollection. Required for exact-date YoY comparison and MTD overlay. Safe to re-run.',
             type: 'info',
             confirmText: 'Ejecutar'
         })) return;
@@ -431,11 +433,12 @@ export class DataSeederComponent {
 
         try {
             const snap = await getDocs(query(collection(this.firestore, 'orders'), orderBy('createdAt', 'asc')));
-            this.bootstrapLog.set(`✔ ${snap.size} órdenes encontradas. Agrupando por mes...`);
+            this.bootstrapLog.set(`✔ ${snap.size} órdenes encontradas. Agrupando por mes y día...`);
 
-            // Group by YYYY-MM
-            type MonthBucket = { sales: number; orders: number; pieces: number; byChannel: Record<string, number> };
-            const map = new Map<string, MonthBucket>();
+            // monthMap: { YYYY-MM → { sales, orders, pieces, days: { DD → {sales,orders,pieces} } } }
+            type DayBucket   = { sales: number; orders: number; pieces: number };
+            type MonthBucket = { sales: number; orders: number; pieces: number; byChannel: Record<string, number>; days: Record<string, DayBucket> };
+            const monthMap = new Map<string, MonthBucket>();
 
             const VOID = new Set(['cancelled', 'refunded', 'returned']);
 
@@ -447,37 +450,64 @@ export class DataSeederComponent {
                 else if (ts)    date = new Date(ts);
                 else            date = new Date();
 
-                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                if (!map.has(key)) map.set(key, { sales: 0, orders: 0, pieces: 0, byChannel: {} });
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const dayKey   = String(date.getDate()).padStart(2, '0');
 
-                const bucket = map.get(key)!;
+                if (!monthMap.has(monthKey)) monthMap.set(monthKey, { sales: 0, orders: 0, pieces: 0, byChannel: {}, days: {} });
+                const bucket = monthMap.get(monthKey)!;
                 bucket.orders++;
+
                 if (!VOID.has(o.status ?? '')) {
-                    const revenue  = o.total ?? 0;
-                    const pieces   = (o.items ?? []).reduce((s: number, i: any) => s + (i.quantity ?? 0), 0);
-                    const channel  = o.sourceChannel ?? 'storefront';
+                    const revenue = o.total ?? 0;
+                    const pieces  = (o.items ?? []).reduce((s: number, i: any) => s + (i.quantity ?? 0), 0);
+                    const channel = o.sourceChannel ?? 'storefront';
                     bucket.sales  += revenue;
                     bucket.pieces += pieces;
                     bucket.byChannel[channel] = (bucket.byChannel[channel] ?? 0) + revenue;
+
+                    // Daily bucket (only non-void orders count toward revenue)
+                    if (!bucket.days[dayKey]) bucket.days[dayKey] = { sales: 0, orders: 0, pieces: 0 };
+                    bucket.days[dayKey].sales  += revenue;
+                    bucket.days[dayKey].orders += 1;
+                    bucket.days[dayKey].pieces += pieces;
                 }
             });
 
-            this.bootstrapLog.set(`✔ ${map.size} meses detectados. Escribiendo rollups...`);
+            this.bootstrapLog.set(`✔ ${monthMap.size} meses detectados. Escribiendo rollups + subcollecciones diarias...`);
 
-            // Write each month (batch by 20 to avoid limits)
-            const entries = [...map.entries()];
-            for (let i = 0; i < entries.length; i += 20) {
-                const chunk = entries.slice(i, i + 20);
-                await Promise.all(chunk.map(([yyyyMm, bucket]) =>
-                    setDoc(
-                        doc(this.firestore, `monthly_stats/${yyyyMm}`),
-                        { ...bucket, updatedAt: Timestamp.now() },
-                        { merge: false } // full replace for clean recount
-                    )
-                ));
+            // Write each month aggregate + its day subcollection
+            let totalDayDocs = 0;
+            for (const [yyyyMm, bucket] of monthMap.entries()) {
+                // Month aggregate
+                await setDoc(
+                    doc(this.firestore, `monthly_stats/${yyyyMm}`),
+                    {
+                        month:  yyyyMm,
+                        sales:  bucket.sales,
+                        orders: bucket.orders,
+                        pieces: bucket.pieces,
+                        byChannel: bucket.byChannel,
+                        updatedAt: Timestamp.now(),
+                        backfilled: true,
+                    },
+                    { merge: false }
+                );
+
+                // Daily subcollection — batch writes per month (max ~31 docs)
+                const dayEntries = Object.entries(bucket.days);
+                totalDayDocs += dayEntries.length;
+                for (let i = 0; i < dayEntries.length; i += 20) {
+                    const chunk = dayEntries.slice(i, i + 20);
+                    await Promise.all(chunk.map(([day, dayData]) =>
+                        setDoc(
+                            doc(this.firestore, `monthly_stats/${yyyyMm}/days/${day}`),
+                            { day, month: yyyyMm, ...dayData, updatedAt: Timestamp.now() }
+                        )
+                    ));
+                }
             }
 
-            this.bootstrapLog.set(`✅ Bootstrap completo: ${map.size} documentos escritos en monthly_stats.`);
+            this.bootstrapLog.set(`✅ Bootstrap completo: ${monthMap.size} meses, ${totalDayDocs} docs diarios escritos en monthly_stats.`);
         } catch (err: any) {
             this.bootstrapLog.set(`❌ Error: ${err?.message ?? err}`);
             console.error('[Bootstrap] monthly_stats failed:', err);

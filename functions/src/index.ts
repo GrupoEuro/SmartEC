@@ -2549,29 +2549,29 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         throw new functions.https.HttpsError('failed-precondition', 'MercadoLibre not connected.');
     }
 
-    // ── 4. Search via /products/search (works, unlike /sites/MLM/search) ─────
-    // /products/search returns the product catalog. We then resolve item prices
-    // by fetching the items that belong to each product via /products/{id}/items.
-    // Keyword: "{width}/{aspectRatio}R{diameter}" covers both moto and car tires.
-    const keyword = `${width}/${aspectRatio}R${diameter}`;
-    const productsUrl = `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(keyword)}&limit=20`;
-
-    console.log(`[PriceIntel] Products search: ${productsUrl}`);
+    // ── 4. Get product catalog IDs (used in Tier 2 below) ────────────────────
+    // /products/search gives us catalog product IDs which we can then use to
+    // query /sites/MLM/search?catalog_product_id= for exact product matches.
+    // NOTE: The keyword formatted as "{width}/{aspectRatio}-{diameter}" covers
+    // both metric and inch-style representations on MeLi.
+    const keyword = `${width}/${aspectRatio}-${diameter}`;
+    const keywordAlt = `${width}/${aspectRatio}R${diameter}`;
 
     let productIds: string[] = [];
     try {
-        const prodRes = await fetch(productsUrl, { headers: authHeaders });
-        if (!prodRes.ok) {
-            const errText = await prodRes.text();
-            console.error(`[PriceIntel] Products search failed (${prodRes.status}): ${errText.substring(0, 200)}`);
-            throw new functions.https.HttpsError('internal', `ML products search failed: HTTP ${prodRes.status}`);
+        const prodRes = await fetch(
+            `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(keywordAlt)}&category=${categoryId}&limit=15`,
+            { headers: authHeaders }
+        );
+        if (prodRes.ok) {
+            const prodData = await prodRes.json() as any;
+            productIds = (prodData.results || []).map((p: any) => p.id).filter(Boolean).slice(0, 10);
+            console.log(`[PriceIntel] Found ${productIds.length} product catalog entries`);
+        } else {
+            console.warn(`[PriceIntel] Products search returned ${prodRes.status} — will rely on keyword search only`);
         }
-        const prodData = await prodRes.json() as any;
-        productIds = (prodData.results || []).map((p: any) => p.id).filter(Boolean).slice(0, 10);
-        console.log(`[PriceIntel] Found ${productIds.length} product catalog entries`);
     } catch (err: any) {
-        if (err.code) throw err; // re-throw HttpsError
-        throw new functions.https.HttpsError('internal', `ML products API error: ${err.message}`);
+        console.warn('[PriceIntel] Products search failed (non-fatal):', err.message);
     }
 
     // ── 5. Fetch our own seller's listed items for this size ──────────────────
@@ -2644,24 +2644,68 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     }
     console.log(`[PriceIntel] Total our item IDs for ${fingerprint}: ${ourItemIds.size}`);
 
-    // ── 6. Fetch competing items via product items endpoint ───────────────────
-    // For each product in the catalog, get the cheapest active listing.
+    // ── 6. Competitor search: 3-tier strategy ─────────────────────────────────
+    //
+    // Tier 1: /sites/MLM/search?q=...&category=... (server-side call, no browser 403)
+    //   Returns top 50 active listings sorted by price. This is the same endpoint
+    //   the ML website uses — works fine from Cloud Functions.
+    //
+    // Tier 2: /sites/MLM/search?catalog_product_id={id} for each catalog product.
+    //   Finds listings that are linked to a specific catalog entry.
+    //
+    // Tier 3: /users/{sellerId}/items/search already done in step 5 (our own items).
+    //
     const competitorItemIds: Set<string> = new Set<string>();
-    for (const productId of productIds.slice(0, 8)) {
+
+    // — Tier 1: keyword search by size (multiple variants) —
+    const searchQueries = [
+        `llanta moto ${keyword}`,       // e.g. "llanta moto 120/70-17"
+        `llanta ${keyword}`,             // e.g. "llanta 120/70-17"
+        `neumatico ${keyword}`,          // Spanish for tire
+    ];
+    for (const q of searchQueries) {
         try {
-            const itemsRes = await fetch(
-                `https://api.mercadolibre.com/products/${productId}/items?status=active&limit=5`,
-                { headers: authHeaders }
-            );
-            if (itemsRes.ok) {
-                const itemsData = await itemsRes.json() as any;
-                const items: string[] = (itemsData.results || []).map((r: any) => r.item_id || r.id).filter(Boolean);
-                items.forEach((id: string) => competitorItemIds.add(id));
+            const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(q)}&category=${categoryId}&limit=30&sort=price_asc&status=active`;
+            console.log(`[PriceIntel] Tier-1 search: ${url}`);
+            const r = await fetch(url, { headers: authHeaders });
+            if (r.ok) {
+                const body = await r.json() as any;
+                const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
+                console.log(`[PriceIntel] Tier-1 "${q}" → ${ids.length} results`);
+                ids.forEach(id => competitorItemIds.add(id));
+            } else {
+                console.warn(`[PriceIntel] Tier-1 search returned ${r.status}`);
             }
         } catch (err: any) {
-            console.warn(`[PriceIntel] Could not fetch items for product ${productId}:`, err.message);
+            console.warn('[PriceIntel] Tier-1 search failed:', err.message);
+        }
+        if (competitorItemIds.size >= 30) break; // enough results, stop early
+    }
+
+    // — Tier 2: per-product catalog search (fills gaps when Tier 1 < 20 results) —
+    if (competitorItemIds.size < 20 && productIds.length > 0) {
+        console.log(`[PriceIntel] Tier-2: catalog product search for ${productIds.length} products`);
+        for (const productId of productIds.slice(0, 6)) {
+            try {
+                const url = `https://api.mercadolibre.com/sites/MLM/search?catalog_product_id=${productId}&limit=10&sort=price_asc`;
+                const r = await fetch(url, { headers: authHeaders });
+                if (r.ok) {
+                    const body = await r.json() as any;
+                    const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
+                    console.log(`[PriceIntel] Tier-2 product ${productId} → ${ids.length} items`);
+                    ids.forEach(id => competitorItemIds.add(id));
+                }
+            } catch (err: any) {
+                console.warn(`[PriceIntel] Tier-2 product ${productId} failed:`, err.message);
+            }
+            if (competitorItemIds.size >= 40) break;
         }
     }
+
+    console.log(`[PriceIntel] Total competitor item IDs found: ${competitorItemIds.size}`);
+
+    // Remove our own items from competitor set (they're handled separately)
+    ourItemIds.forEach(id => competitorItemIds.delete(id));
 
     // ── 7. Bulk-fetch all item details ────────────────────────────────────────
     const allItemIds = [...new Set([...competitorItemIds, ...ourItemIds])].slice(0, 50);

@@ -456,13 +456,13 @@
                     <th>Título</th>
                     <th class="th-seller">Vendedor</th>
                     <th class="th-sortable" (click)="setSort('listing')">
-                      Tipo <app-icon name="chevrons-up-down" [size]="12" />
+                      <span class="th-sortable-inner">Tipo <app-icon name="chevrons-up-down" [size]="12" /></span>
                     </th>
                     <th class="th-sortable" (click)="setSort('sold')">
-                      Vendidos <app-icon name="chevrons-up-down" [size]="12" />
+                      <span class="th-sortable-inner">Vendidos <app-icon name="chevrons-up-down" [size]="12" /></span>
                     </th>
                     <th class="th-sortable th-price" (click)="setSort('price')">
-                      Precio <app-icon name="chevrons-up-down" [size]="12" />
+                      <span class="th-sortable-inner">Precio <app-icon name="chevrons-up-down" [size]="12" /></span>
                     </th>
                     <th class="th-actions"></th>
                   </tr>

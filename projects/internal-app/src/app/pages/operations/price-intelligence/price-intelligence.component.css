@@ -721,10 +721,15 @@
 .th-sortable {
     cursor: pointer;
     user-select: none;
-    display: flex;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+/* Inner span inside th-sortable for icon alignment */
+.th-sortable-inner {
+    display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    transition: color 0.2s ease;
 }
 
 .th-sortable:hover { color: #a78bfa; }

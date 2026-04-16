@@ -1236,3 +1236,129 @@
 .be-comparison { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 99px; }
 .be-ok   { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .be-warn { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+/* ── Price History ─────────────────────────────────────────────────────────── */
+
+.history-badge {
+    font-size: 0.72rem;
+    color: #818cf8;
+    font-weight: 600;
+}
+
+.history-card {
+    margin-top: 0.5rem;
+    border-color: rgba(129, 140, 248, 0.2);
+}
+
+.history-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Baseline badge in card header */
+.baseline-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    font-weight: 600;
+}
+
+/* Trend indicators */
+.trend-indicators {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.trend-chip {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-weight: 600;
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+}
+.trend-chip.trend-down { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.trend-chip.trend-up   { background: rgba(239, 68, 68, 0.12);  color: #ef4444; }
+.trend-chip.trend-flat { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+
+/* Sparkline */
+.sparkline-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sparkline-svg {
+    width: 100%;
+    height: 76px;
+    overflow: visible;
+}
+
+.spark-lowest { stroke: #10b981; stroke-width: 1.5; stroke-dasharray: 4 2; }
+.spark-median { stroke: #a78bfa; stroke-width: 2; }
+.spark-ours   { stroke: #22d3ee; stroke-width: 2; }
+.spark-ours-dot { fill: #22d3ee; }
+.spark-label  { font-size: 9px; fill: #64748b; font-family: 'Inter', sans-serif; }
+
+.spark-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.spark-leg { font-size: 0.7rem; font-weight: 600; }
+.spark-leg-lowest { color: #10b981; }
+.spark-leg-median { color: #a78bfa; }
+.spark-leg-ours   { color: #22d3ee; }
+
+/* History table */
+.history-table-wrap {
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+.history-table th {
+    text-align: left;
+    padding: 0.4rem 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.history-table td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: #e2e8f0;
+}
+.history-table tr:last-child td { border-bottom: none; }
+.history-table tr:hover td { background: rgba(255,255,255,0.025); }
+
+tr.history-baseline td { background: rgba(251, 191, 36, 0.04); }
+
+.history-date { font-family: 'Courier New', monospace; color: #94a3b8; }
+.history-pos, .history-count { text-align: center; color: #64748b; }
+.baseline-tag {
+    display: inline-block;
+    font-size: 0.6rem;
+    background: rgba(251,191,36,0.15);
+    color: #fbbf24;
+    padding: 0 0.3rem;
+    border-radius: 4px;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+}
+
+.text-green  { color: #10b981 !important; }
+.text-violet { color: #a78bfa !important; }
+.text-amber  { color: #f59e0b !important; }
+.font-mono   { font-family: 'Courier New', monospace; }

@@ -484,6 +484,13 @@ service cloud.firestore {
     match /price_intelligence/{fingerprint} {
       allow read: if isStaff();
       allow write: if false; // written by meliPriceScan Cloud Function only
+
+      // Daily stats snapshots: price_intelligence/{fp}/history/{YYYY-MM-DD}
+      // Written by Cloud Function on every live scan.
+      match /history/{dateId} {
+        allow read: if isStaff();
+        allow write: if false;
+      }
     }
 
     // Price alerts generated when a competitor undercuts us by >5%.

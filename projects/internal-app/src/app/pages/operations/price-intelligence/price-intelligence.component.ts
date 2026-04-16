@@ -9,7 +9,7 @@ import { Observable, Subscription, of, timer } from 'rxjs';
 import { catchError, retry, retryWhen, delayWhen, tap } from 'rxjs/operators';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { ToastService } from '../../../core/services/toast.service';
-import { TireMarketScan, MarketListing, MarketStats, PriceAlert } from '../../../core/models/competitor.model';
+import { TireMarketScan, MarketListing, MarketStats, PriceAlert, PriceHistoryEntry } from '../../../core/models/competitor.model';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -165,6 +165,49 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         return items;
     });
 
+    // ── Price History ─────────────────────────────────────────────────────────
+    priceHistory   = signal<PriceHistoryEntry[]>([]);
+    private historySub: Subscription | null = null;
+
+    /** Trend vs previous available day: positive = market getting cheaper, negative = prices rising */
+    priceTrend = computed(() => {
+        const h = this.priceHistory();
+        if (h.length < 2) return null;
+        const latest = h[0];   // sorted desc
+        const prev   = h[1];
+        if (!latest.stats.medianPrice || !prev.stats.medianPrice) return null;
+        const medianDelta = latest.stats.medianPrice - prev.stats.medianPrice;
+        const ourDelta    = (latest.stats.ourPrice ?? 0) - (prev.stats.ourPrice ?? 0);
+        return {
+            medianDelta,
+            medianDeltaPct: (medianDelta / prev.stats.medianPrice) * 100,
+            ourDelta,
+            days: h.length,
+            baseline: h[h.length - 1], // oldest entry = baseline
+        };
+    });
+
+    sparklinePoints = computed(() => {
+        const h = [...this.priceHistory()].reverse(); // oldest first for chart
+        if (h.length === 0) return null;
+        const allPrices = h.flatMap(e => [e.stats.medianPrice, e.stats.lowestPrice, e.stats.ourPrice ?? 0]).filter(p => p > 0);
+        const minP = Math.min(...allPrices) * 0.97;
+        const maxP = Math.max(...allPrices) * 1.03;
+        const range = maxP - minP || 1;
+        const W = 300, H = 64;
+        const toX = (i: number) => Math.round((i / (h.length - 1 || 1)) * W);
+        const toY = (p: number) => Math.round(H - ((p - minP) / range) * H);
+        const path = (vals: number[]) => vals.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(p)}`).join(' ');
+        return {
+            median:  path(h.map(e => e.stats.medianPrice)),
+            lowest:  path(h.map(e => e.stats.lowestPrice)),
+            ours:    path(h.map(e => e.stats.ourPrice ?? 0).filter(p => p > 0)),
+            oursPoints: h.map((e, i) => ({ x: toX(i), y: toY(e.stats.ourPrice ?? 0), entry: e })).filter(p => p.y < H),
+            labels:  h.filter((_, i) => i === 0 || i === h.length - 1).map((e, i2) => ({ x: i2 === 0 ? 0 : W, label: e.date.slice(5), anchor: i2 === 0 ? 'start' : 'end' })),
+            minP, maxP, W, H,
+        };
+    });
+
     // ── Market Stats ──────────────────────────────────────────────────────────
     stats = computed(() => this.marketScan()?.stats ?? null);
 
@@ -246,6 +289,7 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     ngOnDestroy() {
         this.scanSub?.unsubscribe();
         this.alertsSub?.unsubscribe();
+        this.historySub?.unsubscribe();
     }
 
     private subscribeToScan() {
@@ -275,6 +319,8 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
             }
             // If undefined/null — leave existing marketScan value as-is (don't wipe it)
         });
+        // Load the last 30 days of history for this size
+        this.loadHistory();
     }
 
     private loadAlerts() {
@@ -289,16 +335,41 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         });
     }
 
+    private loadHistory() {
+        this.historySub?.unsubscribe();
+        const histRef = collection(
+            this.firestore,
+            'price_intelligence', this.fingerprint(), 'history'
+        );
+        const q = query(histRef, orderBy('date', 'desc'), limit(30));
+        this.historySub = (collectionData(q) as Observable<any[]>).pipe(
+            retryWhen(errors => errors.pipe(delayWhen((_, i) => timer((i + 1) * 2000)))),
+            catchError(() => of([]))
+        ).subscribe((docs: any[]) => {
+            this.priceHistory.set(docs.map(d => ({
+                date:         d.date,
+                scannedAt:    d.scannedAt?.toDate?.() ?? new Date(),
+                stats:        d.stats,
+                listingCount: d.listingCount ?? 0,
+                isBaseline:   d.isBaseline ?? false,
+            } as PriceHistoryEntry)));
+        });
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────────
 
     selectStructSize(size: { width: number; aspectRatio: number; diameter: number }) {
         this.tireWidth.set(size.width);
         this.tireAspectRatio.set(size.aspectRatio);
         this.tireDiameter.set(size.diameter);
+        this.priceHistory.set([]);  // clear stale history for previous size
         this.subscribeToScan();
     }
 
-    onSizeChange() { this.subscribeToScan(); }
+    onSizeChange() {
+        this.priceHistory.set([]);
+        this.subscribeToScan();
+    }
 
     async runScan(force = false) {
         if (this.scanState() === 'scanning') return;
@@ -317,6 +388,7 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
             const d = res.data as { cached: boolean; count: number; fingerprint: string };
             this.lastScanMeta.set({ cached: d.cached, count: d.count ?? 0 });
             this.scanState.set('done');
+            const resp = d as any;
             // Pre-fill market price for cost analyzer
             const s = this.stats();
             if (s?.medianPrice && this.marketPriceInput === 0) {
@@ -324,9 +396,13 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
             }
             if (d.cached) {
                 this.toastSvc.info(`Datos en caché para ${this.displaySize()}.`);
+            } else if (resp.isBaseline) {
+                this.toastSvc.success(`📌 Registro base establecido para ${this.displaySize()} — ${d.count} listados`);
             } else {
                 this.toastSvc.success(`✅ ${d.count} listados encontrados para ${this.displaySize()}`);
             }
+            // Reload history so trend appears immediately
+            this.loadHistory();
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Error desconocido.';
             this.scanState.set('error');

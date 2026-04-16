@@ -2809,8 +2809,9 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
 
     console.log(`[PriceIntel] Stats for ${fingerprint}:`, JSON.stringify(stats));
 
-    // ── 11. Write to Firestore ────────────────────────────────────────────────
-    await db.collection('price_intelligence').doc(fingerprint).set({
+    // ── 11. Write live snapshot to Firestore ──────────────────────────────────
+    const docRef = db.collection('price_intelligence').doc(fingerprint);
+    await docRef.set({
         fingerprint,
         tireSize: { width, aspectRatio, diameter },
         categoryId,
@@ -2819,7 +2820,31 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         stats,
     }, { merge: false });
 
-    // ── 12. Generate price alert if competitor undercuts us by >5% ─────────────
+    // ── 12. Write daily history snapshot (stats-only) ─────────────────────────
+    // Document ID = UTC date string e.g. "2026-04-16".
+    // One doc per day; same-day re-scans overwrite the previous entry.
+    // First-ever scan is flagged as isBaseline = true.
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const historyRef = docRef.collection('history').doc(today);
+
+    // Check if this is the very first scan ever for this size
+    const existingHistoryCount = await docRef.collection('history').count().get();
+    const isBaseline = existingHistoryCount.data().count === 0;
+
+    await historyRef.set({
+        date: today,
+        scannedAt: admin.firestore.FieldValue.serverTimestamp(),
+        stats,
+        listingCount: listings.length,
+        ...(isBaseline ? { isBaseline: true } : {}),
+    }, { merge: true }); // merge so same-day re-scans update fields, not replace
+
+    if (isBaseline) {
+        console.log(`[PriceIntel] 📌 Baseline established for ${fingerprint} on ${today}`);
+    }
+    console.log(`[PriceIntel] 📅 History snapshot written: ${fingerprint}/${today}`);
+
+    // ── 13. Generate price alert if competitor undercuts us by >5% ─────────────
     if (ourPrice !== null && priceToWin > 0 && priceToWin < ourPrice * 0.95) {
         const gapPct = ((priceToWin - ourPrice) / ourPrice * 100);
         await db.collection('price_alerts').add({
@@ -2839,6 +2864,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         fingerprint,
         stats,
         count: listings.length,
+        isBaseline,
     };
 });
 

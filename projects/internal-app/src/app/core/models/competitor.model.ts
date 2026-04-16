@@ -79,3 +79,18 @@ export interface PriceAlert {
     isRead: boolean;
     resolvedAt?: Date;
 }
+
+/**
+ * Daily stats snapshot stored in:
+ * price_intelligence/{fingerprint}/history/{YYYY-MM-DD}
+ *
+ * Written by meliPriceScan on every live (non-cached) scan.
+ * One document per day — subsequent scans on the same day merge/overwrite.
+ */
+export interface PriceHistoryEntry {
+    date: string;                           // "2026-04-16" (document ID too)
+    scannedAt: Date;
+    stats: MarketStats;
+    listingCount: number;                   // total listings (competitors + ours)
+    isBaseline?: boolean;                   // true for first-ever scan of this size
+}

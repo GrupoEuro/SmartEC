@@ -246,10 +246,105 @@
             <span>Escaneado: {{ fmtDate(scan.lastScanned) }}</span>
             <span class="dot">·</span>
             @if (lastScanMeta()?.cached) { <span class="cache-badge">📦 En caché</span> }
+            @if (priceHistory().length > 0) {
+              <span class="dot">·</span>
+              <span class="history-badge">📅 {{ priceHistory().length }} días de historial</span>
+            }
             <button class="btn-refresh" (click)="runScan(true)" [disabled]="scanState() === 'scanning'">
               <app-icon name="refresh-cw" [size]="12" /> Actualizar
             </button>
           </div>
+
+          <!-- Price History Sparkline -->
+          @if (priceHistory().length > 0) {
+            <div class="pi-card history-card">
+              <div class="pi-card-header">
+                <app-icon name="trending-up" [size]="16" />
+                <span>Historial de precios — {{ displaySize() }}</span>
+                @if (priceHistory()[priceHistory().length - 1]?.isBaseline) {
+                  <span class="baseline-badge">📌 Captura base: {{ priceHistory()[priceHistory().length - 1].date }}</span>
+                }
+                <!-- Trend indicator -->
+                @if (priceTrend(); as t) {
+                  <div class="trend-indicators">
+                    <span class="trend-chip" [class.trend-down]="t.medianDelta < 0" [class.trend-up]="t.medianDelta > 0" [class.trend-flat]="t.medianDelta === 0">
+                      {{ t.medianDelta < 0 ? '📉' : t.medianDelta > 0 ? '📈' : '→' }}
+                      Mercado {{ t.medianDelta < 0 ? 'bajó' : t.medianDelta > 0 ? 'subió' : 'estable' }}
+                      {{ fmt(t.medianDelta) }} ({{ t.medianDeltaPct | number:'1.1-1' }}%)
+                    </span>
+                    @if (t.ourDelta !== 0) {
+                      <span class="trend-chip" [class.trend-down]="t.ourDelta < 0" [class.trend-up]="t.ourDelta > 0">
+                        Nuestro precio: {{ t.ourDelta > 0 ? '+' : '' }}{{ fmt(t.ourDelta) }}
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="pi-card-body history-body">
+                @if (sparklinePoints(); as sp) {
+                  <!-- SVG Sparkline -->
+                  <div class="sparkline-wrap">
+                    <svg [attr.viewBox]="'0 0 ' + sp.W + ' ' + sp.H" class="sparkline-svg" preserveAspectRatio="none">
+                      <!-- Market lowest (green) -->
+                      <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" />
+                      <!-- Market median (violet) -->
+                      <path [attr.d]="sp.median" class="spark-median" fill="none" />
+                      <!-- Our price (cyan dots) -->
+                      @if (sp.ours) {
+                        <path [attr.d]="sp.ours" class="spark-ours" fill="none" />
+                        @for (pt of sp.oursPoints; track pt.x) {
+                          <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3" class="spark-ours-dot" />
+                        }
+                      }
+                      <!-- Date labels -->
+                      @for (lbl of sp.labels; track lbl.x) {
+                        <text [attr.x]="lbl.x" [attr.y]="sp.H + 12" [attr.text-anchor]="lbl.anchor" class="spark-label">{{ lbl.label }}</text>
+                      }
+                    </svg>
+                    <!-- Legend -->
+                    <div class="spark-legend">
+                      <span class="spark-leg spark-leg-lowest">▬ Mínimo mercado</span>
+                      <span class="spark-leg spark-leg-median">▬ Mediana</span>
+                      <span class="spark-leg spark-leg-ours">● Nuestro precio</span>
+                    </div>
+                  </div>
+
+                  <!-- History table: last 7 days -->
+                  <div class="history-table-wrap">
+                    <table class="history-table">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Mínimo competencia</th>
+                          <th>Mediana</th>
+                          <th>Nuestro precio</th>
+                          <th>Posición</th>
+                          <th>#</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (entry of priceHistory().slice(0, 7); track entry.date) {
+                          <tr [class.history-baseline]="entry.isBaseline">
+                            <td class="history-date">
+                              {{ entry.date }}
+                              @if (entry.isBaseline) { <span class="baseline-tag">base</span> }
+                            </td>
+                            <td class="text-green font-mono">{{ fmt(entry.stats.lowestPrice) }}</td>
+                            <td class="text-violet font-mono">{{ fmt(entry.stats.medianPrice) }}</td>
+                            <td class="font-mono" [class.text-green]="(entry.stats.ourPrice ?? 0) <= entry.stats.lowestPrice" [class.text-amber]="(entry.stats.ourPrice ?? 0) > entry.stats.medianPrice">
+                              {{ entry.stats.ourPrice ? fmt(entry.stats.ourPrice) : '—' }}
+                            </td>
+                            <td class="history-pos">{{ entry.stats.positionInMarket ? '#' + entry.stats.positionInMarket : '—' }}</td>
+                            <td class="history-count">{{ entry.listingCount }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            </div>
+          }
 
           <!-- Listings Table -->
           <div class="pi-card results-card">

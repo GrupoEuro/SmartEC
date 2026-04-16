@@ -2609,10 +2609,14 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
                             const tireAR = attrs.find((a: any) => ['ASPECT_RATIO', 'TIRE_ASPECT_RATIO'].includes(a.id))?.value_name;
                             const tireDiam = attrs.find((a: any) => ['RIM_DIAMETER', 'TIRE_RIM_DIAMETER'].includes(a.id))?.value_name;
 
-                            // Also match by title keyword as fallback
-                            const titleMatch = item.title?.includes(`${width}/${aspectRatio}`) ||
-                                               item.title?.includes(`${width}-${aspectRatio}`) ||
-                                               item.title?.toLowerCase().includes(keyword.toLowerCase());
+                            // Title match must include ALL THREE parts to avoid
+                            // false positives (e.g. 120/70-12 matching for 120/70-17)
+                            const titleHasWidth = item.title?.includes(String(width));
+                            const titleHasAR = item.title?.includes(String(aspectRatio));
+                            const titleHasDiam = item.title?.includes(String(diameter)) ||
+                                                 item.title?.toLowerCase().includes(`r${diameter}`) ||
+                                                 item.title?.toLowerCase().includes(`-${diameter}`);
+                            const titleMatch = titleHasWidth && titleHasAR && titleHasDiam;
 
                             const attrsMatch = tireWidth && String(tireWidth) === String(width) &&
                                                tireAR && String(tireAR) === String(aspectRatio) &&
@@ -2644,70 +2648,92 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     }
     console.log(`[PriceIntel] Total our item IDs for ${fingerprint}: ${ourItemIds.size}`);
 
-    // ── 6. Competitor search: 3-tier strategy ─────────────────────────────────
+    // ── 6. Competitor search: Attribute-based search (authenticated) ──────────
     //
-    // Tier 1: /sites/MLM/search?q=...&category=... (server-side call, no browser 403)
-    //   Returns top 50 active listings sorted by price. This is the same endpoint
-    //   the ML website uses — works fine from Cloud Functions.
+    // CONFIRMED: /sites/MLM/search?q=... returns 403 for ALL callers (even curl
+    // from local machine — it's ML policy, not a GCP IP issue).
     //
-    // Tier 2: /sites/MLM/search?catalog_product_id={id} for each catalog product.
-    //   Finds listings that are linked to a specific catalog entry.
-    //
-    // Tier 3: /users/{sellerId}/items/search already done in step 5 (our own items).
+    // The CORRECT approach for registered seller apps:
+    //   /sites/MLM/search?category={cat}&ATTR_ID=value  WITH Bearer token.
+    // Attribute IDs for MLM169975 (from /categories/MLM169975/attributes):
+    //   SECTION_WIDTH                 = tire width section (e.g. 120)
+    //   AUTOMOTIVE_TIRE_ASPECT_RATIO  = aspect ratio (e.g. 70)
+    //   RIM_DIAMETER                  = rim diameter in inches (e.g. 17)
+    //   MANUFACTURER_TIRE_SIZE        = full size string (e.g. "120/70R17")
     //
     const competitorItemIds: Set<string> = new Set<string>();
 
-    // — Tier 1: keyword search by size (multiple variants) —
-    // NOTE: /sites/MLM/search is a PUBLIC endpoint — it MUST be called WITHOUT
-    // a Bearer token. Sending auth causes a 403 (ML enforces app-scope policies).
-    const searchQueries = [
-        `llanta moto ${keyword}`,       // e.g. "llanta moto 120/70-17"
-        `llanta ${keyword}`,             // e.g. "llanta 120/70-17"
-        `neumatico ${keyword}`,          // Spanish for tire
+    // Strategy A: Dimension attribute filters (most precise — exact size match)
+    const attrSearchUrls = [
+        // Primary category (motorcycle tires)
+        `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=50&sort=price_asc`,
+        // Fallback: also search without category restriction in case items are mis-tagged
+        `https://api.mercadolibre.com/sites/MLM/search?SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=30&sort=price_asc`,
     ];
-    for (const q of searchQueries) {
+
+    for (const url of attrSearchUrls) {
         try {
-            const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(q)}&category=${categoryId}&limit=50&sort=price_asc`;
-            console.log(`[PriceIntel] Tier-1 search: ${url}`);
-            const r = await fetch(url); // NO auth header — public endpoint
+            console.log(`[PriceIntel] Attr search: ${url}`);
+            const r = await fetch(url, { headers: authHeaders });
             if (r.ok) {
                 const body = await r.json() as any;
                 const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
-                console.log(`[PriceIntel] Tier-1 "${q}" → ${ids.length} results`);
+                console.log(`[PriceIntel] Attr search → ${ids.length} results (ML total: ${body.paging?.total ?? '?'})`);
                 ids.forEach(id => competitorItemIds.add(id));
             } else {
-                console.warn(`[PriceIntel] Tier-1 search returned ${r.status}`);
+                const errText = await r.text().catch(() => '');
+                console.warn(`[PriceIntel] Attr search returned ${r.status}: ${errText.slice(0, 150)}`);
             }
         } catch (err: any) {
-            console.warn('[PriceIntel] Tier-1 search failed:', err.message);
+            console.warn('[PriceIntel] Attr search failed:', err.message);
         }
-        if (competitorItemIds.size >= 50) break; // enough results, stop early
+        if (competitorItemIds.size >= 60) break;
     }
 
-    // — Tier 2: per-product catalog search — also public, no auth header —
-    if (competitorItemIds.size < 20 && productIds.length > 0) {
-        console.log(`[PriceIntel] Tier-2: catalog product search for ${productIds.length} products`);
-        for (const productId of productIds.slice(0, 6)) {
+    // Strategy B: MANUFACTURER_TIRE_SIZE exact string (covers non-catalogued items)
+    if (competitorItemIds.size < 10) {
+        for (const sizeStr of [`${width}/${aspectRatio}R${diameter}`, `${width}/${aspectRatio}-${diameter}`]) {
             try {
-                const url = `https://api.mercadolibre.com/sites/MLM/search?catalog_product_id=${productId}&limit=10&sort=price_asc`;
-                const r = await fetch(url); // NO auth header — public endpoint
+                const url = `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&MANUFACTURER_TIRE_SIZE=${encodeURIComponent(sizeStr)}&limit=30&sort=price_asc`;
+                console.log(`[PriceIntel] Size-string search: ${sizeStr}`);
+                const r = await fetch(url, { headers: authHeaders });
                 if (r.ok) {
                     const body = await r.json() as any;
                     const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
-                    console.log(`[PriceIntel] Tier-2 product ${productId} → ${ids.length} items`);
+                    console.log(`[PriceIntel] Size-string "${sizeStr}" → ${ids.length} results`);
                     ids.forEach(id => competitorItemIds.add(id));
                 }
             } catch (err: any) {
-                console.warn(`[PriceIntel] Tier-2 product ${productId} failed:`, err.message);
+                console.warn('[PriceIntel] Size-string search failed:', err.message);
+            }
+        }
+    }
+
+    // Strategy C: Per-catalog-product search (fills remaining gaps)
+    if (competitorItemIds.size < 15 && productIds.length > 0) {
+        console.log(`[PriceIntel] Catalog fallback for ${productIds.length} product IDs`);
+        for (const productId of productIds.slice(0, 8)) {
+            try {
+                const url = `https://api.mercadolibre.com/sites/MLM/search?catalog_product_id=${productId}&limit=10&sort=price_asc`;
+                const r = await fetch(url, { headers: authHeaders });
+                if (r.ok) {
+                    const body = await r.json() as any;
+                    const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
+                    if (ids.length) console.log(`[PriceIntel] Catalog ${productId} → ${ids.length} items`);
+                    ids.forEach(id => competitorItemIds.add(id));
+                }
+            } catch (err: any) {
+                console.warn(`[PriceIntel] Catalog ${productId} failed:`, err.message);
             }
             if (competitorItemIds.size >= 60) break;
         }
     }
 
-    console.log(`[PriceIntel] Total competitor item IDs found: ${competitorItemIds.size}`);
+    console.log(`[PriceIntel] Total competitor IDs found: ${competitorItemIds.size}`);
 
-    // Remove our own items from competitor set (they're handled separately)
+    // Remove our own items from competitor set
     ourItemIds.forEach(id => competitorItemIds.delete(id));
+    console.log(`[PriceIntel] After removing our items: ${competitorItemIds.size} competitor IDs`);
 
     // ── 7. Bulk-fetch all item details ────────────────────────────────────────
     const allItemIds = [...new Set([...competitorItemIds, ...ourItemIds])].slice(0, 50);

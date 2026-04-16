@@ -468,6 +468,13 @@ service cloud.firestore {
     match /monthly_stats/{monthId} {
       allow read:  if isStaff();
       allow write: if isAdmin();
+
+      // Daily subcollection: per-day rollup docs (YYYY-MM/days/DD)
+      // Written by bootstrap tool and aggregateDailyStats scheduled function.
+      match /days/{dayId} {
+        allow read:  if isStaff();
+        allow write: if isAdmin();
+      }
     }
 
   }

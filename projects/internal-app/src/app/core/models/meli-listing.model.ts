@@ -40,4 +40,10 @@ export interface MeliListingDoc {
     bundle_components: Array<{ item_id: string; quantity: number }>;
 
     lastSync: Timestamp | Date;
+
+    // Tire size attributes — extracted from item.attributes during meliSyncListings
+    // Used by meliPriceScan to auto-detect our own listings in the market
+    tireWidth?: number | null;              // TIRE_WIDTH attribute
+    tireAspectRatio?: number | null;        // ASPECT_RATIO attribute
+    tireDiameter?: number | null;           // RIM_DIAMETER attribute
 }

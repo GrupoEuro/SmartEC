@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpWebhook = exports.processPayment = void 0;
+exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpWebhook = exports.processPayment = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -2168,6 +2168,13 @@ exports.meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory: '512
                 const packContentAttr = itemAttributes.find((a) => a.id === 'PACK_CONTENT' || a.id === 'ITEM_AMOUNT');
                 const hasPackAttribute = packContentAttr && packContentAttr.value_name
                     && packContentAttr.value_name !== '1';
+                // ── Tire size attributes (for Price Intelligence cross-reference) ─
+                const tireWidthAttr = itemAttributes.find((a) => a.id === 'TIRE_WIDTH');
+                const aspectRatioAttr = itemAttributes.find((a) => a.id === 'ASPECT_RATIO');
+                const rimDiameterAttr = itemAttributes.find((a) => a.id === 'RIM_DIAMETER');
+                const tireWidth_pi = tireWidthAttr ? (Number(tireWidthAttr.value_name) || null) : null;
+                const tireAspectRatio_pi = aspectRatioAttr ? (Number(aspectRatioAttr.value_name) || null) : null;
+                const tireDiameter_pi = rimDiameterAttr ? (Number(rimDiameterAttr.value_name) || null) : null;
                 const itemRelations = item.item_relations || [];
                 const bundleItems = item.bundle_items || [];
                 const hasBundleItems = bundleItems.length > 0;
@@ -2231,6 +2238,10 @@ exports.meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory: '512
                     is_combo: isCombo,
                     pack_qty: packQty,
                     bundle_components: bundleComponents,
+                    // ── Tire size for Price Intelligence (auto cross-reference) ─
+                    tireWidth: tireWidth_pi,
+                    tireAspectRatio: tireAspectRatio_pi,
+                    tireDiameter: tireDiameter_pi,
                     lastSync: admin.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
                 syncedCount++;
@@ -2259,6 +2270,165 @@ exports.meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory: '512
         console.error('[Meli Listings] Sync failed:', e);
         throw new functions.https.HttpsError('internal', e.message || 'listings sync failed');
     }
+});
+// ─── Price Intelligence: Competitor Market Scan via ML Official API ───────────
+//
+// Callable from Angular: httpsCallable(functions, 'meliPriceScan')
+// Input:  { width: number, aspectRatio: number, diameter: number, categoryId?: string, force?: boolean }
+// Output: { cached: boolean, fingerprint: string, stats: object, count: number }
+//
+// Strategy: Uses ML attribute-based search (TIRE_WIDTH, ASPECT_RATIO, RIM_DIAMETER)
+// to retrieve all competitor listings for an exact tire size — no URL management,
+// no scraping. Results are cached in Firestore (price_intelligence/{fingerprint})
+// with a 4-hour TTL to minimize API calls.
+//
+exports.meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '512MB' }).https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const { width, aspectRatio, diameter, categoryId = 'MLM371', force = false } = data;
+    if (!width || !aspectRatio || !diameter) {
+        throw new functions.https.HttpsError('invalid-argument', 'width, aspectRatio, and diameter are required.');
+    }
+    const fingerprint = `${width}_${aspectRatio}_R${diameter}`;
+    console.log(`[PriceIntel] Scan requested: ${fingerprint} (category: ${categoryId}, force: ${force})`);
+    // ── 1. Check Firestore cache (4-hour TTL) ─────────────────────────────────
+    if (!force) {
+        const cacheDoc = await db.collection('price_intelligence').doc(fingerprint).get();
+        if (cacheDoc.exists) {
+            const lastScanned = (_c = (_b = (_a = cacheDoc.data()) === null || _a === void 0 ? void 0 : _a.lastScanned) === null || _b === void 0 ? void 0 : _b.toDate) === null || _c === void 0 ? void 0 : _c.call(_b);
+            const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+            if (lastScanned && lastScanned > fourHoursAgo) {
+                console.log(`[PriceIntel] Cache HIT for ${fingerprint} (scanned at ${lastScanned.toISOString()})`);
+                return {
+                    cached: true,
+                    fingerprint,
+                    stats: (_e = (_d = cacheDoc.data()) === null || _d === void 0 ? void 0 : _d.stats) !== null && _e !== void 0 ? _e : null,
+                    count: ((_g = (_f = cacheDoc.data()) === null || _f === void 0 ? void 0 : _f.listings) !== null && _g !== void 0 ? _g : []).length
+                };
+            }
+        }
+    }
+    // ── 2. Get ML access token (reuses existing auto-refresh logic) ───────────
+    const accessToken = await getValidMeliToken();
+    const authHeaders = { 'Authorization': `Bearer ${accessToken}` };
+    // ── 3. Search ML by tire size attributes ──────────────────────────────────
+    // ML attribute-based search: returns results filtered to the exact tire size.
+    // No scraping needed — the structured attribute system does the matching.
+    const searchUrl = new URL('https://api.mercadolibre.com/sites/MLM/search');
+    searchUrl.searchParams.set('category', categoryId);
+    searchUrl.searchParams.set('TIRE_WIDTH', String(width));
+    searchUrl.searchParams.set('ASPECT_RATIO', String(aspectRatio));
+    searchUrl.searchParams.set('RIM_DIAMETER', String(diameter));
+    searchUrl.searchParams.set('sort', 'price_asc');
+    searchUrl.searchParams.set('limit', '50');
+    console.log(`[PriceIntel] ML search URL: ${searchUrl.toString()}`);
+    let searchData = { results: [] };
+    try {
+        const searchRes = await fetch(searchUrl.toString(), { headers: authHeaders });
+        if (!searchRes.ok) {
+            const errText = await searchRes.text();
+            console.error(`[PriceIntel] ML search failed (${searchRes.status}): ${errText.substring(0, 300)}`);
+            throw new functions.https.HttpsError('internal', `ML search failed: HTTP ${searchRes.status}`);
+        }
+        searchData = await searchRes.json();
+        console.log(`[PriceIntel] ML returned ${(_j = (_h = searchData.results) === null || _h === void 0 ? void 0 : _h.length) !== null && _j !== void 0 ? _j : 0} results (paging.total: ${(_k = searchData.paging) === null || _k === void 0 ? void 0 : _k.total})`);
+    }
+    catch (fetchErr) {
+        console.error('[PriceIntel] ML fetch error:', fetchErr.message);
+        throw new functions.https.HttpsError('internal', `ML API error: ${fetchErr.message}`);
+    }
+    // ── 4. Identify our own listings (from synced meli_listings collection) ───
+    const ourListingsSnap = await db.collection('meli_listings')
+        .where('tireWidth', '==', width)
+        .where('tireAspectRatio', '==', aspectRatio)
+        .where('tireDiameter', '==', diameter)
+        .get();
+    const ourItemIds = new Set(ourListingsSnap.docs.map((d) => d.id));
+    console.log(`[PriceIntel] Our listings for ${fingerprint}: ${ourItemIds.size}`);
+    // ── 5. Process search results ─────────────────────────────────────────────
+    const listings = (searchData.results || []).map((item, idx) => {
+        var _a, _b, _c, _d, _e, _f;
+        return ({
+            itemId: item.id,
+            title: item.title || '',
+            price: item.price || 0,
+            sellerId: String((_b = (_a = item.seller) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : ''),
+            sellerNickname: ((_c = item.seller) === null || _c === void 0 ? void 0 : _c.nickname) || null,
+            sellerReputation: ((_e = (_d = item.seller) === null || _d === void 0 ? void 0 : _d.seller_reputation) === null || _e === void 0 ? void 0 : _e.level_id) || 'unknown',
+            soldQuantity: item.sold_quantity || 0,
+            listingType: item.listing_type_id || 'free',
+            isFreeShipping: ((_f = item.shipping) === null || _f === void 0 ? void 0 : _f.free_shipping) === true,
+            isOurListing: ourItemIds.has(item.id),
+            permalink: item.permalink || '',
+            thumbnail: item.thumbnail || '',
+            rank: idx + 1,
+            scrapedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    });
+    // ── 6. Compute market statistics ──────────────────────────────────────────
+    const competitorListings = listings.filter((l) => !l.isOurListing);
+    const ourListingsInResults = listings.filter((l) => l.isOurListing);
+    const competitorPrices = competitorListings.map((l) => l.price).filter((p) => p > 0);
+    const ourPrices = ourListingsInResults.map((l) => l.price).filter((p) => p > 0);
+    const safeMin = (arr) => arr.length > 0 ? Math.min(...arr) : 0;
+    const safeMax = (arr) => arr.length > 0 ? Math.max(...arr) : 0;
+    const safeMedian = (arr) => {
+        if (arr.length === 0)
+            return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    };
+    const ourPrice = ourPrices.length > 0 ? ourPrices[0] : null;
+    const priceToWin = safeMin(competitorPrices);
+    // positionInMarket: 1 = cheapest overall (including our listing)
+    const positionInMarket = (() => {
+        if (!ourPrice)
+            return null;
+        const idx = listings.findIndex((l) => l.isOurListing);
+        return idx >= 0 ? idx + 1 : null;
+    })();
+    const stats = {
+        lowestPrice: safeMin(competitorPrices),
+        medianPrice: safeMedian(competitorPrices),
+        highestPrice: safeMax(competitorPrices),
+        ourPrice,
+        positionInMarket,
+        totalCompetitors: competitorListings.length,
+        priceToWin,
+    };
+    console.log(`[PriceIntel] Stats for ${fingerprint}:`, JSON.stringify(stats));
+    // ── 7. Write to Firestore ─────────────────────────────────────────────────
+    await db.collection('price_intelligence').doc(fingerprint).set({
+        fingerprint,
+        tireSize: { width, aspectRatio, diameter },
+        categoryId,
+        lastScanned: admin.firestore.FieldValue.serverTimestamp(),
+        listings,
+        stats,
+    }, { merge: false }); // Full replace to clear stale listings
+    // ── 8. Generate price alert if we're undercut by >5% ─────────────────────
+    if (ourPrice !== null && priceToWin > 0 && priceToWin < ourPrice * 0.95) {
+        const gapPct = ((priceToWin - ourPrice) / ourPrice * 100);
+        await db.collection('price_alerts').add({
+            tireSize: fingerprint,
+            ourPrice,
+            competitorPrice: priceToWin,
+            gap: `${gapPct.toFixed(1)}%`,
+            alertType: 'undercut',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            isRead: false,
+        });
+        console.log(`[PriceIntel] 🚨 Alert created: ${fingerprint} — competitor $${priceToWin} vs our $${ourPrice} (${gapPct.toFixed(1)}%)`);
+    }
+    return {
+        cached: false,
+        fingerprint,
+        stats,
+        count: listings.length,
+    };
 });
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
 exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (_ctx) => {

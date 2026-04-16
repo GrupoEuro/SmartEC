@@ -937,38 +937,8 @@
     }
 }
 
-/* ─── Tab Navigation ─────────────────────────────────────────────────────── */
-.tab-nav {
-    display: flex;
-    gap: 0.25rem;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(100, 116, 139, 0.2);
-    border-radius: 10px;
-    padding: 0.25rem;
-}
+/* (tab-nav / tab-btn styles defined at top of file) */
 
-.tab-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.4rem 0.875rem;
-    border-radius: 7px;
-    border: none;
-    background: transparent;
-    color: #64748b;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.tab-btn:hover { color: #94a3b8; background: rgba(100, 116, 139, 0.1); }
-.tab-btn.active {
-    background: linear-gradient(135deg, #a78bfa, #38bdf8);
-    color: white;
-    box-shadow: 0 2px 10px rgba(167, 139, 250, 0.35);
-}
 
 /* ─── Quick Sizes Divider & Inch Styles ─────────────────────────────────── */
 .quick-sizes-divider {

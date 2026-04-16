@@ -2509,7 +2509,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     }
 
-    const { width, aspectRatio, diameter, categoryId = 'MLM371', force = false } = data;
+    const { width, aspectRatio, diameter, categoryId = 'MLM169975', force = false } = data;
 
     if (!width || !aspectRatio || !diameter) {
         throw new functions.https.HttpsError('invalid-argument', 'width, aspectRatio, and diameter are required.');
@@ -2525,7 +2525,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
             const lastScanned = cacheDoc.data()?.lastScanned?.toDate?.();
             const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
             if (lastScanned && lastScanned > fourHoursAgo) {
-                console.log(`[PriceIntel] Cache HIT for ${fingerprint} (scanned at ${lastScanned.toISOString()})`);
+                console.log(`[PriceIntel] Cache HIT for ${fingerprint}`);
                 return {
                     cached: true,
                     fingerprint,
@@ -2536,71 +2536,204 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         }
     }
 
-    // ── 2. Get ML access token (reuses existing auto-refresh logic) ───────────
+    // ── 2. Get ML access token ────────────────────────────────────────────────
     const accessToken = await getValidMeliToken();
     const authHeaders: Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
 
-    // ── 3. Search ML by tire size attributes ──────────────────────────────────
-    // ML attribute-based search: returns results filtered to the exact tire size.
-    // No scraping needed — the structured attribute system does the matching.
-    const searchUrl = new URL('https://api.mercadolibre.com/sites/MLM/search');
-    searchUrl.searchParams.set('category', categoryId);
-    searchUrl.searchParams.set('TIRE_WIDTH', String(width));
-    searchUrl.searchParams.set('ASPECT_RATIO', String(aspectRatio));
-    searchUrl.searchParams.set('RIM_DIAMETER', String(diameter));
-    searchUrl.searchParams.set('sort', 'price_asc');
-    searchUrl.searchParams.set('limit', '50');
+    // ── 3. Get our seller ID ──────────────────────────────────────────────────
+    const configDoc = await db.collection('config').doc('integrations').get();
+    const meliConfig = configDoc.data()?.meli;
+    const sellerId = meliConfig?.userId ? String(meliConfig.userId) : null;
 
-    console.log(`[PriceIntel] ML search URL: ${searchUrl.toString()}`);
-
-    let searchData: any = { results: [] };
-    try {
-        const searchRes = await fetch(searchUrl.toString(), { headers: authHeaders });
-        if (!searchRes.ok) {
-            const errText = await searchRes.text();
-            console.error(`[PriceIntel] ML search failed (${searchRes.status}): ${errText.substring(0, 300)}`);
-            throw new functions.https.HttpsError('internal', `ML search failed: HTTP ${searchRes.status}`);
-        }
-        searchData = await searchRes.json() as any;
-        console.log(`[PriceIntel] ML returned ${searchData.results?.length ?? 0} results (paging.total: ${searchData.paging?.total})`);
-    } catch (fetchErr: any) {
-        console.error('[PriceIntel] ML fetch error:', fetchErr.message);
-        throw new functions.https.HttpsError('internal', `ML API error: ${fetchErr.message}`);
+    if (!sellerId) {
+        throw new functions.https.HttpsError('failed-precondition', 'MercadoLibre not connected.');
     }
 
-    // ── 4. Identify our own listings (from synced meli_listings collection) ───
+    // ── 4. Search via /products/search (works, unlike /sites/MLM/search) ─────
+    // /products/search returns the product catalog. We then resolve item prices
+    // by fetching the items that belong to each product via /products/{id}/items.
+    // Keyword: "{width}/{aspectRatio}R{diameter}" covers both moto and car tires.
+    const keyword = `${width}/${aspectRatio}R${diameter}`;
+    const productsUrl = `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(keyword)}&limit=20`;
+
+    console.log(`[PriceIntel] Products search: ${productsUrl}`);
+
+    let productIds: string[] = [];
+    try {
+        const prodRes = await fetch(productsUrl, { headers: authHeaders });
+        if (!prodRes.ok) {
+            const errText = await prodRes.text();
+            console.error(`[PriceIntel] Products search failed (${prodRes.status}): ${errText.substring(0, 200)}`);
+            throw new functions.https.HttpsError('internal', `ML products search failed: HTTP ${prodRes.status}`);
+        }
+        const prodData = await prodRes.json() as any;
+        productIds = (prodData.results || []).map((p: any) => p.id).filter(Boolean).slice(0, 10);
+        console.log(`[PriceIntel] Found ${productIds.length} product catalog entries`);
+    } catch (err: any) {
+        if (err.code) throw err; // re-throw HttpsError
+        throw new functions.https.HttpsError('internal', `ML products API error: ${err.message}`);
+    }
+
+    // ── 5. Fetch our own seller's listed items for this size ──────────────────
+    // /users/{id}/items/search returns ALL our active item IDs. We then bulk-fetch
+    // their details via /items?ids= to get price and other metadata.
+    let ourItemIds: Set<string> = new Set<string>();
+    let ourItemDetailsMap: Map<string, any> = new Map();
+
+    try {
+        // Paginate our seller items (up to 200 total to keep within timeout)
+        const ourItemsRes = await fetch(
+            `https://api.mercadolibre.com/users/${sellerId}/items/search?status=active&limit=100`,
+            { headers: authHeaders }
+        );
+        if (ourItemsRes.ok) {
+            const ourItemsData = await ourItemsRes.json() as any;
+            const allOurIds: string[] = ourItemsData.results || [];
+            console.log(`[PriceIntel] Seller has ${allOurIds.length} active items total`);
+
+            // Bulk-fetch details in batches of 20
+            for (let i = 0; i < Math.min(allOurIds.length, 100); i += 20) {
+                const batch = allOurIds.slice(i, i + 20);
+                const detailsRes = await fetch(
+                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,category_id,attributes,status`,
+                    { headers: authHeaders }
+                );
+                if (detailsRes.ok) {
+                    const details = await detailsRes.json() as any[];
+                    for (const entry of details) {
+                        if (entry.code === 200 && entry.body) {
+                            const item = entry.body;
+                            // Check if this item matches the tire size via attributes
+                            const attrs: any[] = item.attributes || [];
+                            const tireWidth = attrs.find((a: any) => ['TIRE_WIDTH', 'TIRE_SIZE_WIDTH'].includes(a.id))?.value_name;
+                            const tireAR = attrs.find((a: any) => ['ASPECT_RATIO', 'TIRE_ASPECT_RATIO'].includes(a.id))?.value_name;
+                            const tireDiam = attrs.find((a: any) => ['RIM_DIAMETER', 'TIRE_RIM_DIAMETER'].includes(a.id))?.value_name;
+
+                            // Also match by title keyword as fallback
+                            const titleMatch = item.title?.includes(`${width}/${aspectRatio}`) ||
+                                               item.title?.includes(`${width}-${aspectRatio}`) ||
+                                               item.title?.toLowerCase().includes(keyword.toLowerCase());
+
+                            const attrsMatch = tireWidth && String(tireWidth) === String(width) &&
+                                               tireAR && String(tireAR) === String(aspectRatio) &&
+                                               tireDiam && String(tireDiam) === String(diameter);
+
+                            if (attrsMatch || titleMatch) {
+                                ourItemIds.add(item.id);
+                                ourItemDetailsMap.set(item.id, item);
+                                console.log(`[PriceIntel] Our item matches ${fingerprint}: ${item.id} "${item.title}"`);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } catch (err: any) {
+        console.warn('[PriceIntel] Could not fetch our seller items:', err.message);
+        // Non-fatal — continue without "our listing" identification
+    }
+
+    // Also check meli_listings in Firestore (already synced with tire attributes)
     const ourListingsSnap = await db.collection('meli_listings')
         .where('tireWidth', '==', width)
         .where('tireAspectRatio', '==', aspectRatio)
         .where('tireDiameter', '==', diameter)
         .get();
-    const ourItemIds = new Set<string>(ourListingsSnap.docs.map((d: any) => d.id));
-    console.log(`[PriceIntel] Our listings for ${fingerprint}: ${ourItemIds.size}`);
+    for (const doc of ourListingsSnap.docs) {
+        ourItemIds.add(doc.id);
+    }
+    console.log(`[PriceIntel] Total our item IDs for ${fingerprint}: ${ourItemIds.size}`);
 
-    // ── 5. Process search results ─────────────────────────────────────────────
-    const listings = (searchData.results || []).map((item: any, idx: number) => ({
-        itemId: item.id,
-        title: item.title || '',
-        price: item.price || 0,
-        sellerId: String(item.seller?.id ?? ''),
-        sellerNickname: item.seller?.nickname || null,
-        sellerReputation: item.seller?.seller_reputation?.level_id || 'unknown',
-        soldQuantity: item.sold_quantity || 0,
-        listingType: item.listing_type_id || 'free',
-        isFreeShipping: item.shipping?.free_shipping === true,
-        isOurListing: ourItemIds.has(item.id),
-        permalink: item.permalink || '',
-        thumbnail: item.thumbnail || '',
-        rank: idx + 1,
-        scrapedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }));
+    // ── 6. Fetch competing items via product items endpoint ───────────────────
+    // For each product in the catalog, get the cheapest active listing.
+    const competitorItemIds: Set<string> = new Set<string>();
+    for (const productId of productIds.slice(0, 8)) {
+        try {
+            const itemsRes = await fetch(
+                `https://api.mercadolibre.com/products/${productId}/items?status=active&limit=5`,
+                { headers: authHeaders }
+            );
+            if (itemsRes.ok) {
+                const itemsData = await itemsRes.json() as any;
+                const items: string[] = (itemsData.results || []).map((r: any) => r.item_id || r.id).filter(Boolean);
+                items.forEach((id: string) => competitorItemIds.add(id));
+            }
+        } catch (err: any) {
+            console.warn(`[PriceIntel] Could not fetch items for product ${productId}:`, err.message);
+        }
+    }
 
-    // ── 6. Compute market statistics ──────────────────────────────────────────
+    // ── 7. Bulk-fetch all item details ────────────────────────────────────────
+    const allItemIds = [...new Set([...competitorItemIds, ...ourItemIds])].slice(0, 50);
+    console.log(`[PriceIntel] Fetching details for ${allItemIds.length} items`);
+
+    const allListings: any[] = [];
+
+    if (allItemIds.length > 0) {
+        for (let i = 0; i < allItemIds.length; i += 20) {
+            const batch = allItemIds.slice(i, i + 20);
+            try {
+                const detRes = await fetch(
+                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,category_id,seller_id,listing_type_id,sold_quantity,permalink,thumbnail,shipping,seller_reputation`,
+                    { headers: authHeaders }
+                );
+                if (detRes.ok) {
+                    const details = await detRes.json() as any[];
+                    for (const entry of details) {
+                        if (entry.code === 200 && entry.body) {
+                            allListings.push(entry.body);
+                        }
+                    }
+                }
+            } catch (err: any) {
+                console.warn('[PriceIntel] Batch fetch failed:', err.message);
+            }
+        }
+    }
+
+    // ── 8. Enrich with seller info in one batch call ──────────────────────────
+    const sellerIds = [...new Set(allListings.map((l: any) => String(l.seller_id)).filter(Boolean))].slice(0, 15);
+    const sellerMap: Map<string, any> = new Map();
+    for (const sid of sellerIds) {
+        try {
+            const sRes = await fetch(`https://api.mercadolibre.com/users/${sid}`, { headers: authHeaders });
+            if (sRes.ok) {
+                const sData = await sRes.json() as any;
+                sellerMap.set(sid, sData);
+            }
+        } catch { /* non-fatal */ }
+    }
+
+    // ── 9. Map to MarketListing format ────────────────────────────────────────
+    const listings = allListings.map((item: any, idx: number) => {
+        const seller = sellerMap.get(String(item.seller_id)) || {};
+        return {
+            itemId: item.id,
+            title: item.title || '',
+            price: item.price || 0,
+            sellerId: String(item.seller_id ?? ''),
+            sellerNickname: seller.nickname || null,
+            sellerReputation: seller.seller_reputation?.level_id || 'unknown',
+            soldQuantity: item.sold_quantity || 0,
+            listingType: item.listing_type_id || 'free',
+            isFreeShipping: item.shipping?.free_shipping === true,
+            isOurListing: ourItemIds.has(item.id),
+            permalink: item.permalink || '',
+            thumbnail: item.thumbnail || '',
+            rank: idx + 1,
+            scrapedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+    }).filter((l: any) => l.price > 0)
+      .sort((a: any, b: any) => a.price - b.price);
+
+    console.log(`[PriceIntel] Processed ${listings.length} listings for ${fingerprint}`);
+
+    // ── 10. Compute market statistics ─────────────────────────────────────────
     const competitorListings = listings.filter((l: any) => !l.isOurListing);
     const ourListingsInResults = listings.filter((l: any) => l.isOurListing);
 
-    const competitorPrices: number[] = competitorListings.map((l: any) => l.price).filter((p: number) => p > 0);
-    const ourPrices: number[] = ourListingsInResults.map((l: any) => l.price).filter((p: number) => p > 0);
+    const competitorPrices: number[] = competitorListings.map((l: any) => l.price);
+    const ourPrices: number[] = ourListingsInResults.map((l: any) => l.price);
 
     const safeMin = (arr: number[]) => arr.length > 0 ? Math.min(...arr) : 0;
     const safeMax = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
@@ -2614,7 +2747,6 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     const ourPrice: number | null = ourPrices.length > 0 ? ourPrices[0] : null;
     const priceToWin: number = safeMin(competitorPrices);
 
-    // positionInMarket: 1 = cheapest overall (including our listing)
     const positionInMarket: number | null = (() => {
         if (!ourPrice) return null;
         const idx = listings.findIndex((l: any) => l.isOurListing);
@@ -2633,7 +2765,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
 
     console.log(`[PriceIntel] Stats for ${fingerprint}:`, JSON.stringify(stats));
 
-    // ── 7. Write to Firestore ─────────────────────────────────────────────────
+    // ── 11. Write to Firestore ────────────────────────────────────────────────
     await db.collection('price_intelligence').doc(fingerprint).set({
         fingerprint,
         tireSize: { width, aspectRatio, diameter },
@@ -2641,9 +2773,9 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         lastScanned: admin.firestore.FieldValue.serverTimestamp(),
         listings,
         stats,
-    }, { merge: false }); // Full replace to clear stale listings
+    }, { merge: false });
 
-    // ── 8. Generate price alert if we're undercut by >5% ─────────────────────
+    // ── 12. Generate price alert if competitor undercuts us by >5% ─────────────
     if (ourPrice !== null && priceToWin > 0 && priceToWin < ourPrice * 0.95) {
         const gapPct = ((priceToWin - ourPrice) / ourPrice * 100);
         await db.collection('price_alerts').add({
@@ -2655,7 +2787,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             isRead: false,
         });
-        console.log(`[PriceIntel] 🚨 Alert created: ${fingerprint} — competitor $${priceToWin} vs our $${ourPrice} (${gapPct.toFixed(1)}%)`);
+        console.log(`[PriceIntel] 🚨 Alert: ${fingerprint} competitor $${priceToWin} vs ours $${ourPrice} (${gapPct.toFixed(1)}%)`);
     }
 
     return {
@@ -2668,6 +2800,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
 
 
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
+
 
 export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (_ctx: unknown) => {
     try {

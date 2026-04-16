@@ -51,12 +51,13 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     tireAspectRatio = signal<number>(70);
     tireDiameter = signal<number>(17);
 
-    // Category: MLM371 = motorcycle, MLM458 = auto/truck
-    categoryId = signal<string>('MLM371');
+    // Correct MLM category IDs (verified via domain_discovery API)
+    // MLM169975 = Llantas para Motos, MLM3530 = Llantas de Auto/Camioneta
+    categoryId = signal<string>('MLM169975');
 
     readonly CATEGORIES = [
-        { id: 'MLM371', label: 'Motocicleta', emoji: '🏍️' },
-        { id: 'MLM458', label: 'Auto / Camioneta', emoji: '🚗' },
+        { id: 'MLM169975', label: 'Motocicleta', emoji: '🏍️' },
+        { id: 'MLM3530',   label: 'Auto / Camioneta', emoji: '🚗' },
     ];
 
     readonly commonSizes = COMMON_MOTORCYCLE_SIZES;

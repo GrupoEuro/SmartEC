@@ -2658,6 +2658,8 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     const competitorItemIds: Set<string> = new Set<string>();
 
     // — Tier 1: keyword search by size (multiple variants) —
+    // NOTE: /sites/MLM/search is a PUBLIC endpoint — it MUST be called WITHOUT
+    // a Bearer token. Sending auth causes a 403 (ML enforces app-scope policies).
     const searchQueries = [
         `llanta moto ${keyword}`,       // e.g. "llanta moto 120/70-17"
         `llanta ${keyword}`,             // e.g. "llanta 120/70-17"
@@ -2665,9 +2667,9 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     ];
     for (const q of searchQueries) {
         try {
-            const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(q)}&category=${categoryId}&limit=30&sort=price_asc&status=active`;
+            const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(q)}&category=${categoryId}&limit=50&sort=price_asc`;
             console.log(`[PriceIntel] Tier-1 search: ${url}`);
-            const r = await fetch(url, { headers: authHeaders });
+            const r = await fetch(url); // NO auth header — public endpoint
             if (r.ok) {
                 const body = await r.json() as any;
                 const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
@@ -2679,16 +2681,16 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         } catch (err: any) {
             console.warn('[PriceIntel] Tier-1 search failed:', err.message);
         }
-        if (competitorItemIds.size >= 30) break; // enough results, stop early
+        if (competitorItemIds.size >= 50) break; // enough results, stop early
     }
 
-    // — Tier 2: per-product catalog search (fills gaps when Tier 1 < 20 results) —
+    // — Tier 2: per-product catalog search — also public, no auth header —
     if (competitorItemIds.size < 20 && productIds.length > 0) {
         console.log(`[PriceIntel] Tier-2: catalog product search for ${productIds.length} products`);
         for (const productId of productIds.slice(0, 6)) {
             try {
                 const url = `https://api.mercadolibre.com/sites/MLM/search?catalog_product_id=${productId}&limit=10&sort=price_asc`;
-                const r = await fetch(url, { headers: authHeaders });
+                const r = await fetch(url); // NO auth header — public endpoint
                 if (r.ok) {
                     const body = await r.json() as any;
                     const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
@@ -2698,7 +2700,7 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
             } catch (err: any) {
                 console.warn(`[PriceIntel] Tier-2 product ${productId} failed:`, err.message);
             }
-            if (competitorItemIds.size >= 40) break;
+            if (competitorItemIds.size >= 60) break;
         }
     }
 

@@ -477,5 +477,23 @@ service cloud.firestore {
       }
     }
 
+    // ── Price Intelligence ────────────────────────────────────────────────────
+    // Market scan results written by meliPriceScan Cloud Function (Admin SDK).
+    // Staff can read; no client-side writes (function handles all writes).
+
+    match /price_intelligence/{fingerprint} {
+      allow read: if isStaff();
+      allow write: if false; // written by meliPriceScan Cloud Function only
+    }
+
+    // Price alerts generated when a competitor undercuts us by >5%.
+    // Staff can read and mark as read; Cloud Function creates them.
+
+    match /price_alerts/{alertId} {
+      allow read:   if isStaff();
+      allow update: if isStaff(); // mark as read
+      allow create, delete: if false; // Cloud Function only
+    }
+
   }
 }

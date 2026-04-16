@@ -5,8 +5,8 @@ import {
     Firestore, doc, docData, collectionData, collection, query, orderBy, limit
 } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Observable, Subscription, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, Subscription, of, timer } from 'rxjs';
+import { catchError, retry, retryWhen, delayWhen, tap } from 'rxjs/operators';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { TireMarketScan, MarketListing, MarketStats, PriceAlert } from '../../../core/models/competitor.model';
@@ -251,8 +251,20 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     private subscribeToScan() {
         this.scanSub?.unsubscribe();
         const ref = doc(this.firestore, 'price_intelligence', this.fingerprint());
-        this.scanSub = (docData(ref) as Observable<any>).pipe(catchError(() => of(null))).subscribe((d: any) => {
-            if (d) {
+        // Use retryWhen so a transient permission error (e.g. rules not yet propagated)
+        // retries up to 3 times with a 2 s delay instead of killing the stream permanently.
+        this.scanSub = (docData(ref) as Observable<any>).pipe(
+            retryWhen(errors => errors.pipe(
+                tap(err => console.warn('[PriceIntel] Firestore subscription error, retrying...', err)),
+                delayWhen((_, i) => timer((i + 1) * 2000)),  // 2 s, 4 s, 6 s
+                // After 3 retries give up silently so the UI stays stable
+            )),
+            catchError(err => {
+                console.error('[PriceIntel] Firestore subscription permanently failed:', err);
+                return of(undefined);
+            })
+        ).subscribe((d: any) => {
+            if (d !== undefined && d !== null) {
                 this.marketScan.set({
                     ...d,
                     lastScanned: d.lastScanned?.toDate?.() ?? new Date(),
@@ -260,15 +272,17 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
                         ...l, scrapedAt: l.scrapedAt?.toDate?.() ?? new Date()
                     }))
                 } as TireMarketScan);
-            } else {
-                this.marketScan.set(null);
             }
+            // If undefined/null — leave existing marketScan value as-is (don't wipe it)
         });
     }
 
     private loadAlerts() {
         const q = query(collection(this.firestore, 'price_alerts'), orderBy('createdAt', 'desc'), limit(10));
         this.alertsSub = (collectionData(q, { idField: 'id' }) as Observable<any[]>).pipe(
+            retryWhen(errors => errors.pipe(
+                delayWhen((_, i) => timer((i + 1) * 2000))
+            )),
             catchError(() => of([]))
         ).subscribe((alerts: any[]) => {
             this.recentAlerts.set(alerts.map((a: any) => ({ ...a, createdAt: a.createdAt?.toDate?.() ?? new Date() })));
@@ -291,6 +305,9 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         this.scanState.set('scanning');
         this.scanError.set(null);
         this.lastScanMeta.set(null);
+        // Re-subscribe before the call so the listener is alive when data lands.
+        // This also recovers from any previously dead subscription.
+        this.subscribeToScan();
         try {
             const fn = httpsCallable(this.functions, 'meliPriceScan');
             const res = await fn({

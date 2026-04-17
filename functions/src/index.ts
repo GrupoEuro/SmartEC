@@ -2509,7 +2509,8 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     }
 
-    const { width, aspectRatio, diameter, categoryId = 'MLM169975', force = false } = data;
+    const { width, aspectRatio, diameter, force = false } = data;
+    let categoryId: string = data.categoryId ?? 'MLM169975'; // may be overridden by autodiscovery below
 
     if (!width || !aspectRatio || !diameter) {
         throw new functions.https.HttpsError('invalid-argument', 'width, aspectRatio, and diameter are required.');
@@ -2625,7 +2626,14 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
                             if (attrsMatch || titleMatch) {
                                 ourItemIds.add(item.id);
                                 ourItemDetailsMap.set(item.id, item);
-                                console.log(`[PriceIntel] Our item matches ${fingerprint}: ${item.id} "${item.title}"`);
+                                console.log(`[PriceIntel] Our item matches ${fingerprint}: ${item.id} "${item.title}" (cat: ${item.category_id})`);
+                                // ── Category autodiscovery ──────────────────────────────
+                                // Use the REAL category from our own listing instead of
+                                // the hardcoded constant (ML sometimes changes mappings).
+                                if (item.category_id && item.category_id !== categoryId) {
+                                    console.log(`[PriceIntel] ⚠️  Category override: ${categoryId} → ${item.category_id} (from our item)`);
+                                    categoryId = item.category_id;
+                                }
                             }
                         }
                     }

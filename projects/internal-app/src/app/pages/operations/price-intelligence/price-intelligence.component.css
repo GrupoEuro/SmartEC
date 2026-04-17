@@ -1344,6 +1344,21 @@
 .spark-leg-median { color: #a78bfa; }
 .spark-leg-ours   { color: #22d3ee; }
 
+/* First-scan notice — shown instead of empty sparkline when <2 data points */
+.spark-first-scan {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(167, 139, 250, 0.06);
+    border: 1px dashed rgba(167, 139, 250, 0.2);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+.spark-first-icon { font-size: 1.25rem; flex-shrink: 0; }
+.spark-first-title { font-size: 0.8rem; font-weight: 600; color: #a78bfa; }
+.spark-first-sub   { font-size: 0.75rem; color: #64748b; margin-top: 0.15rem; }
+
 /* History table */
 .history-table-wrap {
     overflow-x: auto;

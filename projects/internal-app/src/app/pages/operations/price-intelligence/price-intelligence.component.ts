@@ -197,7 +197,7 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
 
     sparklinePoints = computed(() => {
         const h = [...this.priceHistory()].reverse(); // oldest first for chart
-        if (h.length === 0) return null;
+        if (h.length < 2) return null; // need ≥2 points to draw meaningful lines
         const allPrices = h.flatMap(e => [e.stats.medianPrice, e.stats.lowestPrice, e.stats.ourPrice ?? 0]).filter(p => p > 0);
         const minP = Math.min(...allPrices) * 0.97;
         const maxP = Math.max(...allPrices) * 1.03;

@@ -196,22 +196,59 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     });
 
     sparklinePoints = computed(() => {
-        const h = [...this.priceHistory()].reverse(); // oldest first for chart
-        if (h.length < 2) return null; // need ≥2 points to draw meaningful lines
-        const allPrices = h.flatMap(e => [e.stats.medianPrice, e.stats.lowestPrice, e.stats.ourPrice ?? 0]).filter(p => p > 0);
-        const minP = Math.min(...allPrices) * 0.97;
-        const maxP = Math.max(...allPrices) * 1.03;
+        const h = [...this.priceHistory()].reverse(); // oldest → newest for chart
+
+        // Need ≥2 data points to draw lines
+        if (h.length < 2) return null;
+
+        // Need at least 1 entry with REAL competitor prices.
+        // Without competitors, median/lowest = 0 → they render at y≈1100 (off-chart),
+        // leaving only a floating dot and orphaned date labels — useless.
+        const hasCompetitorData = h.some(e => e.stats.medianPrice > 0 || e.stats.lowestPrice > 0);
+        if (!hasCompetitorData) return null;
+
+        const allPrices = h.flatMap(e => [
+            e.stats.medianPrice > 0 ? e.stats.medianPrice : null,
+            e.stats.lowestPrice  > 0 ? e.stats.lowestPrice  : null,
+            e.stats.ourPrice     > 0 ? e.stats.ourPrice     : null,
+        ]).filter((p): p is number => p !== null && p > 0);
+
+        const minP  = Math.min(...allPrices) * 0.95;
+        const maxP  = Math.max(...allPrices) * 1.05;
         const range = maxP - minP || 1;
         const W = 300, H = 64;
-        const toX = (i: number) => Math.round((i / (h.length - 1 || 1)) * W);
+
+        const toX = (i: number) => Math.round((i / (h.length - 1)) * W);
         const toY = (p: number) => Math.round(H - ((p - minP) / range) * H);
-        const path = (vals: number[]) => vals.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(p)}`).join(' ');
+
+        // Build a path string; skip entries where the value is 0 (no data)
+        const path = (vals: (number | null)[]) => {
+            let d = ''; let first = true;
+            vals.forEach((p, i) => {
+                if (!p || p <= 0) return;
+                d += `${first ? 'M' : 'L'}${toX(i)},${toY(p)} `;
+                first = false;
+            });
+            return d.trim() || null;
+        };
+
+        const oursVals  = h.map(e => e.stats.ourPrice  ?? 0);
+        const medVals   = h.map(e => e.stats.medianPrice);
+        const lowVals   = h.map(e => e.stats.lowestPrice);
+
         return {
-            median:  path(h.map(e => e.stats.medianPrice)),
-            lowest:  path(h.map(e => e.stats.lowestPrice)),
-            ours:    path(h.map(e => e.stats.ourPrice ?? 0).filter(p => p > 0)),
-            oursPoints: h.map((e, i) => ({ x: toX(i), y: toY(e.stats.ourPrice ?? 0), entry: e })).filter(p => p.y < H),
-            labels:  h.filter((_, i) => i === 0 || i === h.length - 1).map((e, i2) => ({ x: i2 === 0 ? 0 : W, label: e.date.slice(5), anchor: i2 === 0 ? 'start' : 'end' })),
+            median:     path(medVals),
+            lowest:     path(lowVals),
+            ours:       path(oursVals),
+            oursPoints: h.map((e, i) => ({ x: toX(i), y: toY(e.stats.ourPrice ?? 0) }))
+                         .filter(p => p.y >= 0 && p.y <= H),
+            labels: h
+                .filter((_, i) => i === 0 || i === h.length - 1)
+                .map((e, i2) => ({
+                    x: i2 === 0 ? 2 : W - 2,
+                    label: e.date.slice(5),
+                    anchor: i2 === 0 ? 'start' : 'end',
+                })),
             minP, maxP, W, H,
         };
     });

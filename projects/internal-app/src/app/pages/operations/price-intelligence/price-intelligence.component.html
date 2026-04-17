@@ -380,8 +380,8 @@
                       <span class="spark-leg spark-leg-ours">● Nuestro precio</span>
                     </div>
                     <svg [attr.viewBox]="'0 0 ' + sp.W + ' ' + sp.H" class="sparkline-svg" preserveAspectRatio="none">
-                      <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" />
-                      <path [attr.d]="sp.median" class="spark-median" fill="none" />
+                      @if (sp.lowest) { <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" /> }
+                      @if (sp.median) { <path [attr.d]="sp.median" class="spark-median" fill="none" /> }
                       @if (sp.ours) {
                         <path [attr.d]="sp.ours" class="spark-ours" fill="none" />
                         @for (pt of sp.oursPoints; track pt.x) {
@@ -396,10 +396,10 @@
                 } @else {
                   <!-- Only 1 data point: show a compact first-scan notice, no empty chart -->
                   <div class="spark-first-scan">
-                    <span class="spark-first-icon">📌</span>
+                    <span class="spark-first-icon">📊</span>
                     <div>
-                      <div class="spark-first-title">Captura base registrada</div>
-                      <div class="spark-first-sub">Escanea de nuevo mañana para comenzar a ver la tendencia de precios.</div>
+                      <div class="spark-first-title">Sin datos de competencia aún</div>
+                      <div class="spark-first-sub">La gráfica aparecerá cuando al menos un escaneo encuentre precios de competidores en MercadoLibre.</div>
                     </div>
                   </div>
                 }

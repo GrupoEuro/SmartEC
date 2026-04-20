@@ -51,6 +51,16 @@
             }
           </button>
 
+          <!-- Diagnostic Button -->
+          <button class="btn-diag" (click)="runDiag()" [disabled]="diagState() === 'running'"
+                  id="btn-diag" title="Diagnóstico del pipeline de datos">
+            @if (diagState() === 'running') {
+              <span class="spinner-sm"></span> Analizando...
+            } @else {
+              <app-icon name="stethoscope" [size]="14" /> Diagnóstico
+            }
+          </button>
+
           <!-- Scan Button -->
           <button class="btn-scan" (click)="runScan(true)" [disabled]="scanState() === 'scanning'"
                   id="btn-scan-market">
@@ -62,6 +72,42 @@
           </button>
         </div>
       </div>
+
+      <!-- ── Diagnostic Results Panel ──────────────────────────────────────── -->
+      @if (diagReport()) {
+        <div class="diag-panel">
+          <div class="diag-header">
+            <app-icon name="stethoscope" [size]="14" />
+            <span>Diagnóstico del pipeline ML — {{ diagReport()?.testedSize }}</span>
+            <span class="diag-ran-at">{{ diagReport()?.ranAt | date:'HH:mm:ss' }}</span>
+            <button class="diag-close" (click)="diagReport.set(null)">
+              <app-icon name="x" [size]="12" />
+            </button>
+          </div>
+          <div class="diag-verdict" [class.diag-ok]="diagReport()?.verdict?.startsWith('OK')"
+               [class.diag-warn]="diagReport()?.verdict?.startsWith('WARNING')"
+               [class.diag-err]="diagReport()?.verdict?.startsWith('BLOCKED')">
+            {{ diagReport()?.verdict }}
+          </div>
+          <div class="diag-steps">
+            @for (step of diagSteps(); track step.key) {
+              <div class="diag-step" [class.step-ok]="step.ok" [class.step-fail]="!step.ok">
+                <span class="step-status">{{ step.ok ? '✅' : '❌' }}</span>
+                <span class="step-name">{{ step.label }}</span>
+                <span class="step-detail">{{ step.detail }}</span>
+              </div>
+            }
+          </div>
+          <div class="diag-raw-link">
+            <button class="btn-diag-raw" (click)="toggleDiagRaw()">
+              <app-icon name="code" [size]="11" /> {{ showDiagRaw() ? 'Ocultar JSON' : 'Ver JSON completo' }}
+            </button>
+          </div>
+          @if (showDiagRaw()) {
+            <pre class="diag-raw">{{ diagReport() | json }}</pre>
+          }
+        </div>
+      }
     }
   </div>
 
@@ -339,6 +385,19 @@
               <span class="dot">·</span>
               <span class="history-badge">📅 {{ priceHistory().length }} días de historial</span>
             }
+            <!-- Data source indicator -->
+            @if (stats()?.dataSource) {
+              <span class="dot">·</span>
+              @if (stats()?.dataSource === 'price_to_win_api') {
+                <span class="source-badge source-ptw" title="Datos obtenidos vía API oficial price_to_win de ML">🎯 API oficial ML</span>
+              } @else if (stats()?.dataSource === 'catalog_buy_box') {
+                <span class="source-badge source-catalog" title="Datos del buy-box del catálogo de ML">📦 Catálogo ML</span>
+              } @else if (stats()?.dataSource === 'scraper_search') {
+                <span class="source-badge source-scraper" title="Datos de búsqueda vía proxy residencial">🌐 Búsqueda ML</span>
+              } @else {
+                <span class="source-badge source-own">📋 Solo nuestros listados</span>
+              }
+            }
             <button class="btn-refresh" (click)="runScan(true)" [disabled]="scanState() === 'scanning'">
               <app-icon name="refresh-cw" [size]="12" /> Actualizar
             </button>
@@ -373,26 +432,38 @@
 
                 <!-- Sparkline chart — only rendered when ≥2 data points -->
                 @if (sparklinePoints(); as sp) {
-                  <div class="sparkline-wrap">
-                    <div class="spark-legend">
-                      <span class="spark-leg spark-leg-lowest">▬ Mínimo mercado</span>
-                      <span class="spark-leg spark-leg-median">▬ Mediana</span>
-                      <span class="spark-leg spark-leg-ours">● Nuestro precio</span>
-                    </div>
-                    <svg [attr.viewBox]="'0 0 ' + sp.W + ' ' + sp.H" class="sparkline-svg" preserveAspectRatio="none">
-                      @if (sp.lowest) { <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" /> }
-                      @if (sp.median) { <path [attr.d]="sp.median" class="spark-median" fill="none" /> }
-                      @if (sp.ours) {
-                        <path [attr.d]="sp.ours" class="spark-ours" fill="none" />
-                        @for (pt of sp.oursPoints; track pt.x) {
-                          <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3" class="spark-ours-dot" />
+                  <!-- Only render the chart when at least one meaningful line exists -->
+                  @if (sp.lowest || sp.median || (sp.ours && sp.oursPoints.length > 0)) {
+                    <div class="sparkline-wrap">
+                      <div class="spark-legend">
+                        @if (sp.lowest) { <span class="spark-leg spark-leg-lowest">▬ Mínimo mercado</span> }
+                        @if (sp.median) { <span class="spark-leg spark-leg-median">▬ Mediana</span> }
+                        @if (sp.ours && sp.oursPoints.length > 0) { <span class="spark-leg spark-leg-ours">● Nuestro precio</span> }
+                      </div>
+                      <svg [attr.viewBox]="'0 0 ' + sp.W + ' ' + sp.H" class="sparkline-svg" preserveAspectRatio="none">
+                        @if (sp.lowest) { <path [attr.d]="sp.lowest" class="spark-lowest" fill="none" /> }
+                        @if (sp.median) { <path [attr.d]="sp.median" class="spark-median" fill="none" /> }
+                        @if (sp.ours) {
+                          <path [attr.d]="sp.ours" class="spark-ours" fill="none" />
+                          @for (pt of sp.oursPoints; track pt.x) {
+                            <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3" class="spark-ours-dot" />
+                          }
                         }
-                      }
-                      @for (lbl of sp.labels; track lbl.x) {
-                        <text [attr.x]="lbl.x" [attr.y]="sp.H + 12" [attr.text-anchor]="lbl.anchor" class="spark-label">{{ lbl.label }}</text>
-                      }
-                    </svg>
-                  </div>
+                        @for (lbl of sp.labels; track lbl.x) {
+                          <text [attr.x]="lbl.x" [attr.y]="sp.H + 12" [attr.text-anchor]="lbl.anchor" class="spark-label">{{ lbl.label }}</text>
+                        }
+                      </svg>
+                    </div>
+                  } @else {
+                    <!-- All paths empty: competitor data exists but lines can't be drawn -->
+                    <div class="spark-first-scan">
+                      <span class="spark-first-icon">📊</span>
+                      <div>
+                        <div class="spark-first-title">Sin datos de competencia aún</div>
+                        <div class="spark-first-sub">La gráfica aparecerá cuando al menos un escaneo encuentre precios de competidores en MercadoLibre.</div>
+                      </div>
+                    </div>
+                  }
                 } @else {
                   <!-- Only 1 data point: show a compact first-scan notice, no empty chart -->
                   <div class="spark-first-scan">
@@ -414,7 +485,7 @@
                         <th>Mediana</th>
                         <th>Nuestro precio</th>
                         <th>Posición</th>
-                        <th>#</th>
+                        <th>Listados</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -486,8 +557,18 @@
                           <img [src]="listing.thumbnail" alt="" class="listing-thumb" loading="lazy">
                           <div>
                             <div class="listing-title">{{ listing.title }}</div>
-                            @if (listing.isOurListing) { <span class="badge-ours">🔵 Nuestra pub.</span> }
-                            @if (listing.isFreeShipping) { <span class="badge-freeship">🚚 Gratis</span> }
+                            <div class="listing-badges">
+                              @if (listing.isOurListing) { <span class="badge-ours">🔵 Nuestra pub.</span> }
+                              @if (listing.isFreeShipping) { <span class="badge-freeship">🚚 Gratis</span> }
+                              @if (listing.isOurListing && listing.isWinner) {
+                                <span class="badge-winner">🏆 Ganando</span>
+                              }
+                              @if (listing.isOurListing && listing.isWinner === false && listing.priceToWin) {
+                                <span class="badge-not-winner" [title]="'Para ganar: ' + fmt(listing.priceToWin)">
+                                  🎯 Ganar: {{ fmt(listing.priceToWin) }}
+                                </span>
+                              }
+                            </div>
                           </div>
                         </div>
                       </td>

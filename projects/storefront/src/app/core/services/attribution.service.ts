@@ -52,6 +52,8 @@ export interface Attribution {
     referrerDomain?: string;     // just the domain
     landingUrl?:     string;     // full URL on first page load
     landingPath?:    string;     // just the pathname
+    // AI source — set when referrerDomain matches a known AI assistant
+    aiSource?:       string;     // 'chatgpt' | 'perplexity' | 'claude' | 'gemini' | 'copilot' | ...
     // Device signals
     device:          DeviceData;
     // IP + approximate geo (from ipapi.co — free, HTTPS, no key required)
@@ -65,6 +67,45 @@ export interface Attribution {
 
 // localStorage key — reuse across sessions for first-touch attribution
 const STORAGE_KEY = 'euro_attribution';
+
+/**
+ * Maps referrer hostname patterns → canonical AI source label.
+ * Used to classify AI-generated traffic from ChatGPT, Perplexity, Claude, Gemini, etc.
+ */
+export const AI_REFERRER_MAP: Record<string, string> = {
+    'chat.openai.com':           'chatgpt',
+    'chatgpt.com':               'chatgpt',
+    'perplexity.ai':             'perplexity',
+    'www.perplexity.ai':         'perplexity',
+    'labs.perplexity.ai':        'perplexity',
+    'claude.ai':                 'claude',
+    'www.claude.ai':             'claude',
+    'gemini.google.com':         'gemini',
+    'bard.google.com':           'gemini',
+    'copilot.microsoft.com':     'copilot',
+    'www.bing.com':              'copilot',
+    'you.com':                   'you',
+    'poe.com':                   'poe',
+    'kagi.com':                  'kagi',
+    'phind.com':                 'phind',
+    'mistral.ai':                'mistral',
+    'chat.mistral.ai':           'mistral',
+    'meta.ai':                   'meta-ai',
+    'www.meta.ai':               'meta-ai',
+};
+
+/** Resolves a hostname to a canonical AI source, or undefined if not an AI referrer */
+export function detectAiSource(hostname: string): string | undefined {
+    if (!hostname) return undefined;
+    const h = hostname.toLowerCase();
+    // Direct match first
+    if (AI_REFERRER_MAP[h]) return AI_REFERRER_MAP[h];
+    // Subdomain match (e.g., apps.perplexity.ai)
+    for (const [key, val] of Object.entries(AI_REFERRER_MAP)) {
+        if (h.endsWith('.' + key) || h === key) return val;
+    }
+    return undefined;
+}
 
 /**
  * Recursively remove undefined fields from an object before writing to Firestore.
@@ -158,8 +199,9 @@ export class AttributionService {
 
         const attr: Attribution = {
             utm,
-            referrer:    referrer.full,
+            referrer:       referrer.full,
             referrerDomain: referrer.domain,
+            ...(referrer.aiSource ? { aiSource: referrer.aiSource } : {}),
             landingUrl,
             landingPath,
             device,
@@ -254,13 +296,14 @@ export class AttributionService {
 
     // ─── Referrer capture ───────────────────────────────────────────────────────
 
-    private captureReferrer(): { full: string; domain: string } {
+    private captureReferrer(): { full: string; domain: string; aiSource?: string } {
         try {
             const ref = document.referrer;
             if (!ref) return { full: '', domain: '' };
             try {
                 const domain = new URL(ref).hostname;
-                return { full: ref, domain };
+                const aiSource = detectAiSource(domain);
+                return { full: ref, domain, aiSource };
             } catch {
                 return { full: ref, domain: ref };
             }

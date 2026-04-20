@@ -5903,6 +5903,7 @@
         "SESSION_TIMELINE": "Historial de Sesiones — Próximamente"
       },
       "CHARTS_TITLE": "Analítica y Gráficas",
+      "CHANNEL_BREAKDOWN": "Ingresos por Canal",
       "TF": {
         "MTD": "Mes Actual",
         "PAST_MONTH": "Mes Anterior",

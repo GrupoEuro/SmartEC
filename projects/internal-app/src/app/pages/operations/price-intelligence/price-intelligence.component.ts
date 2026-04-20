@@ -1,5 +1,5 @@
 import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule, DecimalPipe, CurrencyPipe } from '@angular/common';
+import { CommonModule, DecimalPipe, CurrencyPipe, DatePipe, JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
     Firestore, doc, docData, collectionData, collection, query, orderBy, limit, updateDoc
@@ -92,7 +92,7 @@ function normalizeTireSize(input: string): string {
 @Component({
     selector: 'app-price-intelligence',
     standalone: true,
-    imports: [CommonModule, FormsModule, AppIconComponent, DecimalPipe, CurrencyPipe],
+    imports: [CommonModule, FormsModule, AppIconComponent, DecimalPipe, CurrencyPipe, DatePipe, JsonPipe],
     templateUrl: './price-intelligence.component.html',
     styleUrls: ['./price-intelligence.component.css']
 })
@@ -153,6 +153,37 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     portfolioProgress = signal<{ current: number; total: number; currentSize: string } | null>(null);
     portfolioResults  = signal<{ fingerprint: string; count: number; status: 'ok' | 'error' }[]>([]);
 
+    // ── Diagnostic ───────────────────────────────────────────────────────────
+    diagState  = signal<'idle' | 'running'>('idle');
+    diagReport = signal<any | null>(null);
+    showDiagRaw = signal<boolean>(false);
+
+    diagSteps = computed(() => {
+        const r = this.diagReport();
+        if (!r) return [];
+        return [
+            { key: 'step0', label: '🔑 App Token (client_credentials)', ok: r.step0_app_token?.ok ?? false, detail: r.step0_app_token?.error ?? r.step0_app_token?.message ?? 'Not tested' },
+            { key: 'step1', label: 'Config Firestore',                  ok: r.step1_config?.ok ?? false,    detail: r.step1_config?.error ?? (r.step1_config?.accessTokenFirst8 ? `Token: ${r.step1_config.accessTokenFirst8} · Expira: ${r.step1_config.tokenExpiresIn}` : 'No config') },
+            { key: 'step2', label: 'Token válido (usuario)',             ok: r.step2_token?.ok ?? false,     detail: r.step2_token?.error ?? r.step2_token?.message ?? '' },
+            { key: 'step3', label: '/users/me (cuenta conectada)',       ok: r.step3_users_me?.ok ?? false,  detail: r.step3_users_me?.error ?? (r.step3_users_me?.nickname ? `${r.step3_users_me.nickname} (ID: ${r.step3_users_me.userId})` : '') },
+            { key: 'step4', label: 'Atributos de categoría MLM',        ok: r.step4_category_attrs?.ok ?? false, detail: r.step4_category_attrs?.verdict ?? r.step4_category_attrs?.error ?? '' },
+            { key: 'step7', label: 'Items activos del vendedor',        ok: r.step7_seller_items?.ok ?? false, detail: r.step7_seller_items?.error ?? `${r.step7_seller_items?.totalItems ?? 0} publicaciones activas` },
+            {
+                key: 'step7b',
+                label: '🎯 price_to_win (endpoint clave)',
+                ok: (r.step7b_price_to_win?.ok === true) && (r.step7b_price_to_win?.status !== 'not_eligible'),
+                detail: r.step7b_price_to_win?.error ?? r.step7b_price_to_win?.note ??
+                    (r.step7b_price_to_win?.status
+                        ? `Artículo: ${r.step7b_price_to_win.testedItemId} · Status: ${r.step7b_price_to_win.status}` +
+                          (r.step7b_price_to_win.priceToWin ? ` · Precio a ganar: $${r.step7b_price_to_win.priceToWin.toLocaleString('es-MX')}` : '')
+                        : 'No probado'),
+            },
+            { key: 'step8', label: 'Firestore write/read',              ok: r.step8_firestore?.ok ?? false,  detail: r.step8_firestore?.error ?? r.step8_firestore?.message ?? '' },
+        ];
+    });
+
+
+
     // ── Table Sort/Filter ─────────────────────────────────────────────────────
     sortColumn          = signal<'price' | 'sold' | 'listing'>('price');
     sortDir             = signal<'asc' | 'desc'>('asc');
@@ -210,7 +241,7 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         const allPrices = h.flatMap(e => [
             e.stats.medianPrice > 0 ? e.stats.medianPrice : null,
             e.stats.lowestPrice  > 0 ? e.stats.lowestPrice  : null,
-            e.stats.ourPrice     > 0 ? e.stats.ourPrice     : null,
+            (e.stats.ourPrice ?? 0) > 0 ? e.stats.ourPrice  : null,
         ]).filter((p): p is number => p !== null && p > 0);
 
         const minP  = Math.min(...allPrices) * 0.95;
@@ -240,8 +271,10 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
             median:     path(medVals),
             lowest:     path(lowVals),
             ours:       path(oursVals),
-            oursPoints: h.map((e, i) => ({ x: toX(i), y: toY(e.stats.ourPrice ?? 0) }))
-                         .filter(p => p.y >= 0 && p.y <= H),
+            oursPoints: h
+                         .map((e, i) => ({ val: e.stats.ourPrice ?? 0, x: toX(i), y: toY(e.stats.ourPrice ?? 0) }))
+                         .filter(p => p.val > 0 && p.y >= 0 && p.y <= H)
+                         .map(p => ({ x: p.x, y: p.y })),
             labels: h
                 .filter((_, i) => i === 0 || i === h.length - 1)
                 .map((e, i2) => ({
@@ -421,32 +454,44 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         this.scanState.set('scanning');
         this.scanError.set(null);
         this.lastScanMeta.set(null);
-        // Re-subscribe before the call so the listener is alive when data lands.
-        // This also recovers from any previously dead subscription.
         this.subscribeToScan();
+
         try {
-            const fn = httpsCallable(this.functions, 'meliPriceScan');
+            const width       = this.tireWidth();
+            const aspectRatio = this.tireAspectRatio();
+            const diameter    = this.tireDiameter();
+            const catId       = this.categoryId();
+
+            // ── Cloud Function handles everything (competitor discovery via
+            // ScraperAPI residential proxy + enrichment + Firestore storage).
+            // No browser-side fetch attempts — ML blocks cross-origin calls.
+            this.toastSvc.info(`🔍 Escaneando mercado para ${this.displaySize()}…`);
+
+            const fn  = httpsCallable(this.functions, 'meliPriceScan');
             const res = await fn({
-                width: this.tireWidth(), aspectRatio: this.tireAspectRatio(),
-                diameter: this.tireDiameter(), categoryId: this.categoryId(), force
+                width, aspectRatio, diameter,
+                categoryId: catId,
+                force,
+                competitorItemIds: [],   // Cloud Function discovers via ScraperAPI proxy
             });
-            const d = res.data as { cached: boolean; count: number; fingerprint: string };
+            const d = res.data as any;
+
             this.lastScanMeta.set({ cached: d.cached, count: d.count ?? 0 });
             this.scanState.set('done');
-            const resp = d as any;
-            // Pre-fill market price for cost analyzer
+
             const s = this.stats();
             if (s?.medianPrice && this.marketPriceInput === 0) {
                 this.marketPriceInput = Math.round(s.medianPrice);
             }
-            if (d.cached) {
+            if (d.noListing && (d.count ?? 0) === 0) {
+                this.toastSvc.info(`ℹ️ Sin publicación activa en ML ni competidores encontrados para ${this.displaySize()}.`);
+            } else if (d.cached) {
                 this.toastSvc.info(`Datos en caché para ${this.displaySize()}.`);
-            } else if (resp.isBaseline) {
+            } else if (d.isBaseline) {
                 this.toastSvc.success(`📌 Registro base establecido para ${this.displaySize()} — ${d.count} listados`);
             } else {
                 this.toastSvc.success(`✅ ${d.count} listados encontrados para ${this.displaySize()}`);
             }
-            // Reload history so trend appears immediately
             this.loadHistory();
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Error desconocido.';
@@ -583,6 +628,37 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
         await Promise.all(unread.map(a => a.id ? this.markAlertRead(a.id) : Promise.resolve()));
         this.toastSvc.success(`✅ ${unread.length} alertas marcadas como leídas.`);
     }
+
+    async runDiag() {
+        if (this.diagState() === 'running') return;
+        this.diagState.set('running');
+        this.diagReport.set(null);
+        this.showDiagRaw.set(false);
+        try {
+            const fn = httpsCallable(this.functions, 'meliPriceScanDiag');
+            const res = await fn({
+                width:       this.tireWidth(),
+                aspectRatio: this.tireAspectRatio(),
+                diameter:    this.tireDiameter(),
+                categoryId:  this.categoryId(),
+            });
+            this.diagReport.set(res.data);
+            const verdict: string = (res.data as any)?.verdict ?? '';
+            if (verdict.startsWith('OK')) {
+                this.toastSvc.success('✅ Diagnóstico: Pipeline funcionando correctamente.');
+            } else if (verdict.startsWith('WARNING')) {
+                this.toastSvc.info('⚠️ Diagnóstico: Token válido pero sin resultados de búsqueda.');
+            } else {
+                this.toastSvc.error('❌ Diagnóstico: Autenticación rota. Ver panel de resultados.');
+            }
+        } catch (err: any) {
+            this.toastSvc.error(`Diagnóstico falló: ${err.message}`);
+        } finally {
+            this.diagState.set('idle');
+        }
+    }
+
+    toggleDiagRaw() { this.showDiagRaw.update(v => !v); }
 
     async runPortfolioScan() {
         if (this.portfolioState() === 'running') return;

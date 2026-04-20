@@ -199,6 +199,7 @@ export const ADMIN_ROUTES: Routes = [
                 path: 'warehouses/:id',
                 loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent)
             },
+            // ── Integrations subroutes MUST come before the base 'integrations' route ──
             {
                 path: 'integrations/callback',
                 loadComponent: () => import('./settings/integrations/callback/integration-callback.component').then(m => m.IntegrationCallbackComponent),
@@ -206,14 +207,14 @@ export const ADMIN_ROUTES: Routes = [
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
-                path: 'integrations',
-                loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
+                path: 'integrations/skydropx-debug',
+                loadComponent: () => import('./settings/integrations/skydropx-debug/skydropx-debug.component').then(m => m.SkydropxDebugComponent),
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
             {
-                path: 'integrations/skydropx-debug',
-                loadComponent: () => import('./settings/integrations/skydropx-debug/skydropx-debug.component').then(m => m.SkydropxDebugComponent),
+                path: 'integrations/mp-debug',
+                loadComponent: () => import('./settings/integrations/mp-debug/mp-debug.component').then(m => m.MpDebugComponent),
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
@@ -229,6 +230,15 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
+            // ── Base integrations route — must be LAST among integrations/* paths ──
+            {
+                path: 'integrations',
+                pathMatch: 'full',
+                loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] }
+            },
+
             {
                 path: 'themes',
                 loadComponent: () => import('./themes/theme-manager.component').then(m => m.ThemeManagerComponent),
@@ -247,6 +257,13 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] },
                 title: 'Tracking & Pixels'
+            },
+            {
+                path: 'seo',
+                loadComponent: () => import('./settings/admin-seo/admin-seo.component').then(m => m.AdminSeoComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'SEO / GEO / IA'
             },
             // ── Marketing (Campaigns remain here for Phase 1) ─────────────────────
             // Abandoned Carts → moved to /marketing/abandoned-carts

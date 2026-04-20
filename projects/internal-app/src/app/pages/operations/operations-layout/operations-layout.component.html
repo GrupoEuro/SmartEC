@@ -146,29 +146,29 @@
                     </button>
 
                     @if (isUserMenuOpen) {
-                    <div class="user-dropdown bg-zinc-800 border border-zinc-700 shadow-xl text-white">
-                        <div class="dropdown-header border-b border-zinc-700">
-                            <span class="d-name text-white">{{ (userProfile$ | async)?.displayName || user.displayName
+                    <div class="user-dropdown">
+                        <div class="dropdown-header">
+                            <span class="d-name">{{ (userProfile$ | async)?.displayName || user.displayName
                                 || 'User'
                                 }}</span>
                             @if (userProfile$ | async; as profile) {
-                            <span class="d-role-badge bg-emerald-900/30 text-emerald-400">{{ profile.role }}</span>
+                            <span class="d-role-badge">{{ profile.role }}</span>
                             }
-                            <span class="d-email text-zinc-400">{{ user.email }}</span>
+                            <span class="d-email">{{ user.email }}</span>
                         </div>
-                        <div class="dropdown-divider bg-zinc-700"></div>
+                        <div class="dropdown-divider"></div>
                         <a href="https://www.importadoraeuro.com" target="_blank" rel="noopener"
-                            class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white">
+                            class="dropdown-item">
                             <span class="icon"><app-icon name="globe" [size]="16"></app-icon></span>
                             {{ 'ADMIN.GO_TO_WEBSITE' | translate }}
-                            <span style="margin-left:auto;font-size:0.75rem;opacity:0.5">↗</span>
+                            <span style="margin-left:auto;font-size:0.7rem;opacity:0.35">↗</span>
                         </a>
-                        <a routerLink="/portal" class="dropdown-item hover:bg-zinc-700 text-zinc-300 hover:text-white"
+                        <a routerLink="/portal" class="dropdown-item"
                             (click)="isUserMenuOpen = false">
                             <span class="icon"><app-icon name="layout-dashboard" [size]="16"></app-icon></span>
                             {{ 'ADMIN.GO_TO_PORTAL' | translate }}
                         </a>
-                        <div class="dropdown-divider bg-zinc-700"></div>
+                        <div class="dropdown-divider"></div>
                         <button (click)="logout()" class="dropdown-item hover:bg-red-900/20 text-red-400">
                             <span class="icon"><app-icon name="log-out" [size]="16"></app-icon></span>
                             {{ 'OPERATIONS.LOGOUT' | translate }}

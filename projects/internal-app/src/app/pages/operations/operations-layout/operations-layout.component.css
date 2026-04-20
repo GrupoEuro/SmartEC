@@ -272,6 +272,11 @@
     align-items: center;
     padding: 0 2rem;
     flex-shrink: 0;
+    /* Must be > 1000 (.page-header-sticky inside content) so the topbar
+       and its fixed-position dropdowns are never clipped by page content. */
+    position: sticky;
+    top: 0;
+    z-index: 1100;
 }
 
 .spacer {
@@ -283,22 +288,24 @@
     flex: 1;
 }
 
-/* Header Avatar */
+/* Header Avatar — premium ring treatment */
 .header-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 2px solid #e0e0e0;
+    border: 2px solid rgba(255, 215, 0, 0.45);
     padding: 0;
     cursor: pointer;
     overflow: hidden;
-    transition: all 0.2s;
-    background: white;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #18181b;
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
 }
 
 .header-avatar:hover {
-    transform: scale(1.05);
+    transform: scale(1.08);
     border-color: #ffd700;
+    box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.15), 0 4px 16px rgba(0,0,0,0.4);
 }
 
 .header-avatar img {
@@ -310,12 +317,12 @@
 .avatar-placeholder-sm {
     width: 100%;
     height: 100%;
-    background: #1a1a2e;
-    color: white;
+    background: linear-gradient(135deg, #1e3a5f 0%, #1a1a2e 100%);
+    color: #ffd700;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.9rem;
 }
 
@@ -325,78 +332,143 @@
 }
 
 .user-dropdown {
-    position: absolute;
-    top: 50px;
-    right: 0;
-    min-width: 220px;
-    border-radius: 8px;
-    z-index: 1000;
-    padding: 0.5rem 0;
-    animation: slideDown 0.2s ease-out;
+    /* Fixed = escapes ALL overflow/stacking constraints from parent containers.
+       This is the only reliable way to render a dropdown above dashboard cards
+       that use backdrop-filter / transform (which create new stacking contexts). */
+    position: fixed;
+    top: 68px;
+    right: 1.5rem;
+    min-width: 240px;
+    border-radius: 12px;
+    z-index: 9999;
+    padding: 0.375rem 0;
+    animation: slideDown 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Premium glassmorphism */
+    background: rgba(24, 24, 27, 0.92) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow:
+        0 0 0 1px rgba(255, 215, 0, 0.08),
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes slideDown {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-8px) scale(0.97);
     }
-
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 .dropdown-header {
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.125rem 0.875rem;
     display: flex;
     flex-direction: column;
+    gap: 0.25rem;
+    background: linear-gradient(135deg, rgba(255,215,0,0.04) 0%, transparent 60%);
+    border-radius: 10px 10px 0 0;
 }
 
 .d-name {
-    font-weight: 600;
-    color: #1a1a2e;
+    font-weight: 700;
+    font-size: 0.95rem;
+    background: linear-gradient(90deg, #ffffff 0%, #a8c8ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.01em;
 }
 
 .d-role-badge {
-    display: inline-block;
-    font-size: 0.7rem;
-    background: #e0f2f1;
-    color: #00695c;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin: 2px 0;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    margin-top: 2px;
+    /* Premium emerald dark badge */
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.08);
 }
 
 .d-email {
-    font-size: 0.85rem;
-    color: #666;
+    font-size: 0.78rem;
+    color: #71717a;
+    font-family: 'monospace', monospace;
+    letter-spacing: -0.01em;
+    margin-top: 2px;
 }
 
 .dropdown-divider {
     height: 1px;
-    background: #eee;
-    margin: 0.5rem 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+    margin: 0.375rem 0;
+    border: none;
 }
 
 .dropdown-item {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 1.125rem;
     border: none;
     background: none;
     text-align: left;
     cursor: pointer;
-    color: #333;
+    color: #a1a1aa;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    transition: background 0.2s;
+    gap: 0.625rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+.dropdown-item .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #71717a;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
 }
 
 .dropdown-item:hover {
-    background: #f8f9fa;
-    color: #d32f2f;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+    padding-left: 1.25rem;
+}
+
+.dropdown-item:hover .icon {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+/* Red logout item */
+.dropdown-item.hover\:bg-red-900\/20:hover {
+    background: rgba(127, 29, 29, 0.25) !important;
+    color: #f87171 !important;
+    padding-left: 1.125rem;
+}
+
+.dropdown-item.hover\:bg-red-900\/20:hover .icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
 }
 
 .operations-content.expanded {
@@ -452,14 +524,14 @@
 .lang-code-ops { font-size: 0.72rem; font-weight: 700; }
 
 .lang-dropdown-ops {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
+    position: fixed;
+    top: 68px;
+    right: 7rem;   /* offset left of avatar to align under lang button */
     background: #27272a;
     border: 1px solid #3f3f46;
     border-radius: 8px;
     padding: 4px;
-    z-index: 1002;
+    z-index: 9999;
     min-width: 130px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     animation: fadeSlide 0.15s ease-out;

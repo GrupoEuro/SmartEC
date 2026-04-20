@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, effect, inject, PLATFORM_ID, NgZone } from '@angular/core';
+import { Injectable, signal, computed, effect, inject, PLATFORM_ID, NgZone, Injector } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CartItem, CartState, CartStatus, CartEventType, CartItemDelta } from '../models/cart.model';
 import { Product } from '../models/product.model';
@@ -32,6 +32,24 @@ export class CartService {
     private attributionSvc   = inject(AttributionService);
     private sessionSvc       = inject(SessionService);
     private campaignSvc      = inject(CampaignService);
+    private injector         = inject(Injector);
+
+    /**
+     * Lazy getter for TrackingService — avoids circular DI since TrackingService
+     * depends on TrackingConfigService which uses Firestore (same as CartService).
+     * Resolved on first use, cached after that.
+     */
+    private _trackingSvc: any = null;
+    private get trackingSvc(): any {
+        if (!this._trackingSvc) {
+            try {
+                // Dynamic resolve — TrackingService is injected lazily
+                const { TrackingService } = require('./tracking.service');
+                this._trackingSvc = this.injector.get(TrackingService);
+            } catch { /* pixel tracking is non-critical — never crash cart */ }
+        }
+        return this._trackingSvc;
+    }
 
     /** True once the campaign coupon has been auto-applied this session */
     private couponAutoApplied = false;
@@ -323,7 +341,7 @@ export class CartService {
             this.applyCampaignCoupon();
         }
 
-        // GA4: add_to_cart
+        // GA4: add_to_cart (lightweight direct call)
         fireGtag('add_to_cart', {
             currency: 'MXN',
             value: product.price * quantity,
@@ -335,6 +353,18 @@ export class CartService {
                 quantity,
             }]
         });
+
+        // Meta / TikTok / Pinterest / Snapchat: AddToCart
+        // TrackingService reads Firestore config so only enabled pixels fire.
+        try {
+            this.trackingSvc?.trackAddToCart('MXN', product.price * quantity, [{
+                item_id:    product.sku || product.id || '',
+                item_name:  product.name?.es || product.name?.en || '',
+                item_brand: product.brand,
+                price:      product.price,
+                quantity,
+            }]);
+        } catch { /* non-critical — never crash cart */ }
 
         // Write snapshot (debounced fire-and-forget)
         this.writeSnapshotDebounced(existingIdx > -1 ? 'quantity_changed' : 'item_added', updatedItems, delta);
@@ -417,7 +447,7 @@ export class CartService {
         });
         this.writeSnapshotDebounced('checkout_started', current.items);
 
-        // GA4: begin_checkout
+        // GA4: begin_checkout (lightweight direct call)
         fireGtag('begin_checkout', {
             currency: 'MXN',
             value: this.cartSubtotal(),
@@ -429,6 +459,19 @@ export class CartService {
                 quantity:   i.quantity,
             }))
         });
+
+        // Meta / TikTok / Pinterest / Snapchat: InitiateCheckout
+        try {
+            this.trackingSvc?.trackBeginCheckout('MXN', this.cartSubtotal(),
+                current.items.map(i => ({
+                    item_id:    i.product.sku || i.product.id || '',
+                    item_name:  i.product.name?.es || i.product.name?.en || '',
+                    item_brand: i.product.brand,
+                    price:      i.product.price,
+                    quantity:   i.quantity,
+                }))
+            );
+        } catch { /* non-critical — never crash cart */ }
     }
 
     /**

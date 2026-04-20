@@ -50,6 +50,10 @@ export interface MarketListing {
     permalink: string;
     thumbnail: string;
     scrapedAt: Date;
+    /** Set by price_to_win API – true if this listing is currently winning the buy box */
+    isWinner?: boolean;
+    /** Price we need to beat to win the buy box (from ML price_to_win API) */
+    priceToWin?: number;
 }
 
 export interface PricePoint {
@@ -66,6 +70,8 @@ export interface MarketStats {
     positionInMarket: number | null;        // 1 = cheapest, null = not listed
     totalCompetitors: number;
     priceToWin: number;                     // Lowest competitor price (what we need to beat)
+    /** Origin of the priceToWin signal: official API, catalog, or web scraper */
+    dataSource?: 'price_to_win_api' | 'catalog_buy_box' | 'scraper_search';
 }
 
 /** Alert created when a competitor undercuts our price significantly */

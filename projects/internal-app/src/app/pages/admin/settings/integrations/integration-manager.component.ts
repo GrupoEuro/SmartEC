@@ -213,6 +213,10 @@ export class IntegrationManagerComponent implements OnInit {
         this.router.navigate(['/admin/integrations/products']);
     }
 
+    goToMpDebug() {
+        this.router.navigate(['/admin/integrations/mp-debug']);
+    }
+
     async testSkydropxConnection() {
         this.isTestingSkydropx = true;
         this.skydropxTestResult = null;

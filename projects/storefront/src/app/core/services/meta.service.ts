@@ -109,36 +109,26 @@ export class MetaService {
   }
 
   /**
-   * Add structured data (JSON-LD)
+   * Add or update a named structured data block (JSON-LD).
+   * Uses an id attribute so multiple schemas can coexist on the same page
+   * (e.g., Product + BreadcrumbList) without removing each other.
    */
-  addStructuredData(data: any): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return; // Skip on server
-    }
+  addStructuredData(data: any, schemaId = 'schema-page'): void {
+    if (!isPlatformBrowser(this.platformId)) return;
 
-    let script: HTMLScriptElement | null = document.querySelector('script[type="application/ld+json"]');
-
+    let script = document.getElementById(schemaId) as HTMLScriptElement | null;
     if (!script) {
       script = document.createElement('script');
       script.type = 'application/ld+json';
+      script.id = schemaId;
       document.head.appendChild(script);
     }
-
     script.textContent = JSON.stringify(data);
   }
 
-  /**
-   * Remove structured data
-   */
-  removeStructuredData(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return; // Skip on server
-    }
-
-    const script = document.querySelector('script[type="application/ld+json"]');
-    if (script) {
-      script.remove();
-    }
+  removeStructuredData(schemaId = 'schema-page'): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    document.getElementById(schemaId)?.remove();
   }
 
   /**
@@ -149,11 +139,15 @@ export class MetaService {
     const description = product.description[language];
     const price = product.price;
     const brand = product.brand;
+    const specs = product.specifications || {};
+    const medida = specs.width && specs.aspectRatio && specs.diameter
+      ? `${specs.width}/${specs.aspectRatio}R${specs.diameter}`
+      : '';
 
     return {
-      title: `${name} - ${brand}`,
-      description: `${description} Precio: $${price} MXN. ${product.inStock ? 'En stock' : 'Agotado'}. Envío gratis en México.`,
-      keywords: `${name}, ${brand}, llantas motocicleta, ${product.specifications.width}/${product.specifications.aspectRatio}-${product.specifications.diameter}`,
+      title: `${name}${medida ? ' ' + medida : ''} - ${brand} | Importadora Euro`,
+      description: `Compra ${name} ${brand}${medida ? ' medida ' + medida : ''} en línea. ${description.substring(0, 80)}. Precio: $${price} MXN. ${product.inStock ? 'En stock, envío inmediato' : 'Agotado'}. Envío a toda la República.`,
+      keywords: `${name}, ${brand}, llantas para moto${medida ? ', llanta ' + medida + ', medida ' + medida : ''}, comprar llantas moto México, ${brand} precio México`,
       image: product.images.main,
       type: 'product',
       url: `${this.DOMAIN}/product/${product.slug}`
@@ -164,21 +158,21 @@ export class MetaService {
    * Generate catalog meta tags
    */
   generateCatalogMeta(filters?: any): PageMeta {
-    let title = 'Catálogo de Llantas para Motocicleta';
-    let description = 'Explora nuestro catálogo completo de llantas para motocicleta. Marcas premium: Michelin, Praxis, Pirelli, Dunlop, Bridgestone. Envío gratis en México.';
+    let title = 'Catálogo de Llantas para Moto | Michelin y Praxis en México';
+    let description = 'Compra llantas para moto en línea con envío a toda la República Mexicana. Distribuidores autorizados Michelin y Praxis. Catálogo completo: deportivas, naked, touring, doble propósito, scooter. Envío 1-3 días.';
 
     if (filters?.categoryId) {
-      title = `Llantas ${filters.categoryName || ''} para Motocicleta`;
+      title = `Llantas ${filters.categoryName || ''} para Moto | Compra en Línea`;
     }
 
     if (filters?.brand && filters.brand.length > 0) {
-      title = `Llantas ${filters.brand[0]} para Motocicleta`;
+      title = `Llantas ${filters.brand[0]} para Moto | Compra en Línea México`;
     }
 
     return {
       title,
       description,
-      keywords: 'catálogo llantas, llantas motocicleta, Michelin, Praxis, Pirelli, comprar llantas',
+      keywords: 'llantas para moto, comprar llantas para moto, llantas para motocicleta México, llantas Michelin moto, llantas Praxis, medida de llanta moto, llantas deportivas moto, llantas doble propósito, envío gratis llantas México, tamaño de llanta moto',
       type: 'website'
     };
   }
@@ -187,29 +181,48 @@ export class MetaService {
    * Generate product structured data (JSON-LD)
    */
   generateProductStructuredData(product: any, language: 'en' | 'es' = 'es'): any {
+    const specs = product.specifications || {};
+    const sizeLabel = specs.width && specs.aspectRatio && specs.diameter
+      ? `${specs.width}/${specs.aspectRatio}R${specs.diameter}`
+      : '';
+
     return {
       '@context': 'https://schema.org',
       '@type': 'Product',
+      '@id': `${this.DOMAIN}/product/${product.slug}#product`,
       name: product.name[language],
-      description: product.description[language],
-      image: product.images.main,
+      description: product.description?.[language] || '',
+      image: [product.images.main, ...(product.images.gallery || [])].filter(Boolean),
       brand: {
         '@type': 'Brand',
         name: product.brand
       },
       sku: product.sku,
-      offer: {
+      mpn: product.sku,
+      ...(sizeLabel ? { size: sizeLabel } : {}),
+      offers: {
         '@type': 'Offer',
         price: product.price,
         priceCurrency: 'MXN',
-        availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        url: `${this.DOMAIN}/product/${product.slug}`
+        availability: product.inStock
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+        url: `${this.DOMAIN}/product/${product.slug}`,
+        seller: {
+          '@type': 'Organization',
+          name: 'Importadora Eurollantas',
+          url: this.DOMAIN
+        },
+        priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+          .toISOString().split('T')[0]
       },
-      aggregateRating: product.rating ? {
-        '@type': 'AggregateRating',
-        ratingValue: product.rating,
-        reviewCount: product.reviewCount || 1
-      } : undefined
+      ...(product.rating ? {
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: product.rating,
+          reviewCount: product.reviewCount || 1
+        }
+      } : {})
     };
   }
 

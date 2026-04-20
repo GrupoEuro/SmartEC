@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router, RouterModule } from '@angular/router';
@@ -46,10 +46,12 @@ export class HeroComponent implements OnInit, OnDestroy {
     private readonly INTERVAL = 5000;
 
     constructor() {
-        // React to campaign changes in real-time via the shared CampaignService signal
+        // React to campaign changes in real-time via the shared CampaignService signal.
+        // untracked() wraps the side-effect (buildSlides) so that mutations inside it
+        // (currentIndex, autoplayTimer) are never tracked as signal writes — prevents NG0600.
         effect(() => {
             const campaign = this.campaignService.activeCampaign();
-            this.buildSlides(campaign);
+            untracked(() => this.buildSlides(campaign));
         });
     }
 

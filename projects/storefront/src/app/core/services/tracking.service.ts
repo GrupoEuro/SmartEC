@@ -87,13 +87,15 @@ export class TrackingService {
         // Only skip if the real fbevents.js SDK is already fully loaded (fbq.loaded flag is set by FB's script).
         // Do NOT skip just because window.fbq exists — index.html creates a queue stub intentionally.
         const f = window as any;
-        if (f.fbq?.loaded) return; // Already fully initialized
+        if (f.fbq?.loaded) return; // Already fully initialized by FB's own script
 
         if (!f.fbq) {
             f.fbq = function(...a: any[]) { f.fbq.callMethod ? f.fbq.callMethod(...a) : f.fbq.queue.push(a); };
         }
         if (!f._fbq) f._fbq = f.fbq;
-        f.fbq.push = f.fbq; f.fbq.loaded = true; f.fbq.version = '2.0'; f.fbq.queue = f.fbq.queue || [];
+        f.fbq.push = f.fbq; f.fbq.version = '2.0'; f.fbq.queue = f.fbq.queue || [];
+        // NOTE: Do NOT set f.fbq.loaded = true here — let fbevents.js set it once it loads.
+        // Setting it prematurely causes FB's SDK to skip its own internal init and silently drop events.
         const s = document.createElement('script'); s.async = true;
         s.src = 'https://connect.facebook.net/en_US/fbevents.js';
         document.head.appendChild(s);
@@ -264,6 +266,18 @@ export class TrackingService {
         if (gads?.enabled) try {
             gtag('event', 'conversion', { send_to: this.config.gads.id, value: params.value, currency });
         } catch {}
+    }
+
+    /**
+     * Use this variant from OrderConfirmationComponent (fired on payment-gateway redirect).
+     * If TrackingService hasn't initialized yet (no user interaction before redirect),
+     * this awaits init() so the Purchase event is never silently dropped.
+     */
+    async trackPurchaseWhenReady(params: PurchaseParams): Promise<void> {
+        if (!this.config) {
+            await this.init(); // Ensure pixels are injected before firing
+        }
+        this.trackPurchase(params);
     }
 
     trackSearch(term: string, resultsCount: number) {

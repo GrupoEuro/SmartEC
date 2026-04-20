@@ -1,0 +1,165 @@
+<div class="seo-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="header-left">
+      <h1 class="page-title">
+        <span class="title-icon">🔍</span>
+        SEO / GEO / IA
+      </h1>
+      <p class="page-subtitle">
+        Configure los datos estructurados, preguntas frecuentes y metadatos que usan
+        <strong>Google Gemini, ChatGPT, Perplexity y Claude</strong> para describir su negocio.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" (click)="previewSchema()" type="button">
+        <span>👁</span> Ver JSON-LD
+      </button>
+      <button class="btn-primary" (click)="save()" [disabled]="isSaving()">
+        @if (isSaving()) { <span class="spinner-sm"></span> } @else { <span>💾</span> }
+        {{ isSaving() ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando configuración SEO...</p>
+    </div>
+  } @else {
+
+  <form [formGroup]="form" class="seo-form">
+
+    <!-- ── Sección 1: Datos del negocio ─────────────────────────────────────── -->
+    <section class="config-section">
+      <div class="section-header">
+        <h2 class="section-title">🏢 Datos del Negocio</h2>
+        <p class="section-desc">
+          Estos datos alimentan el schema <code>Organization</code> y <code>LocalBusiness</code> — la principal señal que usan los motores de IA para identificar su empresa.
+        </p>
+      </div>
+
+      <div class="field-grid">
+        <div class="field-group col-span-2">
+          <label class="field-label">Nombre de la empresa</label>
+          <input formControlName="orgName" class="field-input" placeholder="Importadora Eurollantas">
+        </div>
+        <div class="field-group col-span-2">
+          <label class="field-label">Descripción (meta description + schema)</label>
+          <textarea formControlName="orgDesc" class="field-input" rows="3"
+            placeholder="Distribuidor líder de llantas..."></textarea>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Teléfono</label>
+          <input formControlName="phone" class="field-input" placeholder="+52 444 824 0757">
+        </div>
+        <div class="field-group">
+          <label class="field-label">WhatsApp</label>
+          <input formControlName="whatsapp" class="field-input" placeholder="+52 444 194 6502">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Dirección / Colonia</label>
+          <input formControlName="address" class="field-input" placeholder="Av. Venustiano Carranza 123">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Ciudad</label>
+          <input formControlName="city" class="field-input" placeholder="San Luis Potosí">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Facebook URL</label>
+          <input formControlName="facebook" class="field-input" placeholder="https://facebook.com/eurollantas">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Instagram URL</label>
+          <input formControlName="instagram" class="field-input" placeholder="https://instagram.com/eurollantas">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Rango de precios</label>
+          <select formControlName="priceRange" class="field-input">
+            <option value="$">$ — Económico</option>
+            <option value="$$">$$ — Precio medio</option>
+            <option value="$$$">$$$ — Premium</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Horario L-V (formato HH:MM-HH:MM)</label>
+          <input formControlName="hoursWeekday" class="field-input" placeholder="09:00-19:00">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Horario Sábado</label>
+          <input formControlName="hoursSaturday" class="field-input" placeholder="09:00-14:00">
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Sección 2: Preguntas Frecuentes (FAQPage schema) ─────────────────── -->
+    <section class="config-section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">❓ Preguntas Frecuentes (FAQPage schema)</h2>
+          <p class="section-desc">
+            Estas preguntas se inyectan como <code>FAQPage</code> JSON-LD en <strong>cada página del sitio</strong>. 
+            Son la señal más directa para que Gemini, ChatGPT y Perplexity citen su contenido al responder preguntas de usuarios.
+          </p>
+        </div>
+        <button class="btn-add" type="button" (click)="addFaq()">
+          <span>+</span> Agregar pregunta
+        </button>
+      </div>
+
+      <div class="faq-list" formArrayName="faq">
+        @for (item of faqArray.controls; track item; let i = $index; let first = $first; let last = $last) {
+          <div class="faq-item" [formGroupName]="i">
+            <!-- Controls -->
+            <div class="faq-controls">
+              <div class="faq-num">{{ i + 1 }}</div>
+              <div class="faq-fields">
+                <div class="field-group">
+                  <label class="field-label">Pregunta</label>
+                  <input formControlName="question" class="field-input"
+                    placeholder="¿Cómo sé qué talla de llanta necesita mi moto?">
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Respuesta</label>
+                  <textarea formControlName="answer" class="field-input" rows="3"
+                    placeholder="La talla viene impresa en el lateral de la llanta..."></textarea>
+                </div>
+              </div>
+              <div class="faq-actions">
+                <button type="button" class="icon-btn" (click)="moveFaq(i, -1)" [disabled]="first" title="Subir">↑</button>
+                <button type="button" class="icon-btn" (click)="moveFaq(i, 1)"  [disabled]="last"  title="Bajar">↓</button>
+                <label class="toggle-wrap" title="Activo">
+                  <input type="checkbox" formControlName="active" class="sr-only">
+                  <span class="toggle-pill" [class.active]="item.get('active')?.value"></span>
+                </label>
+                <button type="button" class="icon-btn danger" (click)="removeFaq(i)" title="Eliminar">✕</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (faqArray.length === 0) {
+          <div class="faq-empty">
+            <p>No hay preguntas configuradas. Haz clic en "Agregar pregunta" para comenzar.</p>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- ── Info banner ───────────────────────────────────────────────────────── -->
+    <div class="info-banner">
+      <span class="info-icon">💡</span>
+      <div class="info-text">
+        <strong>¿Cuándo se aplican los cambios?</strong>
+        Los cambios se guardan en Firestore y el sitio los usa inmediatamente al siguiente load de página.
+        Para que Google los indexe puede tomar de días a semanas.
+        Para ChatGPT / Perplexity (búsqueda en tiempo real) el efecto es inmediato.
+      </div>
+    </div>
+
+  </form>
+  }
+</div>

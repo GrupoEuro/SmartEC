@@ -1,0 +1,64 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /view/
+Disallow: /auth/
+Disallow: /account/
+Disallow: /checkout
+Disallow: /order-confirmation
+
+# ── AI Crawlers: explicitly allowed ──────────────────────────────────────────
+# Google Gemini / AI Overviews
+User-agent: Google-Extended
+Allow: /
+
+# OpenAI (ChatGPT Browse, GPT-4o with web)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic (Claude)
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+
+# Meta AI
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# Bing / Microsoft Copilot
+User-agent: bingbot
+Allow: /
+
+User-agent: BingPreview
+Allow: /
+
+# Apple (Siri / Apple Intelligence)
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# You.com AI
+User-agent: YouBot
+Allow: /
+
+# Common AI-adjacent research crawlers
+User-agent: Cohere-ai
+Allow: /
+
+# ── Sitemaps ──────────────────────────────────────────────────────────────────
+Sitemap: https://importadoraeuro.com/sitemap.xml
+Sitemap: https://importadoraeuro.com/sitemap-products.xml

@@ -201,6 +201,13 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 badge: { text: 'Marketing', color: 'bg-violet-600' }
             },
             {
+                id: 'seo',
+                title: 'SEO / GEO / IA',
+                icon: 'search',
+                route: '/admin/seo',
+                badge: { text: 'Nuevo', color: 'bg-emerald-600' }
+            },
+            {
                 id: 'logs',
                 title: 'ADMIN.SIDEBAR.LOGS',
                 icon: 'activity',

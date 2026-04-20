@@ -165,7 +165,281 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
 
 
 
+// ─── MercadoPago OAuth: Generate Auth URL ────────────────────────────────────
+//
+// Callable from Angular: httpsCallable(functions, 'mpAuthUrl')
+// Returns the URL to redirect the browser to for MP OAuth authorization.
+// Requires config/integrations → mercadopago.appId + mercadopago.clientSecret
+// to be saved in Firestore first (Admin → Integrations panel).
+//
+export const mpAuthUrl = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const mpConfig  = configDoc.data()?.mercadopago || {};
+        const appId     = mpConfig.appId || mpConfig.clientId;
+
+        if (!appId) {
+            throw new functions.https.HttpsError(
+                'failed-precondition',
+                'MercadoPago App ID not configured. Save it in Admin → Integrations first.'
+            );
+        }
+
+        const redirectUri = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback';
+        const state       = Math.random().toString(36).substring(2, 15);
+
+        await db.collection('config').doc('integrations').set(
+            { mercadopago: { oauthState: state } },
+            { merge: true }
+        );
+
+        const SCOPES = ['read', 'offline_access', 'write'].join(' ');
+        const url    = `https://auth.mercadopago.com.mx/authorization?client_id=${appId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(SCOPES)}&state=${state}`;
+        return { url, redirectUri };
+    } catch (err: any) {
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// ─── MercadoPago OAuth: Callback Handler ─────────────────────────────────────
+//
+// HTTP endpoint — register this exact URL in MP Developer Panel → Configuración
+// avanzada → URL de redireccionamiento:
+//   https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback
+//
+// MP redirects here after user authorizes. We exchange the code for tokens
+// and persist them to Firestore (config/integrations → mercadopago).
+//
+export const mpCallback = functions.https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+
+    const code  = req.query['code']  as string;
+    const state = req.query['state'] as string;
+    const error = req.query['error'] as string;
+
+    const ADMIN_URL = 'https://us-central1-tiendapraxis.cloudfunctions.net';  // fallback
+    const REDIRECT_BACK = 'http://localhost:4200/admin/settings/integrations'; // dev; override in prod
+
+    if (error) {
+        console.error('[mpCallback] OAuth denied:', error);
+        res.redirect(`${REDIRECT_BACK}?mp_error=${encodeURIComponent(error)}`);
+        return;
+    }
+
+    if (!code) {
+        res.status(400).send('Missing authorization code');
+        return;
+    }
+
+    try {
+        const configDoc    = await db.collection('config').doc('integrations').get();
+        const mpConfig     = configDoc.data()?.mercadopago || {};
+        const appId        = mpConfig.appId        || mpConfig.clientId;
+        const clientSecret = mpConfig.clientSecret || mpConfig.appSecret;
+        const redirectUri  = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback';
+
+        if (!appId || !clientSecret) {
+            res.status(500).send('Missing MercadoPago App ID or Client Secret in Firestore.');
+            return;
+        }
+
+        if (state && mpConfig.oauthState && state !== mpConfig.oauthState) {
+            console.warn('[mpCallback] State mismatch — possible CSRF');
+            res.status(403).send('Invalid state parameter');
+            return;
+        }
+
+        const tokenRes = await fetch('https://api.mercadopago.com/oauth/token', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body: new URLSearchParams({
+                grant_type:    'authorization_code',
+                client_id:     appId,
+                client_secret: clientSecret,
+                code,
+                redirect_uri:  redirectUri,
+            }).toString(),
+        });
+
+        const tokenData = await tokenRes.json() as any;
+
+        if (!tokenRes.ok || !tokenData.access_token) {
+            console.error('[mpCallback] Token exchange failed:', JSON.stringify(tokenData));
+            res.status(500).send(`Token exchange failed: ${JSON.stringify(tokenData)}`);
+            return;
+        }
+
+        const expiresAt = Date.now() + ((tokenData.expires_in || 21600) * 1000);
+
+        await db.collection('config').doc('integrations').set({
+            mercadopago: {
+                accessToken:  tokenData.access_token,
+                refreshToken: tokenData.refresh_token ?? null,
+                publicKey:    tokenData.public_key    ?? mpConfig.publicKey ?? '',
+                userId:       tokenData.user_id       ?? null,
+                expiresAt,
+                connected:    true,
+                oauthState:   null,
+            }
+        }, { merge: true });
+
+        console.log('[mpCallback] ✅ MercadoPago OAuth success. User ID:', tokenData.user_id);
+        res.redirect(`${REDIRECT_BACK}?mp_success=true`);
+
+    } catch (err: any) {
+        console.error('[mpCallback] Error:', err);
+        res.status(500).send(`Internal Server Error: ${err.message}`);
+    }
+});
+
+// ─── MercadoPago Diagnostic Tool ─────────────────────────────────────────────
+//
+// Callable: httpsCallable(functions, 'mpDiag')
+// Backs the /admin/integrations/mp-debug Payment Tester UI.
+// Accepts { step: string, ...params } and runs the requested check.
+//
+export const mpDiag = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const FN_VER = 'v5-2026-04-18'; // bump this on every deploy to confirm version
+    // Load credentials from Firestore
+    const configSnap = await db.collection('config').doc('integrations').get();
+    const mpConfig   = configSnap.data()?.mercadopago ?? {};
+    const accessToken: string = mpConfig.accessToken ?? process.env.MP_ACCESS_TOKEN ?? '';
+
+    if (!accessToken) {
+        return { ok: false, error: 'No Access Token found in config/integrations → mercadopago' };
+    }
+
+    const step = data?.step as string;
+
+    // ── Step: /users/me ───────────────────────────────────────────────────────
+    if (step === 'users_me') {
+        try {
+            const r = await fetch('https://api.mercadopago.com/users/me', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const body = await r.json() as any;
+            if (!r.ok) return { ok: false, error: body.message ?? body.error ?? 'Token rejected', status: r.status };
+            return {
+                ok:       true,
+                userId:   body.id,
+                nickname: body.nickname,
+                email:    body.email,
+                site_id:  body.site_id,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message };
+        }
+    }
+
+    // ── Step: Payment methods ─────────────────────────────────────────────────
+    if (step === 'payment_methods') {
+        try {
+            const r = await fetch('https://api.mercadopago.com/v1/payment_methods', {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const body = await r.json() as any;
+            if (!r.ok) return { ok: false, error: body.message ?? 'Could not retrieve payment methods', status: r.status };
+            const methods: string[] = (Array.isArray(body) ? body : []).map((m: any) => m.id);
+            return {
+                ok:     true,
+                count:  methods.length,
+                sample: methods.slice(0, 5),
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message };
+        }
+    }
+
+    // ── Step: Test payment — creates a real Checkout Pro preference ───────────
+    // This is the ACTUAL flow production uses (not card API hacks).
+    // A successful preference proves: token valid, payment config correct, checkout works.
+    if (step === 'test_payment') {
+        const { amount = 100, description = 'Diagnóstico integración — Eurollantas' } = data ?? {};
+        try {
+            const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
+                method:  'POST',
+                headers: {
+                    'Authorization':     `Bearer ${accessToken}`,
+                    'Content-Type':      'application/json',
+                    'X-Idempotency-Key': `mpdiag-pref-${Date.now()}`,
+                },
+                body: JSON.stringify({
+                    items: [{
+                        id:          'mp-diag-001',
+                        title:       description,
+                        quantity:    1,
+                        currency_id: 'MXN',
+                        unit_price:  Number(amount),
+                    }],
+                    payer:              { email: 'test@eurollantas.com.mx' },
+                    external_reference: `mp-diag-${Date.now()}`,
+                    back_urls: {
+                        success: 'https://eurollantas.com.mx',
+                        failure: 'https://eurollantas.com.mx',
+                        pending: 'https://eurollantas.com.mx',
+                    },
+                    auto_return: 'approved',
+                    statement_descriptor: 'EUROLLANTAS',
+                }),
+            });
+            const pref = await prefRes.json() as any;
+            if (!prefRes.ok || !pref.id) {
+                return {
+                    ok:    false,
+                    status: prefRes.status,
+                    error: pref.message ?? pref.cause?.[0]?.description ?? 'Preference creation failed',
+                    fnVer: FN_VER,
+                    raw:   pref,
+                };
+            }
+            return {
+                ok:           true,
+                preferenceId: pref.id,
+                initPoint:    pref.sandbox_init_point ?? pref.init_point,
+                status:       'preference_created',
+                fnVer:        FN_VER,
+                raw: {
+                    id:           pref.id,
+                    sandbox_url:  pref.sandbox_init_point,
+                    expires:      pref.date_of_expiration,
+                    fnVer:        FN_VER,
+                },
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+
+    // ── Step: Webhook endpoint reachability ───────────────────────────────────
+
+    if (step === 'webhook_check') {
+        const webhookUrl = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpWebhook';
+        try {
+            // Send a GET — the webhook rejects non-POST but a 405 confirms it's alive
+            const r = await fetch(webhookUrl, { method: 'GET' });
+            const alive  = r.status === 405 || r.status === 200; // 405 = correct (only POST allowed)
+            return {
+                ok:     alive,
+                status: r.status,
+                url:    webhookUrl,
+                detail: alive ? 'Endpoint responds correctly (405 Method Not Allowed = ✅)' : `Unexpected status ${r.status}`,
+            };
+        } catch (e: any) {
+            return { ok: false, error: `Unreachable: ${e.message}`, url: webhookUrl };
+        }
+    }
+
+    return { ok: false, error: `Unknown step: "${step}"`, fnVer: FN_VER };
+});
+
 // ─── Firebase Custom Claims: Role Sync ───────────────────────────────────────
+
+
 //
 // This function triggers whenever a user document in `users/{uid}` is written.
 // It reads the `role` field and sets it as a Custom Claim on the Firebase Auth
@@ -865,11 +1139,9 @@ async function getValidMeliToken(): Promise<string> {
 
     if (!meliConfig.refreshToken) {
         console.warn('[Meli] No refresh token available. User must re-authenticate.');
-        // Return current token anyway — let the caller fail gracefully if it's truly dead
         return meliConfig.accessToken as string;
     }
 
-    // Get app credentials for the refresh call
     const appId = meliConfig.appId;
     const clientSecret = meliConfig.clientSecret;
 
@@ -898,14 +1170,12 @@ async function getValidMeliToken(): Promise<string> {
         if (!tokenRes.ok || !tokenData.access_token) {
             console.error('[Meli] Token refresh failed:', JSON.stringify(tokenData));
             if (tokenData.error === 'invalid_grant') {
-                // Refresh token itself is dead — mark as disconnected
                 await db.collection('config').doc('integrations').set(
                     { meli: { connected: false } },
                     { merge: true }
                 );
                 throw new Error('MeLi refresh token expired. Please re-authenticate in /admin/integrations.');
             }
-            // Non-fatal: use the existing token and hope it still works
             console.warn('[Meli] Falling back to existing token.');
             return meliConfig.accessToken as string;
         }
@@ -926,10 +1196,64 @@ async function getValidMeliToken(): Promise<string> {
 
     } catch (err: any) {
         console.error('[Meli] Token refresh error:', err.message);
-        // Fall back to existing token
         return meliConfig.accessToken as string;
     }
 }
+
+/**
+ * App-level token using client_credentials grant.
+ * This is the CORRECT token type for reading public ML marketplace data from a server.
+ * Unlike the user OAuth token, ML does NOT block client_credentials requests from GCP IPs.
+ * Cached in Firestore with a 6-hour TTL to minimise token API calls.
+ */
+async function getAppLevelToken(): Promise<string> {
+    const configDoc = await db.collection('config').doc('integrations').get();
+    const meliConfig = configDoc.data()?.meli ?? {};
+
+    const appId       = meliConfig.appId;
+    const clientSecret = meliConfig.clientSecret;
+
+    if (!appId || !clientSecret) {
+        console.warn('[Meli:AppToken] Missing appId/clientSecret — falling back to user token');
+        return getValidMeliToken();
+    }
+
+    // Check cached app token (valid for most of its 6h window)
+    const cached     = meliConfig.appAccessToken;
+    const cachedExp  = meliConfig.appTokenExpiresAt ?? 0;
+    if (cached && (cachedExp - Date.now()) > 10 * 60 * 1000) {
+        console.log('[Meli:AppToken] Cache HIT — reusing app token');
+        return cached as string;
+    }
+
+    console.log('[Meli:AppToken] Fetching new app-level token (client_credentials)...');
+    const res = await fetch('https://api.mercadolibre.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: new URLSearchParams({
+            grant_type:    'client_credentials',
+            client_id:     appId,
+            client_secret: clientSecret,
+        }).toString(),
+    });
+    const data = await res.json() as any;
+
+    if (!res.ok || !data.access_token) {
+        console.error('[Meli:AppToken] client_credentials fetch failed:', JSON.stringify(data));
+        // Fallback to user token — better than nothing
+        return getValidMeliToken();
+    }
+
+    const expiresAt = Date.now() + (data.expires_in * 1000);
+    await db.collection('config').doc('integrations').set({
+        meli: { appAccessToken: data.access_token, appTokenExpiresAt: expiresAt }
+    }, { merge: true });
+
+    console.log('[Meli:AppToken] New app token cached, expires:', new Date(expiresAt).toISOString());
+    return data.access_token as string;
+}
+
+
 
 
 // 1. Generate Auth URL (Callable)
@@ -938,8 +1262,30 @@ export const meliAuthUrl = functions.https.onCall(async (data, context) => {
 
     try {
         const config = await getMeliConfig();
-        // Meli Mexico auth URL
-        const url = `https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=${config.appId}&redirect_uri=${encodeURIComponent(config.redirectUri)}`;
+        // ── Scopes requested — must match what is activated in App Center ─────────
+        // offline_access  = enables token refresh (long-lived sessions)
+        // read            = public marketplace search (listings, prices, categories)
+        // write           = create/update/pause/delete listings (Publicación y sincronización)
+        // read_orders     = read order details, shipping, returns (Ventas y envíos)
+        // write_orders    = manage fulfillment, dispatches, chargebacks
+        // read_messages   = read buyer/seller pre & post-sale messages
+        // write_messages  = send messages to buyers
+        // read_billing    = access income, movements, account balance (Facturación)
+        // read_promotions = access existing offers and coupons
+        // write_promotions= create/manage promotions and coupons
+        // read_ads        = access advertising campaigns (Publicidad)
+        // write_ads       = create/manage advertising campaigns
+        // read_users      = access account info via /users/me
+        const SCOPES = [
+            'offline_access', 'read', 'write',
+            'read_orders', 'write_orders',
+            'read_messages', 'write_messages',
+            'read_billing',
+            'read_promotions', 'write_promotions',
+            'read_ads', 'write_ads',
+            'read_users',
+        ].join(' ');
+        const url = `https://auth.mercadolibre.com.mx/authorization?response_type=code&client_id=${config.appId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&scope=${encodeURIComponent(SCOPES)}`;
         return { url };
     } catch (err: any) {
         throw new functions.https.HttpsError('internal', err.message);
@@ -2510,6 +2856,10 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     }
 
     const { width, aspectRatio, diameter, force = false } = data;
+    // competitorItemIds: pre-populated by the client (browser-side ML search, not blocked)
+    const clientCompetitorIds: string[] = Array.isArray(data.competitorItemIds)
+        ? (data.competitorItemIds as string[]).slice(0, 100)
+        : [];
     let categoryId: string = data.categoryId ?? 'MLM169975'; // may be overridden by autodiscovery below
 
     if (!width || !aspectRatio || !diameter) {
@@ -2537,9 +2887,14 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         }
     }
 
-    // ── 2. Get ML access token ────────────────────────────────────────────────
-    const accessToken = await getValidMeliToken();
-    const authHeaders: Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
+    // ── 2. Get ML access tokens ───────────────────────────────────────────────
+    // userToken  → for seller-specific ops (our listings, mutations)
+    // appToken   → for marketplace reads (search, item details)
+    //              client_credentials grant; NOT blocked by ML's GCP IP filter
+    const accessToken    = await getValidMeliToken();
+    const appToken       = await getAppLevelToken();
+    const authHeaders:    Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
+    const appAuthHeaders: Record<string, string> = { 'Authorization': `Bearer ${appToken}` };
 
     // ── 3. Get our seller ID ──────────────────────────────────────────────────
     const configDoc = await db.collection('config').doc('integrations').get();
@@ -2590,13 +2945,30 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         if (ourItemsRes.ok) {
             const ourItemsData = await ourItemsRes.json() as any;
             const allOurIds: string[] = ourItemsData.results || [];
-            console.log(`[PriceIntel] Seller has ${allOurIds.length} active items total`);
+            const total: number = ourItemsData.paging?.total ?? allOurIds.length;
+            console.log(`[PriceIntel] Seller has ${total} active items total (first page: ${allOurIds.length})`);
+
+            // Fetch second page if there are more than 100 items
+            if (total > 100) {
+                try {
+                    const page2Res = await fetch(
+                        `https://api.mercadolibre.com/users/${sellerId}/items/search?status=active&limit=100&offset=100`,
+                        { headers: authHeaders }
+                    );
+                    if (page2Res.ok) {
+                        const page2Data = await page2Res.json() as any;
+                        allOurIds.push(...(page2Data.results || []));
+                    }
+                } catch { /* non-fatal */ }
+            }
+
+            console.log(`[PriceIntel] Total our item IDs to check: ${allOurIds.length}`);
 
             // Bulk-fetch details in batches of 20
-            for (let i = 0; i < Math.min(allOurIds.length, 100); i += 20) {
+            for (let i = 0; i < allOurIds.length; i += 20) {
                 const batch = allOurIds.slice(i, i + 20);
                 const detailsRes = await fetch(
-                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,category_id,attributes,status`,
+                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,category_id,attributes,status,catalog_product_id,sold_quantity,listing_type_id,shipping,permalink,thumbnail`,
                     { headers: authHeaders }
                 );
                 if (detailsRes.ok) {
@@ -2604,24 +2976,28 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
                     for (const entry of details) {
                         if (entry.code === 200 && entry.body) {
                             const item = entry.body;
-                            // Check if this item matches the tire size via attributes
+                            // ML-confirmed attribute IDs (from category MLM169975 attrs step):
                             const attrs: any[] = item.attributes || [];
-                            const tireWidth = attrs.find((a: any) => ['TIRE_WIDTH', 'TIRE_SIZE_WIDTH'].includes(a.id))?.value_name;
-                            const tireAR = attrs.find((a: any) => ['ASPECT_RATIO', 'TIRE_ASPECT_RATIO'].includes(a.id))?.value_name;
-                            const tireDiam = attrs.find((a: any) => ['RIM_DIAMETER', 'TIRE_RIM_DIAMETER'].includes(a.id))?.value_name;
+                            const atWidth = attrs.find((a: any) =>
+                                ['SECTION_WIDTH', 'TIRE_WIDTH', 'TIRE_SIZE_WIDTH'].includes(a.id)
+                            )?.value_name;
+                            const atAR = attrs.find((a: any) =>
+                                ['AUTOMOTIVE_TIRE_ASPECT_RATIO', 'ASPECT_RATIO', 'TIRE_ASPECT_RATIO'].includes(a.id)
+                            )?.value_name;
+                            const atDiam = attrs.find((a: any) =>
+                                ['RIM_DIAMETER', 'TIRE_RIM_DIAMETER'].includes(a.id)
+                            )?.value_name;
 
-                            // Title match must include ALL THREE parts to avoid
-                            // false positives (e.g. 120/70-12 matching for 120/70-17)
                             const titleHasWidth = item.title?.includes(String(width));
-                            const titleHasAR = item.title?.includes(String(aspectRatio));
-                            const titleHasDiam = item.title?.includes(String(diameter)) ||
-                                                 item.title?.toLowerCase().includes(`r${diameter}`) ||
-                                                 item.title?.toLowerCase().includes(`-${diameter}`);
+                            const titleHasAR    = item.title?.includes(String(aspectRatio));
+                            const titleHasDiam  = item.title?.includes(String(diameter)) ||
+                                                  item.title?.toLowerCase().includes(`r${diameter}`) ||
+                                                  item.title?.toLowerCase().includes(`-${diameter}`);
                             const titleMatch = titleHasWidth && titleHasAR && titleHasDiam;
 
-                            const attrsMatch = tireWidth && String(tireWidth) === String(width) &&
-                                               tireAR && String(tireAR) === String(aspectRatio) &&
-                                               tireDiam && String(tireDiam) === String(diameter);
+                            const attrsMatch = atWidth && String(atWidth) === String(width) &&
+                                               atAR    && String(atAR)    === String(aspectRatio) &&
+                                               atDiam  && String(atDiam)  === String(diameter);
 
                             if (attrsMatch || titleMatch) {
                                 ourItemIds.add(item.id);
@@ -2656,191 +3032,342 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     }
     console.log(`[PriceIntel] Total our item IDs for ${fingerprint}: ${ourItemIds.size}`);
 
-    // ── 6. Competitor search: Attribute-based search (authenticated) ──────────
-    //
-    // CONFIRMED: /sites/MLM/search?q=... returns 403 for ALL callers (even curl
-    // from local machine — it's ML policy, not a GCP IP issue).
-    //
-    // The CORRECT approach for registered seller apps:
-    //   /sites/MLM/search?category={cat}&ATTR_ID=value  WITH Bearer token.
-    // Attribute IDs for MLM169975 (from /categories/MLM169975/attributes):
-    //   SECTION_WIDTH                 = tire width section (e.g. 120)
-    //   AUTOMOTIVE_TIRE_ASPECT_RATIO  = aspect ratio (e.g. 70)
-    //   RIM_DIAMETER                  = rim diameter in inches (e.g. 17)
-    //   MANUFACTURER_TIRE_SIZE        = full size string (e.g. "120/70R17")
-    //
-    const competitorItemIds: Set<string> = new Set<string>();
+    // ── 6. Find which of our own items match this tire size ────────────────────
+    const ourMatchingItems: any[] = [];
+    for (const [, item] of ourItemDetailsMap) {
+        ourMatchingItems.push(item);
+    }
+    console.log(`[PriceIntel] ${ourMatchingItems.length} of our items match ${fingerprint}`);
+    console.log(`[PriceIntel] ${clientCompetitorIds.length} competitor IDs received from browser/client`);
 
-    // Strategy A: Dimension attribute filters (most precise — exact size match)
-    const attrSearchUrls = [
-        // Primary category (motorcycle tires)
-        `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=50&sort=price_asc`,
-        // Fallback: also search without category restriction in case items are mis-tagged
-        `https://api.mercadolibre.com/sites/MLM/search?SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=30&sort=price_asc`,
-    ];
-
-    for (const url of attrSearchUrls) {
-        try {
-            console.log(`[PriceIntel] Attr search: ${url}`);
-            const r = await fetch(url, { headers: authHeaders });
-            if (r.ok) {
-                const body = await r.json() as any;
-                const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
-                console.log(`[PriceIntel] Attr search → ${ids.length} results (ML total: ${body.paging?.total ?? '?'})`);
-                ids.forEach(id => competitorItemIds.add(id));
-            } else {
-                const errText = await r.text().catch(() => '');
-                console.warn(`[PriceIntel] Attr search returned ${r.status}: ${errText.slice(0, 150)}`);
-            }
-        } catch (err: any) {
-            console.warn('[PriceIntel] Attr search failed:', err.message);
-        }
-        if (competitorItemIds.size >= 60) break;
+    // NOTE: We do NOT return early here on 0 matching items anymore.
+    // price_to_win (step 7) will run for our items and the ScraperAPI path
+    // (step 6b) will attempt to find competitors. Both need to run regardless.
+    // Only bail out completely if the seller has zero active items at all.
+    const sellerHasActiveItems = ourItemDetailsMap.size > 0 || ourListingsSnap.size > 0;
+    if (!sellerHasActiveItems && clientCompetitorIds.length === 0) {
+        console.log(`[PriceIntel] No active items found for seller and no client IDs — returning noListing`);
+        return {
+            cached:    false,
+            fingerprint,
+            noListing: true,
+            stats:     null,
+            count:     0,
+            message:   `No publicación activa en ML ni competidores para ${fingerprint}.`,
+        };
     }
 
-    // Strategy B: MANUFACTURER_TIRE_SIZE exact string (covers non-catalogued items)
-    if (competitorItemIds.size < 10) {
-        for (const sizeStr of [`${width}/${aspectRatio}R${diameter}`, `${width}/${aspectRatio}-${diameter}`]) {
+    // ── 6b. Server-side competitor discovery via ScraperAPI proxy ─────────────
+    // ML's /sites/MLM/search returns 403 from GCP datacenter IPs (WAF block).
+    // ScraperAPI routes the request through residential IPs that ML does not block.
+    // Sign up free at scraperapi.com (5,000 requests/month free tier).
+    // Set the key: firebase functions:config:set scraperapi.key="YOUR_KEY"
+    //
+    // The clientCompetitorIds from the browser are used as a supplement if present.
+    const competitorRawItems: any[] = [];
+    const scraperApiKey: string = (functions.config().scraperapi?.key) ?? '';
+
+    // Collect competitor IDs from all sources
+    const competitorIdSet = new Set<string>(
+        clientCompetitorIds.filter(id => !ourItemIds.has(id))
+    );
+
+    if (scraperApiKey) {
+        // ── ScraperAPI path: residential-IP ML search ─────────────────────────
+        const searchQueries = [
+            `${width}/${aspectRatio}R${diameter}`,
+            `llanta moto ${width}/${aspectRatio}r${diameter}`,
+        ];
+        for (const q of searchQueries) {
             try {
-                const url = `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&MANUFACTURER_TIRE_SIZE=${encodeURIComponent(sizeStr)}&limit=30&sort=price_asc`;
-                console.log(`[PriceIntel] Size-string search: ${sizeStr}`);
-                const r = await fetch(url, { headers: authHeaders });
-                if (r.ok) {
-                    const body = await r.json() as any;
-                    const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
-                    console.log(`[PriceIntel] Size-string "${sizeStr}" → ${ids.length} results`);
-                    ids.forEach(id => competitorItemIds.add(id));
+                const mlSearchUrl = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(q)}&category=${categoryId}&limit=50&sort=price_asc`;
+                const proxyUrl = `https://api.scraperapi.com?api_key=${scraperApiKey}&url=${encodeURIComponent(mlSearchUrl)}`;
+                const searchRes = await fetch(proxyUrl, {
+                    signal: AbortSignal.timeout(25000),
+                });
+                if (searchRes.ok) {
+                    const searchData = await searchRes.json() as any;
+                    const results: any[] = searchData.results ?? [];
+                    console.log(`[PriceIntel] ScraperAPI search "${q}": ${results.length} hits`);
+                    results.forEach((item: any) => {
+                        if (item.id && !ourItemIds.has(item.id)) {
+                            competitorIdSet.add(item.id);
+                        }
+                    });
+                } else {
+                    const errText = await searchRes.text().catch(() => '');
+                    console.warn(`[PriceIntel] ScraperAPI HTTP ${searchRes.status} for "${q}":`, errText.slice(0, 200));
                 }
             } catch (err: any) {
-                console.warn('[PriceIntel] Size-string search failed:', err.message);
+                console.warn(`[PriceIntel] ScraperAPI error for query "${q}":`, err.message);
             }
         }
+        console.log(`[PriceIntel] Total competitor candidates after proxy search: ${competitorIdSet.size}`);
+    } else {
+        console.warn('[PriceIntel] No ScraperAPI key configured. Set with: firebase functions:config:set scraperapi.key="YOUR_KEY"');
+        console.log(`[PriceIntel] Falling back to ${competitorIdSet.size} browser-provided IDs`);
     }
 
-    // Strategy C: Per-catalog-product search (fills remaining gaps)
-    if (competitorItemIds.size < 15 && productIds.length > 0) {
-        console.log(`[PriceIntel] Catalog fallback for ${productIds.length} product IDs`);
-        for (const productId of productIds.slice(0, 8)) {
-            try {
-                const url = `https://api.mercadolibre.com/sites/MLM/search?catalog_product_id=${productId}&limit=10&sort=price_asc`;
-                const r = await fetch(url, { headers: authHeaders });
-                if (r.ok) {
-                    const body = await r.json() as any;
-                    const ids: string[] = (body.results || []).map((x: any) => x.id).filter(Boolean);
-                    if (ids.length) console.log(`[PriceIntel] Catalog ${productId} → ${ids.length} items`);
-                    ids.forEach(id => competitorItemIds.add(id));
-                }
-            } catch (err: any) {
-                console.warn(`[PriceIntel] Catalog ${productId} failed:`, err.message);
-            }
-            if (competitorItemIds.size >= 60) break;
-        }
-    }
+    const filteredCompetitorIds = [...competitorIdSet];
 
-    console.log(`[PriceIntel] Total competitor IDs found: ${competitorItemIds.size}`);
-
-    // Remove our own items from competitor set
-    ourItemIds.forEach(id => competitorItemIds.delete(id));
-    console.log(`[PriceIntel] After removing our items: ${competitorItemIds.size} competitor IDs`);
-
-    // ── 7. Bulk-fetch all item details ────────────────────────────────────────
-    const allItemIds = [...new Set([...competitorItemIds, ...ourItemIds])].slice(0, 50);
-    console.log(`[PriceIntel] Fetching details for ${allItemIds.length} items`);
-
-    const allListings: any[] = [];
-
-    if (allItemIds.length > 0) {
-        for (let i = 0; i < allItemIds.length; i += 20) {
-            const batch = allItemIds.slice(i, i + 20);
+    if (filteredCompetitorIds.length > 0) {
+        // ── Enrich competitor IDs → full item data (/items?ids=...) ─────────────
+        // This endpoint works fine from GCP — only search is blocked.
+        console.log(`[PriceIntel] Enriching ${filteredCompetitorIds.length} competitor IDs`);
+        for (let i = 0; i < filteredCompetitorIds.length; i += 20) {
+            const batch = filteredCompetitorIds.slice(i, i + 20);
             try {
                 const detRes = await fetch(
-                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,category_id,seller_id,listing_type_id,sold_quantity,permalink,thumbnail,shipping,seller_reputation`,
-                    { headers: authHeaders }
+                    `https://api.mercadolibre.com/items?ids=${batch.join(',')}&attributes=id,title,price,seller_id,listing_type_id,sold_quantity,shipping,permalink,thumbnail,attributes`,
+                    { headers: appAuthHeaders }
                 );
                 if (detRes.ok) {
                     const details = await detRes.json() as any[];
                     for (const entry of details) {
                         if (entry.code === 200 && entry.body) {
-                            allListings.push(entry.body);
+                            competitorRawItems.push(entry.body);
                         }
                     }
                 }
             } catch (err: any) {
-                console.warn('[PriceIntel] Batch fetch failed:', err.message);
+                console.warn('[PriceIntel] Competitor enrich batch failed:', err.message);
             }
+        }
+        console.log(`[PriceIntel] Enriched ${competitorRawItems.length} competitor details`);
+        // Seller nicknames (up to 15 unique sellers)
+        const sellerIds = [...new Set(competitorRawItems.map((i: any) => String(i.seller_id)).filter(Boolean))].slice(0, 15);
+        const sellerMap: Map<string, string> = new Map();
+        for (const sid of sellerIds) {
+            try {
+                const sRes = await fetch(`https://api.mercadolibre.com/users/${sid}?attributes=id,nickname`, { headers: appAuthHeaders });
+                if (sRes.ok) {
+                    const sData = await sRes.json() as any;
+                    sellerMap.set(sid, sData.nickname ?? sid);
+                }
+            } catch { /* non-fatal */ }
+        }
+        for (const item of competitorRawItems) {
+            (item as any)._sellerNickname = sellerMap.get(String(item.seller_id)) ?? null;
         }
     }
 
-    // ── 8. Enrich with seller info in one batch call ──────────────────────────
-    const sellerIds = [...new Set(allListings.map((l: any) => String(l.seller_id)).filter(Boolean))].slice(0, 15);
-    const sellerMap: Map<string, any> = new Map();
-    for (const sid of sellerIds) {
+
+    // ── 7. Call GET /items/{id}/price_to_win for each of our matching items ───
+    //
+    // This is the OFFICIAL documented ML endpoint for competitive pricing intel:
+    //   https://developers.mercadolibre.com (Precios competitivos > precio_para_ganar)
+    // It returns ML's own buy-box analysis: what price we need to set to win,
+    // what the current winning price is, and whether we are currently winning.
+    // Requires the SELLER user token (not the app token).
+    //
+    const priceToWinResults: any[] = [];
+
+    for (const item of ourMatchingItems) {
         try {
-            const sRes = await fetch(`https://api.mercadolibre.com/users/${sid}`, { headers: authHeaders });
-            if (sRes.ok) {
-                const sData = await sRes.json() as any;
-                sellerMap.set(sid, sData);
+            const ptwRes = await fetch(
+                `https://api.mercadolibre.com/items/${item.id}/price_to_win`,
+                { headers: authHeaders }   // must be seller user token
+            );
+            const ptwData = await ptwRes.json() as any;
+            if (ptwRes.ok) {
+                priceToWinResults.push({
+                    itemId:      item.id,
+                    title:       item.title,
+                    ourPrice:    item.price,
+                    status:      ptwData.status ?? 'unknown',          // 'winner' | 'not_winner' | 'not_eligible'
+                    priceToWin:  ptwData.price_to_win ?? null,
+                    catalogProductId: item.catalog_product_id ?? ptwData.catalog_product_id ?? null,
+                    actions:     ptwData.actions ?? [],
+                    raw:         ptwData,
+                });
+                console.log(`[PriceIntel] price_to_win ${item.id}: status=${ptwData.status}, ptw=${ptwData.price_to_win}`);
+            } else {
+                console.warn(`[PriceIntel] price_to_win ${item.id} HTTP ${ptwRes.status}:`, JSON.stringify(ptwData).slice(0, 200));
+                priceToWinResults.push({
+                    itemId:   item.id,
+                    title:    item.title,
+                    ourPrice: item.price,
+                    status:   'api_error',
+                    priceToWin: null,
+                    catalogProductId: item.catalog_product_id ?? null,
+                    raw:      ptwData,
+                });
             }
-        } catch { /* non-fatal */ }
+        } catch (err: any) {
+            console.warn(`[PriceIntel] price_to_win error for ${item.id}:`, err.message);
+        }
     }
 
-    // ── 9. Map to MarketListing format ────────────────────────────────────────
-    const listings = allListings.map((item: any, idx: number) => {
-        const seller = sellerMap.get(String(item.seller_id)) || {};
-        return {
-            itemId: item.id,
-            title: item.title || '',
-            price: item.price || 0,
-            sellerId: String(item.seller_id ?? ''),
-            sellerNickname: seller.nickname || null,
-            sellerReputation: seller.seller_reputation?.level_id || 'unknown',
-            soldQuantity: item.sold_quantity || 0,
-            listingType: item.listing_type_id || 'free',
-            isFreeShipping: item.shipping?.free_shipping === true,
-            isOurListing: ourItemIds.has(item.id),
-            permalink: item.permalink || '',
-            thumbnail: item.thumbnail || '',
-            rank: idx + 1,
-            scrapedAt: new Date(),
-        };
-    }).filter((l: any) => l.price > 0)
-      .sort((a: any, b: any) => a.price - b.price);
+    // ── 8. Enrich via catalog: get buy-box winner for each catalog product ─────
+    //
+    // For items that belong to a catalog product, GET /products/{catalog_product_id}
+    // is a documented endpoint that returns the buy_box_winner item.
+    // This gives us the actual winning competitor listing we can display in the table.
+    //
+    const catalogProductIds = new Set(
+        priceToWinResults.map(r => r.catalogProductId).filter(Boolean) as string[]
+    );
 
-    console.log(`[PriceIntel] Processed ${listings.length} listings for ${fingerprint}`);
+    const competitorListingsMap: Map<string, any> = new Map();
+
+    for (const cpId of catalogProductIds) {
+        try {
+            const cpRes = await fetch(
+                `https://api.mercadolibre.com/products/${cpId}`,
+                { headers: appAuthHeaders }
+            );
+            if (!cpRes.ok) {
+                console.warn(`[PriceIntel] /products/${cpId} → HTTP ${cpRes.status}`);
+                continue;
+            }
+            const cpData = await cpRes.json() as any;
+            const bbWinner = cpData.buy_box_winner;
+            if (bbWinner?.item_id && !ourItemIds.has(bbWinner.item_id)) {
+                // Fetch the winner's item details
+                try {
+                    const bbRes = await fetch(
+                        `https://api.mercadolibre.com/items/${bbWinner.item_id}?attributes=id,title,price,seller_id,listing_type_id,sold_quantity,shipping,permalink,thumbnail`,
+                        { headers: appAuthHeaders }
+                    );
+                    if (bbRes.ok) {
+                        const bbItem = await bbRes.json() as any;
+                        // Fetch seller nickname
+                        let sellerNickname: string | null = null;
+                        try {
+                            const sRes = await fetch(`https://api.mercadolibre.com/users/${bbItem.seller_id}?attributes=id,nickname,seller_reputation`, { headers: appAuthHeaders });
+                            if (sRes.ok) {
+                                const sData = await sRes.json() as any;
+                                sellerNickname = sData.nickname ?? null;
+                            }
+                        } catch { /* non-fatal */ }
+
+                        competitorListingsMap.set(bbWinner.item_id, {
+                            itemId:          bbItem.id,
+                            title:           bbItem.title || '',
+                            price:           bbItem.price || 0,
+                            sellerId:        String(bbItem.seller_id ?? ''),
+                            sellerNickname,
+                            sellerReputation:'unknown',
+                            soldQuantity:    bbItem.sold_quantity || 0,
+                            listingType:     bbItem.listing_type_id || 'free',
+                            isFreeShipping:  bbItem.shipping?.free_shipping === true,
+                            isOurListing:    false,
+                            isBuyBoxWinner:  true,
+                            permalink:       bbItem.permalink || '',
+                            thumbnail:       bbItem.thumbnail || '',
+                            rank:            1,
+                            scrapedAt:       new Date(),
+                        });
+                        console.log(`[PriceIntel] Buy-box winner for catalog ${cpId}: ${bbItem.id} @ $${bbItem.price}`);
+                    }
+                } catch { /* non-fatal */ }
+            }
+        } catch (err: any) {
+            console.warn(`[PriceIntel] /products/${cpId} failed:`, err.message);
+        }
+    }
+
+    // ── 9. Build listings table ────────────────────────────────────────────────
+    const ourListingsForDb: any[] = ourMatchingItems.map((item, idx) => {
+        const ptw = priceToWinResults.find(r => r.itemId === item.id);
+        return {
+            itemId:          item.id,
+            title:           item.title || '',
+            price:           item.price || 0,
+            sellerId:        sellerId,
+            sellerNickname:  'PRAXIS MEXICO',
+            sellerReputation:'unknown',
+            soldQuantity:    item.sold_quantity || 0,
+            listingType:     item.listing_type_id || 'free',
+            isFreeShipping:  item.shipping?.free_shipping === true,
+            isOurListing:    true,
+            isWinner:        ptw?.status === 'winner',
+            priceToWin:      ptw?.priceToWin ?? null,
+            permalink:       item.permalink || '',
+            thumbnail:       item.thumbnail || '',
+            rank:            idx + 1,
+            scrapedAt:       new Date(),
+        };
+    });
+
+    // Catalog buy-box competitors (from /products/{id})
+    const catalogCompetitorListings = [...competitorListingsMap.values()];
+
+    // Browser-search competitors (main source — real competitor data from ML search)
+    const browserCompetitorListings: any[] = competitorRawItems
+        .filter(item => !ourItemIds.has(item.id))
+        .map((item, idx) => ({
+            itemId:          item.id,
+            title:           item.title || '',
+            price:           item.price || 0,
+            sellerId:        String(item.seller_id ?? ''),
+            sellerNickname:  (item as any)._sellerNickname ?? null,
+            sellerReputation:'unknown',
+            soldQuantity:    item.sold_quantity || 0,
+            listingType:     item.listing_type_id || 'free',
+            isFreeShipping:  item.shipping?.free_shipping === true,
+            isOurListing:    false,
+            isBuyBoxWinner:  false,
+            permalink:       item.permalink || '',
+            thumbnail:       item.thumbnail || '',
+            rank:            idx + 1,
+            scrapedAt:       new Date(),
+        }));
+
+    const allListings = [...ourListingsForDb, ...browserCompetitorListings, ...catalogCompetitorListings]
+        .filter(l => l.price > 0)
+        .sort((a, b) => a.price - b.price)
+        .map((l, i) => ({ ...l, rank: i + 1 }));
+
+    const totalCompetitorCount = browserCompetitorListings.length + catalogCompetitorListings.length;
+    console.log(`[PriceIntel] ${allListings.length} total listings (${ourListingsForDb.length} ours, ${browserCompetitorListings.length} browser, ${catalogCompetitorListings.length} catalog)`);
 
     // ── 10. Compute market statistics ─────────────────────────────────────────
-    const competitorListings = listings.filter((l: any) => !l.isOurListing);
-    const ourListingsInResults = listings.filter((l: any) => l.isOurListing);
+    const ourPrices    = ourMatchingItems.map(i => i.price).filter(p => p > 0);
+    const ourPrice: number | null = ourPrices.length > 0 ? Math.min(...ourPrices) : null;
 
-    const competitorPrices: number[] = competitorListings.map((l: any) => l.price);
-    const ourPrices: number[] = ourListingsInResults.map((l: any) => l.price);
+    // Competitor prices: browser search is primary; ptw & catalog are supplementary
+    const eligiblePtw        = priceToWinResults.filter(r => r.priceToWin && r.priceToWin > 0).map(r => r.priceToWin as number);
+    const catalogPrices      = catalogCompetitorListings.map(l => l.price).filter(p => p > 0);
+    const browserPrices      = browserCompetitorListings.map(l => l.price).filter(p => p > 0);
+    const allCompetitorPrices = [...browserPrices, ...catalogPrices, ...eligiblePtw];
 
-    const safeMin = (arr: number[]) => arr.length > 0 ? Math.min(...arr) : 0;
-    const safeMax = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
-    const safeMedian = (arr: number[]) => {
-        if (arr.length === 0) return 0;
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-    };
+    const marketFloor: number = allCompetitorPrices.length > 0 ? Math.min(...allCompetitorPrices) : 0;
+    const marketMax:   number = allCompetitorPrices.length > 0 ? Math.max(...allCompetitorPrices) : 0;
+    const marketMid:   number = allCompetitorPrices.length > 0
+        ? allCompetitorPrices.reduce((s, v) => s + v, 0) / allCompetitorPrices.length
+        : 0;
 
-    const ourPrice: number | null = ourPrices.length > 0 ? ourPrices[0] : null;
-    const priceToWin: number = safeMin(competitorPrices);
-
-    const positionInMarket: number | null = (() => {
-        if (!ourPrice) return null;
-        const idx = listings.findIndex((l: any) => l.isOurListing);
-        return idx >= 0 ? idx + 1 : null;
-    })();
+    // Win status: true if our price ≤ market floor OR price_to_win says 'winner'
+    const isWinning = priceToWinResults.some(r => r.status === 'winner') ||
+        (ourPrice !== null && marketFloor > 0 && ourPrice <= marketFloor);
+    const positionInMarket: number | null = isWinning ? 1 : (ourPrice !== null ? 2 : null);
 
     const stats = {
-        lowestPrice: safeMin(competitorPrices),
-        medianPrice: safeMedian(competitorPrices),
-        highestPrice: safeMax(competitorPrices),
+        lowestPrice:      marketFloor,
+        medianPrice:      Math.round(marketMid * 100) / 100,
+        highestPrice:     marketMax || (ourPrice ?? 0),
         ourPrice,
         positionInMarket,
-        totalCompetitors: competitorListings.length,
-        priceToWin,
+        totalCompetitors: totalCompetitorCount,
+        priceToWin:       marketFloor || (priceToWinResults.find(r => r.priceToWin)?.priceToWin ?? null),
+        isWinning,
+        // dataSource tells the UI what drove the competitive intelligence:
+        // 'price_to_win_api'  → only ML's own endpoint was used (no proxy/scraper)
+        // 'catalog_buy_box'   → catalog product buy-box winner enrichment
+        // 'scraper_search'    → ScraperAPI / Apify returned real search results
+        dataSource: (
+            browserCompetitorListings.length > 0 ? 'scraper_search' :
+            catalogCompetitorListings.length > 0 ? 'catalog_buy_box' :
+            priceToWinResults.some(r => r.priceToWin) ? 'price_to_win_api' :
+            'own_listings_only'
+        ),
+        priceToWinDetails: priceToWinResults.map(r => ({
+            itemId:     r.itemId,
+            ourPrice:   r.ourPrice,
+            status:     r.status,
+            priceToWin: r.priceToWin,
+        })),
     };
 
     console.log(`[PriceIntel] Stats for ${fingerprint}:`, JSON.stringify(stats));
@@ -2850,20 +3377,15 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     await docRef.set({
         fingerprint,
         tireSize: { width, aspectRatio, diameter },
-        categoryId,
         lastScanned: admin.firestore.FieldValue.serverTimestamp(),
-        listings,
+        listings: allListings,
         stats,
+        priceToWinDetails: priceToWinResults,   // raw per-item API data
     }, { merge: false });
 
-    // ── 12. Write daily history snapshot (stats-only) ─────────────────────────
-    // Document ID = UTC date string e.g. "2026-04-16".
-    // One doc per day; same-day re-scans overwrite the previous entry.
-    // First-ever scan is flagged as isBaseline = true.
-    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    // ── 12. Write daily history snapshot ──────────────────────────────────────
+    const today = new Date().toISOString().slice(0, 10);
     const historyRef = docRef.collection('history').doc(today);
-
-    // Check if this is the very first scan ever for this size
     const existingHistoryCount = await docRef.collection('history').count().get();
     const isBaseline = existingHistoryCount.data().count === 0;
 
@@ -2871,38 +3393,36 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         date: today,
         scannedAt: admin.firestore.FieldValue.serverTimestamp(),
         stats,
-        listingCount: listings.length,
+        listingCount: allListings.length,
         ...(isBaseline ? { isBaseline: true } : {}),
-    }, { merge: true }); // merge so same-day re-scans update fields, not replace
+    }, { merge: true });
 
-    if (isBaseline) {
-        console.log(`[PriceIntel] 📌 Baseline established for ${fingerprint} on ${today}`);
-    }
-    console.log(`[PriceIntel] 📅 History snapshot written: ${fingerprint}/${today}`);
+    if (isBaseline) console.log(`[PriceIntel] 📌 Baseline established for ${fingerprint} on ${today}`);
 
-    // ── 13. Generate price alert if competitor undercuts us by >5% ─────────────
-    if (ourPrice !== null && priceToWin > 0 && priceToWin < ourPrice * 0.95) {
-        const gapPct = ((priceToWin - ourPrice) / ourPrice * 100);
+    // ── 13. Generate price alert if we're not winning ─────────────────────────
+    if (!isWinning && ourPrice !== null && marketFloor > 0 && marketFloor < ourPrice * 0.95) {
+        const gapPct = ((marketFloor - ourPrice) / ourPrice * 100);
         await db.collection('price_alerts').add({
-            tireSize: fingerprint,
+            tireSize:        fingerprint,
             ourPrice,
-            competitorPrice: priceToWin,
-            gap: `${gapPct.toFixed(1)}%`,
-            alertType: 'undercut',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            isRead: false,
+            competitorPrice: marketFloor,
+            gap:             `${gapPct.toFixed(1)}%`,
+            alertType:       'undercut',
+            createdAt:       admin.firestore.FieldValue.serverTimestamp(),
+            isRead:          false,
         });
-        console.log(`[PriceIntel] 🚨 Alert: ${fingerprint} competitor $${priceToWin} vs ours $${ourPrice} (${gapPct.toFixed(1)}%)`);
+        console.log(`[PriceIntel] 🚨 Alert: ${fingerprint} market floor $${marketFloor} vs ours $${ourPrice} (${gapPct.toFixed(1)}%)`);
     }
 
     return {
-        cached: false,
+        cached:     false,
         fingerprint,
         stats,
-        count: listings.length,
+        count:      allListings.length,
         isBaseline,
     };
 });
+
 
 
 // ─── Price History Cleanup: Delete daily snapshots older than 90 days ─────────
@@ -3592,4 +4112,309 @@ export const aggregateDailyStats = functions.pubsub
         console.log(`[DailyStats] ${monthStr}/${dayStr}: orders=${orders}, sales=$${sales.toFixed(0)}, pieces=${pieces}`);
         console.log(`[DailyStats] Month aggregate → orders=${mOrders}, sales=$${mSales.toFixed(0)}, pieces=${mPieces}`);
     });
+
+
+// ─── Price Intelligence Diagnostic ───────────────────────────────────────────
+//
+// Callable from Angular: httpsCallable(functions, 'meliPriceScanDiag')
+// Tests every step of the meliPriceScan pipeline independently.
+// Returns a detailed report — never throws, always returns all steps attempted.
+//
+export const meliPriceScanDiag = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+
+    const width       = data?.width       ?? 120;
+    const aspectRatio = data?.aspectRatio ?? 70;
+    const diameter    = data?.diameter    ?? 17;
+    const categoryId  = data?.categoryId  ?? 'MLM169975';
+
+    const report: Record<string, any> = {
+        version:    '2026-04-17-v1',
+        testedSize: `${width}/${aspectRatio}R${diameter}`,
+        ranAt:      new Date().toISOString(),
+    };
+
+    // Step 1: Read integrations config
+    let meliConfig: any = null;
+    try {
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const raw = configDoc.data()?.meli ?? null;
+        meliConfig = raw;
+        report.step1_config = {
+            ok:               !!raw,
+            docExists:        configDoc.exists,
+            hasAccessToken:   !!(raw?.accessToken),
+            hasRefreshToken:  !!(raw?.refreshToken),
+            hasAppId:         !!(raw?.appId),
+            hasClientSecret:  !!(raw?.clientSecret),
+            hasUserId:        !!(raw?.userId),
+            connected:        raw?.connected ?? false,
+            expiresAt:        raw?.expiresAt ? new Date(raw.expiresAt).toISOString() : null,
+            tokenExpiresIn:   raw?.expiresAt
+                ? `${Math.round((raw.expiresAt - Date.now()) / 60000)} min`
+                : 'unknown',
+            accessTokenFirst8: raw?.accessToken
+                ? `${String(raw.accessToken).substring(0, 8)}...`
+                : null,
+        };
+    } catch (err: any) {
+        report.step1_config = { ok: false, error: err.message };
+    }
+
+    // Step 0: Test app-level token (client_credentials) — the key fix for GCP IP blocking
+    let appToken: string | null = null;
+    try {
+        appToken = await getAppLevelToken();
+        report.step0_app_token = {
+            ok:          true,
+            tokenFirst8: appToken.substring(0, 8) + '...',
+            message:     'App token (client_credentials) obtained — search calls will use this token',
+        };
+    } catch (err: any) {
+        report.step0_app_token = { ok: false, error: err.message, message: 'App token failed — will fall back to user token for searches' };
+        // Not fatal — we continue with user token
+    }
+
+    // Step 2: Get valid token (with auto-refresh)
+    let accessToken: string | null = null;
+    try {
+        accessToken = await getValidMeliToken();
+        report.step2_token = {
+            ok:          true,
+            tokenFirst8: accessToken.substring(0, 8) + '...',
+            message:     'User token obtained successfully',
+        };
+    } catch (err: any) {
+        report.step2_token = { ok: false, error: err.message };
+        report.verdict = '❌ BLOCKED at Step 2: Cannot get a valid ML access token. Re-authenticate at /admin/integrations.';
+        return report;
+    }
+
+    const authHeaders:    Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
+    const appAuthHeaders: Record<string, string> = { 'Authorization': `Bearer ${appToken ?? accessToken}` };
+
+    // Step 3: Verify token via /users/me
+    try {
+        const meRes  = await fetch('https://api.mercadolibre.com/users/me', { headers: authHeaders });
+        const meData = await meRes.json() as any;
+        report.step3_users_me = {
+            ok:         meRes.ok,
+            httpStatus: meRes.status,
+            userId:     meData?.id ?? null,
+            nickname:   meData?.nickname ?? null,
+            siteId:     meData?.site_id ?? null,
+            error:      !meRes.ok ? (meData?.message || `HTTP ${meRes.status}`) : null,
+        };
+        if (!meRes.ok) {
+            report.verdict = `❌ BLOCKED at Step 3: Token rejected (${meRes.status}: ${meData?.message}). Re-authenticate.`;
+            return report;
+        }
+    } catch (err: any) {
+        report.step3_users_me = { ok: false, error: err.message };
+        report.verdict = '❌ BLOCKED at Step 3: Network error reaching ML API.';
+        return report;
+    }
+
+    // Step 4: Check category attribute names
+    try {
+        const catRes  = await fetch(
+            `https://api.mercadolibre.com/categories/${categoryId}/attributes`,
+            { headers: authHeaders }
+        );
+        const catData = await catRes.json() as any[];
+        const attrIds = Array.isArray(catData) ? catData.map((a: any) => a.id) : [];
+        const hasWidth   = attrIds.includes('SECTION_WIDTH');
+        const hasAR      = attrIds.includes('AUTOMOTIVE_TIRE_ASPECT_RATIO');
+        const hasRim     = attrIds.includes('RIM_DIAMETER');
+        const hasMfgSize = attrIds.includes('MANUFACTURER_TIRE_SIZE');
+        report.step4_category_attrs = {
+            ok:              catRes.ok,
+            httpStatus:      catRes.status,
+            categoryId,
+            totalAttributes: attrIds.length,
+            hasSECTION_WIDTH:                hasWidth,
+            hasAUTOMOTIVE_TIRE_ASPECT_RATIO: hasAR,
+            hasRIM_DIAMETER:                 hasRim,
+            hasMANUFACTURER_TIRE_SIZE:       hasMfgSize,
+            verdict: (hasWidth && hasAR && hasRim)
+                ? 'All 3 size attributes present'
+                : 'SOME SIZE ATTRIBUTES MISSING — ML may have renamed them, causing zero results',
+        };
+    } catch (err: any) {
+        report.step4_category_attrs = { ok: false, error: err.message };
+    }
+
+    // Step 5: Strategy S1 — keyword search WITH APP TOKEN (the fixed approach)
+    try {
+        const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=5&sort=price_asc`;
+        const r    = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN — key fix
+        const body = await r.json() as any;
+        report.step5_attr_search = {
+            ok:            r.ok,
+            httpStatus:    r.status,
+            url,
+            totalResults:  body?.paging?.total ?? null,
+            returnedCount: (body?.results ?? []).length,
+            firstItem: body?.results?.[0]
+                ? { id: body.results[0].id, title: body.results[0].title, price: body.results[0].price }
+                : null,
+            rawError: !r.ok ? body : null,
+            error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
+        };
+    } catch (err: any) {
+        report.step5_attr_search = { ok: false, error: err.message };
+    }
+
+    // Step 5b: Strategy D — catalog product items (WITH auth, avoids search endpoint)
+    try {
+        // Try first discovered productId, or a known catalog product for 120/70R17
+        const testProductId = report.step5_attr_search?.ok === false ? 'MLAP9213' : null; // fallback known product
+        const prodRes = await fetch(
+            `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=3`,
+            { headers: appAuthHeaders }
+        );
+        if (prodRes.ok) {
+            const prodData = await prodRes.json() as any;
+            const firstProd = (prodData.results || [])[0];
+            if (firstProd?.id) {
+                const itemsRes = await fetch(
+                    `https://api.mercadolibre.com/products/${firstProd.id}/items?site_id=MLM&limit=5`,
+                    { headers: appAuthHeaders }
+                );
+                const itemsBody = await itemsRes.json() as any;
+                const items: any[] = itemsBody.results ?? itemsBody.items ?? (Array.isArray(itemsBody) ? itemsBody : []);
+                report.step5b_catalog_items = {
+                    ok:           itemsRes.ok,
+                    httpStatus:   itemsRes.status,
+                    catalogProductId: firstProd.id,
+                    returnedCount: items.length,
+                    firstItem:    items[0] ? { id: items[0].id, title: items[0].title, price: items[0].price } : null,
+                    rawError:     !itemsRes.ok ? itemsBody : null,
+                    error:        !itemsRes.ok ? (itemsBody?.message ?? itemsBody?.error ?? `HTTP ${itemsRes.status}`) : null,
+                };
+            } else {
+                report.step5b_catalog_items = { ok: false, error: 'No catalog products found for this size' };
+            }
+        } else {
+            const errBody = await prodRes.json().catch(() => ({})) as any;
+            report.step5b_catalog_items = { ok: false, httpStatus: prodRes.status, error: errBody?.message ?? `HTTP ${prodRes.status}` };
+        }
+    } catch (err: any) {
+        report.step5b_catalog_items = { ok: false, error: err.message };
+    }
+    // Step 6: Strategy S2 — attribute search WITH APP TOKEN
+    try {
+        const sizeStr = `${width}/${aspectRatio}R${diameter}`;
+        const url = `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=5&sort=price_asc`;
+        const r    = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN
+        const body = await r.json() as any;
+        report.step6_size_string_search = {
+            ok:            r.ok,
+            httpStatus:    r.status,
+            sizeStr,
+            url,
+            totalResults:  body?.paging?.total ?? null,
+            returnedCount: (body?.results ?? []).length,
+            rawError:      !r.ok ? body : null,
+            error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
+        };
+    } catch (err: any) {
+        report.step6_size_string_search = { ok: false, error: err.message };
+    }
+
+    // Step 7: Our seller items
+    const sellerId = meliConfig?.userId ? String(meliConfig.userId) : null;
+    let firstItemId: string | null = null;
+    if (sellerId) {
+        try {
+            const url  = `https://api.mercadolibre.com/users/${sellerId}/items/search?status=active&limit=5`;
+            const r    = await fetch(url, { headers: authHeaders });
+            const body = await r.json() as any;
+            firstItemId = (body?.results ?? [])[0] ?? null;
+            report.step7_seller_items = {
+                ok:         r.ok,
+                httpStatus: r.status,
+                sellerId,
+                totalItems: body?.paging?.total ?? null,
+                firstIds:   (body?.results ?? []).slice(0, 5),
+                error: !r.ok ? (body?.message || body?.error || `HTTP ${r.status}`) : null,
+            };
+        } catch (err: any) {
+            report.step7_seller_items = { ok: false, sellerId, error: err.message };
+        }
+    } else {
+        report.step7_seller_items = {
+            ok:    false,
+            error: 'No sellerId in config/integrations.meli',
+        };
+    }
+
+    // Step 7b: Test price_to_win on the first of our active items
+    // This is the CORE endpoint of the new implementation — must be ✅ for scans to work.
+    if (firstItemId) {
+        try {
+            const ptwRes  = await fetch(
+                `https://api.mercadolibre.com/items/${firstItemId}/price_to_win`,
+                { headers: authHeaders }  // seller user token required
+            );
+            const ptwBody = await ptwRes.json() as any;
+            report.step7b_price_to_win = {
+                ok:          ptwRes.ok,
+                httpStatus:  ptwRes.status,
+                testedItemId: firstItemId,
+                status:      ptwBody.status ?? null,          // 'winner' | 'not_winner' | 'not_eligible'
+                priceToWin:  ptwBody.price_to_win ?? null,
+                rawResponse: ptwBody,
+                error:       !ptwRes.ok ? (ptwBody.message ?? ptwBody.error ?? `HTTP ${ptwRes.status}`) : null,
+                note:        ptwRes.ok
+                    ? (ptwBody.status === 'not_eligible'
+                        ? 'Item not part of ML catalog — price_to_win not available for this listing'
+                        : 'price_to_win endpoint working correctly')
+                    : 'price_to_win failed — scans will not return competitive data',
+            };
+        } catch (err: any) {
+            report.step7b_price_to_win = { ok: false, testedItemId: firstItemId, error: err.message };
+        }
+    } else {
+        report.step7b_price_to_win = { ok: false, error: 'No active items found to test price_to_win' };
+    }
+
+    // Step 8: Firestore write/read round-trip
+    try {
+        const testRef = db.collection('price_intelligence').doc('diag-test-tmp');
+        await testRef.set({ _diagTest: true, ranAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        const check = await testRef.get();
+        await testRef.delete();
+        report.step8_firestore = {
+            ok:      check.exists,
+            message: check.exists ? 'Firestore write/read OK' : 'Write ok but read failed',
+        };
+    } catch (err: any) {
+        report.step8_firestore = { ok: false, error: err.message };
+    }
+
+    // Final verdict — based on price_to_win approach (new authoritative method)
+    const ptwOk   = report.step7b_price_to_win?.ok === true;
+    const ptwElig = report.step7b_price_to_win?.status !== 'not_eligible';
+    const authOk  = report.step2_token?.ok && report.step3_users_me?.ok;
+
+    if (!authOk) {
+        report.verdict = '❌ BLOCKED: Authentication broken — reconnect MercadoLibre in /admin/integrations.';
+    } else if (!report.step7_seller_items?.ok || !report.step7_seller_items?.totalItems) {
+        report.verdict = '⚠️ No active items found. Add a MercadoLibre listing to enable Price Intelligence.';
+    } else if (!ptwOk) {
+        report.verdict = `⚠️ price_to_win endpoint failed (HTTP ${report.step7b_price_to_win?.httpStatus}). Check seller permissions or re-authenticate.`;
+    } else if (!ptwElig) {
+        report.verdict = '⚠️ Tested item is not in ML catalog so price_to_win returned not_eligible. Scan the correct tire size (one you have listed in the catalog).';
+    } else {
+        report.verdict = `✅ Pipeline OK — price_to_win working (status: ${report.step7b_price_to_win?.status}, ptw: $${report.step7b_price_to_win?.priceToWin ?? 'N/A'}). Ready to scan.`;
+    }
+
+    console.log('[PriceIntelDiag]', report.verdict);
+    return report;
+});
 

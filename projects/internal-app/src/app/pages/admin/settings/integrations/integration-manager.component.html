@@ -245,11 +245,20 @@
                  </select>
              </div>
 
-             <div class="flex justify-between items-center">
+             <div class="flex gap-3 mt-4 flex-wrap items-center">
                  <button (click)="saveMercadoPago()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition font-bold shadow-lg shadow-slate-900/20">
                     Save Keys
                  </button>
+                 <button (click)="goToMpDebug()"
+                    class="ml-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded text-sm font-bold transition flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                    <i class="fas fa-flask"></i>
+                    Payment Tester
+                    <i class="fas fa-arrow-right text-xs opacity-70"></i>
+                 </button>
              </div>
+
+
+
         </div>
 
         <!-- SKYDROPX CARD -->

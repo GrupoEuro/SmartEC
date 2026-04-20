@@ -195,7 +195,12 @@
             "assets": [
               "projects/storefront/src/favicon.ico",
               "projects/storefront/src/robots.txt",
-              "projects/storefront/src/assets"
+              "projects/storefront/src/assets",
+              {
+                "glob": "**/*",
+                "input": "projects/storefront/public",
+                "output": "/"
+              }
             ],
             "styles": [
               "projects/storefront/src/styles.css"

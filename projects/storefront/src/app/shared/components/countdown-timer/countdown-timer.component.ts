@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, effect, untracked, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { CampaignService } from '../../../core/services/campaign.service';
@@ -47,14 +47,18 @@ export class CountdownTimerComponent implements OnInit, OnDestroy {
     }
 
     constructor() {
+        // untracked() lets us write to endDate and call startTimer (which writes timeRemaining)
+        // inside this effect without triggering NG0600 (signal write in reactive context).
         effect(() => {
             const campaign = this.campaignService.activeCampaign();
-            if (campaign) {
-                this.endDate.set(campaign.endDate.toDate());
-                this.startTimer();
-            } else {
-                this.stopTimer();
-            }
+            untracked(() => {
+                if (campaign) {
+                    this.endDate.set(campaign.endDate.toDate());
+                    this.startTimer();
+                } else {
+                    this.stopTimer();
+                }
+            });
         });
     }
 

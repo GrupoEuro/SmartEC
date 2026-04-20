@@ -36,8 +36,10 @@ export class OrderConfirmationComponent implements OnInit {
             const total = this.cartService.cartSubtotal();
             const shippingCost = this.shipping?.isFree ? 0 : (this.shipping?.price ?? 0);
 
-            // Fires to GA4, Meta Pixel (Purchase), TikTok — all gated by Firestore config
-            this.trackingService.trackPurchase({
+            // Fires to GA4, Meta Pixel (Purchase), TikTok — all gated by Firestore config.
+            // trackPurchaseWhenReady() awaits init() if TrackingService hasn't loaded yet
+            // (this happens on payment-gateway redirect where no user interaction occurred).
+            this.trackingService.trackPurchaseWhenReady({
                 transaction_id: this.orderId,
                 value:          total + shippingCost,
                 shipping:       shippingCost,

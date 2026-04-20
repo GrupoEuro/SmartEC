@@ -48,9 +48,23 @@ export class AppComponent implements OnInit {
     // Non-blocking: geo resolution is async and resolves quietly in background
     this.attributionService.init();
 
-    // Defer non-critical services to completely bypass Lighthouse TBT penalty
-    // We strictly wait for the first user interaction (mousemove, scroll, touch)
     if (isPlatformBrowser(this.platformId)) {
+      // ── Tracking pixels: initialize immediately (non-blocking) ───────────────
+      // MUST be outside the deferred block so we capture:
+      //   a) The initial landing page PageView (router NavigationEnd fires before any interaction)
+      //   b) Purchase events on payment-gateway redirects (no interaction before confirmation page)
+      // Scripts are async-loaded so this has no Lighthouse TBT impact.
+      (async () => {
+        const { TrackingService } = await import('./core/services/tracking.service');
+        const trackingSvc = this.injector.get(TrackingService);
+        await trackingSvc.init();
+        // Explicitly fire the initial PageView — the router's NavigationEnd for the
+        // landing route already fired before init() completed, so wirePageViews()
+        // only catches subsequent navigations. We fire this one manually.
+        trackingSvc.trackPageView(window.location.pathname + window.location.search);
+      })();
+
+      // ── Heavy/non-critical services: defer until first interaction ────────────
       let initialized = false;
       const EVENTS = ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'];
 
@@ -65,9 +79,6 @@ export class AppComponent implements OnInit {
         this.injector.get(AnalyticsService).init();
         const { CampaignService } = await import('./core/services/campaign.service');
         this.injector.get(CampaignService).init();
-        // Load tracking pixels from Firestore config and inject enabled scripts
-        const { TrackingService } = await import('./core/services/tracking.service');
-        this.injector.get(TrackingService).init();
       };
 
       EVENTS.forEach(e => {

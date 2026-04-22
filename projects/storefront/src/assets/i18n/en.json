@@ -725,7 +725,12 @@
         "PROCESSING": "Processing",
         "SHIPPED": "Shipped",
         "DELIVERED": "Delivered",
-        "CANCELLED": "Cancelled"
+        "CANCELLED": "Cancelled",
+        "PENDING_PAYMENT": "Payment Pending",
+        "PAID": "Paid",
+        "PAYMENT_FAILED": "Payment Rejected",
+        "REFUND_PENDING": "Refund Under Review",
+        "REFUNDED": "Refunded"
       },
       "DETAIL": {
         "BACK": "Back to Orders",
@@ -833,7 +838,18 @@
     "TITLE": "Command Center",
     "DASHBOARD": "Dashboard",
     "APPROVALS": {
-      "TITLE": "Approvals"
+      "TITLE": "Approvals",
+      "REQUESTED_BY": "Requested by",
+      "REQUESTED_AT": "Requested at",
+      "NOTES": "Notes",
+      "ACTIONS": {
+        "APPROVE": "Approve",
+        "REJECT": "Reject",
+        "VIEW_DETAILS": "View Details"
+      }
+    },
+    "CHARTS": {
+      "CUSTOMER_COMPOSITION": "Customer Composition"
     },
     "FINANCIALS": {
       "TITLE": "Financials"
@@ -863,7 +879,9 @@
     "LABELS": {
       "NO_DATA": "No data",
       "NEW": "New",
-      "TOTAL": "Total"
+      "TOTAL": "Total",
+      "NEW_CUSTOMERS": "New Customers",
+      "RETURNING_CUSTOMERS": "Returning Customers"
     },
     "KPI": {
       "REVENUE": "Revenue",
@@ -887,7 +905,12 @@
         "PROCESSING": "Processing",
         "SHIPPED": "Shipped",
         "DELIVERED": "Delivered",
-        "CANCELLED": "Cancelled"
+        "CANCELLED": "Cancelled",
+        "PENDING_PAYMENT": "Payment Pending",
+        "PAID": "Paid",
+        "PAYMENT_FAILED": "Payment Rejected",
+        "REFUND_PENDING": "Refund Under Review",
+        "REFUNDED": "Refunded"
       }
     },
     "CUSTOMERS": {

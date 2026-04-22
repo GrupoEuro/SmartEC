@@ -63,6 +63,9 @@
 .mktc-card-icon.purple {
     background: rgba(168,85,247,.15); border: 1px solid rgba(168,85,247,.25); color: #d8b4fe;
 }
+.mktc-card-icon.emerald {
+    background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.22); color: #34d399;
+}
 .mktc-card-title {
     font-size: .8rem; font-weight: 700;
     color: #e4e4e7; letter-spacing: .01em;
@@ -81,7 +84,480 @@
     height: 180px;
 }
 
+/* ── Heatmap ───────────────────────────────────────────────────────────────── */
+
+.mktc-heatmap-card { overflow: visible; }
+
+.mktc-heatmap-header-text {
+    display: flex; flex-direction: column; gap: 2px; flex: 1;
+}
+.mktc-heatmap-header-text .mktc-card-title { flex: none; }
+
+/* Toggle buttons */
+.mktc-heatmap-toggle {
+    display: flex; gap: 4px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    padding: 3px;
+}
+.hm-toggle-btn {
+    padding: 4px 12px;
+    font-size: .7rem; font-weight: 600;
+    color: #71717a;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .15s;
+}
+.hm-toggle-btn.active {
+    background: rgba(99,102,241,.25);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,.3);
+}
+.hm-toggle-btn:hover:not(.active) { color: #a1a1aa; }
+
+/* ── Compare mode table ─────────────────────────────────────────────────── */
+.hm-compare-wrap { padding: 0; }
+.hm-compare-weekly,
+.hm-compare-monthly,
+.hm-compare-daily { width: 100%; }
+
+.hm-compare-scroll {
+    overflow-x: auto;
+    padding: .6rem .9rem .75rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.hm-compare-scroll::-webkit-scrollbar { height: 4px; }
+.hm-compare-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+.hm-compare-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: max-content;
+    min-width: 100%;
+}
+
+/* Header row: month labels above week columns */
+.hm-compare-table thead th {
+    padding: 0 1px 4px;
+    vertical-align: bottom;
+    font-size: .52rem;
+    font-weight: 600;
+    color: #52525b;
+    white-space: nowrap;
+}
+.hm-col-month {
+    display: block;
+    font-size: .52rem;
+    color: #71717a;
+    min-width: 13px;
+}
+.hm-col-month-hd {
+    font-size: .62rem !important;
+    color: #a1a1aa !important;
+    padding: 0 4px 6px !important;
+    text-align: center;
+}
+
+/* Row spacing */
+.hm-compare-row { height: auto; }
+.hm-compare-row:not(:last-child) td { padding-bottom: 3px; }
+
+/* Label column — sticky */
+.hm-col-label {
+    min-width: 130px;
+    max-width: 160px;
+    white-space: nowrap;
+    padding-right: 8px;
+    vertical-align: middle;
+}
+.hm-col-label-sticky {
+    position: sticky;
+    left: 0;
+    background: #0f0f13; /* match card background */
+    z-index: 2;
+    box-shadow: 2px 0 8px rgba(0,0,0,.3);
+}
+.hm-ch-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+.hm-ch-name {
+    font-size: .7rem;
+    font-weight: 600;
+    color: #d4d4d8;
+    vertical-align: middle;
+}
+
+/* Stat column: total orders */
+.hm-col-stat {
+    padding: 0 6px 0 0;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.hm-ch-badge {
+    font-size: .65rem;
+    font-weight: 700;
+    opacity: .85;
+}
+
+/* Week column */
+.hm-col-week {
+    padding: 0 1px;
+    vertical-align: middle;
+}
+
+/* 7 mini cells stacked vertically inside a week column */
+.hm-mini-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5px;
+}
+
+/* ── Daily compare columns ─────────────────────────────────────────────── */
+.hm-col-day-hd {
+    width: 26px; min-width: 26px; max-width: 26px;
+    text-align: center;
+    padding: 0 1px 5px;
+    vertical-align: bottom;
+}
+.hm-dh-num {
+    display: block;
+    font-size: .68rem;
+    font-weight: 700;
+    color: #a1a1aa;
+    line-height: 1.3;
+}
+.hm-dh-dow {
+    display: block;
+    font-size: .46rem;
+    color: #52525b;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+/* Weekend header highlight */
+.hm-col-day-hd.hm-weekend .hm-dh-num { color: #818cf8; }
+.hm-col-day-hd.hm-weekend .hm-dh-dow { color: #4f46e5; }
+
+.hm-col-day {
+    width: 26px; min-width: 26px; max-width: 26px;
+    padding: 0 2px;
+    vertical-align: middle;
+}
+/* Weekend column subtle tint */
+.hm-col-day.hm-weekend {
+    background: rgba(99,102,241,.04);
+}
+/* Day cell */
+.hm-day-cell {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: transform .1s, box-shadow .1s;
+    cursor: default;
+}
+.hm-day-cell:hover {
+    transform: scale(1.28);
+    box-shadow: 0 0 0 1.5px rgba(255,255,255,.2);
+    z-index: 3;
+    position: relative;
+}
+/* Order count inside the day cell */
+.hm-day-num-inner {
+    font-size: .58rem;
+    font-weight: 800;
+    line-height: 1;
+    filter: brightness(1.8);
+}
+
+/* ── Hourly view: zone labels & separators ─────────────────────────────── */
+.hm-compare-hourly { width: 100%; }
+
+/* Zone separator — left border on hours 6, 12, 18 */
+.hm-zone-start {
+    border-left: 1px solid rgba(255,255,255,.10) !important;
+}
+
+/* Zone header row */
+.hm-zone-row th { padding-bottom: 3px; }
+.hm-zone-hd {
+    text-align: center;
+    font-size: .52rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: 4px 2px 3px;
+    white-space: nowrap;
+    border-bottom: 1.5px solid;
+}
+/* Zone accent colors */
+.hm-zone-night     { color: #818cf8; border-color: rgba(129,140,248,.3); border-left: 1px solid rgba(255,255,255,.07) !important; }
+.hm-zone-morning   { color: #fbbf24; border-color: rgba(251,191,36,.3);  border-left: 1px solid rgba(255,255,255,.10) !important; }
+.hm-zone-afternoon { color: #34d399; border-color: rgba(52,211,153,.3);  border-left: 1px solid rgba(255,255,255,.10) !important; }
+.hm-zone-evening   { color: #c084fc; border-color: rgba(192,132,252,.3); border-left: 1px solid rgba(255,255,255,.10) !important; }
+
+/* ── Día×Hora accordion ────────────────────────────────────────────────── */
+.hm-dayhour-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 4px 0;
+}
+.hm-dayhour-panel {
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(255,255,255,.02);
+}
+/* Clickable header */
+.hm-dayhour-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s;
+}
+.hm-dayhour-header:hover { background: rgba(255,255,255,.04); }
+/* Channel name inside accordion header */
+.hm-dh-ch-name {
+    flex: 1;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #e4e4e7;
+}
+/* Animated chevron */
+.hm-chevron {
+    width: 14px; height: 14px;
+    color: #52525b;
+    transition: transform .2s;
+    flex-shrink: 0;
+}
+.hm-chevron.open { transform: rotate(180deg); }
+/* Panel body */
+.hm-dayhour-body {
+    padding: 8px 12px 12px;
+    border-top: 1px solid rgba(255,255,255,.05);
+}
+/* DOW label column — aligns with day cells */
+.hm-dh-dow-th,
+.hm-dh-dow-td {
+    width: 28px;
+    min-width: 28px;
+    font-size: .6rem;
+    font-weight: 700;
+    color: #71717a;
+    text-align: right;
+    padding-right: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.hm-col-month-cell {
+    padding: 0 3px;
+    vertical-align: middle;
+}
+.hm-month-block-cell {
+    width: 42px; height: 34px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .12s;
+    cursor: default;
+}
+.hm-month-block-cell:hover { transform: scale(1.08); }
+.hm-month-num {
+    font-size: .72rem;
+    font-weight: 800;
+    opacity: .95;
+    line-height: 1;
+    /* color set via [style.color] = channel rgb */
+    filter: brightness(1.4);
+}
+
+/* DOW hint under weekly compare */
+.hm-dow-hint {
+    font-size: .5rem;
+    color: #3f3f46;
+    text-align: center;
+    padding: 3px 0 0 138px; /* align with first data column */
+    letter-spacing: .12em;
+}
+
+/* Channel filter pill row */
+.hm-channel-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: .45rem 1.1rem .5rem;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    background: rgba(0,0,0,.08);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.hm-channel-filter::-webkit-scrollbar { display: none; }
+.hm-channel-pill {
+    padding: 3px 10px;
+    font-size: .67rem;
+    font-weight: 500;
+    color: #71717a;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+    flex-shrink: 0;
+}
+.hm-channel-pill:hover { color: #a1a1aa; border-color: rgba(255,255,255,.15); }
+.hm-channel-pill.active {
+    background: rgba(99,102,241,.2);
+    color: #a5b4fc;
+    border-color: rgba(99,102,241,.45);
+    font-weight: 600;
+}
+
+/* Cell base */
+.hm-cell {
+    width: 11px; height: 11px;
+    border-radius: 2px;
+    transition: transform .1s, box-shadow .1s;
+    cursor: default;
+}
+.hm-cell:hover {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 1.5px rgba(255,255,255,.25);
+    z-index: 2;
+    position: relative;
+}
+
+/* Intensity levels — indigo palette */
+.hm-intensity-0 { background: rgba(255,255,255,.06); }
+.hm-intensity-1 { background: rgba(99,102,241,.25); }
+.hm-intensity-2 { background: rgba(99,102,241,.50); }
+.hm-intensity-3 { background: rgba(99,102,241,.75); }
+.hm-intensity-4 { background: #6366f1; box-shadow: 0 0 6px rgba(99,102,241,.5); }
+.hm-empty       { background: transparent; pointer-events: none; }
+
+/* ── Weekly layout ── */
+.hm-weekly-wrap {
+    padding: .75rem 1.1rem 1rem;
+    display: flex;
+    gap: 4px;
+}
+.hm-day-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 18px; /* aligns with cells below month label */
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+.hm-day-labels span {
+    font-size: .55rem;
+    color: #52525b;
+    height: 11px;
+    line-height: 11px;
+    text-align: right;
+}
+.hm-weekly-scroll {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.hm-weekly-scroll::-webkit-scrollbar { height: 4px; }
+.hm-weekly-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+.hm-week-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.hm-month-label {
+    height: 14px;
+    font-size: .55rem;
+    color: #71717a;
+    line-height: 14px;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+/* ── Monthly layout ── */
+.hm-monthly-wrap {
+    padding: .75rem 1.1rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+.hm-month-block {
+    flex: 0 0 auto;
+}
+.hm-month-name {
+    font-size: .65rem;
+    font-weight: 600;
+    color: #a1a1aa;
+    margin-bottom: 4px;
+    text-transform: capitalize;
+}
+.hm-month-dow-header {
+    display: grid;
+    grid-template-columns: repeat(7, 11px);
+    gap: 2px;
+    margin-bottom: 2px;
+}
+.hm-month-dow-header span {
+    font-size: .48rem;
+    color: #3f3f46;
+    text-align: center;
+    line-height: 11px;
+}
+.hm-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 11px);
+    gap: 2px;
+}
+.hm-month-stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: 5px;
+    font-size: .58rem;
+}
+.hm-stat-orders { color: #71717a; }
+.hm-stat-rev    { color: #a5b4fc; font-weight: 600; }
+
+/* ── Legend ── */
+.hm-legend {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    justify-content: flex-end;
+    padding: .5rem 1.1rem .75rem;
+}
+.hm-legend-label {
+    font-size: .6rem;
+    color: #52525b;
+    margin: 0 3px;
+}
+
 @media (max-width: 768px) {
     .mktc-grid { grid-template-columns: 1fr; }
     .mktc-card-full { grid-column: 1; }
+    .hm-monthly-wrap { gap: .75rem; }
 }

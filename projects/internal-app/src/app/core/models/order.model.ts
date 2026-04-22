@@ -1,7 +1,44 @@
 import { Timestamp } from '@angular/fire/firestore';
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'partial';
+// Legacy POS / ML / Amazon statuses + Web checkout (MercadoPago) statuses
+export type OrderStatus =
+    // Shared / fulfillment statuses
+    | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned'
+    // Web storefront (MercadoPago checkout) statuses
+    | 'pending_payment'   // Order created, customer has not submitted payment yet (abandoned checkout)
+    | 'paid'              // Payment confirmed by MP webhook
+    | 'payment_failed'    // MP rejected the card — phantom order, excluded from all stats
+    | 'refund_pending';   // Paid order cancelled — awaiting staff review before MP refund
+
+/**
+ * Statuses that represent NO real committed revenue.
+ * Apply this filter system-wide: operations dashboard, marketing dashboard,
+ * metrics hub, and all Cloud Function aggregations.
+ *
+ * Key rules:
+ *  - pending_payment / payment_failed → abandoned checkout / declined card (never committed)
+ *  - cancelled / refunded / returned  → revenue was reversed
+ *  - refund_pending counts as revenue UNTIL the refund is approved
+ */
+export const NON_REVENUE_STATUSES: OrderStatus[] = [
+    'pending_payment',
+    'payment_failed',
+    'cancelled',
+    'refunded',
+    'returned',
+];
+
+/**
+ * Returns true if the order's status represents real committed revenue.
+ * Use instead of hardcoded exclusion lists everywhere.
+ */
+export const isRevenueOrder = (status: OrderStatus): boolean =>
+    !NON_REVENUE_STATUSES.includes(status);
+
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'partial'
+    | 'approved';  // MercadoPago confirmed payment status
+
+
 export type SocialSource = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK' | 'TIKTOK' | 'PHONE' | 'EMAIL' | 'B2B' | 'WALK_IN' | 'OTHER';
 export type ShippingMethod = 'STORE_PICKUP' | 'LOCAL_DELIVERY' | 'NATIONAL_CARRIER' | 'EXPRESS' | 'FEDEX' | 'DHL' | 'ESTAFETA' | 'AMAZON_CARRIER' | 'MELI_CARRIER';
 
@@ -47,13 +84,33 @@ export interface CustomerInfo {
     isGuest?: boolean; // True for social/walk-in customers not in Firebase Auth
 }
 
+export interface OrderActor {
+    uid:         string;  // Firebase Auth UID or 'system'
+    displayName: string;  // Human-readable name shown in timeline
+    role:        string;  // 'ADMIN' | 'OPERATIONS' | 'SYSTEM' | 'CUSTOMER'
+}
+
+export type OrderHistoryAction =
+    | 'status_change'
+    | 'note_added'
+    | 'label_generated'
+    | 'refund_approved'
+    | 'refund_rejected'
+    | 'assigned'
+    | 'customer_contacted'
+    | 'system';
+
 export interface OrderHistory {
-    status: OrderStatus;
-    note?: string;
-    timestamp: Timestamp | Date;
-    updatedBy?: string; // 'system' | 'admin' | userId
+    status:          OrderStatus;
+    note?:           string;
+    timestamp:       Timestamp | Date;
+    /** @deprecated use updatedByActor instead — kept for backward compat with existing history entries */
+    updatedBy?:      string;
+    /** Structured actor — present on all new entries */
+    updatedByActor?: OrderActor;
+    action?:         OrderHistoryAction;
     trackingNumber?: string;
-    carrier?: string;
+    carrier?:        string;
 }
 
 export interface OrderSummary {

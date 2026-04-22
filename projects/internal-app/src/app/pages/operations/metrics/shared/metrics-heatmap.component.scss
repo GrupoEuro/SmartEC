@@ -1,0 +1,194 @@
+/* ── Metrics Heatmap ─────────────────────────────────────────────────────── */
+
+.mhm-root {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+/* ── Toggle bar ── */
+.mhm-toggle-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+}
+.mhm-tab {
+    padding: .3rem .8rem;
+    border-radius: .5rem;
+    font-size: .75rem;
+    font-weight: 600;
+    border: none;
+    background: rgba(255,255,255,.05);
+    color: #71717a;
+    cursor: pointer;
+    transition: all .15s;
+}
+.mhm-tab:hover  { color: #d4d4d8; background: rgba(255,255,255,.08); }
+.mhm-tab.active { color: #fff;    background: rgba(251,146,60,.4); }
+
+.mhm-metric-toggle {
+    display: flex;
+    gap: .25rem;
+    margin-left: auto;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: .5rem;
+    padding: .2rem;
+}
+.mhm-m-btn {
+    padding: .2rem .65rem;
+    border-radius: .375rem;
+    font-size: .7rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: #71717a;
+    cursor: pointer;
+    transition: all .15s;
+}
+.mhm-m-btn:hover  { color: #d4d4d8; }
+.mhm-m-btn.active { background: rgba(255,255,255,.1); color: #f4f4f5; }
+
+/* ── Legend ── */
+.mhm-legend {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.mhm-leg-label { font-size: .65rem; color: #52525b; }
+.mhm-leg-cell  { width: 14px; height: 14px; border-radius: 3px; }
+
+/* ── Scroll wrapper ── */
+.mhm-scroll { overflow-x: auto; }
+
+/* ── Table ── */
+.mhm-table {
+    border-collapse: collapse;
+    font-size: .78rem;
+    white-space: nowrap;
+}
+
+/* ── Sticky header cells ── */
+.mhm-ch-th,
+.mhm-tot-th {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: rgba(24,24,27,.98);
+    padding: .3rem .5rem;
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #52525b;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.mhm-tot-th { left: 120px; }
+
+.mhm-day-th,
+.mhm-week-th,
+.mhm-month-th,
+.mhm-dow-th {
+    padding: .25rem .2rem;
+    text-align: center;
+    font-size: .65rem;
+    color: #71717a;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.mhm-weekend { opacity: .65; }
+.mhm-th-num  { display: block; font-size: .72rem; color: #a1a1aa; }
+.mhm-th-dow  { display: block; font-size: .6rem;  color: #52525b; }
+.mhm-th-month { display: block; font-size: .68rem; color: #71717a; }
+
+/* ── Row cells ── */
+.mhm-row td { border-top: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+
+.mhm-ch-td {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: rgba(24,24,27,.98);
+    padding: .35rem .5rem;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.mhm-tot-td {
+    position: sticky;
+    left: 120px;
+    z-index: 1;
+    background: rgba(24,24,27,.98);
+    padding: .35rem .4rem;
+    text-align: right;
+    min-width: 60px;
+}
+.mhm-cell-td { padding: 2px; }
+
+.mhm-dot     { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mhm-ch-name { font-size: .75rem; color: #d4d4d8; font-weight: 600; }
+.mhm-badge   { font-size: .75rem; font-weight: 700; }
+
+/* ── Heat cells ── */
+.mhm-cell {
+    width: 22px;
+    height: 26px;          /* slightly taller to fit orders badge */
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    transition: opacity .15s;
+    gap: 1px;
+}
+.mhm-cell:hover { opacity: .8; }
+.mhm-cell-wide  { width: 52px; }
+.mhm-cell-month { width: 68px; height: 36px; border-radius: 6px; gap: 2px; }
+
+/* Shared text helpers */
+.mhm-cell-num,
+.mhm-cell-avg,
+.mhm-month-val {
+    font-size: .62rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.mhm-month-val { font-size: .7rem; }
+
+/* Always-visible orders badge */
+.mhm-cell-ord {
+    font-size: .58rem;
+    font-weight: 700;
+    line-height: 1;
+    opacity: .6;             /* subtle in revenue mode */
+    letter-spacing: -.01em;
+}
+/* When orders IS the active metric: full brightness, slightly larger */
+.mhm-cell-ord--primary {
+    font-size: .65rem;
+    opacity: 1;
+}
+
+/* Sub-label below main value (DoW + monthly) */
+.mhm-cell-sub,
+.mhm-month-sub {
+    font-size: .55rem;
+    font-weight: 600;
+    line-height: 1;
+    opacity: .55;
+    letter-spacing: -.01em;
+}
+
+/* ── DoW footnote ── */
+.mhm-dow-hint { font-size: .68rem; color: #52525b; padding: .25rem 0; }
+
+/* ── Empty state ── */
+.mhm-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #52525b;
+    font-size: .8rem;
+}

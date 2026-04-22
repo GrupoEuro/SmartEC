@@ -8,101 +8,158 @@
         {{ 'ACCOUNT.ORDERS.DETAIL.BACK' | translate }}
     </a>
 
-    <div *ngIf="loading" class="loading-state">
-        <mat-spinner diameter="40"></mat-spinner>
-    </div>
+    @if (loading()) {
+        <div class="loading-state">
+            <div style="width:40px;height:40px;border:3px solid rgba(0,172,216,0.3);border-top-color:#00ACD8;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+        </div>
+    }
 
-    <div *ngIf="error" class="error-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="error-icon">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>{{ error }}</p>
-        <a class="btn-primary" routerLink="/account/orders">{{ 'ACCOUNT.ORDERS.DETAIL.RETURN' | translate }}</a>
-    </div>
+    @if (error()) {
+        <div class="error-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="color:#FF4444;margin-bottom:16px">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <p>{{ error() }}</p>
+            <a class="btn-primary" routerLink="/account/orders">{{ 'ACCOUNT.ORDERS.DETAIL.RETURN' | translate }}</a>
+        </div>
+    }
 
-    <div *ngIf="!loading && order" class="order-content">
+    @if (!loading() && order()) {
+        <!-- Success/Warning banners -->
+        @if (cancelSuccess()) {
+            <div class="alert-success">✅ {{ cancelSuccess() }}</div>
+        }
+        @if (cancelError()) {
+            <div class="alert-error">⚠️ {{ cancelError() }}</div>
+        }
+        @if (order()!.status === 'refund_pending') {
+            <div class="alert-warning">🔄 Tu solicitud de reembolso está siendo procesada. Te notificaremos en 1–3 días hábiles.</div>
+        }
+
+        <!-- Header -->
         <div class="header-card glass-card">
             <div class="header-content">
                 <div class="header-left">
-                    <h1>{{ 'ACCOUNT.ORDERS.ORDER_NUMBER' | translate }} {{ order.orderNumber || order.id?.substring(0,8)
-                        | uppercase }}</h1>
-                    <p class="subtitle">{{ 'ACCOUNT.ORDERS.DETAIL.PLACED_ON' | translate }} {{
-                        ($any(order.createdAt).toDate ? $any(order.createdAt).toDate() : order.createdAt) |
-                        date:'medium' }}</p>
+                    <h1>{{ 'ACCOUNT.ORDERS.ORDER_NUMBER' | translate }} {{ order()!.orderNumber || order()!.id?.substring(0,8) | uppercase }}</h1>
+                    <p class="subtitle">{{ 'ACCOUNT.ORDERS.DETAIL.PLACED_ON' | translate }}
+                        {{ ($any(order()!.createdAt)?.toDate ? $any(order()!.createdAt).toDate() : order()!.createdAt) | date:'medium' }}
+                    </p>
                 </div>
                 <div class="header-right">
-                    <span class="status-badge" [ngClass]="'status-' + (order.status | lowercase)">
-                        {{ ('ACCOUNT.ORDERS.STATUS_LABELS.' + (order.status | uppercase)) | translate }}
+                    <span class="status-badge" [ngClass]="getStatusClass($any(order()!.status))">
+                        {{ ('ACCOUNT.ORDERS.STATUS_LABELS.' + ($any(order()!.status) | uppercase)) | translate }}
                     </span>
                 </div>
             </div>
         </div>
 
+        <!-- Info Grid -->
         <div class="info-grid">
             <div class="glass-card info-card">
                 <div class="card-title">{{ 'ACCOUNT.ORDERS.DETAIL.SHIPPING_ADDR' | translate }}</div>
                 <div class="card-content">
-                    <p>{{ order.shippingAddress.street }} {{ order.shippingAddress.exteriorNumber }}</p>
-                    <p>{{ order.shippingAddress.colonia }}</p>
-                    <p>{{ order.shippingAddress.city }}, {{ order.shippingAddress.state }}</p>
-                    <p>{{ order.shippingAddress.zipCode }}</p>
-                    <p>{{ order.shippingAddress.country }}</p>
+                    <p>{{ order()!.shippingAddress?.street }} {{ order()!.shippingAddress?.exteriorNumber }}</p>
+                    <p>{{ order()!.shippingAddress?.colonia }}</p>
+                    <p>{{ order()!.shippingAddress?.city }}, {{ order()!.shippingAddress?.state }}</p>
+                    <p>{{ order()!.shippingAddress?.zipCode }}</p>
                 </div>
             </div>
 
             <div class="glass-card info-card">
                 <div class="card-title">{{ 'ACCOUNT.ORDERS.DETAIL.PAYMENT_METHOD' | translate }}</div>
                 <div class="card-content">
-                    <p class="payment-title">{{ order.paymentMethod | titlecase }}</p>
-                    <p class="payment-status">{{ 'ACCOUNT.ORDERS.DETAIL.PAYMENT_STATUS' | translate }}: <span
-                            class="status-badge status-{{(order.paymentStatus || 'pending') | lowercase}}">{{
-                            order.paymentStatus | titlecase }}</span></p>
+                    <p class="payment-title">{{ order()!.paymentMethod | titlecase }}</p>
+                    <p class="payment-status">
+                        {{ 'ACCOUNT.ORDERS.DETAIL.PAYMENT_STATUS' | translate }}:
+                        <span class="status-badge" [ngClass]="getStatusClass($any(order()!.paymentStatus))">
+                            {{ order()!.paymentStatus | titlecase }}
+                        </span>
+                    </p>
                 </div>
             </div>
         </div>
 
+        <!-- Items -->
         <div class="items-section">
             <h2 class="section-title">{{ 'ACCOUNT.ORDERS.DETAIL.ITEMS_TITLE' | translate }}</h2>
             <div class="items-list">
-                <div *ngFor="let item of order.items" class="item-row glass-card">
-                    <img [src]="item.productImage || 'assets/images/placeholder-product.webp'" class="item-image"
-                        alt="Product Image">
-                    <div class="item-details">
-                        <div class="item-name">{{ item.productName }}</div>
-                        <p class="item-meta">{{ 'ACCOUNT.ORDERS.DETAIL.SKU' | translate }}: {{ item.sku }}</p>
-                        <p class="item-meta">{{ 'ACCOUNT.ORDERS.DETAIL.QTY' | translate }}: {{ item.quantity }}</p>
+                @for (item of order()!.items; track item.productId) {
+                    <div class="item-row glass-card">
+                        <img [src]="item.productImage || 'assets/images/placeholder-product.webp'" class="item-image" alt="Product">
+                        <div class="item-details">
+                            <div class="item-name">{{ item.productName }}</div>
+                            <p class="item-meta">SKU: {{ item.sku }}</p>
+                            <p class="item-meta">{{ 'ACCOUNT.ORDERS.DETAIL.QTY' | translate }}: {{ item.quantity }}</p>
+                        </div>
+                        <div class="price-col">{{ formatCurrency(item.price) }}</div>
                     </div>
-                    <div class="price-col">
-                        {{ item.price | currency }}
-                    </div>
-                </div>
+                }
             </div>
         </div>
 
+        <!-- Summary -->
         <div class="summary-section glass-card">
             <div class="summary-row">
                 <span>{{ 'ACCOUNT.ORDERS.DETAIL.SUBTOTAL' | translate }}</span>
-                <span>{{ order.subtotal | currency }}</span>
+                <span>{{ formatCurrency($any(order()!).subtotal ?? 0) }}</span>
             </div>
             <div class="summary-row">
                 <span>{{ 'ACCOUNT.ORDERS.DETAIL.SHIPPING' | translate }}</span>
-                <span>{{ order.shippingCost | currency }}</span>
+                <span>{{ formatCurrency($any(order()!).shippingCost ?? 0) }}</span>
             </div>
-            <div class="summary-row" *ngIf="order.discount > 0">
-                <span class="discount-label">{{ 'ACCOUNT.ORDERS.DETAIL.DISCOUNT' | translate }}</span>
-                <span class="discount-val">-{{ order.discount | currency }}</span>
-            </div>
+            @if ($any(order()!).discount > 0) {
+                <div class="summary-row">
+                    <span class="discount-label">{{ 'ACCOUNT.ORDERS.DETAIL.DISCOUNT' | translate }}</span>
+                    <span class="discount-val">-{{ formatCurrency($any(order()!).discount) }}</span>
+                </div>
+            }
             <div class="summary-row total">
                 <span>{{ 'ACCOUNT.ORDERS.DETAIL.TOTAL' | translate }}</span>
-                <span>{{ order.total | currency }}</span>
+                <span>{{ formatCurrency(order()!.total ?? 0) }}</span>
             </div>
         </div>
 
+        <!-- Actions -->
         <div class="actions-section">
-            <button class="btn-primary">{{ 'ACCOUNT.ORDERS.DETAIL.TRACK' | translate }}</button>
+            <!-- Cancel button — only shown within 24h window and when cancellable -->
+            @if (canCancel) {
+                <button class="btn-cancel" (click)="openCancelModal()" id="btn-cancel-order">
+                    🚫 Cancelar Pedido
+                </button>
+            }
+            <div><!-- spacer --></div>
+        </div>
+    }
+</div>
+
+<!-- Cancel Confirmation Modal -->
+@if (showCancelModal()) {
+    <div class="modal-overlay" (click)="closeCancelModal()">
+        <div class="modal-box" (click)="$event.stopPropagation()">
+            <h2 class="modal-title">{{ requiresRefundFlow ? '¿Solicitar reembolso?' : '¿Cancelar este pedido?' }}</h2>
+            <div class="modal-body">
+                @if (requiresRefundFlow) {
+                    <p>Este pedido ya fue pagado. Al cancelarlo, tu reembolso será revisado por nuestro equipo en <strong>1–3 días hábiles</strong> antes de ser procesado a tu cuenta.</p>
+                } @else {
+                    <p>Tu pedido será cancelado de inmediato. Esta acción <strong>no se puede deshacer</strong>.</p>
+                }
+            </div>
+            @if (cancelError()) {
+                <div class="alert-error" style="margin-bottom:16px">{{ cancelError() }}</div>
+            }
+            <div class="modal-actions">
+                <button class="btn-ghost" (click)="closeCancelModal()" [disabled]="cancelling()">Conservar Pedido</button>
+                <button class="btn-danger" (click)="confirmCancel()" [disabled]="cancelling()" id="btn-confirm-cancel">
+                    @if (cancelling()) { Procesando... } @else { {{ requiresRefundFlow ? 'Solicitar Reembolso' : 'Sí, Cancelar' }} }
+                </button>
+            </div>
         </div>
     </div>
-</div>
+}
+
+<style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>

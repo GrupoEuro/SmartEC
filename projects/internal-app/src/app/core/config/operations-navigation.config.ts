@@ -180,6 +180,51 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
         ]
     },
     {
+        id: 'metrics',
+        title: 'Métricas de Canales',
+        icon: 'bar-chart-2',
+        badge: { text: 'NUEVO', color: 'bg-violet-600' },
+        children: [
+            {
+                id: 'metrics_overview',
+                title: 'Vista General',
+                icon: 'layout-dashboard',
+                route: '/operations/metrics'
+            },
+            {
+                id: 'meli_full_report',
+                title: 'MeLi Full Report',
+                icon: 'zap',
+                route: '/operations/metrics/meli-full',
+                badge: { text: 'Full', color: 'bg-orange-500' }
+            },
+            {
+                id: 'metrics_web',
+                title: 'Tienda Web',
+                icon: 'globe',
+                route: '/operations/metrics/channel/WEB'
+            },
+            {
+                id: 'metrics_pos',
+                title: 'Punto de Venta',
+                icon: 'credit-card',
+                route: '/operations/metrics/channel/POS'
+            },
+            {
+                id: 'metrics_meli_classic',
+                title: 'MeLi Clásica',
+                icon: 'shopping-bag',
+                route: '/operations/metrics/channel/MELI_CLASSIC'
+            },
+            {
+                id: 'metrics_amazon',
+                title: 'Amazon',
+                icon: 'package',
+                route: '/operations/metrics/channel/AMAZON_MFN'
+            }
+        ]
+    },
+    {
         id: 'channels',
         title: 'Marketplaces', // Add translation key later
         icon: 'shopping-cart',

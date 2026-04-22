@@ -56,8 +56,17 @@ export interface Campaign {
     promoStripText?: string;
     activeCouponId?: string;
 
+    // ── Paid Media Platform Links ──────────────────────────────────────────
+    /** Meta Ads campaign ID (numbers string, e.g. "120200000123456789").
+     *  Links this campaign to advertising_snapshots/{date}/meta/{metaCampaignId} */
+    metaCampaignId?: string;
+    /** Google Ads campaign ID (e.g. "1234567890").
+     *  Links this campaign to advertising_snapshots/{date}/google/{googleCampaignId} */
+    googleCampaignId?: string;
+
     // Metadata
     createdAt: Timestamp;
     updatedAt: Timestamp;
     createdBy: string;
 }
+

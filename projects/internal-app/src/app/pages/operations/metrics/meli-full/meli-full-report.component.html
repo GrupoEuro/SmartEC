@@ -1,0 +1,660 @@
+<section class="melf-page">
+
+  <!-- ── Page Header ─────────────────────────────────────────────────────── -->
+  <div class="melf-header">
+    <div class="melf-header-back">
+      <a routerLink="/operations/metrics" class="melf-back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+        Vista General
+      </a>
+      <span class="melf-breadcrumb-sep">/</span>
+      <span class="melf-breadcrumb-cur">MercadoLibre Full Report</span>
+    </div>
+
+    <div class="melf-header-actions">
+      <!-- Date Range -->
+      <div class="melf-range-selector">
+        @for (r of dateRanges; track r.type) {
+          <button class="range-btn" [class.active]="selectedRange().type === r.type" (click)="selectRange(r)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab Navigation ──────────────────────────────────────────────────── -->
+  <div class="melf-tabs">
+    <button class="melf-tab" [class.active]="activeTab() === 'performance'" (click)="setTab('performance')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Performance
+    </button>
+    <button class="melf-tab" [class.active]="activeTab() === 'inventory'" (click)="setTab('inventory')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      Inventario Full
+      @if (invAlerts().critical + invAlerts().stockout > 0) {
+        <span class="tab-badge-alert">{{ invAlerts().critical + invAlerts().stockout }}</span>
+      }
+    </button>
+    <button class="melf-tab" [class.active]="activeTab() === 'scenarios'" (click)="setTab('scenarios')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Escenarios
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: PERFORMANCE                                                     -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'performance') {
+
+    @if (isLoadingPerf()) {
+      <div class="melf-loading"><div class="melf-spinner"></div><span>Cargando métricas Full…</span></div>
+    }
+
+    @if (!isLoadingPerf()) {
+      <!-- KPI Cards -->
+      <div class="melf-kpi-grid">
+
+        <div class="melf-kpi orange">
+          <span class="mkpi-label">Ingresos Full</span>
+          <span class="mkpi-value">{{ perfKpis().revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <div class="melf-kpi indigo">
+          <span class="mkpi-label">Órdenes</span>
+          <span class="mkpi-value">{{ perfKpis().orders | number }}</span>
+        </div>
+        <div class="melf-kpi emerald">
+          <span class="mkpi-label">Ticket Promedio</span>
+          <span class="mkpi-value">{{ perfKpis().avgTicket | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <div class="melf-kpi violet">
+          <span class="mkpi-label">Unidades</span>
+          <span class="mkpi-value">{{ perfKpis().units | number }}</span>
+        </div>
+        <div class="melf-kpi blue">
+          <span class="mkpi-label">Visitas (MeLi)</span>
+          <span class="mkpi-value">{{ perfKpis().totalVisits | number }}</span>
+        </div>
+        <div class="melf-kpi green">
+          <span class="mkpi-label">Conversión</span>
+          <span class="mkpi-value">{{ perfKpis().avgConversion | number:'1.2-2' }}%</span>
+        </div>
+        @if (perfKpis().avgHealth !== null) {
+          <div class="melf-kpi" [class.red]="(perfKpis().avgHealth ?? 0) < 60"
+               [class.yellow]="(perfKpis().avgHealth ?? 0) >= 60 && (perfKpis().avgHealth ?? 0) < 80"
+               [class.green]="(perfKpis().avgHealth ?? 0) >= 80">
+            <span class="mkpi-label">Salud Promedio</span>
+            <span class="mkpi-value">{{ perfKpis().avgHealth | number:'1.0-0' }}/100</span>
+          </div>
+        }
+      </div>
+
+      <!-- Revenue + Orders Chart -->
+      <div class="melf-card melf-card-full">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Ingresos + Órdenes — Tendencia Diaria
+          </h3>
+        </div>
+        <div class="melf-chart-wrap">
+          <canvas #revenueCanvas></canvas>
+        </div>
+      </div>
+
+      <!-- Top Listings Table -->
+      <div class="melf-card melf-card-full">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Top Publicaciones Full
+          </h3>
+        </div>
+        <div class="melf-table-wrap">
+          <table class="melf-table">
+            <thead>
+              <tr>
+                <th>Publicación</th>
+                <th class="text-right">Precio</th>
+                <th class="text-right">Vendidos</th>
+                <th class="text-right">Salud</th>
+                <th class="text-right">Neto</th>
+                <th class="text-right">vs Precio Ganador</th>
+                <th class="text-right">Stock</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of listings(); track l.id) {
+                <tr class="melf-row">
+                  <td>
+                    @if (l.thumbnail) {
+                      <img [src]="l.thumbnail" [alt]="l.title" class="listing-thumb">
+                    }
+                    <div class="listing-title-wrap">
+                      <span class="listing-title">{{ l.title }}</span>
+                      @if (l.sku) { <span class="listing-sku">{{ l.sku }}</span> }
+                    </div>
+                  </td>
+                  <td class="text-right">{{ l.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right text-zinc-300">{{ l.soldQuantity | number }}</td>
+                  <td class="text-right">
+                    @if (l.health !== null) {
+                      <span class="health-badge"
+                        [class.health-green]="(l.health ?? 0) >= 80"
+                        [class.health-yellow]="(l.health ?? 0) >= 60 && (l.health ?? 0) < 80"
+                        [class.health-red]="(l.health ?? 0) < 60">
+                        {{ l.health }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    <span class="net-pct">{{ l.net_percent | number:'1.1-1' }}%</span>
+                    <span class="net-amt">{{ l.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  </td>
+                  <td class="text-right">
+                    @if (l.priceToWin !== null && l.priceToWin !== undefined) {
+                      <span [class.win-gap-pos]="l.price <= l.priceToWin" [class.win-gap-neg]="l.price > l.priceToWin">
+                        {{ l.price > l.priceToWin ? '+' : '' }}{{ (l.price - l.priceToWin) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right text-zinc-400">{{ l.available_quantity | number }}</td>
+                  <td>
+                    <a [href]="l.permalink" target="_blank" class="melf-link-btn" title="Ver en ML">↗</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: INVENTARIO FULL                                                 -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'inventory') {
+
+    @if (isLoadingInv()) {
+      <div class="melf-loading"><div class="melf-spinner"></div><span>Cargando inventario…</span></div>
+    }
+
+    @if (!isLoadingInv()) {
+      <!-- Inventory Health Summary Cards -->
+      <div class="inv-health-grid">
+        <button class="inv-health-card ok"       [class.active]="inventoryFilter() === 'ok'"       (click)="setInventoryFilter('ok')">
+          <span class="ihc-count">{{ invAlerts().ok }}</span>
+          <span class="ihc-label">✅ Sin alerta</span>
+          <span class="ihc-sub">≥21 días cobertura</span>
+        </button>
+        <button class="inv-health-card low"      [class.active]="inventoryFilter() === 'low'"      (click)="setInventoryFilter('low')">
+          <span class="ihc-count">{{ invAlerts().low }}</span>
+          <span class="ihc-label">🟡 Stock bajo</span>
+          <span class="ihc-sub">7–20 días</span>
+        </button>
+        <button class="inv-health-card critical" [class.active]="inventoryFilter() === 'critical'" (click)="setInventoryFilter('critical')">
+          <span class="ihc-count">{{ invAlerts().critical }}</span>
+          <span class="ihc-label">🔴 Crítico</span>
+          <span class="ihc-sub">&lt;7 días</span>
+        </button>
+        <button class="inv-health-card stockout" [class.active]="inventoryFilter() === 'stockout'" (click)="setInventoryFilter('stockout')">
+          <span class="ihc-count">{{ invAlerts().stockout }}</span>
+          <span class="ihc-label">⚫ Agotado</span>
+          <span class="ihc-sub">0 unidades</span>
+        </button>
+        <button class="inv-health-card all"      [class.active]="inventoryFilter() === 'all'"      (click)="setInventoryFilter('all')">
+          <span class="ihc-count">{{ inventory().length }}</span>
+          <span class="ihc-label">Todos los SKUs</span>
+          <span class="ihc-sub">&nbsp;</span>
+        </button>
+      </div>
+
+      <!-- Sync Button -->
+      <div class="melf-actions-row">
+        <button class="sync-btn" (click)="syncInventory()" [disabled]="isSyncingInv()">
+          @if (isSyncingInv()) {
+            <span class="melf-spinner-sm"></span> Sincronizando…
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Sincronizar Inventario MeLi
+          }
+        </button>
+      </div>
+
+      <!-- Burn Rate Table -->
+      <div class="melf-card melf-card-full">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">Burn Rate por SKU</h3>
+        </div>
+        <div class="melf-table-wrap">
+          <table class="melf-table">
+            <thead>
+              <tr>
+                <th>SKU / Producto</th>
+                <th class="text-right">Stock ML</th>
+                <th class="text-right">Reservado</th>
+                <th class="text-right">Vel. 30d</th>
+                <th class="text-right">Vel. 7d</th>
+                <th>Días Cobertura</th>
+                <th class="text-right">Alerta</th>
+                <th class="text-right">Reponer</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of filteredInventory(); track item.id) {
+                <tr class="melf-row">
+                  <td>
+                    <div class="inv-title-wrap">
+                      <span class="inv-title">{{ item.title }}</span>
+                      @if (item.sku) { <span class="listing-sku">{{ item.sku }}</span> }
+                    </div>
+                  </td>
+                  <td class="text-right font-medium text-zinc-200">{{ item.fullStock | number }}</td>
+                  <td class="text-right text-zinc-500">{{ item.fullStockReserved | number }}</td>
+                  <td class="text-right text-zinc-300">
+                    {{ (item.salesVelocity30d | number:'1.1-1') ?? '—' }}
+                  </td>
+                  <td class="text-right">
+                    @if (item.salesVelocity7d !== undefined && item.salesVelocity30d !== undefined) {
+                      <span [class.vel-up]="item.salesVelocity7d > item.salesVelocity30d"
+                            [class.vel-down]="item.salesVelocity7d < item.salesVelocity30d">
+                        {{ item.salesVelocity7d | number:'1.1-1' }}
+                        {{ item.salesVelocity7d > item.salesVelocity30d ? '↑' : (item.salesVelocity7d < item.salesVelocity30d ? '↓' : '') }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td>
+                    @if (item.daysOfCoverage !== undefined) {
+                      <div class="coverage-wrap">
+                        <div class="coverage-bar">
+                          <div class="coverage-fill" [class]="alertClass(item.reorderAlertLevel)"
+                            [style.width.%]="coveragePct(item)"></div>
+                        </div>
+                        <span class="coverage-label" [class]="alertClass(item.reorderAlertLevel)">
+                          {{ item.daysOfCoverage }}d
+                        </span>
+                      </div>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    <span class="alert-badge" [class]="alertClass(item.reorderAlertLevel)">
+                      {{ item.reorderAlertLevel?.toUpperCase() ?? 'OK' }}
+                    </span>
+                  </td>
+                  <td class="text-right">
+                    @if ((item.recommendedReplenishQty ?? 0) > 0) {
+                      <span class="replenish-qty">+{{ item.recommendedReplenishQty }}u</span>
+                    } @else {
+                      <span class="text-zinc-600">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Burn Rate Projection Chart -->
+      <div class="melf-card melf-card-full">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 7 13.5 15.5 8.5 10.5 1 18"/></svg>
+            Proyección de Agotamiento — SKU más crítico
+          </h3>
+        </div>
+        <div class="melf-chart-wrap">
+          <canvas #burnCanvas></canvas>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: ESCENARIOS v2 — Sales Decision Engine                          -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  @if (activeTab() === 'scenarios') {
+
+    <!-- ── SECTION 1: Smart Listing Picker + Situational Awareness Panel ── -->
+    <div class="melf-card sc-picker-card">
+      <div class="sc-picker-header">
+        <div class="sc-picker-field">
+          <label class="sc-label">Selecciona una publicación para analizar</label>
+          <select class="sc-select sc-select-wide"
+                  [value]="scenarioListingId()"
+                  (change)="scenarioListingId.set($any($event.target).value); scenarioPct.set(0)">
+            <option value="">— Elige una publicación Full —</option>
+            @for (l of listings(); track l.id) {
+              <option [value]="l.id">{{ l.title | slice:0:70 }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (!scenarioListing()) {
+        <div class="sc-empty-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#52525b" stroke-width="1.5" width="32" height="32"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Selecciona una publicación para ver el análisis completo y el simulador de precio</span>
+        </div>
+      }
+
+      @if (scenarioListing()) {
+        <div class="context-panel">
+          <!-- Thumbnail -->
+          @if (scenarioListing()!.thumbnail) {
+            <img [src]="scenarioListing()!.thumbnail" [alt]="scenarioListing()!.title" class="cp-thumb">
+          }
+
+          <!-- Title + SKU -->
+          <div class="cp-title-col">
+            <p class="cp-title">{{ scenarioListing()!.title }}</p>
+            @if (scenarioListing()!.sku) { <span class="cp-sku">{{ scenarioListing()!.sku }}</span> }
+            <a [href]="scenarioListing()!.permalink" target="_blank" class="cp-ml-link">Ver en MercadoLibre ↗</a>
+          </div>
+
+          <!-- Stats chips -->
+          <div class="cp-stats-grid">
+            <div class="cp-stat">
+              <span class="cp-stat-label">Precio actual</span>
+              <span class="cp-stat-val orange">{{ scenarioListing()!.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="cp-stat">
+              <span class="cp-stat-label">Precio ganador</span>
+              @if (scenarioListing()!.priceToWin != null) {
+                <span class="cp-stat-val"
+                      [class.emerald]="scenarioListing()!.price <= scenarioListing()!.priceToWin!"
+                      [class.red]="scenarioListing()!.price > scenarioListing()!.priceToWin!">
+                  {{ scenarioListing()!.priceToWin! | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                </span>
+              } @else {
+                <span class="cp-stat-val text-zinc-600">—</span>
+              }
+            </div>
+            <div class="cp-stat">
+              <span class="cp-stat-label">Neto actual/u</span>
+              <span class="cp-stat-val emerald">{{ scenarioListing()!.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="cp-stat">
+              <span class="cp-stat-label">Comisión ML</span>
+              <span class="cp-stat-val">{{ (scenarioListing()!.selling_fee_amount / scenarioListing()!.price) * 100 | number:'1.1-1' }}%</span>
+            </div>
+            <div class="cp-stat">
+              <span class="cp-stat-label">Salud listing</span>
+              <span class="cp-stat-val"
+                    [class.emerald]="(scenarioListing()!.health ?? 0) >= 80"
+                    [class.yellow]="(scenarioListing()!.health ?? 0) >= 60 && (scenarioListing()!.health ?? 0) < 80"
+                    [class.red]="(scenarioListing()!.health ?? 0) < 60">
+                {{ scenarioListing()!.health ?? '—' }}/100
+              </span>
+            </div>
+            @if (scenarioInventory()) {
+              <div class="cp-stat">
+                <span class="cp-stat-label">Velocidad 30d</span>
+                <span class="cp-stat-val">{{ scenarioInventory()!.salesVelocity30d | number:'1.2-2' }} u/d</span>
+              </div>
+              <div class="cp-stat">
+                <span class="cp-stat-label">Velocidad 7d</span>
+                <span class="cp-stat-val"
+                      [class.emerald]="(scenarioInventory()!.salesVelocity7d ?? 0) > (scenarioInventory()!.salesVelocity30d ?? 0)"
+                      [class.red]="(scenarioInventory()!.salesVelocity7d ?? 0) < (scenarioInventory()!.salesVelocity30d ?? 0)">
+                  {{ scenarioInventory()!.salesVelocity7d | number:'1.2-2' }} u/d
+                  {{ (scenarioInventory()!.salesVelocity7d ?? 0) > (scenarioInventory()!.salesVelocity30d ?? 0) ? '↑' : ((scenarioInventory()!.salesVelocity7d ?? 0) < (scenarioInventory()!.salesVelocity30d ?? 0) ? '↓' : '→') }}
+                </span>
+              </div>
+              <div class="cp-stat">
+                <span class="cp-stat-label">Stock / Cobertura</span>
+                <span class="cp-stat-val"
+                      [class.emerald]="(scenarioInventory()!.daysOfCoverage ?? 0) >= 21"
+                      [class.yellow]="(scenarioInventory()!.daysOfCoverage ?? 0) >= 7 && (scenarioInventory()!.daysOfCoverage ?? 0) < 21"
+                      [class.red]="(scenarioInventory()!.daysOfCoverage ?? 0) < 7">
+                  {{ scenarioInventory()!.availableQuantity }} u · {{ scenarioInventory()!.daysOfCoverage ?? '?' }}d
+                </span>
+              </div>
+              <div class="cp-stat">
+                <span class="cp-stat-label">Tier elasticidad</span>
+                <span class="cp-stat-val"
+                      [class.emerald]="velocityTier() === 'high'"
+                      [class.orange]="velocityTier() === 'medium'"
+                      [class.violet]="velocityTier() === 'low'">
+                  {{ velocityTier() === 'high' ? '🔥 Alta' : velocityTier() === 'medium' ? '📊 Media' : '🐢 Baja' }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ── SECTION 2: Simulators 2-col ───────────────────────────────────── -->
+    <div class="scenarios-grid scenarios-simulator">
+
+      <!-- LEFT: Advanced Price Simulator -->
+      <div class="melf-card scenario-card">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" width="16" height="16"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Simulador de Precio
+          </h3>
+          <p class="melf-card-sub">Modela el impacto de un cambio de precio con elasticidad por tier</p>
+        </div>
+
+        <div class="scenario-controls">
+          @if (!scenarioListing()) {
+            <p class="sc-no-listing">← Elige una publicación arriba para comenzar</p>
+          }
+
+          @if (scenarioListing()) {
+            <label class="sc-label">Cambio de precio</label>
+            <div class="sc-slider-wrap">
+              <span class="sc-slider-min sc-minus">−30%</span>
+              <input type="range" min="-30" max="30" step="1" class="sc-slider"
+                     [value]="scenarioPct()"
+                     (input)="scenarioPct.set(+$any($event.target).value)">
+              <span class="sc-slider-max sc-plus">+30%</span>
+            </div>
+            <div class="sc-pct-display" [class.sc-pct-down]="scenarioPct() < 0" [class.sc-pct-up]="scenarioPct() > 0">
+              {{ scenarioPct() >= 0 ? '+' : '' }}{{ scenarioPct() }}%
+            </div>
+
+            @if (priceScenario()) {
+              <!-- Win position badge -->
+              @if (scenarioListing()!.priceToWin != null) {
+                <div class="win-badge-row">
+                  <span class="win-badge"
+                        [class.win-winning]="priceScenario()!.winPosition === 'winning'"
+                        [class.win-close]="priceScenario()!.winPosition === 'close'"
+                        [class.win-losing]="priceScenario()!.winPosition === 'losing'">
+                    {{ priceScenario()!.winPosition === 'winning' ? '🟢' : priceScenario()!.winPosition === 'close' ? '🟡' : '🔴' }}
+                    {{ priceScenario()!.winPositionLabel }}
+                  </span>
+                </div>
+              }
+
+              <!-- Break-even indicator -->
+              @if (priceScenario()!.breakEvenPrice > 0) {
+                <div class="breakeven-row">
+                  <span class="be-label">Precio mínimo rentable</span>
+                  <span class="be-val" [class.red]="priceScenario()!.newPrice < priceScenario()!.breakEvenPrice" [class.emerald]="priceScenario()!.newPrice >= priceScenario()!.breakEvenPrice">
+                    {{ priceScenario()!.breakEvenPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    @if (priceScenario()!.newPrice < priceScenario()!.breakEvenPrice) {
+                      <span class="be-warn">⚠ Precio por debajo del mínimo</span>
+                    }
+                  </span>
+                </div>
+              }
+
+              <!-- Profitability breakdown table -->
+              <div class="profit-table">
+                <div class="pt-row pt-header">
+                  <span>Concepto</span><span class="text-right">Actual</span><span class="text-right">Proyectado</span>
+                </div>
+                <div class="pt-row">
+                  <span class="pt-label">Precio</span>
+                  <span class="text-right">{{ scenarioListing()!.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  <span class="text-right orange font-medium">{{ priceScenario()!.newPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                </div>
+                <div class="pt-row pt-deduct">
+                  <span class="pt-label">− Comisión ML ({{ (priceScenario()!.commissionRate * 100) | number:'1.1-1' }}%)</span>
+                  <span class="text-right text-zinc-500">{{ scenarioListing()!.selling_fee_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  <span class="text-right text-zinc-500">{{ priceScenario()!.commissionAmt | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                </div>
+                <div class="pt-row pt-deduct">
+                  <span class="pt-label">− Envío estimado</span>
+                  <span class="text-right text-zinc-500">~$85</span>
+                  <span class="text-right text-zinc-500">~$85</span>
+                </div>
+                <div class="pt-row pt-total">
+                  <span class="pt-label">= Neto / unidad</span>
+                  <span class="text-right emerald">{{ scenarioListing()!.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  <span class="text-right"
+                        [class.emerald]="priceScenario()!.netPerUnit >= scenarioListing()!.net_amount"
+                        [class.red]="priceScenario()!.netPerUnit < scenarioListing()!.net_amount">
+                    {{ priceScenario()!.netPerUnit | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Summary results -->
+              <div class="scenario-results">
+                <div class="sr-row">
+                  <span class="sr-label">Unidades/mes</span>
+                  <span class="sr-value"
+                        [class.emerald]="priceScenario()!.projUnitsChange >= 0"
+                        [class.red]="priceScenario()!.projUnitsChange < 0">
+                    {{ priceScenario()!.projUnits | number }}
+                    <span class="sr-delta">{{ priceScenario()!.projUnitsChange >= 0 ? '+' : '' }}{{ priceScenario()!.projUnitsChange | number }}</span>
+                  </span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-label">Revenue mensual</span>
+                  <span class="sr-value"
+                        [class.emerald]="priceScenario()!.revenueChange >= 0"
+                        [class.red]="priceScenario()!.revenueChange < 0">
+                    {{ priceScenario()!.projRevenue | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    <span class="sr-delta">{{ priceScenario()!.revenueChange >= 0 ? '+' : '' }}{{ priceScenario()!.revenueChange | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  </span>
+                </div>
+                <div class="sr-row">
+                  <span class="sr-label">Neto mensual</span>
+                  <span class="sr-value" [class.emerald]="priceScenario()!.projNet >= priceScenario()!.currentNet" [class.red]="priceScenario()!.projNet < priceScenario()!.currentNet">
+                    {{ priceScenario()!.projNet | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- RIGHT: Multi-SKU Replenishment Planner -->
+      <div class="melf-card scenario-card">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" width="16" height="16"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Planeador de Reposición
+          </h3>
+          <p class="melf-card-sub">Edita las cantidades y exporta tu lista de envío al centro Full</p>
+        </div>
+
+        @if (isLoadingInv()) {
+          <div class="melf-loading"><div class="melf-spinner"></div><span>Cargando inventario…</span></div>
+        } @else {
+          <div class="replenish-table-wrap">
+            <table class="replenish-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>SKU / Producto</th>
+                  <th class="text-right">Stock</th>
+                  <th class="text-right">Días</th>
+                  <th class="text-right">Vel.30d</th>
+                  <th class="text-right">Reponer</th>
+                  <th class="text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of inventory(); track item.id) {
+                  <tr class="melf-row" [class.replenish-active]="(replenishBatch()[item.id] ?? 0) > 0">
+                    <td>
+                      <span class="alert-dot" [class]="alertClass(item.reorderAlertLevel)"></span>
+                    </td>
+                    <td>
+                      <div class="inv-title-wrap">
+                        <span class="inv-title">{{ item.title | slice:0:38 }}</span>
+                        @if (item.sku) { <span class="listing-sku">{{ item.sku }}</span> }
+                      </div>
+                    </td>
+                    <td class="text-right font-medium text-zinc-200">{{ item.availableQuantity }}</td>
+                    <td class="text-right">
+                      <span [class.red]="(item.daysOfCoverage ?? 99) < 7"
+                            [class.yellow]="(item.daysOfCoverage ?? 99) >= 7 && (item.daysOfCoverage ?? 99) < 21"
+                            [class.emerald]="(item.daysOfCoverage ?? 99) >= 21">
+                        {{ item.daysOfCoverage ?? '?' }}d
+                      </span>
+                    </td>
+                    <td class="text-right text-zinc-400">{{ (item.salesVelocity30d | number:'1.1-1') ?? '—' }}</td>
+                    <td class="text-right">
+                      <input type="number" min="0" step="1" class="replenish-qty-input"
+                             [value]="replenishBatch()[item.id] ?? 0"
+                             (input)="setReplenishQty(item.id, +$any($event.target).value)">
+                    </td>
+                    <td class="text-right">
+                      @if ((replenishBatch()[item.id] ?? 0) > 0) {
+                        <span class="replenish-cost">{{ ((replenishBatch()[item.id] ?? 0) * item.price) | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                      } @else {
+                        <span class="text-zinc-600">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Footer summary + export -->
+          <div class="replenish-footer">
+            <div class="rf-stats">
+              <div class="rf-stat">
+                <span class="rf-label">Total unidades</span>
+                <span class="rf-val">{{ totalReplenishUnits() }} u</span>
+              </div>
+              <div class="rf-stat">
+                <span class="rf-label">Valor inventario est.</span>
+                <span class="rf-val orange">{{ totalReplenishValue() | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+              </div>
+            </div>
+            <button class="sc-export-btn" (click)="exportReplenishment()" [disabled]="totalReplenishUnits() === 0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar lista (.tsv)
+            </button>
+          </div>
+        }
+      </div>
+
+    </div><!-- /scenarios-grid -->
+
+    <!-- ── SECTION 3: Opportunity Matrix ───────────────────────────────── -->
+    <div class="melf-card melf-card-full">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="2"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          Matriz de Oportunidades — Todas las publicaciones Full
+        </h3>
+        <p class="melf-card-sub">Tamaño = revenue mensual · Haz clic en una burbuja para analizarla en el simulador</p>
+      </div>
+      <div class="matrix-legend">
+        <span class="ml-item ml-green">🟢 Mantener (precio competitivo + alta velocidad)</span>
+        <span class="ml-item ml-blue">🔵 Bajar precio (alta velocidad + perdiendo)</span>
+        <span class="ml-item ml-yellow">🟡 Revisar listing (precio ok + baja velocidad)</span>
+        <span class="ml-item ml-red">🔴 Acción urgente (perdiendo + baja velocidad)</span>
+      </div>
+      <div class="melf-chart-wrap matrix-wrap">
+        <canvas #matrixCanvas></canvas>
+      </div>
+    </div>
+
+  }
+
+</section>

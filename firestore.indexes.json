@@ -28,82 +28,122 @@
                 }
             ]
         },
-        // cartSnapshots — analytics from marketing dashboard (date range scans)
         {
             "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "createdAt", "order": "DESCENDING" },
-                { "fieldPath": "event",     "order": "ASCENDING" }
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                },
+                {
+                    "fieldPath": "event",
+                    "order": "ASCENDING"
+                }
             ]
         },
-        // cartSnapshots — per-user engagement history (customer timeline)
         {
             "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "userId",    "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
             ]
         },
-        // cartSnapshots — session-based journey (QR analytics + attribution)
         {
             "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "sessionId", "order": "ASCENDING" },
-                { "fieldPath": "event",     "order": "ASCENDING" }
+                {
+                    "fieldPath": "sessionId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "event",
+                    "order": "ASCENDING"
+                }
             ]
         },
-        // cartSnapshots — date + event for marketing funnel analysis
         {
             "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "event",     "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
+                {
+                    "fieldPath": "event",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
             ]
         },
-        // cartSnapshots — campaign funnel (auto-applied coupon tracking)
         {
             "collectionGroup": "cartSnapshots",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "appliedCampaignId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt",         "order": "DESCENDING" }
+                {
+                    "fieldPath": "appliedCampaignId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
             ]
         },
-
-        // search_events — type + date (query vs click breakdown over time)
         {
             "collectionGroup": "search_events",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "type",      "order": "ASCENDING" },
-                { "fieldPath": "timestamp", "order": "DESCENDING" }
+                {
+                    "fieldPath": "type",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
             ]
         },
-        // search_events — normalizedTerm + type (zero-result analysis per term)
         {
             "collectionGroup": "search_events",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "normalizedTerm", "order": "ASCENDING" },
-                { "fieldPath": "type",           "order": "ASCENDING" },
-                { "fieldPath": "timestamp",      "order": "DESCENDING" }
+                {
+                    "fieldPath": "normalizedTerm",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "type",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
             ]
         },
-        // whatsappClicks — userId + clickedAt (customer timeline query)
         {
             "collectionGroup": "whatsappClicks",
             "queryScope": "COLLECTION",
             "fields": [
-                { "fieldPath": "userId",    "order": "ASCENDING" },
-                { "fieldPath": "clickedAt", "order": "DESCENDING" }
+                {
+                    "fieldPath": "userId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "clickedAt",
+                    "order": "DESCENDING"
+                }
             ]
         },
-        // whatsappClicks — clickedAt DESC is a single-field index; managed automatically by Firestore
-
         {
             "collectionGroup": "pricing_strategies",
             "queryScope": "COLLECTION",
@@ -522,8 +562,6 @@
                 }
             ]
         },
-        // orderPriorities — createdAt single-field index; managed automatically by Firestore
-
         {
             "collectionGroup": "products",
             "queryScope": "COLLECTION",
@@ -766,7 +804,6 @@
                 }
             ]
         },
-        // campaigns — active campaigns sorted by endDate (widget + storefront)
         {
             "collectionGroup": "campaigns",
             "queryScope": "COLLECTION",
@@ -781,8 +818,6 @@
                 }
             ]
         },
-        // orders — status inequality (!=) + createdAt DESC: required by Segments RFM engine
-        // Firestore: inequality filters require orderBy on the same field first, then secondary sort
         {
             "collectionGroup": "orders",
             "queryScope": "COLLECTION",
@@ -797,7 +832,6 @@
                 }
             ]
         },
-        // orders — couponCode existence + createdAt (marketing coupon usage report with date filter)
         {
             "collectionGroup": "orders",
             "queryScope": "COLLECTION",
@@ -809,6 +843,76 @@
                 {
                     "fieldPath": "createdAt",
                     "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "sessionEvents",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "event",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "recovery_queue",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "sendAt",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "review_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "sendAt",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "reviews",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "referral_rewards",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "referrerId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "refereeOrderId",
+                    "order": "ASCENDING"
                 }
             ]
         }

@@ -14,6 +14,8 @@ import { CartDrawerComponent } from './shared/components/cart-drawer/cart-drawer
 import { ThemeService } from './core/services/theme.service';
 import { LanguageService } from './core/services/language.service';
 import { AttributionService } from './core/services/attribution.service';
+import { MetaService } from './core/services/meta.service';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 
 @Component({
   selector: 'app-root',
@@ -35,6 +37,8 @@ export class AppComponent implements OnInit {
   private themeService = inject(ThemeService); // Initializes Theme Engine
   private languageService = inject(LanguageService); // Single source of truth for language
   private attributionService = inject(AttributionService);
+  private metaService = inject(MetaService);
+  private firestore  = inject(Firestore);
 
   constructor() {
     console.log('%c Storefront App V1.0 ', 'background: #222; color: #bada55; padding: 10px; font-size: 16px;');
@@ -45,8 +49,12 @@ export class AppComponent implements OnInit {
     this.dateLangAttribute();
 
     // Attribution MUST be captured immediately on page load (UTM params are in the URL NOW)
-    // Non-blocking: geo resolution is async and resolves quietly in background
     this.attributionService.init();
+
+    // Dynamically inject FAQ + Org schema from Firestore (Admin SEO panel edits go live instantly)
+    if (isPlatformBrowser(this.platformId)) {
+      this.injectDynamicSeoSchemas();
+    }
 
     if (isPlatformBrowser(this.platformId)) {
       // ── Tracking pixels: initialize immediately (non-blocking) ───────────────
@@ -133,5 +141,39 @@ export class AppComponent implements OnInit {
     this.translate.onLangChange.subscribe((event: LangChangeEvent) => {
       this.document.documentElement.lang = event.lang;
     });
+  }
+
+  /**
+   * Fetch config/seo from Firestore (managed via Admin → SEO panel) and
+   * replace the static FAQPage JSON-LD in index.html with the live version.
+   * Non-blocking — a Firestore error silently falls back to the static schema.
+   */
+  private async injectDynamicSeoSchemas(): Promise<void> {
+    try {
+      const snap = await getDoc(doc(this.firestore, 'config/seo'));
+      if (!snap.exists()) return;
+      const data = snap.data() as any;
+
+      const activeFaqs: { question: string; answer: string }[] =
+        (data.faq ?? []).filter((f: any) => f.active && f.question && f.answer);
+
+      if (activeFaqs.length === 0) return;
+
+      this.metaService.addStructuredData({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        '@id': 'https://importadoraeuro.com/#faq',
+        mainEntity: activeFaqs.map(f => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      }, 'schema-faq-dynamic');
+
+      console.log(`[SEO] Dynamic FAQ injected — ${activeFaqs.length} Q&As from Firestore.`);
+    } catch (e) {
+      // Non-critical — static index.html schema remains as fallback
+      console.debug('[SEO] Dynamic FAQ fetch failed, using static schema.', e);
+    }
   }
 }

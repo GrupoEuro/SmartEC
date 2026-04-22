@@ -1,0 +1,172 @@
+<div class="aip-root">
+
+    <!-- Loading -->
+    @if (loading()) {
+    <div class="aip-loading">
+        <div class="aip-spinner"></div>
+        Cargando datos de pauta…
+    </div>
+    } @else if (!hasMeta() && !hasGoogle()) {
+    <!-- No platform IDs linked -->
+    <div class="aip-no-data">
+        Sin plataforma de pauta vinculada. Edita la campaña y agrega el ID de Meta o Google Ads.
+    </div>
+    } @else if (error()) {
+    <div class="aip-error">⚠ {{ error() }}</div>
+    } @else if (!hasData()) {
+    <div class="aip-no-data">
+        Sin datos de pauta aún — ejecuta la sincronización manual desde Ajustes → Integraciones.
+    </div>
+    } @else {
+
+    <!-- Header + platform badges -->
+    <div class="aip-header">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" width="12" height="12">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+            <polyline points="16 7 22 7 22 13"/>
+        </svg>
+        Datos de pauta (ayer)
+        <div class="aip-platform-badges">
+            @if (hasMeta())   { <span class="aip-badge meta">Meta</span> }
+            @if (hasGoogle()) { <span class="aip-badge google">Google</span> }
+        </div>
+    </div>
+
+    <!-- Main KPI row: Spend · Revenue · Real ROAS · Real CPA -->
+    <div class="aip-kpi-row">
+        <div class="aip-kpi indigo">
+            <span class="aip-kpi-label">Inversión total</span>
+            <span class="aip-kpi-value">{{ totalSpend() }}</span>
+            @if (hasMeta() && hasGoogle()) {
+            <span class="aip-kpi-sub">M: {{ metaSpend() }} · G: {{ googleSpend() }}</span>
+            }
+        </div>
+        <div class="aip-kpi emerald">
+            <span class="aip-kpi-label">Ingresos atribuidos</span>
+            <span class="aip-kpi-value">{{ revenue() }}</span>
+            <span class="aip-kpi-sub">{{ orders() }} órdenes</span>
+        </div>
+        <div class="aip-kpi amber">
+            <span class="aip-kpi-label">ROAS real</span>
+            <span class="aip-kpi-value">{{ realRoas() }}</span>
+            <span class="aip-kpi-sub">Ingresos / Inversión</span>
+        </div>
+        <div class="aip-kpi rose">
+            <span class="aip-kpi-label">CPA real</span>
+            <span class="aip-kpi-value">{{ realCpa() }}</span>
+            <span class="aip-kpi-sub">Inversión / Orden</span>
+        </div>
+    </div>
+
+    <!-- ROAS comparison (Real vs Meta-claimed) -->
+    @if (insights()?.meta?.purchaseRoas) {
+    <div class="aip-roas-row">
+        <span class="aip-roas-label">ROAS</span>
+        <span class="aip-roas-real">{{ realRoas() }} real</span>
+        <span class="aip-roas-sep">vs</span>
+        <span class="aip-roas-claimed">Meta claims <strong>{{ metaRoas() }}</strong> (atribución amplia)</span>
+    </div>
+    }
+
+    <!-- Frequency warning -->
+    @if (frequencyWarning()) {
+    <div class="aip-freq-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" width="13" height="13">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Fatiga creativa: frecuencia {{ metaFreq() }}x (>4.5). Considera rotar los creativos.
+    </div>
+    }
+
+    <!-- Meta breakdown -->
+    @if (insights()?.meta) {
+    <div class="aip-platform-section">
+        <div class="aip-platform-title">
+            <span class="dot meta"></span> Meta Ads
+        </div>
+        <div class="aip-stat-grid">
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Impresiones</span>
+                <span class="aip-stat-val">{{ metaImpressions() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Clics</span>
+                <span class="aip-stat-val">{{ metaClicks() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">CTR</span>
+                <span class="aip-stat-val">{{ metaCTR() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">CPC</span>
+                <span class="aip-stat-val">{{ metaCPC() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Alcance</span>
+                <span class="aip-stat-val">{{ metaReach() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Frecuencia</span>
+                <span class="aip-stat-val">{{ metaFreq() }}x</span>
+            </div>
+        </div>
+    </div>
+    }
+
+    <!-- Google Ads breakdown -->
+    @if (insights()?.google) {
+    <div class="aip-platform-section">
+        <div class="aip-platform-title">
+            <span class="dot google"></span> Google Ads
+        </div>
+        <div class="aip-stat-grid">
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Impresiones</span>
+                <span class="aip-stat-val">{{ googleImpressions() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Clics</span>
+                <span class="aip-stat-val">{{ googleClicks() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">CTR</span>
+                <span class="aip-stat-val">{{ googleCTR() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Conversiones</span>
+                <span class="aip-stat-val">{{ googleConversions() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">CPA</span>
+                <span class="aip-stat-val">{{ googleCPA() }}</span>
+            </div>
+            <div class="aip-stat">
+                <span class="aip-stat-lbl">Imp. share</span>
+                <span class="aip-stat-val">{{ googleImpShare() }}</span>
+            </div>
+        </div>
+    </div>
+    }
+
+    <!-- 14-day spend sparkline -->
+    @if (spendHistory().length > 1) {
+    <div class="aip-sparkline-wrap">
+        <div class="aip-sparkline-title">Inversión 14 días</div>
+        <div class="aip-sparkline">
+            @for (pt of spendHistory(); track pt.date) {
+            <div class="aip-bar"
+                 [class.has-revenue]="pt.revenue > 0"
+                 [style.height.%]="pt.pct || 4"
+                 [title]="pt.date + ' · ' + fmtMXN(pt.spend) + (pt.revenue > 0 ? ' · ingresos ' + fmtMXN(pt.revenue) : '')">
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    }
+
+</div>

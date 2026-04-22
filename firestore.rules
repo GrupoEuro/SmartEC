@@ -95,6 +95,24 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Storefront Order Counter ───────────────────────────────────────────────
+    // Override the general config write-lock for this specific counter doc.
+    // Allows the storefront checkout to atomically increment the web order number.
+    // Strict field validation: only the `web` integer field may be written,
+    // and it must equal the previous value + 1 (prevents arbitrary writes).
+    match /config/orderCounters {
+      allow read: if true;
+      // resource == null means the document does not exist yet (first order).
+      // Checking resource.data when resource is null causes the rule to error → deny.
+      // We must guard with resource == null before accessing resource.data.
+      allow write: if request.resource.data.keys().hasAll(['web'])
+                   && request.resource.data.web is int
+                   && (
+                        (resource == null && request.resource.data.web == 1)
+                        || (resource != null && request.resource.data.web == resource.data.web + 1)
+                      );
+    }
+
     // System metadata (seed version, etc.) — admin only
     match /_metadata/{document} {
       allow read: if isStaff();
@@ -260,17 +278,27 @@ service cloud.firestore {
 
     // ── Orders (C3 FIX) ───────────────────────────────────────────────────────
     //
-    // Customers can read their own orders only.
-    // Staff can read all orders.
-    // Only staff can create/update/delete orders.
+    // Storefront checkout creates orders client-side with status 'pending_payment'.
+    // All subsequent updates (payment result, shipping, etc.) are done by the
+    // Cloud Function via Admin SDK — which bypasses these rules entirely.
     //
 
     match /orders/{orderId} {
-      // Customer can read their own orders
+      // Customer can read their own orders (identified by email or uid)
       allow read: if isAuth() && resource.data.customer.uid == request.auth.uid;
       // Staff can read all orders
       allow read: if isStaff();
-      // Only staff can create, update, or delete orders
+
+      // Storefront checkout: allow creating a pending_payment order.
+      // Constraints: must be from storefront channel, status must be pending_payment,
+      // paymentStatus must be pending, and must have a customer email.
+      allow create: if request.resource.data.sourceChannel == 'storefront'
+                    && request.resource.data.status == 'pending_payment'
+                    && request.resource.data.paymentStatus == 'pending'
+                    && request.resource.data.customer.email is string
+                    && request.resource.data.customer.email.size() > 0;
+
+      // Staff can create or update any order
       allow create, update: if isStaff();
       // Only SUPER_ADMIN and admins can delete orders
       allow delete: if isAdmin();
@@ -500,6 +528,104 @@ service cloud.firestore {
       allow read:   if isStaff();
       allow update: if isStaff(); // mark as read
       allow create, delete: if false; // Cloud Function only
+    }
+
+    // ── Phase 2: Product Reviews ───────────────────────────────────────────────
+    // Authenticated users can create one review per product per order.
+    // Approved reviews are publicly readable (for JSON-LD aggregateRating).
+    // Staff can manage (approve/reject).
+
+    match /product_reviews/{productId}/reviews/{reviewId} {
+      // Public can read approved reviews
+      allow read: if resource.data.status == 'approved';
+      // Staff can read all reviews (moderation queue)
+      allow read: if isStaff();
+      // Authenticated users can create a review
+      allow create: if isAuth()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5;
+      // Staff can approve/reject
+      allow update: if isStaff();
+      // Only admin can delete
+      allow delete: if isAdmin();
+    }
+
+    // ── Phase 2: Cart Recovery Queue ─────────────────────────────────────────
+    // Written by onCartAbandoned Cloud Function (Admin SDK — always bypasses rules).
+    // Staff read for ops visibility. No client writes.
+
+    match /recovery_queue/{document} {
+      allow read: if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    // ── Phase 2: Review Requests ─────────────────────────────────────────────
+
+    match /review_requests/{document} {
+      allow read: if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    // ── Phase 2: Notification Outbox ─────────────────────────────────────────
+    // Provider-agnostic message queue. Staff can read; Cloud Function writes.
+
+    match /notification_outbox/{document} {
+      allow read: if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    // ── Phase 2: Referral Rewards ─────────────────────────────────────────────
+    // Staff read for reporting. Cloud Function writes via Admin SDK.
+
+    match /referral_rewards/{document} {
+      allow read: if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+
+    // ── Pre-Aggregated Analytics Collections ──────────────────────────────────
+    // Written exclusively by Cloud Functions via Admin SDK (bypasses rules).
+    // Staff read for all Operations and Marketing dashboards.
+    // No client-side writes — all mutations go through aggregateDailyStats
+    // or backfillAnalytics Cloud Functions.
+
+    match /analytics_daily/{dateId} {
+      allow read:  if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+
+      // Hourly sub-documents: analytics_daily/{date}/hours/{HH}
+      match /hours/{hourId} {
+        allow read:  if isStaff();
+        allow write: if false;
+      }
+    }
+
+    match /analytics_monthly/{monthId} {
+      allow read:  if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    match /analytics_channel_snapshots/{channelId} {
+      allow read:  if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+
+      // Per-day sub-documents: analytics_channel_snapshots/{channel}/days/{date}
+      match /days/{dateId} {
+        allow read:  if isStaff();
+        allow write: if false;
+      }
+    }
+
+    // ── Rate Limiting (Checkout) ──────────────────────────────────────────────
+    // Written by Cloud Functions and storefront auth service.
+    // Staff read for monitoring abuse. TTL policy should be enabled in
+    // Firebase Console (Firestore → TTL Policies → _rate_limits → expiresAt).
+
+    match /_rate_limits/{document} {
+      allow read:   if isStaff();
+      allow create, update: if true;  // storefront writes counter atomically
+      allow delete: if isAdmin();
     }
 
   }

@@ -8,6 +8,7 @@ import { Subscription } from 'rxjs';
 import { Campaign } from '../../../core/models/campaign.model';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { CouponService } from '../../../core/services/coupon.service';
+import { AdInsightsPanelComponent } from './ad-insights-panel/ad-insights-panel.component';
 
 interface CouponSnippet { id: string; code: string; type: string; value: number; }
 
@@ -18,7 +19,7 @@ const PRIORITY_SCALE = [1,2,3,4,5,6,7,8,9,10];
 @Component({
     selector: 'app-mkt-campaigns',
     standalone: true,
-    imports: [CommonModule, DatePipe, RouterLink, TranslateModule, AppIconComponent],
+    imports: [CommonModule, DatePipe, RouterLink, TranslateModule, AppIconComponent, AdInsightsPanelComponent],
     templateUrl: './mkt-campaigns.component.html',
     styleUrls: ['./mkt-campaigns.component.css'],
 })

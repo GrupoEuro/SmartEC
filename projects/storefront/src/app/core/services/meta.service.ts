@@ -173,7 +173,9 @@ export class MetaService {
       title,
       description,
       keywords: 'llantas para moto, comprar llantas para moto, llantas para motocicleta México, llantas Michelin moto, llantas Praxis, medida de llanta moto, llantas deportivas moto, llantas doble propósito, envío gratis llantas México, tamaño de llanta moto',
-      type: 'website'
+      type: 'website',
+      // Always pin canonical to /catalogo regardless of which alias URL was used
+      url: `${this.DOMAIN}/catalogo`
     };
   }
 
@@ -255,6 +257,29 @@ export class MetaService {
           }
         }
       }))
+    };
+  }
+
+  /**
+   * Generate BreadcrumbList structured data (JSON-LD).
+   * Usage: this.metaService.addStructuredData(
+   *   this.metaService.generateBreadcrumbSchema([
+   *     { name: 'Inicio', url: 'https://importadoraeuro.com' },
+   *     { name: 'Catálogo', url: 'https://importadoraeuro.com/catalogo' },
+   *     { name: 'Michelin' }   ← last item: no url (current page)
+   *   ]), 'schema-breadcrumb'
+   * );
+   */
+  generateBreadcrumbSchema(items: { name: string; url?: string }[]): any {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: items.map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: item.name,
+        ...(item.url ? { item: item.url } : {}),
+      })),
     };
   }
 }

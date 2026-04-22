@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -9,7 +9,8 @@ import { OrderAssignmentService } from '../../../core/services/order-assignment.
 import { OrderAssignment } from '../../../core/models/order-assignment.model';
 import { OrderPriorityService } from '../../../core/services/order-priority.service';
 import { UserProfile } from '../../../core/models/user.model';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { PaginationComponent, PaginationConfig } from '../../admin/shared/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../admin/shared/admin-page-header/admin-page-header.component';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
@@ -32,7 +33,7 @@ type SortDirection = 'asc' | 'desc';
     templateUrl: './order-queue.component.html',
     styleUrls: ['./order-queue.component.css']
 })
-export class OrderQueueComponent implements OnInit {
+export class OrderQueueComponent implements OnInit, OnDestroy {
     private orderService = inject(OrderService);
     private assignmentService = inject(OrderAssignmentService);
     private priorityService = inject(OrderPriorityService);
@@ -83,15 +84,27 @@ export class OrderQueueComponent implements OnInit {
 
     // Status tabs with counts
     statusTabs = signal([
-        { id: 'all' as const, label: 'OPERATIONS.ORDERS.STATUS.ALL', icon: 'clipboard-list', count: 0 },
-        { id: 'my-orders' as const, label: 'OPERATIONS.ORDERS.MY_ORDERS', icon: 'user', count: 0 },
-        { id: 'unassigned' as const, label: 'OPERATIONS.ORDERS.UNASSIGNED', icon: 'pin', count: 0 },
-        { id: 'pending' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.PENDING', icon: 'clock', count: 0 },
-        { id: 'processing' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.PROCESSING', icon: 'settings', count: 0 },
-        { id: 'shipped' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.SHIPPED', icon: 'truck', count: 0 },
-        { id: 'delivered' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.DELIVERED', icon: 'check-circle', count: 0 },
-        { id: 'cancelled' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.CANCELLED', icon: 'x-circle', count: 0 }
+        { id: 'all' as const,            label: 'OPERATIONS.ORDERS.STATUS.ALL',              icon: 'clipboard-list', count: 0 },
+        { id: 'my-orders' as const,      label: 'OPERATIONS.ORDERS.MY_ORDERS',               icon: 'user',           count: 0 },
+        { id: 'unassigned' as const,     label: 'OPERATIONS.ORDERS.UNASSIGNED',              icon: 'pin',            count: 0 },
+        { id: 'paid' as OrderStatus,     label: 'OPERATIONS.ORDERS.STATUS.PAID',             icon: 'zap',            count: 0 },
+        { id: 'pending' as OrderStatus,  label: 'OPERATIONS.ORDERS.STATUS.PENDING',          icon: 'clock',          count: 0 },
+        { id: 'refund_pending' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.REFUND_PENDING', icon: 'alert-triangle', count: 0 },
+        { id: 'processing' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.PROCESSING',    icon: 'settings',       count: 0 },
+        { id: 'shipped' as OrderStatus,  label: 'OPERATIONS.ORDERS.STATUS.SHIPPED',         icon: 'truck',          count: 0 },
+        { id: 'delivered' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.DELIVERED',      icon: 'check-circle',   count: 0 },
+        { id: 'cancelled' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.CANCELLED',      icon: 'x-circle',       count: 0 }
     ]);
+
+    /** Ghost statuses excluded from queue by default (abandoned checkouts & failed payments) */
+    readonly GHOST_STATUSES: OrderStatus[] = ['pending_payment', 'payment_failed'];
+
+    /** Toggle to surface ghost orders for debugging */
+    showGhostOrders = signal(false);
+
+    /** For real-time new-order notifications — tracks last-known order set */
+    private knownOrderIds = new Set<string>();
+    private destroy$ = new Subject<void>();
 
     ngOnInit() {
         this.loadCurrentUser();
@@ -99,6 +112,11 @@ export class OrderQueueComponent implements OnInit {
         this.setupSearch();
         this.loadAvailableStaff();
         this.handleQueryParams();
+    }
+
+    ngOnDestroy() {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 
     private getJsDate(timestamp: any): Date {
@@ -150,12 +168,29 @@ export class OrderQueueComponent implements OnInit {
 
     loadOrders() {
         this.isLoading.set(true);
-        this.orderService.getOrders().subscribe({
+        this.orderService.getOrders().pipe(takeUntil(this.destroy$)).subscribe({
             next: (orders) => {
+                // ── Real-time new-order notification ─────────────────────────
+                if (this.knownOrderIds.size > 0) {
+                    const newly = orders.filter(
+                        o => (o.status === 'paid' || o.status === 'pending') &&
+                             o.id && !this.knownOrderIds.has(o.id)
+                    );
+                    for (const o of newly) {
+                        const ch = (o as any).sourceChannel ?? 'Web';
+                        this.toast.success(
+                            `🆕 Nueva orden — ${o.orderNumber ?? o.id} (${ch.toUpperCase()})`,
+                            8000
+                        );
+                    }
+                }
+                this.knownOrderIds = new Set(orders.filter(o => !!o.id).map(o => o.id!));
+                // ─────────────────────────────────────────────────────────────
+
                 this.orders.set(orders);
                 this.calculateCounts();
                 this.dataSource.setData(orders);
-                this.applyFilters(); // Initial filter apply
+                this.applyFilters();
                 this.isLoading.set(false);
             },
             error: (error) => {
@@ -210,6 +245,13 @@ export class OrderQueueComponent implements OnInit {
 
     applyFilters() {
         this.dataSource.refresh((order) => {
+            // ── Ghost order filter ─────────────────────────────────────────────
+            // Exclude abandoned checkouts / failed payments from the queue by default.
+            // Staff can toggle showGhostOrders to debug these.
+            if (!this.showGhostOrders() && this.GHOST_STATUSES.includes(order.status)) {
+                return false;
+            }
+
             // Status filter
             const status = this.currentStatus();
             if (status !== 'all' && order.status !== status) {
@@ -569,13 +611,18 @@ export class OrderQueueComponent implements OnInit {
     // Utility
     getStatusBadgeClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
-            pending: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50',
-            processing: 'bg-blue-900/30 text-blue-400 border-blue-800/50',
-            shipped: 'bg-purple-900/30 text-purple-400 border-purple-800/50',
-            delivered: 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
-            cancelled: 'bg-red-900/30 text-red-400 border-red-800/50',
-            refunded: 'bg-orange-900/30 text-orange-400 border-orange-800/50',
-            returned: 'bg-red-900/30 text-red-400 border-red-800/50'
+            pending:         'bg-yellow-900/30 text-yellow-400 border-yellow-800/50',
+            processing:      'bg-blue-900/30 text-blue-400 border-blue-800/50',
+            shipped:         'bg-purple-900/30 text-purple-400 border-purple-800/50',
+            delivered:       'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
+            cancelled:       'bg-red-900/30 text-red-400 border-red-800/50',
+            refunded:        'bg-orange-900/30 text-orange-400 border-orange-800/50',
+            returned:        'bg-red-900/30 text-red-400 border-red-800/50',
+            // Web checkout statuses
+            pending_payment: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/50',
+            paid:            'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
+            payment_failed:  'bg-red-900/30 text-red-400 border-red-800/50',
+            refund_pending:  'bg-amber-900/30 text-amber-400 border-amber-800/50',
         };
         return classes[status] || '';
     }

@@ -1,7 +1,19 @@
 import { Timestamp } from '@angular/fire/firestore';
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+// Legacy POS / ML statuses + Web checkout (MercadoPago) statuses
+export type OrderStatus =
+    // Shared / legacy statuses
+    | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'returned'
+    // Web storefront (MercadoPago checkout) statuses
+    | 'pending_payment'   // Order created, awaiting payment
+    | 'paid'              // Payment confirmed by MP
+    | 'payment_failed'    // MP rejected — phantom order, excluded from all stats
+    | 'refund_pending';   // Paid order cancelled — awaiting staff review before MP refund
+
+export type PaymentStatus =
+    | 'pending' | 'paid' | 'failed' | 'refunded'
+    | 'approved';  // MercadoPago payment status from processPayment
+
 
 export interface OrderItem {
     productId: string;

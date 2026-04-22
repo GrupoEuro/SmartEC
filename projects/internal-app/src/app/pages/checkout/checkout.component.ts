@@ -31,6 +31,15 @@ export class CheckoutComponent implements AfterViewInit {
 
     currentStep = signal(1); // 1: Identity, 2: Shipping, 3: Payment
 
+    // Brick state
+    brickLoading      = signal(true);
+    brickMounted      = signal(false);
+    showInlineLogin   = signal(false);
+    inlineLoginError  = signal<string | null>(null);
+    saveAddress       = signal(false);
+    awaitingChallenge = signal(false);
+    challengeUrl      = signal<string | null>(null);
+
     // Forms
     emailControl = this.fb.control('', [Validators.required, Validators.email]);
 

@@ -237,8 +237,19 @@ export class OrderService {
 
     /**
      * Update order status
+     * @param id        Firestore order document ID
+     * @param status    New status
+     * @param note      Optional human-readable note logged in timeline
+     * @param updates   Optional carrier / trackingNumber fields
+     * @param actor     Who is making this change — defaults to SYSTEM if omitted
      */
-    async updateStatus(id: string, status: OrderStatus, note?: string, updates?: { carrier?: string, trackingNumber?: string }): Promise<void> {
+    async updateStatus(
+        id: string,
+        status: OrderStatus,
+        note?: string,
+        updates?: { carrier?: string, trackingNumber?: string },
+        actor?: { uid: string; displayName: string; role: string }
+    ): Promise<void> {
         try {
             const orderDoc = doc(this.firestore, `orders/${id}`);
 
@@ -267,8 +278,6 @@ export class OrderService {
                             );
                         } catch (err) {
                             console.error(`Failed to deduct stock for ${item.productId}:`, err);
-                            // Optionally throw to stop status update? 
-                            // For now, log and proceed, but ideally we should block.
                         }
                     }
                 }
@@ -292,11 +301,20 @@ export class OrderService {
                 }
             }
 
+            // Build the resolved actor — defaults to SYSTEM when called without user context
+            const resolvedActor = actor ?? { uid: 'system', displayName: 'Sistema', role: 'SYSTEM' };
+
             const newHistoryItem = {
                 status,
-                timestamp: Timestamp.now(),
-                note: note || `Status updated to ${status}`,
-                updatedBy: 'admin' // TODO: Get current user
+                timestamp:       Timestamp.now(),
+                note:            note || `Status updated to ${status}`,
+                // Legacy field (kept for backward compat)
+                updatedBy:       resolvedActor.uid,
+                // Structured actor (new — shown in timeline as "by [name]")
+                updatedByActor:  resolvedActor,
+                action:          'status_change' as const,
+                ...(updates?.carrier        && { carrier:        updates.carrier }),
+                ...(updates?.trackingNumber && { trackingNumber: updates.trackingNumber }),
             };
 
             const updateData: any = {
@@ -307,7 +325,7 @@ export class OrderService {
 
             // Add extra updates if provided (e.g. tracking info)
             if (updates) {
-                if (updates.carrier) updateData.carrier = updates.carrier;
+                if (updates.carrier)        updateData.carrier        = updates.carrier;
                 if (updates.trackingNumber) updateData.trackingNumber = updates.trackingNumber;
             }
 

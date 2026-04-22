@@ -120,13 +120,18 @@ export class OrderDetailComponent implements OnInit {
 
     getStatusClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
-            'pending': 'status-pending',
-            'processing': 'status-processing',
-            'shipped': 'status-shipped',
-            'delivered': 'status-delivered',
-            'cancelled': 'status-cancelled',
-            'refunded': 'status-refunded',
-            'returned': 'status-returned'
+            'pending':         'status-pending',
+            'processing':      'status-processing',
+            'shipped':         'status-shipped',
+            'delivered':       'status-delivered',
+            'cancelled':       'status-cancelled',
+            'refunded':        'status-refunded',
+            'returned':        'status-returned',
+            // Web checkout statuses
+            'pending_payment': 'status-pending',
+            'paid':            'status-delivered',
+            'payment_failed':  'status-cancelled',
+            'refund_pending':  'status-returned',
         };
         return classes[status] || 'status-default';
     }

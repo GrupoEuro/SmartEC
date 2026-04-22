@@ -101,81 +101,138 @@
                     }
 
                     <form [formGroup]="shippingForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <input formControlName="firstName" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.FIRST_NAME' | translate }}</label>
-                            </div>
-                            <div class="form-group">
-                                <input formControlName="lastName" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.LAST_NAME' | translate }}</label>
-                            </div>
-                        </div>
 
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <input formControlName="street" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.STREET' | translate }}</label>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <input formControlName="extNum" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.EXT_NUM' | translate }}</label>
-                            </div>
-                            <div class="form-group">
-                                <input formControlName="intNum" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.INT_NUM' | translate }}</label>
-                            </div>
-                        </div>
-
-                        <!-- ZIP with spinner -->
-                        <div class="form-row">
-                            <div class="form-group zip-group">
-                                <input formControlName="zip" class="form-input" placeholder=" " maxlength="5" inputmode="numeric">
-                                <label class="floating-label">{{ 'CHECKOUT.ZIP' | translate }}</label>
+                        <!-- ① ZIP FIRST: Hero input at top -->
+                        <div class="zip-hero-section">
+                            <p class="zip-hero-label">📍 ¿Cuál es tu código postal?</p>
+                            <div class="form-group zip-group zip-hero-group">
+                                <input formControlName="zip" class="form-input zip-hero-input"
+                                       placeholder=" " maxlength="5" inputmode="numeric">
+                                <label class="floating-label">Código Postal</label>
                                 <div *ngIf="zipLoading()" class="zip-spinner"></div>
                             </div>
-                            <div class="form-group">
-                                <input formControlName="city" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.CITY' | translate }}</label>
-                            </div>
                         </div>
 
-                        <!-- State & Colonia -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <input formControlName="state" class="form-input" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.STATE' | translate }}</label>
+                        <!-- ② Location Confirmed Bar (after ZIP resolves) -->
+                        @if (shippingForm.get('state')?.value) {
+                            <div class="location-confirmed-bar">
+                                <span class="loc-pin">📍</span>
+                                <span class="loc-text">
+                                    {{ shippingForm.get('city')?.value }},
+                                    {{ shippingForm.get('state')?.value }}
+                                </span>
+                                <button type="button" class="loc-change-btn" (click)="resetZip()">
+                                    Cambiar
+                                </button>
                             </div>
-                            <!-- Colonia: dropdown if ZIP populated, plain input otherwise -->
-                            <div class="form-group">
-                                @if (colonias().length > 0) {
-                                    <select formControlName="colonia" class="form-input form-select">
-                                        <option value="" disabled>{{ 'CHECKOUT.COLONIA' | translate }}</option>
-                                        @for (col of colonias(); track col) {
-                                            <option [value]="col">{{ col }}</option>
-                                        }
-                                    </select>
-                                } @else {
+                        }
+
+                        <!-- ③ Colonia Picker: visual chips when ZIP returns neighborhoods -->
+                        @if (colonias().length > 0) {
+                            <div class="colonia-section">
+                                <p class="colonia-section-label">Selecciona tu colonia</p>
+                                <div class="colonia-chips-grid">
+                                    @for (col of colonias(); track col) {
+                                        <button type="button" class="colonia-chip"
+                                                [class.selected]="shippingForm.get('colonia')?.value === col"
+                                                (click)="selectColonia(col)">
+                                            <span class="chip-icon">
+                                                @if (shippingForm.get('colonia')?.value === col) { ✓ } @else { 🏘 }
+                                            </span>
+                                            {{ col }}
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        } @else if (shippingForm.get('zip')?.value?.length === 5 && !zipLoading()) {
+                            <!-- Fallback: free-text if ZIP not in lookup database -->
+                            <div class="form-row" style="margin-top: 8px;">
+                                <div class="form-group full-width">
                                     <input formControlName="colonia" class="form-input" placeholder=" ">
-                                    <label class="floating-label">{{ 'CHECKOUT.COLONIA' | translate }}</label>
-                                }
+                                    <label class="floating-label">Colonia / Barrio</label>
+                                </div>
                             </div>
-                        </div>
+                        }
 
-                        <div class="form-row">
-                            <div class="form-group full-width">
-                                <input formControlName="phone" class="form-input" type="tel" placeholder=" ">
-                                <label class="floating-label">{{ 'CHECKOUT.PHONE' | translate }}</label>
-                            </div>
-                        </div>
+                        <!-- ④ Rest of form — shown once ZIP has 5 digits -->
+                        @if (shippingForm.get('zip')?.value?.length === 5) {
+                            <div class="address-details-section">
+
+                                <!-- Name -->
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <input formControlName="firstName" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.FIRST_NAME' | translate }}</label>
+                                    </div>
+                                    <div class="form-group">
+                                        <input formControlName="lastName" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.LAST_NAME' | translate }}</label>
+                                    </div>
+                                </div>
+
+                                <!-- Street -->
+                                <div class="form-row">
+                                    <div class="form-group full-width">
+                                        <input formControlName="street" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.STREET' | translate }}</label>
+                                    </div>
+                                </div>
+
+                                <!-- Ext / Int Num -->
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <input formControlName="extNum" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.EXT_NUM' | translate }}</label>
+                                    </div>
+                                    <div class="form-group">
+                                        <input formControlName="intNum" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.INT_NUM' | translate }}</label>
+                                    </div>
+                                </div>
+
+                                <!-- City / State (auto-filled from ZIP, editable) -->
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <input formControlName="city" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.CITY' | translate }}</label>
+                                    </div>
+                                    <div class="form-group">
+                                        <input formControlName="state" class="form-input" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.STATE' | translate }}</label>
+                                    </div>
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="form-row">
+                                    <div class="form-group full-width">
+                                        <input formControlName="phone" class="form-input" type="tel" placeholder=" ">
+                                        <label class="floating-label">{{ 'CHECKOUT.PHONE' | translate }}</label>
+                                    </div>
+                                </div>
+
+                            </div><!-- /address-details-section -->
+                        }
+
                     </form>
 
-                    <button class="btn-primary" [disabled]="shippingForm.invalid" (click)="continueFromAddress()">
-                        {{ 'CHECKOUT.CONTINUE_SHIPPING_OPTION' | translate }}
+                    <!-- Price-changed warning (shown if Firestore prices differ from cart cache) -->
+                    @if (priceChangedWarning()) {
+                        <div class="price-changed-banner">
+                            ⚠️ Algunos precios se actualizaron. El total refleja los precios actuales.
+                            <button class="banner-dismiss" (click)="priceChangedWarning.set(false)">✕</button>
+                        </div>
+                    }
+
+                    <button class="btn-primary"
+                            [disabled]="shippingForm.invalid || priceRefreshing()"
+                            (click)="continueFromAddress()">
+                        @if (priceRefreshing()) {
+                            <span class="btn-spinner"></span> Verificando precios…
+                        } @else {
+                            {{ 'CHECKOUT.CONTINUE_SHIPPING_OPTION' | translate }}
+                        }
                     </button>
+
                 </div>
             </div>
 
@@ -282,27 +339,40 @@
                             </div>
                         </div>
 
-                        <!-- Brick loading shimmer -->
-                        @if (brickLoading()) {
-                            <div class="brick-shimmer">
-                                <div class="shimmer-bar wide"></div>
-                                <div class="shimmer-bar medium"></div>
-                                <div class="shimmer-bar wide"></div>
-                                <div class="shimmer-bar narrow"></div>
-                            </div>
-                        }
+                        <!-- MercadoPago CardPayment Brick
+                             brick-wrapper: position:relative so shimmer overlays correctly.
+                             Container keeps natural height (visibility:hidden when loading)
+                             so the MP SDK can measure dimensions and call onReady. -->
+                        <div class="brick-wrapper">
 
-                        <!-- MercadoPago CardPayment Brick mounts here -->
-                        <div id="cardPaymentBrick_container"
-                             [class.brick-hidden]="brickLoading()">
+                            <!-- Shimmer overlay (absolute, z-index 2) shown while Brick initialises -->
+                            @if (brickLoading()) {
+                                <div class="brick-shimmer">
+                                    <div class="shimmer-bar wide"></div>
+                                    <div class="shimmer-bar medium"></div>
+                                    <div class="shimmer-bar wide"></div>
+                                    <div class="shimmer-bar narrow"></div>
+                                </div>
+                            }
+
+                            <!-- Brick mounts here — NEVER height:0, always naturally sized -->
+                            <div id="cardPaymentBrick_container"
+                                 [class.brick-hidden]="brickLoading()">
+                            </div>
+
                         </div>
 
-                        <!-- Payment error -->
+                        <!-- Payment error + retry -->
                         @if (paymentError()) {
                             <div class="payment-error-banner">
                                 ❌ {{ paymentError() }}
+                                <button class="btn-retry" style="margin-left:12px;"
+                                        (click)="paymentError.set(null); brickLoading.set(true); brickMounted.set(false); mountBrick()">
+                                    🔄 Reintentar
+                                </button>
                             </div>
                         }
+
 
                         <p class="secure-note">{{ 'CHECKOUT.SECURE_PAYMENT_NOTE' | translate }}</p>
                         <p class="terms-note">{{ 'CHECKOUT.TERMS_AGREEMENT' | translate }}</p>

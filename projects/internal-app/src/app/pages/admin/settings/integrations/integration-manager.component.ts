@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Functions, httpsCallable } from '@angular/fire/functions';
@@ -8,11 +8,12 @@ import { MeliService } from '../../../../core/services/meli.service';
 import { MeliSyncService } from '../../../../core/services/meli-sync.service';
 import { MeliOrderService } from '../../../../core/services/meli-order.service';
 import { SettingsService, ShippingSettings } from '../../../../core/services/settings.service';
+import { PaidMediaService } from '../../../../core/services/paid-media.service';
 
 @Component({
     selector: 'app-integration-manager',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink],
+    imports: [CommonModule, JsonPipe, FormsModule, RouterLink],
     templateUrl: './integration-manager.component.html',
     styleUrls: ['./integration-manager.component.css']
 })
@@ -24,6 +25,7 @@ export class IntegrationManagerComponent implements OnInit {
     private router = inject(Router);
     private settingsService = inject(SettingsService);
     private functions = inject(Functions);
+    private paidMediaSvc = inject(PaidMediaService);
 
     config = signal<IntegrationConfig | null>(null);
 
@@ -66,6 +68,21 @@ export class IntegrationManagerComponent implements OnInit {
     isOrderImporting = false;
     isSavingSkydropx = false;
     syncResult: string | null = null;
+
+    // ── Paid Media ────────────────────────────────────────────────────────────
+    metaAdAccountId  = '';
+    metaAccessToken  = '';
+    isSavingMeta     = false;
+
+    googleCustomerId     = '';
+    googleDeveloperToken = '';
+    googleClientId       = '';
+    googleClientSecret   = '';
+    googleRefreshToken   = '';
+    isSavingGoogle       = false;
+
+    isSyncingPaidMedia   = false;
+    paidMediaSyncResult: { ok: boolean; metaCampaigns: number; googleCampaigns: number; errors: string[] } | null = null;
 
     async ngOnInit() {
         this.settingsService.settings$.subscribe(settings => {
@@ -118,6 +135,16 @@ export class IntegrationManagerComponent implements OnInit {
         if (conf.skydropx) {
             this.skydropxApiKey = conf.skydropx.apiKey || '';
             this.skydropxApiSecret = conf.skydropx.apiSecret || '';
+        }
+        if (conf.meta) {
+            this.metaAdAccountId = conf.meta.adAccountId || '';
+            this.metaAccessToken = conf.meta.accessToken || '';
+        }
+        if (conf.google) {
+            this.googleCustomerId     = conf.google.customerId     || '';
+            this.googleDeveloperToken = conf.google.developerToken || '';
+            this.googleClientId       = conf.google.clientId       || '';
+            this.googleRefreshToken   = conf.google.refreshToken   || '';
         }
     }
 
@@ -323,6 +350,69 @@ export class IntegrationManagerComponent implements OnInit {
         } catch (e) {
             console.error('Failed to save Amazon keys', e);
             alert('Failed to save. Check console.');
+        }
+    }
+
+    // ── Paid Media: Meta Ads ─────────────────────────────────────────────────
+    async saveMetaAds() {
+        this.isSavingMeta = true;
+        try {
+            const current = this.config() || {};
+            await this.secrets.saveConfig({
+                ...current,
+                meta: {
+                    adAccountId:  this.metaAdAccountId,
+                    accessToken:  this.metaAccessToken,
+                    connected:    !!(this.metaAdAccountId && this.metaAccessToken),
+                },
+            });
+            await this.loadConfig();
+            alert('Meta Ads credentials saved.');
+        } catch (e) {
+            console.error('Failed to save Meta Ads', e);
+            alert('Failed to save. Check console.');
+        } finally {
+            this.isSavingMeta = false;
+        }
+    }
+
+    // ── Paid Media: Google Ads ───────────────────────────────────────────────
+    async saveGoogleAds() {
+        this.isSavingGoogle = true;
+        try {
+            const current = this.config() || {};
+            await this.secrets.saveConfig({
+                ...current,
+                google: {
+                    customerId:     this.googleCustomerId,
+                    developerToken: this.googleDeveloperToken,
+                    clientId:       this.googleClientId,
+                    clientSecret:   this.googleClientSecret,
+                    refreshToken:   this.googleRefreshToken,
+                    connected:      !!(this.googleCustomerId && this.googleRefreshToken),
+                },
+            });
+            await this.loadConfig();
+            alert('Google Ads credentials saved.');
+        } catch (e) {
+            console.error('Failed to save Google Ads', e);
+            alert('Failed to save. Check console.');
+        } finally {
+            this.isSavingGoogle = false;
+        }
+    }
+
+    // ── Manual paid media sync ────────────────────────────────────────────────
+    async syncPaidMedia() {
+        this.isSyncingPaidMedia  = true;
+        this.paidMediaSyncResult = null;
+        try {
+            const result = await this.paidMediaSvc.triggerSync();
+            this.paidMediaSyncResult = result;
+        } catch (e: any) {
+            this.paidMediaSyncResult = { ok: false, metaCampaigns: 0, googleCampaigns: 0, errors: [e?.message ?? 'Error'] };
+        } finally {
+            this.isSyncingPaidMedia = false;
         }
     }
 }

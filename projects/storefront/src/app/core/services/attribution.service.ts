@@ -290,6 +290,9 @@ export class AttributionService {
                 const v = params.get(k);
                 if (v) p[k] = v;
             }
+            // Referral program: capture ?ref=CUSTOMERID
+            const ref = params.get('ref');
+            if (ref) (p as any)['ref'] = ref;
         } catch { /* noop */ }
         return p;
     }

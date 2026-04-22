@@ -146,13 +146,52 @@
 .thumb-placeholder {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: .4rem;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--tc, #6366f1) 18%, #18181b), #101012);
-    color: color-mix(in srgb, var(--tc, #6366f1) 55%, white);
-    font-size: .62rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .08em; opacity: .8;
+    align-items: center; justify-content: center; gap: .75rem;
+    background: linear-gradient(160deg, #1a1a2e 0%, #0f0f1a 100%);
 }
-.thumb-placeholder svg { opacity: .6; }
+
+/* radial glow tinted by --tc (theme color) — purely decorative, gracefully degrades */
+.thumb-placeholder::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 40% 30%, rgba(99,102,241,.35) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+/* Letter avatar ring */
+.tp-letter {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: #4f46e5;
+    border: 2px solid rgba(165,180,251,.7);
+    box-shadow: 0 0 20px rgba(99,102,241,.55);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 900; line-height: 1;
+    color: #ffffff;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    position: relative; z-index: 1;
+}
+
+/* Theme name pill */
+.tp-theme {
+    padding: .2rem .65rem;
+    border-radius: 20px;
+    font-size: .58rem; font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase;
+    background: rgba(99,102,241,.4);
+    border: 1px solid rgba(165,180,251,.6);
+    color: #e0e7ff;
+    position: relative; z-index: 1;
+}
+
+/* Watermark star — bottom right corner */
+.thumb-placeholder svg {
+    opacity: .1;
+    position: absolute; bottom: 8px; right: 8px;
+    width: 28px; height: 28px;
+    color: #a5b4fb;
+}
 
 /* ── Slide strip ──────────────────────────────────────────────────────────── */
 .slide-strip {

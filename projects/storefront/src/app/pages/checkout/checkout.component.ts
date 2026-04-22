@@ -16,7 +16,8 @@ import { AccountService, Address } from '@lib/core';
 import { AttributionService } from '../../core/services/attribution.service';
 import { Coupon } from '../../core/models/coupon.model';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Firestore, collection, addDoc, serverTimestamp, doc, runTransaction, increment } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, serverTimestamp, doc, runTransaction, increment, getDoc, getDocs } from '@angular/fire/firestore';
+
 
 interface ShippingRate {
     rateId: string;
@@ -93,7 +94,30 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     awaitingChallenge = signal(false);
     challengeUrl      = signal<string | null>(null);
 
-    emailControl = this.fb.control('', [Validators.required, Validators.email]);
+    // ── Phase A — Step 1 inline sign-in ─────────────────────────────────────
+    showInlineLogin    = signal(false);
+    inlineLoginLoading = signal(false);
+    inlineLoginError   = signal<string | null>(null);
+    inlineLoginPwd     = signal('');
+    showInlinePwd      = signal(false);
+
+    // ── Phase A — Step 2 save address checkbox ───────────────────────────
+    saveAddress        = signal(false);
+
+    // Price freshness
+    priceChangedWarning = signal(false);
+    priceRefreshing     = signal(false);
+
+    // RFC 5321-aligned email pattern — rejects `a@b`, requires real TLD
+    private static readonly EMAIL_PATTERN = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+    // Mexico phone: accepts +52 prefix (optional) then 10 digits, spaces/dashes allowed
+    private static readonly MX_PHONE_PATTERN = /^(\+?52[\s\-]?)?(\d[\s\-]?){10}$/;
+
+    emailControl = this.fb.control('', [
+        Validators.required,
+        Validators.pattern(CheckoutComponent.EMAIL_PATTERN),
+    ]);
 
     shippingForm = this.fb.group({
         firstName: ['', Validators.required],
@@ -105,7 +129,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         city:      ['', Validators.required],
         state:     ['', Validators.required],
         zip:       ['', [Validators.required, Validators.pattern(/^\d{5}$/)]],
-        phone:     ['', Validators.required],
+        phone:     ['', [
+            Validators.required,
+            Validators.pattern(CheckoutComponent.MX_PHONE_PATTERN),
+        ]],
     });
 
     paymentForm = this.fb.group({
@@ -254,16 +281,110 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     async continueFromAddress() {
         if (this.shippingForm.invalid) { this.shippingForm.markAllAsTouched(); return; }
+        // Refresh prices from Firestore before moving forward — catches stale cart prices
+        await this.refreshCartPrices();
         this.goToStep(3);
         await this.loadShippingRates();
     }
 
-    // ── Auth ──────────────────────────────────────────────────────────────────
+    /**
+     * Re-reads product prices from Firestore for every cart item.
+     * Updates the cart if any price changed and shows a warning banner.
+     * Called at the address → shipping transition so the Brick always gets a fresh amount.
+     */
+    private async refreshCartPrices(): Promise<void> {
+        const items = this.cartService.cartItems();
+        if (!items.length) return;
+        this.priceRefreshing.set(true);
+        try {
+            const snaps = await Promise.all(
+                items.map(i => getDoc(doc(this.firestore, `products/${i.product.id}`)))
+            );
+            let changed = false;
+            const updated = items.map((item, idx) => {
+                const data = snaps[idx].data();
+                if (!data) return item;
+                const freshPrice: number = data['price'] ?? item.product.price;
+                if (freshPrice !== item.product.price) {
+                    changed = true;
+                    return { ...item, product: { ...item.product, price: freshPrice } };
+                }
+                return item;
+            });
+            if (changed) {
+                this.cartService.refreshPrices(updated);
+                this.priceChangedWarning.set(true);
+            }
+        } catch (e) {
+            console.warn('[Checkout] Price refresh failed — using cached prices:', e);
+        } finally {
+            this.priceRefreshing.set(false);
+        }
+    }
+
+
+    /** Called when user taps a colonia chip */
+    selectColonia(col: string) {
+        this.shippingForm.patchValue({ colonia: col });
+    }
+
+    /** Resets ZIP + dependent fields so user can enter a new ZIP */
+    resetZip() {
+        this.shippingForm.patchValue({ zip: '', state: '', city: '', colonia: '' });
+        this.colonias.set([]);
+    }
+
+    // ── Auth ────────────────────────────────────────────────────────────────────
 
     async loginWithGoogle() {
         await this.authService.loginWithGoogle();
         const user = this.authService.currentUser();
         if (user) { this.emailControl.setValue(user.email || ''); this.goToStep(2); }
+    }
+
+    /** Inline email+password sign-in — no redirect, no cart loss */
+    async inlineLogin() {
+        const email = this.emailControl.value ?? '';
+        const pwd   = this.inlineLoginPwd();
+        if (!email || !pwd) { this.inlineLoginError.set('Ingresa tu correo y contraseña.'); return; }
+        this.inlineLoginLoading.set(true);
+        this.inlineLoginError.set(null);
+        try {
+            await this.authService.loginWithEmail(email, pwd);
+            const user = this.authService.currentUser();
+            if (user) {
+                this.emailControl.setValue(user.email || '');
+                this.showInlineLogin.set(false);
+                this.inlineLoginPwd.set('');
+                await this.loadSavedAddresses(); // load saved addresses for authenticated user
+                this.goToStep(2);
+            }
+        } catch (e: any) {
+            this.inlineLoginError.set(e?.message ?? 'Correo o contraseña incorrectos.');
+        } finally {
+            this.inlineLoginLoading.set(false);
+        }
+    }
+
+    /** Saves the shipping form data as a new address for the current user */
+    private async saveAddressToAccount() {
+        const user = this.authService.currentUser();
+        if (!user || !this.saveAddress()) return;
+        try {
+            const v = this.shippingForm.value;
+            await this.accountService.addAddress({
+                street:    v.street    ?? '',
+                extNum:    v.extNum    ?? '',
+                intNum:    v.intNum    ?? undefined,
+                colonia:   v.colonia   ?? '',
+                city:      v.city      ?? '',
+                state:     v.state     ?? '',
+                zip:       v.zip       ?? '',
+                isDefault: false,
+            });
+        } catch (e) {
+            console.warn('[Checkout] saveAddressToAccount failed:', e);
+        }
     }
 
     // ── Coupon ────────────────────────────────────────────────────────────────
@@ -360,40 +481,57 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     // ── MercadoPago Brick ─────────────────────────────────────────────────────
 
-    private async mountBrick() {
-        const email = this.emailControl.value || '';
+    async mountBrick() {
+        const email  = this.emailControl.value || '';
         const amount = this.orderTotal;
 
-        try {
-            const publicKey = await this.mpService.loadPublicKey();
-            await this.mpService.init(publicKey);
+        // Guard: valid amount required
+        if (!amount || amount <= 0) {
+            this.brickLoading.set(false);
+            this.paymentError.set('El monto del pedido no es válido. Regresa al carrito.');
+            return;
+        }
 
-            const installmentsCfg = await this.mpService.loadInstallmentsConfig();
+        // Hard timeout — if onReady never fires within 20s, surface an error
+        const brickTimeout = setTimeout(() => {
+            if (this.brickLoading()) {
+                console.error('[Brick] Timeout — Brick did not mount in 20s');
+                this.brickLoading.set(false);
+                this.paymentError.set('El formulario de pago tardó demasiado en cargar. Haz clic en "Reintentar".');
+            }
+        }, 20000);
+
+        try {
+            // Single Firestore read for both publicKey + installments config
+            // (previously 2 sequential reads = ~1.5s extra latency before SDK even starts loading)
+            const { publicKey, installmentsCfg } = await this.mpService.loadConfig();
+            await this.mpService.init(publicKey);
 
             await this.mpService.mountCardPaymentBrick(
                 'cardPaymentBrick_container',
                 amount,
                 email,
                 installmentsCfg,
-                // onSubmit: Brick calls this with all tokenized data
                 async (formData) => this.onBrickSubmit(formData),
-                // onError
                 (err) => {
+                    clearTimeout(brickTimeout);
                     console.error('[Brick] Error:', err);
-                    this.paymentError.set('Error al cargar el formulario de pago. Recarga la página.');
+                    this.paymentError.set('Error al cargar el formulario de pago. Haz clic en "Reintentar".');
                     this.brickLoading.set(false);
                 },
-                // onReady
                 () => {
+                    clearTimeout(brickTimeout);
                     this.brickLoading.set(false);
                     this.brickMounted.set(true);
                 }
             );
         } catch (e: any) {
+            clearTimeout(brickTimeout);
             this.brickLoading.set(false);
             this.paymentError.set(e?.message ?? 'No se pudo inicializar el pago.');
         }
     }
+
 
     /** Called by the Brick's onSubmit — receives fully tokenized payment data */
     private async onBrickSubmit(formData: { token: string; payment_method_id: string; issuer_id: string | number; installments: number; payer: { email: string } }) {
@@ -493,6 +631,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 description:     `Orden ${orderNumber} (${orderId})`,
                 orderId,
                 orderNumber,
+                // Payer enrichment — improves MP fraud scoring (Payment Approval Quality)
+                payerFirstName: shipping.firstName || '',
+                payerLastName:  shipping.lastName  || '',
+                payerPhone:     shipping.phone      || '',
+                payerZip:       shipping.zip        || '',
+                payerStreet:    shipping.street     || '',
             });
 
             // 4. Handle 3DS challenge
@@ -521,7 +665,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
             // 6. Archive cart (preserves record) and navigate to confirmation
             this.cartService.clearCart();
-            await this.cartService.completeCart(orderId);
+            await Promise.all([
+                this.cartService.completeCart(orderId),
+                this.saveAddressToAccount(),  // Phase A: persists address if checkbox checked
+            ]);
             this.router.navigate(['/order-confirmation'], {
                 state: { orderId, orderNumber, email, shipping: this.selectedRate() }
             });

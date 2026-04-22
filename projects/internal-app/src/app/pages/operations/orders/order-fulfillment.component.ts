@@ -1,10 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { OrderService } from '../../../core/services/order.service';
-import { Order, OrderStatus, OrderItem } from '../../../core/models/order.model';
+import { Order, OrderStatus, OrderItem, OrderActor } from '../../../core/models/order.model';
 import { ToastService } from '../../../core/services/toast.service';
 import { AdminPageHeaderComponent } from '../../admin/shared/admin-page-header/admin-page-header.component';
 import { OrderAssignmentComponent } from '../../../shared/components/order-assignment/order-assignment.component';
@@ -15,6 +15,7 @@ import { HelpContextButtonComponent } from '../../../shared/components/help-cont
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { SkydropxService, ShippingRate, TrackingResult } from '../../../core/services/skydropx.service';
 import { MeliSyncService } from '../../../core/services/meli-sync.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
     selector: 'app-order-fulfillment',
@@ -32,11 +33,16 @@ export class OrderFulfillmentComponent implements OnInit {
     private pdfService = inject(PdfGenerationService);
     private skydropx = inject(SkydropxService);
     private meliSync = inject(MeliSyncService);
+    private authService = inject(AuthService);
 
     order = signal<Order | undefined>(undefined);
     isLoading = signal(true);
     isUpdating = signal(false);
     pickedItems = signal<Set<string>>(new Set());
+
+    /** Refund action states */
+    isApprovingRefund = signal(false);
+    isRejectingRefund = signal(false);
 
     statusForm: FormGroup;
 
@@ -64,6 +70,16 @@ export class OrderFulfillmentComponent implements OnInit {
     parcelHeight = 30;
     parcelWidth = 30;
     parcelLength = 20;
+
+    /** Resolved actor for the current staff member — passed to every updateStatus call */
+    private get currentActor(): OrderActor {
+        const user = this.authService.currentUser();
+        return {
+            uid:         user?.uid         ?? 'unknown',
+            displayName: user?.displayName ?? user?.email ?? 'Staff',
+            role:        'OPERATIONS',
+        };
+    }
 
     constructor() {
         this.statusForm = this.fb.group({
@@ -114,13 +130,18 @@ export class OrderFulfillmentComponent implements OnInit {
     updateAvailableStatuses(currentStatus: OrderStatus) {
         // Define allowed status transitions
         const transitions: Record<OrderStatus, OrderStatus[]> = {
-            'pending': ['processing', 'cancelled'],
-            'processing': ['shipped', 'cancelled'],
-            'shipped': ['delivered'],
-            'delivered': [],
-            'cancelled': [],
-            'refunded': [],
-            'returned': []
+            'pending':         ['processing', 'cancelled'],
+            'processing':      ['shipped', 'cancelled'],
+            'shipped':         ['delivered'],
+            'delivered':       [],
+            'cancelled':       [],
+            'refunded':        [],
+            'returned':        [],
+            // Web checkout statuses — managed by Cloud Functions, not manual fulfillment
+            'pending_payment': [],
+            'paid':            ['processing', 'cancelled'],
+            'payment_failed':  [],
+            'refund_pending':  [],
         };
 
         this.availableStatuses.set(transitions[currentStatus] || []);
@@ -170,7 +191,8 @@ export class OrderFulfillmentComponent implements OnInit {
                 order.id,
                 newStatus,
                 notes,
-                { carrier, trackingNumber }
+                { carrier, trackingNumber },
+                this.currentActor
             );
 
             this.toast.success('Order status updated successfully');
@@ -202,7 +224,9 @@ export class OrderFulfillmentComponent implements OnInit {
             await this.orderService.updateStatus(
                 order.id,
                 newStatus,
-                this.statusForm.value.notes || ''
+                this.statusForm.value.notes || '',
+                undefined,
+                this.currentActor
             );
 
             this.toast.success(`Order status updated to ${newStatus}`);
@@ -212,6 +236,53 @@ export class OrderFulfillmentComponent implements OnInit {
             this.toast.error('Error updating order status');
         } finally {
             this.isUpdating.set(false);
+        }
+    }
+
+    // ── Refund Approval Actions ───────────────────────────────────────────────
+
+    /** Staff approves the refund — calls the refundOrder Cloud Function */
+    async approveRefund() {
+        const order = this.order();
+        if (!order?.id || !order.paymentId) {
+            this.toast.error('No se puede procesar el reembolso: falta el ID de pago.');
+            return;
+        }
+        this.isApprovingRefund.set(true);
+        try {
+            const { getFunctions, httpsCallable } = await import('@angular/fire/functions');
+            const functions = getFunctions();
+            const refundOrder = httpsCallable(functions, 'refundOrder');
+            await refundOrder({ orderId: order.id, reason: 'Reembolso aprobado por staff' });
+            this.toast.success('✅ Reembolso procesado correctamente');
+            this.loadOrder(order.id);
+        } catch (err: any) {
+            console.error('Refund error:', err);
+            this.toast.error(err?.message ?? 'Error al procesar el reembolso');
+        } finally {
+            this.isApprovingRefund.set(false);
+        }
+    }
+
+    /** Staff rejects the refund — reverts order to paid */
+    async rejectRefund() {
+        const order = this.order();
+        if (!order?.id) return;
+        this.isRejectingRefund.set(true);
+        try {
+            await this.orderService.updateStatus(
+                order.id,
+                'paid',
+                'Reembolso rechazado por staff — orden restaurada a pagado',
+                undefined,
+                { ...this.currentActor, role: 'OPERATIONS' }
+            );
+            this.toast.success('Reembolso rechazado. La orden vuelve a estado Pagado.');
+            this.loadOrder(order.id);
+        } catch (err) {
+            this.toast.error('Error al rechazar el reembolso');
+        } finally {
+            this.isRejectingRefund.set(false);
         }
     }
 
@@ -421,13 +492,18 @@ export class OrderFulfillmentComponent implements OnInit {
     // Utilities
     getStatusBadgeClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
-            'pending': 'status-pending',
-            'processing': 'status-processing',
-            'shipped': 'status-shipped',
-            'delivered': 'status-delivered',
-            'cancelled': 'status-cancelled',
-            'refunded': 'status-refunded',
-            'returned': 'bg-red-900/30 text-red-400 border-red-800/50'
+            'pending':         'status-pending',
+            'processing':      'status-processing',
+            'shipped':         'status-shipped',
+            'delivered':       'status-delivered',
+            'cancelled':       'status-cancelled',
+            'refunded':        'status-refunded',
+            'returned':        'bg-red-900/30 text-red-400 border-red-800/50',
+            // Web checkout statuses
+            'pending_payment': 'status-pending',
+            'paid':            'status-delivered',
+            'payment_failed':  'status-cancelled',
+            'refund_pending':  'status-returned',
         };
         return classes[status] || '';
     }

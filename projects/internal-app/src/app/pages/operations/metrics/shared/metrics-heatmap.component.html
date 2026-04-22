@@ -1,0 +1,214 @@
+<div class="mhm-root">
+
+  <!-- ── View / Metric toggles ── -->
+  <div class="mhm-toggle-bar">
+    <button class="mhm-tab" [class.active]="view() === 'daily'"   (click)="setView('daily')"  >Días</button>
+    <button class="mhm-tab" [class.active]="view() === 'dow'"     (click)="setView('dow')"    >Día semana</button>
+    <button class="mhm-tab" [class.active]="view() === 'weekly'"  (click)="setView('weekly')" >Sem.</button>
+    <button class="mhm-tab" [class.active]="view() === 'monthly'" (click)="setView('monthly')">Mes</button>
+    <div class="mhm-metric-toggle">
+      <button class="mhm-m-btn" [class.active]="metric() === 'revenue'" (click)="metric.set('revenue')">Revenue</button>
+      <button class="mhm-m-btn" [class.active]="metric() === 'orders'"  (click)="metric.set('orders')" >Órdenes</button>
+    </div>
+  </div>
+
+  <!-- ── Colour scale legend ── -->
+  <div class="mhm-legend">
+    <span class="mhm-leg-label">Menos</span>
+    @for (a of legendSteps; track a) {
+      <div class="mhm-leg-cell" [style.background]="legendBg(a)"></div>
+    }
+    <span class="mhm-leg-label">Más</span>
+  </div>
+
+  <!-- ══════════ DAILY VIEW ══════════ -->
+  @if (view() === 'daily') {
+    <div class="mhm-scroll">
+      <table class="mhm-table">
+        <thead>
+          <tr>
+            <th class="mhm-ch-th"></th>
+            <th class="mhm-tot-th"></th>
+            @for (h of dayHeaders(); track h.key) {
+              <th class="mhm-day-th" [class.mhm-weekend]="h.isWeekend">
+                <span class="mhm-th-num">{{ h.label.slice(-2) }}</span>
+                <span class="mhm-th-dow">{{ h.dow }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.channelId) {
+            <tr class="mhm-row">
+              <td class="mhm-ch-td">
+                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                <span class="mhm-ch-name">{{ row.label }}</span>
+              </td>
+              <td class="mhm-tot-td">
+                <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                </span>
+              </td>
+              @for (cell of row.cells; track cell.key) {
+                <td class="mhm-cell-td" [class.mhm-weekend]="cell.isWeekend">
+                  <div class="mhm-cell" [style.background]="cell.bgColor" [title]="cell.tooltip">
+                    @if (cell.orders > 0) {
+                      <span class="mhm-cell-ord"
+                            [class.mhm-cell-ord--primary]="metric() === 'orders'"
+                            [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders }}</span>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ══════════ DAY-OF-WEEK VIEW ══════════ -->
+  @if (view() === 'dow') {
+    <div class="mhm-scroll">
+      <table class="mhm-table">
+        <thead>
+          <tr>
+            <th class="mhm-ch-th"></th>
+            <th class="mhm-tot-th"></th>
+            @for (d of dowLabels; track d; let i = $index) {
+              <th class="mhm-dow-th" [class.mhm-weekend]="i >= 5">{{ d }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of dowRows(); track row.channelId) {
+            <tr class="mhm-row">
+              <td class="mhm-ch-td">
+                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                <span class="mhm-ch-name">{{ row.label }}</span>
+              </td>
+              <td class="mhm-tot-td">
+                <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                </span>
+              </td>
+              @for (cell of row.cells; track cell.key) {
+                <td class="mhm-cell-td" [class.mhm-weekend]="cell.isWeekend">
+                  <div class="mhm-cell mhm-cell-wide" [style.background]="cell.bgColor" [title]="cell.tooltip">
+                    <span class="mhm-cell-avg" [style.color]="'rgb(' + row.rgb + ')'">
+                      @if (metric() === 'revenue' && cell.revenue > 0) {
+                        ${{ abbrev(cell.revenue) }}
+                      } @else if (cell.orders > 0) {
+                        {{ cell.orders | number:'1.1-1' }}
+                      }
+                    </span>
+                    @if (metric() === 'revenue' && cell.orders > 0) {
+                      <span class="mhm-cell-sub" [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders | number:'1.0-0' }}o</span>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="mhm-dow-hint">Promedio por día de la semana en el período seleccionado</div>
+  }
+
+  <!-- ══════════ WEEKLY VIEW ══════════ -->
+  @if (view() === 'weekly') {
+    <div class="mhm-scroll">
+      <table class="mhm-table">
+        <thead>
+          <tr>
+            <th class="mhm-ch-th"></th>
+            <th class="mhm-tot-th"></th>
+            @for (h of weekHeaders(); track h.key) {
+              <th class="mhm-week-th">
+                <span class="mhm-th-month">{{ h.monthLabel }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of weekRows(); track row.channelId) {
+            <tr class="mhm-row">
+              <td class="mhm-ch-td">
+                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                <span class="mhm-ch-name">{{ row.label }}</span>
+              </td>
+              <td class="mhm-tot-td">
+                <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                </span>
+              </td>
+              @for (cell of row.cells; track cell.key) {
+                <td class="mhm-cell-td">
+                  <div class="mhm-cell mhm-cell-wide" [style.background]="cell.bgColor" [title]="cell.tooltip">
+                    @if (cell.orders > 0) {
+                      <span class="mhm-cell-ord"
+                            [class.mhm-cell-ord--primary]="metric() === 'orders'"
+                            [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders }}</span>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- ══════════ MONTHLY VIEW ══════════ -->
+  @if (view() === 'monthly') {
+    <div class="mhm-scroll">
+      <table class="mhm-table">
+        <thead>
+          <tr>
+            <th class="mhm-ch-th"></th>
+            <th class="mhm-tot-th"></th>
+            @for (h of monthHeaders(); track h) {
+              <th class="mhm-month-th">{{ h }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of monthRows(); track row.channelId) {
+            <tr class="mhm-row">
+              <td class="mhm-ch-td">
+                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                <span class="mhm-ch-name">{{ row.label }}</span>
+              </td>
+              <td class="mhm-tot-td">
+                <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                </span>
+              </td>
+              @for (cell of row.cells; track cell.key) {
+                <td class="mhm-cell-td">
+                  <div class="mhm-cell mhm-cell-month" [style.background]="cell.bgColor" [title]="cell.tooltip">
+                    @if (cell.orders > 0) {
+                      <span class="mhm-month-val" [style.color]="'rgb(' + row.rgb + ')'">
+                        {{ metric() === 'revenue' ? '$' + abbrev(cell.revenue) : cell.orders }}
+                      </span>
+                      <span class="mhm-month-sub" [style.color]="'rgb(' + row.rgb + ')'">
+                        {{ metric() === 'revenue' ? (cell.orders + ' ords') : ('$' + abbrev(cell.avgTicket) + ' avg') }}
+                      </span>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (rows().length === 0) {
+    <div class="mhm-empty">No hay datos de ventas en este período</div>
+  }
+
+</div>

@@ -8,6 +8,7 @@ import {
 } from '@angular/fire/firestore';
 import { MarketingChartsComponent } from './marketing-charts/marketing-charts.component';
 import { normalizeReferrerDomain } from '../attribution/attribution-report.service';
+import { isRevenueOrder } from '../../../core/models/order.model';
 
 export type DashTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD';
 
@@ -30,10 +31,19 @@ export class MarketingDashboardComponent implements OnInit {
     topSource  = signal('—');
     abandoned  = signal(0);
 
-    // Channel revenue breakdown for the mini bar chart (feature #9)
+    // AI Visibility
+    aiSessions  = signal(0);
+    aiBreakdown = signal<{ source: string; count: number; color: string }[]>([]);
+    aiPct       = computed(() => {
+        const s = this.sessions();
+        const a = this.aiSessions();
+        return s > 0 ? Math.round((a / s) * 100) : 0;
+    });
+
+    // Channel revenue breakdown for the mini bar chart
     channelRevenue = signal<{ channel: string; revenue: number; color: string }[]>([]);
 
-    // KPI deltas vs previous period (null = no prior data available)
+    // KPI deltas vs previous period
     deltas = signal<{
         sessions: number | null;
         orders:   number | null;
@@ -117,6 +127,47 @@ export class MarketingDashboardComponent implements OnInit {
         const prevToTs   = Timestamp.fromDate(prevTo);
 
         try {
+            // Fire AI sessions query concurrently but non-blocking —
+            // a missing index on sessionEvents must never break the main KPIs.
+            const aiQueryPromise = getDocs(query(
+                collection(this.fs, 'sessionEvents'),
+                where('timestamp', '>=', fromTs),
+                where('timestamp', '<=', toTs),
+                where('event', '==', 'session_start'),
+                orderBy('timestamp', 'desc'),
+            )).then(snap => {
+                const aiSourceMap = new Map<string, number>();
+                let aiTotal = 0;
+                for (const d of snap.docs) {
+                    const data = d.data() as any;
+                    const src = data.attribution?.aiSource as string | undefined;
+                    if (src) {
+                        aiTotal++;
+                        aiSourceMap.set(src, (aiSourceMap.get(src) ?? 0) + 1);
+                    }
+                }
+                this.aiSessions.set(aiTotal);
+                const aiColors: Record<string, string> = {
+                    chatgpt:    '#10a37f',
+                    perplexity: '#1fb8cd',
+                    gemini:     '#4285f4',
+                    copilot:    '#0078d4',
+                    claude:     '#d97706',
+                    'meta-ai':  '#0082fb',
+                };
+                this.aiBreakdown.set(
+                    [...aiSourceMap.entries()]
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([source, count]) => ({
+                            source, count,
+                            color: aiColors[source] ?? '#8b5cf6',
+                        }))
+                );
+            }).catch(e => {
+                // Missing index or collection not yet created — degrade silently
+                console.debug('[AI Visibility] sessionEvents query failed (index may be pending):', e?.message ?? e);
+            });
+
             const [snapsSnap, ordersSnap, prevSnapsSnap, prevOrdersSnap] = await Promise.all([
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
@@ -144,7 +195,9 @@ export class MarketingDashboardComponent implements OnInit {
                 )),
             ]);
 
-            // ── Current period ────────────────────────────────────────────────
+            // AI query runs concurrently — we don't await it to keep main KPIs fast
+            aiQueryPromise.catch(() => {}); // already handled above, suppress unhandled
+
             const sessionSet = new Set<string>();
             let cartAdds = 0, abandonedCount = 0;
             const sourceMap = new Map<string, number>();
@@ -163,8 +216,13 @@ export class MarketingDashboardComponent implements OnInit {
             const orderChannelMap = new Map<string, number>();
             const channelRevMap   = new Map<string, number>();
             let totalRev = 0;
+            let revenueOrderCount = 0;
             for (const doc of ordersSnap.docs) {
                 const d = doc.data() as any;
+                // ── Apply the same revenue filter as operations/dashboard ─────
+                if (!isRevenueOrder(d.status)) continue;
+                // ─────────────────────────────────────────────────────────────
+                revenueOrderCount++;
                 const rev = d.total ?? d.totalAmount ?? 0;
                 totalRev += rev;
                 const ch = this.resolveChannel(d);
@@ -183,7 +241,7 @@ export class MarketingDashboardComponent implements OnInit {
 
             this.sessions.set(sessionSet.size);
             this.cartAdds.set(cartAdds);
-            this.orders.set(ordersSnap.size);
+            this.orders.set(revenueOrderCount);   // revenue orders only — matches operations/dashboard
             this.revenue.set(totalRev);
             this.topSource.set(topSrc);
             this.abandoned.set(abandonedCount);
@@ -207,8 +265,11 @@ export class MarketingDashboardComponent implements OnInit {
                 if (d.event === 'abandoned_detected') prevAbandoned++;
             }
             let prevRev = 0;
+            let prevRevenueOrderCount = 0;
             for (const doc of prevOrdersSnap.docs) {
                 const d = doc.data() as any;
+                if (!isRevenueOrder(d.status)) continue;  // same filter for fair comparison
+                prevRevenueOrderCount++;
                 prevRev += d.total ?? d.totalAmount ?? 0;
             }
 
@@ -216,10 +277,10 @@ export class MarketingDashboardComponent implements OnInit {
                 prev === 0 ? null : Math.round(((cur - prev) / prev) * 100);
 
             this.deltas.set({
-                sessions: pct(sessionSet.size,    prevSessionSet.size),
-                orders:   pct(ordersSnap.size,    prevOrdersSnap.size),
-                revenue:  pct(totalRev,            prevRev),
-                abandoned: pct(abandonedCount,    prevAbandoned),
+                sessions: pct(sessionSet.size,       prevSessionSet.size),
+                orders:   pct(revenueOrderCount,     prevRevenueOrderCount),
+                revenue:  pct(totalRev,              prevRev),
+                abandoned: pct(abandonedCount,       prevAbandoned),
             });
         } catch (e) {
             console.error('[MarketingDashboard] KPI load error:', e);

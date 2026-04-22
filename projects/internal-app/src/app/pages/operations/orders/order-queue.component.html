@@ -88,6 +88,24 @@
             </button>
             }
 
+            <!-- Ghost Orders Toggle -->
+            <button
+                class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all"
+                [class.bg-zinc-700]="!showGhostOrders()"
+                [class.text-zinc-500]="!showGhostOrders()"
+                [class.border-zinc-700]="!showGhostOrders()"
+                [class.hover:text-zinc-300]="!showGhostOrders()"
+                [class.bg-amber-900]="showGhostOrders()"
+                [class.bg-opacity-20]="showGhostOrders()"
+                [class.text-amber-400]="showGhostOrders()"
+                [class.border-amber-600]="showGhostOrders()"
+                [class.border-opacity-40]="showGhostOrders()"
+                (click)="showGhostOrders.set(!showGhostOrders()); applyFilters()"
+                title="Mostrar órdenes fantasma (checkout abandonado / pago fallido)">
+                <app-icon name="ghost" [size]="14"></app-icon>
+                {{ showGhostOrders() ? 'Ocultar' : 'Mostrar' }} fantasmas
+            </button>
+
             <!-- Export Button -->
             <button class="btn-glass" (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
                 <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.EXPORT_CSV' | translate }}

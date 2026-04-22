@@ -1,10 +1,15 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
+import {
+    Firestore, collection, query, where, orderBy,
+    getDocs, addDoc, serverTimestamp
+} from '@angular/fire/firestore';
+import { Auth } from '@angular/fire/auth';
 
 import { ProductService, LanguageService } from '@lib/core';
 import { CartService } from '../../core/services/cart.service';
@@ -38,10 +43,10 @@ export class ProductDetailComponent implements OnInit {
     private metaService       = inject(MetaService);
     private cartService       = inject(CartService);
     private trackingService   = inject(TrackingService);
+    private firestore         = inject(Firestore);
+    private auth              = inject(Auth);
     readonly wishlistService   = inject(WishlistService);
-    /** Active language signal — use as lang() in template */
-    protected readonly lang  = inject(LanguageService).currentLang;
-    /** Typed getter for strict-mode template indexing — 'es' | 'en' */
+    protected readonly lang   = inject(LanguageService).currentLang;
     protected get activeLang(): 'es' | 'en' {
         return (this.lang() === 'en') ? 'en' : 'es';
     }
@@ -50,10 +55,32 @@ export class ProductDetailComponent implements OnInit {
     relatedProducts$!: Observable<Product[]>;
     isLoading = true;
     activeTab = 'overview';
-    quantity = 1;
+    quantity  = 1;
+
+    // ── Review System ──────────────────────────────────────────────────────────
+    reviews         = signal<any[]>([]);
+    reviewsLoading  = signal(false);
+    avgRating       = computed(() => {
+        const r = this.reviews();
+        if (!r.length) return 0;
+        return r.reduce((s, rv) => s + rv.rating, 0) / r.length;
+    });
+    reviewDraft = { rating: 5, comment: '' };
+    reviewSubmitting  = false;
+    reviewSuccess     = false;
+    reviewError       = '';
+    currentProductId  = '';
+    private reviewsLoaded = false;
+
 
     ngOnInit() {
         this.loadProduct();
+        // Auto-open reviews tab when arrived via ?review=1 deep-link
+        this.route.queryParamMap.subscribe(params => {
+            if (params.get('review') === '1') {
+                this.setActiveTab('reviews');
+            }
+        });
     }
 
     loadProduct() {
@@ -61,7 +88,7 @@ export class ProductDetailComponent implements OnInit {
             switchMap(params => {
                 const slug = params.get('slug');
                 if (!slug) {
-                    this.router.navigate(['/catalog']);
+                    this.router.navigate(['/catalogo']);
                     return of(null);
                 }
                 return this.productService.getProductBySlug(slug).pipe(
@@ -99,9 +126,6 @@ export class ProductDetailComponent implements OnInit {
         );
     }
 
-    setActiveTab(tab: string) {
-        this.activeTab = tab;
-    }
 
     incrementQuantity() {
         this.quantity++;
@@ -144,17 +168,32 @@ export class ProductDetailComponent implements OnInit {
         return this.relatedProducts$ ? [] : [];
     }
 
-    /**
-     * Update SEO meta tags and structured data for product
-     */
     private updateSEO(product: Product) {
         const currentLang = this.lang() as 'es' | 'en';
+        this.currentProductId = product.id || '';
         const meta = this.metaService.generateProductMeta(product, currentLang);
         this.metaService.updateTags(meta);
         const structuredData = this.metaService.generateProductStructuredData(product, currentLang);
+        // Inject real aggregateRating if reviews exist
+        const rate = this.avgRating();
+        if (rate > 0 && this.reviews().length > 0) {
+            structuredData.aggregateRating = {
+                '@type': 'AggregateRating',
+                ratingValue: rate.toFixed(1),
+                reviewCount: this.reviews().length,
+            };
+        }
         this.metaService.addStructuredData(structuredData);
-
-        // Fire view_item across all enabled platforms (GA4, Meta, TikTok)
+        // BreadcrumbList for this PDP
+        this.metaService.addStructuredData(
+            this.metaService.generateBreadcrumbSchema([
+                { name: 'Inicio',   url: 'https://importadoraeuro.com/' },
+                { name: 'Catálogo', url: 'https://importadoraeuro.com/catalogo' },
+                { name: product.brand  || '', url: `https://importadoraeuro.com/catalogo?brand=${product.brand}` },
+                { name: (product.name as any)?.[currentLang] || (product.name as any)?.es || '' },
+            ]),
+            'schema-breadcrumb'
+        );
         this.trackingService.trackViewItem('MXN', product.price, [
             {
                 item_id:    product.sku || product.id || '',
@@ -165,4 +204,69 @@ export class ProductDetailComponent implements OnInit {
             }
         ]);
     }
+
+    // ── Review System ──────────────────────────────────────────────────────────
+
+    setActiveTab(tab: string) {
+        this.activeTab = tab;
+        if (tab === 'reviews' && !this.reviewsLoaded) {
+            this.loadReviews();
+        }
+    }
+
+    private async loadReviews() {
+        if (!this.currentProductId || this.reviewsLoaded) return;
+        this.reviewsLoading.set(true);
+        try {
+            const snap = await getDocs(query(
+                collection(this.firestore, `product_reviews/${this.currentProductId}/reviews`),
+                where('status', '==', 'approved'),
+                orderBy('createdAt', 'desc'),
+            ));
+            this.reviews.set(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            this.reviewsLoaded = true;
+        } catch (e) {
+            console.error('[Reviews] Load error:', e);
+        } finally {
+            this.reviewsLoading.set(false);
+        }
+    }
+
+    async submitReview() {
+        const user = this.auth.currentUser;
+        if (!user || !this.currentProductId) {
+            this.reviewError = 'Debes iniciar sesión para dejar una reseña.';
+            return;
+        }
+        if (!this.reviewDraft.comment.trim()) {
+            this.reviewError = 'Escribe un comentario antes de enviar.';
+            return;
+        }
+        this.reviewSubmitting = true;
+        this.reviewError = '';
+        try {
+            await addDoc(
+                collection(this.firestore, `product_reviews/${this.currentProductId}/reviews`),
+                {
+                    userId:    user.uid,
+                    userName:  user.displayName || user.email || 'Usuario',
+                    rating:    this.reviewDraft.rating,
+                    comment:   this.reviewDraft.comment.trim(),
+                    status:    'pending', // Staff must approve
+                    createdAt: serverTimestamp(),
+                }
+            );
+            this.reviewSuccess = true;
+            this.reviewDraft = { rating: 5, comment: '' };
+        } catch (e: any) {
+            this.reviewError = 'Error al enviar la reseña. Inténtalo de nuevo.';
+        } finally {
+            this.reviewSubmitting = false;
+        }
+    }
+
+    starArray(n: number): number[] {
+        return Array.from({ length: 5 }, (_, i) => i + 1);
+    }
+
 }

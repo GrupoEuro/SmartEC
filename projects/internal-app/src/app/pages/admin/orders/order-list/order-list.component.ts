@@ -197,13 +197,18 @@ export class OrderListComponent implements OnInit {
 
     getStatusClass(status: OrderStatus): string {
         const classes: Record<OrderStatus, string> = {
-            'pending': 'warning',
-            'processing': 'warning',
-            'shipped': 'info',
-            'delivered': 'success',
-            'cancelled': 'danger',
-            'refunded': 'default', // Or specific class
-            'returned': 'danger'
+            'pending':         'warning',
+            'processing':      'warning',
+            'shipped':         'info',
+            'delivered':       'success',
+            'cancelled':       'danger',
+            'refunded':        'default',
+            'returned':        'danger',
+            // Web checkout statuses
+            'pending_payment': 'warning',
+            'paid':            'success',
+            'payment_failed':  'danger',
+            'refund_pending':  'warning',
         };
         return classes[status] || 'default';
     }

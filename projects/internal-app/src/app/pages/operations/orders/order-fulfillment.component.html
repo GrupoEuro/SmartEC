@@ -399,6 +399,16 @@
                             <span class="text-xs text-zinc-500 font-medium">{{ formatDate(entry.timestamp)
                                 }}</span>
                         </div>
+                        <!-- Audit trail: who made this change -->
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <app-icon name="user" [size]="12" class="text-zinc-600"></app-icon>
+                            <span class="text-xs text-zinc-500">
+                                {{ entry.updatedByActor?.displayName || entry.updatedBy || 'Sistema' }}
+                                @if (entry.updatedByActor?.role && entry.updatedByActor?.role !== 'SYSTEM') {
+                                <span class="ml-1 text-zinc-600">&bull; {{ entry.updatedByActor?.role }}</span>
+                                }
+                            </span>
+                        </div>
                         @if (entry.note) {
                         <p class="text-sm text-zinc-400 leading-relaxed my-1">{{ entry.note }}</p>
                         }
@@ -502,6 +512,71 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── Refund Approval Panel (refund_pending orders only) ──────────── -->
+        @if (order()!.status === 'refund_pending') {
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-amber-500/40 action-card no-print">
+            <div class="flex items-center gap-2 mb-4">
+                <app-icon name="alert-triangle" [size]="20" class="text-amber-400"></app-icon>
+                <h3 class="text-lg font-semibold text-amber-300">Reembolso Pendiente de Revisión</h3>
+            </div>
+
+            <p class="text-sm text-zinc-400 mb-5 leading-relaxed">
+                El cliente canceló esta orden después de haber pagado. Revisa si el reembolso procede
+                antes de autorizar.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm mb-6">
+                <div class="bg-zinc-700/30 rounded-lg p-3">
+                    <span class="text-zinc-500 text-xs uppercase font-bold block mb-1">Total</span>
+                    <span class="font-bold text-white text-lg">{{ formatCurrency(order()!.total) }}</span>
+                </div>
+                <div class="bg-zinc-700/30 rounded-lg p-3">
+                    <span class="text-zinc-500 text-xs uppercase font-bold block mb-1">ID de Pago</span>
+                    <span class="font-mono text-xs text-zinc-200">{{ order()!.paymentId || 'N/A' }}</span>
+                </div>
+                <div class="bg-zinc-700/30 rounded-lg p-3">
+                    <span class="text-zinc-500 text-xs uppercase font-bold block mb-1">Canal</span>
+                    <span class="text-zinc-200">{{ order()!.sourceChannel || 'Web' }}</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3 flex-wrap">
+                <button type="button"
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/30"
+                    style="background: linear-gradient(135deg,#10b981,#059669)"
+                    (click)="approveRefund()"
+                    [disabled]="isApprovingRefund() || isRejectingRefund()">
+                    @if (isApprovingRefund()) {
+                    <div class="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div>
+                    Procesando...
+                    } @else {
+                    <app-icon name="check-circle" [size]="18"></app-icon>
+                    Aprobar Reembolso
+                    }
+                </button>
+
+                <button type="button"
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-red-300 border border-red-700/50 bg-red-900/20 hover:bg-red-900/40 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    (click)="rejectRefund()"
+                    [disabled]="isApprovingRefund() || isRejectingRefund()">
+                    @if (isRejectingRefund()) {
+                    <div class="animate-spin h-4 w-4 border-2 border-red-400/30 border-t-red-400 rounded-full"></div>
+                    Procesando...
+                    } @else {
+                    <app-icon name="x-circle" [size]="18"></app-icon>
+                    Rechazar — Mantener Pago
+                    }
+                </button>
+            </div>
+
+            <p class="text-xs text-zinc-600 mt-3">
+                Al aprobar, se ejecutará el reembolso en MercadoPago y la orden pasará a
+                <span class="font-semibold text-zinc-400">Reembolsado</span>.
+                Al rechazar, la orden vuelve a estado <span class="font-semibold text-zinc-400">Pagado</span>.
+            </p>
+        </div>
+        }
 
         <!-- Enhanced Status Update Card (Moved from right column) -->
         <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 action-card no-print">

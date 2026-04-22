@@ -1,0 +1,130 @@
+<section class="cr-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <div class="cr-header">
+    <div class="cr-header-left">
+      <a routerLink="/operations/metrics" class="cr-back-btn">
+        ‹ Métricas de Canales
+      </a>
+      <div class="cr-title-wrap">
+        <span class="cr-emoji">{{ config().emoji }}</span>
+        <div>
+          <h1 class="cr-title">{{ config().label }}</h1>
+          <p class="cr-desc">{{ config().description }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Range Selector -->
+    <div class="cr-range-selector">
+      @for (r of dateRanges; track r.type) {
+        <button
+          class="range-btn"
+          [class.active]="selectedRange().type === r.type"
+          (click)="selectRange(r)">
+          {{ r.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- ── Loading ────────────────────────────────────────────────────────────── -->
+  @if (isLoading()) {
+    <div class="cr-loading">
+      <div class="cr-spinner"></div>
+      <span>Cargando datos de {{ config().label }}…</span>
+    </div>
+  }
+
+  @if (!isLoading()) {
+
+    <!-- ── KPI Cards ──────────────────────────────────────────────────────── -->
+    <div class="cr-kpi-grid">
+
+      <div class="cr-kpi">
+        <span class="cr-kpi-label">Ingresos</span>
+        <span class="cr-kpi-value">{{ kpis().revenue.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        <span class="cr-kpi-delta"
+          [class.pos]="isDeltaPos(kpis().revenue.delta)"
+          [class.neg]="isDeltaNeg(kpis().revenue.delta)">
+          {{ formatDelta(kpis().revenue.delta) }} vs período anterior
+        </span>
+      </div>
+
+      <div class="cr-kpi">
+        <span class="cr-kpi-label">Órdenes</span>
+        <span class="cr-kpi-value">{{ kpis().orders.value | number }}</span>
+        <span class="cr-kpi-delta"
+          [class.pos]="isDeltaPos(kpis().orders.delta)"
+          [class.neg]="isDeltaNeg(kpis().orders.delta)">
+          {{ formatDelta(kpis().orders.delta) }} vs período anterior
+        </span>
+      </div>
+
+      <div class="cr-kpi">
+        <span class="cr-kpi-label">Ticket Promedio</span>
+        <span class="cr-kpi-value">{{ kpis().avgTicket.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        <span class="cr-kpi-delta"
+          [class.pos]="isDeltaPos(kpis().avgTicket.delta)"
+          [class.neg]="isDeltaNeg(kpis().avgTicket.delta)">
+          {{ formatDelta(kpis().avgTicket.delta) }} vs período anterior
+        </span>
+      </div>
+
+      <div class="cr-kpi">
+        <span class="cr-kpi-label">Unidades</span>
+        <span class="cr-kpi-value">{{ kpis().units.value | number }}</span>
+        <span class="cr-kpi-delta"
+          [class.pos]="isDeltaPos(kpis().units.delta)"
+          [class.neg]="isDeltaNeg(kpis().units.delta)">
+          {{ formatDelta(kpis().units.delta) }} vs período anterior
+        </span>
+      </div>
+
+      <!-- Channel Share -->
+      <div class="cr-kpi cr-kpi-share">
+        <span class="cr-kpi-label">Share de Revenue</span>
+        <span class="cr-kpi-value">{{ kpis().channelShare | percent:'1.1-1' }}</span>
+        <div class="cr-share-bar">
+          <div class="cr-share-fill"
+               [style.width.%]="kpis().channelShare * 100"
+               [style.background]="config().color">
+          </div>
+        </div>
+        <span class="cr-kpi-sub">del total de todos los canales</span>
+      </div>
+
+    </div>
+
+
+    <!-- ── Heatmap ─────────────────────────────────────────────────────────── -->
+    <div class="cr-section">
+      <div class="cr-section-header">
+        <h2 class="cr-section-title">🗓 Mapa de Calor — {{ config().label }}</h2>
+        <p class="cr-section-sub">
+          Mejor día: <strong>{{ bestDay().label }}</strong> —
+          promedio {{ bestDay().avg | currency:'MXN':'symbol-narrow':'1.0-0' }}
+        </p>
+      </div>
+      <app-metrics-heatmap
+        [docs]="dailyDocs()"
+        [channelId]="channelId()"
+        [channelColor]="config().color">
+      </app-metrics-heatmap>
+    </div>
+
+    <!-- ── Order Queue CTA ────────────────────────────────────────────────── -->
+    <div class="cr-section cr-cta-section">
+      <div class="cr-cta">
+        <span>¿Quieres ver las órdenes individuales de este canal?</span>
+        <a [routerLink]="['/operations/orders']"
+           [queryParams]="{ channel: channelId() }"
+           class="cr-cta-btn">
+          Ver Órdenes →
+        </a>
+      </div>
+    </div>
+
+  }
+
+</section>

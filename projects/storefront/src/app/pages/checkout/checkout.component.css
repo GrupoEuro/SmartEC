@@ -623,6 +623,67 @@
     margin-bottom: 16px;
     font-size: 0.875rem;
     color: #fca5a5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Price-changed warning banner */
+.price-changed-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(234, 179, 8, 0.08);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 10px;
+    padding: 11px 16px;
+    margin-bottom: 12px;
+    font-size: 0.83rem;
+    color: #fde68a;
+    animation: fadeSlideDown 0.3s ease;
+}
+.banner-dismiss {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #fde68a;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    padding: 0 4px;
+    transition: opacity 0.15s;
+}
+.banner-dismiss:hover { opacity: 1; }
+
+/* Inline button spinner */
+.btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+/* Retry button in error banner */
+.btn-retry {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.35);
+    border-radius: 6px;
+    color: #fca5a5;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 4px 12px;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.btn-retry:hover {
+    background: rgba(239,68,68,0.25);
+    color: #fff;
 }
 
 /* ========================================
@@ -928,25 +989,40 @@
 
 /* ─── MercadoPago Bricks ─────────────────────────────────────────────────── */
 
+/*
+ * KEY FIX: The MP Brick SDK measures container dimensions before calling onReady.
+ * height:0 prevented it from ever rendering. We now keep the container at
+ * natural height and overlay the shimmer absolutely on top.
+ */
+.brick-wrapper {
+    position: relative;
+    min-height: 240px;  /* reserves space so page doesn't jump on mount */
+}
+
 #cardPaymentBrick_container {
     border-radius: 12px;
     overflow: hidden;
-    min-height: 200px;
-    transition: opacity 0.3s ease;
+    min-height: 240px;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
 }
+
+/* Hidden = invisible but still occupies space (SDK can measure it) */
 #cardPaymentBrick_container.brick-hidden {
+    visibility: hidden;
     opacity: 0;
-    height: 0;
-    min-height: 0;
-    overflow: hidden;
     pointer-events: none;
 }
 
+/* Shimmer overlays the container absolutely so there's no layout shift */
 .brick-shimmer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 20px 0;
+    pointer-events: none;
 }
 .shimmer-bar {
     height: 44px;
@@ -1029,3 +1105,182 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* =============================================
+   STEP 2 — ZIP-FIRST PROGRESSIVE DISCLOSURE
+   ============================================= */
+
+/* ① ZIP Hero */
+.zip-hero-section {
+    padding: 4px 0 24px;
+}
+
+.zip-hero-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: -0.01em;
+}
+
+.zip-hero-group {
+    max-width: 180px;
+    position: relative;
+}
+
+.zip-hero-input {
+    height: 64px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-align: center;
+    padding: 16px 16px 4px;
+    border-color: var(--primary-cyan);
+    box-shadow: 0 0 0 1px rgba(0,172,216,0.2), 0 4px 16px rgba(0,172,216,0.08);
+}
+
+.zip-hero-input:focus {
+    box-shadow: 0 0 0 2px rgba(0,172,216,0.4), 0 6px 24px rgba(0,172,216,0.15);
+}
+
+.zip-hero-group .floating-label {
+    text-align: center;
+    left: 0;
+    right: 0;
+    width: 100%;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+}
+
+/* ② Location Confirmed Bar */
+.location-confirmed-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 172, 216, 0.07);
+    border: 1px solid rgba(0, 172, 216, 0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.loc-pin { font-size: 1rem; flex-shrink: 0; }
+
+.loc-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--primary-cyan);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.loc-change-btn {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: var(--zinc-400);
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 4px 12px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.loc-change-btn:hover {
+    border-color: var(--primary-cyan);
+    color: var(--primary-cyan);
+}
+
+/* ③ Colonia Chip Picker */
+.colonia-section {
+    margin-bottom: 24px;
+    animation: fadeSlideDown 0.3s ease;
+}
+
+.colonia-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--zinc-400);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 12px;
+}
+
+.colonia-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.colonia-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    color: var(--zinc-400);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.colonia-chip:hover {
+    border-color: rgba(0, 172, 216, 0.5);
+    color: var(--text-primary);
+    background: rgba(0, 172, 216, 0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 172, 216, 0.1);
+}
+
+.colonia-chip.selected {
+    border-color: var(--primary-cyan);
+    background: rgba(0, 172, 216, 0.14);
+    color: var(--primary-cyan);
+    font-weight: 700;
+    box-shadow: 0 0 14px rgba(0, 172, 216, 0.2);
+}
+
+.chip-icon {
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* ④ Address Details Section */
+.address-details-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 22px;
+    margin-top: 4px;
+    animation: fadeSlideDown 0.3s ease;
+}
+
+/* Entrance animation for progressive sections */
+@keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Step content padding (used by saved-addresses + form container) */
+.step-content form,
+.step-content > .btn-primary {
+    padding: 0 24px;
+}
+.step-content > .btn-primary {
+    margin: 8px 24px 24px;
+    width: calc(100% - 48px);
+}
+.zip-hero-section,
+.location-confirmed-bar,
+.colonia-section,
+.address-details-section {
+    padding-left: 0;
+    padding-right: 0;
+}
+

@@ -119,6 +119,20 @@ export const operationsRoutes: Routes = [
                 path: 'pricing/grid',
                 loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
             },
+            // ─── Analytics / Metrics Hub ────────────────────────────────────────
+            {
+                path: 'metrics',
+                loadComponent: () => import('./metrics/metrics-hub.component').then(m => m.MetricsHubComponent)
+            },
+            {
+                path: 'metrics/meli-full',
+                loadComponent: () => import('./metrics/meli-full/meli-full-report.component').then(m => m.MeliFullReportComponent)
+            },
+            {
+                path: 'metrics/channel/:channel',
+                loadComponent: () => import('./metrics/channel-report/channel-report.component').then(m => m.ChannelReportComponent),
+                title: 'Reporte de Canal'
+            },
             // Channels & Integrations
             {
                 path: 'channels/mercadolibre',

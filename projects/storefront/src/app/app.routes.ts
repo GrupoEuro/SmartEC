@@ -17,7 +17,7 @@ export const routes: Routes = [
         canActivate: [() => {
             const cartService = inject(CartService);
             const router = inject(Router);
-            return cartService.cartCount() > 0 ? true : router.createUrlTree(['/catalog']);
+            return cartService.cartCount() > 0 ? true : router.createUrlTree(['/catalogo']);
         }]
     },
     {
@@ -25,12 +25,9 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/order-confirmation/order-confirmation.component').then(m => m.OrderConfirmationComponent),
         title: 'Order Confirmation',
         canActivate: [() => {
-            // Guard: only allow navigation from the checkout flow (requires orderId in router state).
-            // Direct access (bookmarks, shared links) will be redirected. The component also handles
-            // this gracefully via isDirectNav, but redirecting at the route level is more correct.
             const router = inject(Router);
             const nav = router.getCurrentNavigation();
-            return nav?.extras?.state?.['orderId'] ? true : router.createUrlTree(['/catalog']);
+            return nav?.extras?.state?.['orderId'] ? true : router.createUrlTree(['/catalogo']);
         }]
     },
     {
@@ -49,13 +46,20 @@ export const routes: Routes = [
         path: 'biblioteca',
         loadComponent: () => import('./pages/pdf-library/pdf-library.component').then(m => m.PdfLibraryComponent)
     },
-    {
-        path: 'catalog',
-        loadComponent: () => import('./pages/catalog-v2/catalog-v2.component').then(m => m.CatalogV2Component)
-    },
+    // ── URL aliases → /catalogo (canonical) ─────────────────────────────────
+    // Firebase hosting has CDN-level 301 redirects (primary). These route-level
+    // redirects are a second-layer fallback (local dev, SPA post-hydration).
+    { path: 'catalog',    redirectTo: '/catalogo', pathMatch: 'full' },
+    { path: 'shop',       redirectTo: '/catalogo', pathMatch: 'full' },
+    { path: 'store',      redirectTo: '/catalogo', pathMatch: 'full' },
+    { path: 'tienda',     redirectTo: '/catalogo', pathMatch: 'full' },
+    { path: 'products',   redirectTo: '/catalogo', pathMatch: 'full' },
+    { path: 'productos',  redirectTo: '/catalogo', pathMatch: 'full' },
+    // ── Primary catalog route ─────────────────────────────────────────────────
     {
         path: 'catalogo',
-        loadComponent: () => import('./pages/catalog-v2/catalog-v2.component').then(m => m.CatalogV2Component)
+        loadComponent: () => import('./pages/catalog-v2/catalog-v2.component').then(m => m.CatalogV2Component),
+        title: 'Catálogo de Llantas para Moto | Importadora Euro'
     },
     {
         path: 'product/:slug',

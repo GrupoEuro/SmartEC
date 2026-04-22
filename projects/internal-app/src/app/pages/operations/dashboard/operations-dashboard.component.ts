@@ -690,11 +690,17 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 (!o.sourceChannel && ch.channel === 'storefront')
             );
 
-            const revenue = chOrders
-                .filter(o => !['cancelled', 'refunded', 'returned'].includes(o.status))
+            // GHOST_STATUSES: not real committed orders — excluded from both count AND revenue
+            const GHOST_STATUSES = ['payment_failed', 'pending_payment'];
+            const countableChOrders = chOrders.filter(o => !GHOST_STATUSES.includes(o.status as string));
+
+            // EXCLUDED_FROM_REVENUE: real orders but money not confirmed/retained yet
+            const EXCLUDED_FROM_REVENUE = ['cancelled', 'refunded', 'returned', 'refund_pending'];
+            const revenue = countableChOrders
+                .filter(o => !EXCLUDED_FROM_REVENUE.includes(o.status as string))
                 .reduce((s, o) => s + (o.total ?? 0), 0);
 
-            const pending = chOrders.filter(o => o.status === 'pending').length;
+            const pending = countableChOrders.filter(o => o.status === 'pending').length;
 
             // MeLi-specific sub-segment counts
             // MeLi 2×2 orthogonal segments: fulfillment mode × listing tier
@@ -714,7 +720,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
             return {
                 ...ch,
-                orders:  chOrders.length,
+                orders:  countableChOrders.length,  // only real committed orders
                 revenue,
                 pending,
                 meliFullClassic,
@@ -723,7 +729,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 meliMerchantPremium,
             };
 
-        }).filter(ch => ch.orders > 0); // hide channels with zero activity
+        }).filter(ch => ch.orders > 0); // hide channels with zero real activity
 
         this.channelBreakdown.set(breakdown);
     }
@@ -773,7 +779,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const stateHierarchies: Record<string, StateGeographicDetail> = {};
 
         orders.forEach(o => {
-            if (o.status === 'cancelled' || o.status === 'returned' || o.status === 'refunded') return;
+            // Skip ghost orders: payment_failed (card rejected) and pending_payment (checkout abandoned)
+            if (['cancelled', 'returned', 'refunded', 'payment_failed', 'pending_payment'].includes(o.status as string)) return;
             
             const state = o.shippingAddress?.state;
             if (!state) return;
@@ -883,16 +890,26 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         let sales = 0;
         let piecesSold = 0;
-        let totalOrders = orders.length;
         let pendingOrders = 0;
         let processingOrders = 0;
 
-        orders.forEach(o => {
+        // GHOST STATUSES — these are NOT real committed orders:
+        // - payment_failed:   MP rejected the card. No money moved. Phantom.
+        // - pending_payment:  Customer opened checkout but never submitted payment.
+        //                     Nothing committed — treat as abandoned cart, not an order.
+        const GHOST_STATUSES = ['payment_failed', 'pending_payment'];
+        const countableOrders = orders.filter(o => !GHOST_STATUSES.includes(o.status as string));
+        let totalOrders = countableOrders.length;
+
+        countableOrders.forEach(o => {
             if (o.status === 'pending') pendingOrders++;
             if (o.status === 'processing') processingOrders++;
 
-            // Ignore cancelled and refunded orders for the sales calculation
-            if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned') {
+            // Exclude cancelled, refunded, returned, and pending_payment from revenue.
+            // refund_pending = customer requested cancel — money not yet returned, but
+            // we exclude it to avoid double-counting when refund later completes.
+            const EXCLUDED_FROM_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending'];
+            if (!EXCLUDED_FROM_REVENUE.includes(o.status as string)) {
                 sales += o.total || 0;
                 if (o.items && Array.isArray(o.items)) {
                     o.items.forEach(item => {
@@ -926,17 +943,24 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         // this.calculateOverdueOrders(orders);
     }
 
-    getStatusBadgeClass(status: OrderStatus): string {
-        const classes: Record<OrderStatus, string> = {
-            'pending': 'status-pending',
-            'processing': 'status-processing',
-            'shipped': 'status-shipped',
-            'delivered': 'status-delivered',
-            'cancelled': 'status-cancelled',
-            'refunded': 'status-refunded',
-            'returned': 'status-returned'
+    getStatusBadgeClass(status: string): string {
+        const classes: Record<string, string> = {
+            // Legacy order statuses
+            'pending':         'status-pending',
+            'processing':      'status-processing',
+            'shipped':         'status-shipped',
+            'delivered':       'status-delivered',
+            'cancelled':       'status-cancelled',
+            'refunded':        'status-refunded',
+            'returned':        'status-returned',
+            // Web storefront statuses (MercadoPago checkout)
+            'pending_payment': 'status-pending',
+            'paid':            'status-delivered',
+            'payment_failed':  'status-cancelled',
+            // Cancellation / refund flow
+            'refund_pending':  'status-returned',
         };
-        return classes[status] || '';
+        return classes[status] || 'status-pending';
     }
 
     formatDate(date: any): string {
@@ -1240,7 +1264,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const productMap = new Map<string, { units: number; revenue: number }>();
 
         orders.forEach(order => {
-            if (['cancelled', 'refunded', 'returned'].includes(order.status)) return;
+            // Skip ghost orders: payment_failed (card rejected) and pending_payment (checkout abandoned)
+            if (['cancelled', 'refunded', 'returned', 'payment_failed', 'pending_payment'].includes(order.status as string)) return;
             (order.items || []).forEach((item: any) => {
                 const key = item.productName || item.name || item.sku || 'Producto sin nombre';
                 const units = item.quantity || 1;
@@ -1508,13 +1533,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             }
 
             if (index >= 0 && index < dataLength) {
-                if (o.status === 'pending') pendingData[index]++;
+                // payment_failed = ghost order; skip all chart buckets
+                if (o.status === 'payment_failed') { /* skip */ }
+                else if (o.status === 'pending' || o.status === 'pending_payment') pendingData[index]++;
                 else if (o.status === 'processing') processingData[index]++;
                 else if (o.status === 'shipped') shippedData[index]++;
-                else if (o.status === 'delivered') deliveredData[index]++;
-                else if (o.status === 'cancelled' || o.status === 'refunded' || o.status === 'returned') cancelledData[index]++;
+                else if (o.status === 'delivered' || o.status === 'paid') deliveredData[index]++;
+                else if (o.status === 'cancelled' || o.status === 'refunded' || o.status === 'returned' || o.status === 'refund_pending') cancelledData[index]++;
 
-                if (o.status !== 'cancelled' && o.status !== 'refunded' && o.status !== 'returned') {
+                const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'payment_failed', 'pending_payment', 'refund_pending'];
+                if (!NON_REVENUE.includes(o.status as string)) {
                     salesData[index] += (o.total || 0);
                 }
             }

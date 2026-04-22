@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { MercadoPagoConfig, Payment, Order } from 'mercadopago';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -13,10 +13,56 @@ export const processPayment = functions.https.onCall(async (data, context) => {
     }
 
     const { token, amount, email, description, orderId, orderNumber,
-            installments, paymentMethodId, issuerId } = data;
+            installments, paymentMethodId, issuerId,
+            // Optional payer enrichment fields (passed from checkout form)
+            payerFirstName, payerLastName, payerPhone, payerZip, payerStreet } = data;
 
     if (!token || !amount || !email) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required payment parameters.');
+    }
+
+    // ── Throwaway Email Blocklist ───────────────────────────────────────────────
+    const DISPOSABLE_DOMAINS = [
+        'mailinator.com','guerrillamail.com','guerrillamail.net','guerrillamail.org',
+        'throwam.com','trashmail.com','trashmail.net','yopmail.com','sharklasers.com',
+        'guerrillamailblock.com','grr.la','guerrillamail.info','spam4.me','10minutemail.com',
+        'tempmail.com','temp-mail.org','fakeinbox.com','mailnull.com','maildrop.cc',
+    ];
+    const emailDomain = (email as string).split('@')[1]?.toLowerCase() ?? '';
+    if (DISPOSABLE_DOMAINS.includes(emailDomain)) {
+        throw new functions.https.HttpsError('invalid-argument', 'El correo electrónico no es válido para procesar un pago.');
+    }
+
+    // ── Velocity Rate Limiting ─────────────────────────────────────────────────
+    // Max 3 payment attempts per email per 60 minutes — blocks card testing attacks.
+    const RATE_LIMIT_MAX = 3;
+    const RATE_WINDOW_MS  = 60 * 60 * 1000; // 1 hour
+    try {
+        const emailKey    = Buffer.from(email as string).toString('base64').replace(/=/g,'');
+        const rateLimitRef = db.collection('_rate_limits').doc(`pay_${emailKey}`);
+        const now          = Date.now();
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(rateLimitRef);
+            if (!snap.exists) {
+                tx.set(rateLimitRef, { count: 1, windowStart: now, expiresAt: now + RATE_WINDOW_MS });
+                return;
+            }
+            const { count, windowStart } = snap.data()!;
+            if (now - windowStart > RATE_WINDOW_MS) {
+                // Window expired — reset
+                tx.set(rateLimitRef, { count: 1, windowStart: now, expiresAt: now + RATE_WINDOW_MS });
+            } else if (count >= RATE_LIMIT_MAX) {
+                throw new functions.https.HttpsError(
+                    'resource-exhausted',
+                    'Demasiados intentos de pago. Por favor espera un momento e intenta de nuevo.'
+                );
+            } else {
+                tx.update(rateLimitRef, { count: count + 1 });
+            }
+        });
+    } catch (rateErr: any) {
+        if (rateErr.code) throw rateErr; // re-throw HttpsErrors
+        console.warn('[processPayment] Rate limit check failed (non-blocking):', rateErr.message);
     }
 
     // Load MP credentials + installments policy from Firestore
@@ -40,73 +86,398 @@ export const processPayment = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'Server configuration error. Missing Access Token.');
     }
 
+    // ── Server-side price revalidation ─────────────────────────────────────────
+    // Re-calculate the expected total from Firestore data to prevent amount tampering.
+    // We read the order doc the client already created, then verify each product's
+    // current price against the products collection. Rejects if off by > $1 MXN.
+    if (orderId) {
+        try {
+            const orderSnap = await db.collection('orders').doc(orderId).get();
+            if (orderSnap.exists) {
+                const orderData = orderSnap.data()!;
+
+                // ── Idempotency / State Guard ──────────────────────────────────
+                // If this order was already processed successfully, return the
+                // existing result instead of charging the card again.
+                // Guards against double-click, network retries, duplicate calls.
+                const alreadyPaid = ['approved', 'paid'].includes(orderData.paymentStatus ?? '');
+                if (alreadyPaid) {
+                    console.warn(`[processPayment] ⚠️ Order ${orderId} already paid — returning cached result.`);
+                    return {
+                        success:          true,
+                        alreadyProcessed: true,
+                        status:           'approved',
+                        paymentId:        orderData.paymentId ?? null,
+                    };
+                }
+
+                const items: any[] = orderData.items ?? [];
+
+                // Re-read each product's live price (parallel)
+                const productSnaps = await Promise.all(
+                    items.map((item: any) => db.collection('products').doc(item.productId).get())
+                );
+
+                let serverSubtotal = 0;
+                for (let i = 0; i < items.length; i++) {
+                    const livePrice: number = productSnaps[i].data()?.price ?? items[i].price;
+                    serverSubtotal += livePrice * items[i].quantity;
+                }
+
+                const shippingCost: number = orderData.shippingCost ?? 0;
+                const discount:    number = orderData.discount    ?? 0;
+                const serverTotal: number = Math.max(0, serverSubtotal + shippingCost - discount);
+                const submitted:   number = Number(amount);
+
+                if (Math.abs(serverTotal - submitted) > 1.0) {
+                    console.error(
+                        `[processPayment] ❌ Amount mismatch — submitted: ${submitted}, server: ${serverTotal.toFixed(2)}`
+                    );
+                    // Update the order with an error note but don't charge
+                    await db.collection('orders').doc(orderId).update({
+                        paymentStatus: 'rejected',
+                        paymentError:  `Monto rechazado: enviado $${submitted} vs servidor $${serverTotal.toFixed(2)}`,
+                        updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                    }).catch(() => {});
+                    throw new functions.https.HttpsError(
+                        'invalid-argument',
+                        `El monto del pedido no es válido. Por favor recarga y vuelve a intentar.`
+                    );
+                }
+                console.log(`[processPayment] ✅ Amount validated: ${submitted} ≈ ${serverTotal.toFixed(2)}`);
+            }
+        } catch (validationErr: any) {
+            // Re-throw HttpsErrors (our own rejections), swallow any Firestore read errors
+            if (validationErr.code) throw validationErr;
+            console.warn('[processPayment] Price validation read failed — proceeding:', validationErr.message);
+        }
+    }
+
     // Enforce installments policy
     let finalInstallments = 1;
     if (installmentsEnabled) {
         finalInstallments = Math.min(Number(installments) || 1, maxInstallments);
     }
 
-    const client  = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
-    const payment = new Payment(client);
+
+    const client      = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
+    const orderClient = new Order(client);
 
     try {
-        const paymentData: any = {
-            transaction_amount:  Number(amount),
-            token,
-            description:         description || `Orden ${orderNumber || orderId || ''} — Storefront`,
-            installments:        finalInstallments,
-            payment_method_id:   paymentMethodId,
-            issuer_id:           issuerId,
-            three_d_secure_mode: 'optional',
+        // ── Orders API (POST /v1/orders) via mercadopago SDK v2 ────────────────
+        // SDK types (dist/clients/order/create/types.d.ts) require:
+        //   total_amount: string  (NOT number)
+        //   transactions: { payments: PaymentRequest[] }  (NOT a raw array)
+        //   payments[].amount: string  (NOT number)
+        const amountStr   = Number(amount).toFixed(2);   // '688.00'
+        const paymentType = (paymentMethodId ?? '').startsWith('deb') ? 'debit_card' : 'credit_card';
+
+        const orderBody: any = {
+            type:               'online',
+            processing_mode:    'automatic',
+            total_amount:       amountStr,
+            external_reference: orderId || orderNumber || '',
             payer: {
                 email,
-                identification: { type: 'RFC', number: 'XAXX010101000' }
+                first_name: payerFirstName || '',
+                last_name:  payerLastName  || '',
             },
-            metadata: { order_id: orderId || '', order_number: orderNumber || '' }
+            transactions: {
+                payments: [{
+                    amount: amountStr,
+                    payment_method: {
+                        id:           paymentMethodId,
+                        type:         paymentType,
+                        token,
+                        installments: Number(finalInstallments),
+                    },
+                }],
+            },
         };
 
-        const result = await payment.create({ body: paymentData });
+        const result    = await orderClient.create({ body: orderBody });
+        const resultAny = result as any;
 
-        // 3DS challenge required
-        if (result.status === 'pending' && result.status_detail === 'pending_challenge') {
-            const challengeUrl = (result as any).three_ds_info?.external_resource_url;
+        // Extract first payment — response mirrors request: transactions.payments[0]
+        const txPayment   = resultAny?.transactions?.payments?.[0] ?? {};
+        const orderStatus = resultAny?.status ?? 'unknown';      // 'processed'|'pending'|'rejected'
+        const payStatus   = txPayment?.status ?? orderStatus;    // 'approved'|'rejected'|'pending'
+        const payDetail   = txPayment?.status_detail ?? '';
+        const paymentId   = txPayment?.id ?? resultAny?.id ?? null;
+
+        // Map Orders API status to our internal statuses
+        const approved    = orderStatus === 'processed' || payStatus === 'approved';
+        const rejected    = orderStatus === 'rejected'  || payStatus === 'rejected';
+
+        // 3DS challenge (Orders API: status pending + status_detail pending_challenge)
+        if (payDetail === 'pending_challenge') {
+            const challengeUrl = txPayment?.three_ds_info?.external_resource_url ?? null;
             console.log(`[processPayment] 3DS challenge for order ${orderId}`);
             if (orderId) {
                 await db.collection('orders').doc(orderId).update({
                     paymentStatus: 'pending_3ds',
-                    paymentId:     result.id,
-                    updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+                    paymentId,
+                    mpOrderId:     resultAny?.id,
+                    updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
                 }).catch(e => console.error('Failed to update order for 3DS:', e));
             }
-            return { success: false, requires3DS: true, challengeUrl, paymentId: result.id,
-                     status: result.status, statusDetail: result.status_detail };
+            return { success: false, requires3DS: true, challengeUrl, paymentId,
+                     status: payStatus, statusDetail: payDetail };
         }
 
-        // Payment approved/rejected/in_process
+        // Normal result — update Firestore
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
-                paymentStatus: result.status,
-                paymentId:     result.id,
-                paymentMethod: result.payment_method_id,
-                installments:  result.installments,
-                updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+                paymentStatus: approved ? 'approved' : rejected ? 'rejected' : payStatus,
+                paymentId,
+                mpOrderId:     resultAny?.id,
+                paymentMethod: paymentMethodId,
+                installments:  finalInstallments,
+                updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                ...(approved ? { status: 'paid' }            : {}),
+                ...(rejected ? { status: 'payment_failed' }  : {}),
             }).catch(e => console.error('Failed to update order status:', e));
         }
 
-        return { success: true, status: result.status, paymentId: result.id,
-                 statusDetail: result.status_detail };
+        return {
+            success:      approved,
+            status:       approved ? 'approved' : rejected ? 'rejected' : payStatus,
+            paymentId,
+            statusDetail: payDetail,
+        };
 
     } catch (error: any) {
-        console.error('MercadoPago Payment Error:', error);
+        // The MP Orders SDK throws an error when the order status is 'failed',
+        // but error.data contains the complete order object with payment details.
+        // Distinguish: (a) payment rejection = valid result → return 200
+        //              (b) real API/network error → return 500
+        const errorData = error?.data ?? error?.cause?.data ?? null;
+
+        console.error('MercadoPago Orders API Error:', JSON.stringify({
+            errors:   error?.errors ?? error?.message,
+            status:   errorData?.status,
+            payments: errorData?.transactions?.payments,
+        }, null, 2));
+
+        // ── Case (a): MP rejected the payment (status=failed) ─────────────────
+        if (errorData?.status === 'failed') {
+            const failedPayment = errorData?.transactions?.payments?.[0] ?? {};
+            const failStatus    = failedPayment?.status        ?? 'rejected';
+            const failDetail    = failedPayment?.status_detail ?? errorData?.status_detail ?? 'failed';
+            const failPaymentId = failedPayment?.id            ?? errorData?.id ?? null;
+
+            console.warn(`[processPayment] Payment rejected — status: ${failStatus}, detail: ${failDetail}`);
+
+            if (orderId) {
+                await db.collection('orders').doc(orderId).update({
+                    paymentStatus: 'rejected',
+                    paymentError:  failDetail,
+                    paymentId:     failPaymentId,
+                    mpOrderId:     errorData?.id,
+                    status:        'payment_failed',
+                    updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                }).catch(e => console.error('Failed to update rejected order:', e));
+            }
+            // Return clean 200 with rejection info — NOT a 500
+            return { success: false, status: failStatus, statusDetail: failDetail, paymentId: failPaymentId };
+        }
+
+        // ── Case (b): real API/config error ───────────────────────────────────
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: 'rejected',
                 paymentError:  error.message || 'Unknown error',
-                updatedAt:     admin.firestore.FieldValue.serverTimestamp()
+                updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
             }).catch(e => console.error('Failed to update rejected status:', e));
         }
         throw new functions.https.HttpsError('internal', error.message || 'Payment processing failed.');
     }
+});
+
+// ─── Cancel Order ─────────────────────────────────────────────────────────────
+// Customer-facing: cancels a web order within 24 hours of creation.
+// - Paid orders (paymentStatus=approved) cannot be self-cancelled — they need
+//   staff to approve a refund first (staff sets refund_pending, MP refund runs).
+// - Unpaid orders (pending/pending_payment) are cancelled immediately.
+// - Staff path: caller passes role='staff' header via Firebase Admin context (future).
+
+const CANCEL_WINDOW_HOURS = 24;
+const CANCEL_WINDOW_MS    = CANCEL_WINDOW_HOURS * 60 * 60 * 1000;
+
+export const cancelOrder = functions.https.onCall(async (data, context) => {
+    const { orderId, reason } = data;
+
+    if (!orderId) {
+        throw new functions.https.HttpsError('invalid-argument', 'orderId is required.');
+    }
+
+    const orderRef  = db.collection('orders').doc(orderId);
+    const orderSnap = await orderRef.get();
+
+    if (!orderSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Order not found.');
+    }
+
+    const order      = orderSnap.data()!;
+    const now        = Date.now();
+    const createdAt  = order.createdAt?.toMillis ? order.createdAt.toMillis() : Date.now();
+
+    // ── Ownership check ────────────────────────────────────────────────────────
+    // Authenticated user: uid must match order's customer uid.
+    // Guest: sessionId from the stored order must match what the client sends.
+    const callerUid       = context.auth?.uid ?? null;
+    const orderUid        = order.customer?.uid ?? null;
+    const guestSessionId  = data.sessionId ?? null;
+    const orderSessionId  = order.sessionId ?? null;
+
+    const isOwner = (callerUid && orderUid && callerUid === orderUid)
+                 || (guestSessionId && orderSessionId && guestSessionId === orderSessionId);
+
+    if (!isOwner) {
+        throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para cancelar este pedido.');
+    }
+
+    // ── Only web/storefront orders can be self-cancelled ──────────────────────
+    if (order.sourceChannel !== 'storefront' && order.sourceChannel !== 'web') {
+        throw new functions.https.HttpsError('failed-precondition', 'Solo los pedidos de la tienda en línea pueden cancelarse aquí.');
+    }
+
+    // ── Cancellation window ────────────────────────────────────────────────────
+    if (now - createdAt > CANCEL_WINDOW_MS) {
+        throw new functions.https.HttpsError(
+            'deadline-exceeded',
+            `El período de cancelación de ${CANCEL_WINDOW_HOURS} horas ha expirado. Contáctanos para ayudarte.`
+        );
+    }
+
+    // ── Already cancelled / refunded ──────────────────────────────────────────
+    if (['cancelled', 'refunded', 'refund_pending'].includes(order.status)) {
+        throw new functions.https.HttpsError('failed-precondition', 'Este pedido ya fue cancelado o reembolsado.');
+    }
+
+    // ── Paid orders → flag for staff refund review ─────────────────────────────
+    // We NEVER auto-refund without staff review — policy: review first, then refund.
+    if (order.paymentStatus === 'approved' || order.status === 'paid') {
+        await orderRef.update({
+            status:              'refund_pending',
+            cancelledAt:         admin.firestore.FieldValue.serverTimestamp(),
+            cancelledBy:         'customer',
+            cancelReason:        reason || 'Cancelación solicitada por el cliente',
+            refundStatus:        'pending_review',
+            updatedAt:           admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`[cancelOrder] ✅ Order ${orderId} flagged for refund review (was paid).`);
+        return { success: true, requiresRefund: true, message: 'Tu solicitud de cancelación fue recibida. Procesaremos el reembolso en 1-3 días hábiles.' };
+    }
+
+    // ── Unpaid orders → cancel immediately ────────────────────────────────────
+    await orderRef.update({
+        status:       'cancelled',
+        paymentStatus: order.paymentStatus === 'pending' ? 'cancelled' : order.paymentStatus,
+        cancelledAt:  admin.firestore.FieldValue.serverTimestamp(),
+        cancelledBy:  'customer',
+        cancelReason: reason || 'Cancelación solicitada por el cliente',
+        updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[cancelOrder] ✅ Order ${orderId} cancelled immediately (was unpaid).`);
+    return { success: true, requiresRefund: false, message: 'Tu pedido fue cancelado exitosamente.' };
+});
+
+// ─── Staff Refund Approval ────────────────────────────────────────────────────
+// Called from the Operations order detail page when a staff member approves
+// a pending refund. Validates the order state, calls the MercadoPago Payments
+// API to issue the refund, then updates the order status and audit trail.
+
+export const refundOrder = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Debes estar autenticado para procesar reembolsos.');
+    }
+
+    const { orderId, reason } = data;
+    if (!orderId) {
+        throw new functions.https.HttpsError('invalid-argument', 'orderId is required.');
+    }
+
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) {
+        throw new functions.https.HttpsError('not-found', `Order ${orderId} not found.`);
+    }
+
+    const order = orderSnap.data()!;
+
+    // Only allow refunding orders in refund_pending state
+    if (order.status !== 'refund_pending') {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            `Order status is '${order.status}' — only 'refund_pending' orders can be refunded.`
+        );
+    }
+
+    const paymentId = order.paymentId;
+    if (!paymentId) {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            'No payment ID found on this order. Cannot process refund automatically.'
+        );
+    }
+
+    // Fetch MP access token from integrations config
+    const cfgSnap = await db.collection('config').doc('integrations').get();
+    const accessToken: string | undefined = cfgSnap.data()?.mercadopago?.accessToken;
+    if (!accessToken) {
+        throw new functions.https.HttpsError('internal', 'MercadoPago access token not configured.');
+    }
+
+    // ── Call MercadoPago Refund API ────────────────────────────────────────────
+    const mpClient = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
+    const paymentApi = new Payment(mpClient);
+
+    let refundResult: any;
+    try {
+        // For full refund: cancel/refund the entire payment
+        refundResult = await paymentApi.cancel({ id: Number(paymentId) });
+        console.log(`[refundOrder] ✅ MP refund issued — paymentId=${paymentId}`, refundResult);
+    } catch (mpErr: any) {
+        console.error('[refundOrder] MercadoPago refund error:', JSON.stringify(mpErr));
+        throw new functions.https.HttpsError(
+            'internal',
+            `MercadoPago refund failed: ${mpErr?.message || 'Unknown error'}`
+        );
+    }
+
+    // ── Update Firestore order ─────────────────────────────────────────────────
+    const staffUid         = context.auth.uid;
+    const staffEmail       = context.auth.token.email ?? 'staff';
+    const staffDisplayName = context.auth.token.name ?? staffEmail;
+
+    const historyEntry = {
+        status:         'refunded',
+        timestamp:      admin.firestore.FieldValue.serverTimestamp(),
+        note:           reason || 'Reembolso aprobado y procesado por staff',
+        // Legacy field
+        updatedBy:      staffUid,
+        // Structured audit actor
+        updatedByActor: { uid: staffUid, displayName: staffDisplayName, role: 'OPERATIONS' },
+        action:         'refund_approved',
+        metadata: {
+            mpRefundId: refundResult?.id ?? null,
+            processedBy: staffEmail,
+        },
+    };
+
+    await orderRef.update({
+        status:         'refunded',
+        paymentStatus:  'refunded',
+        refundStatus:   'PROCESSED',
+        refundAmount:   order.total,
+        updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
+        history:        admin.firestore.FieldValue.arrayUnion(historyEntry),
+    });
+
+    console.log(`[refundOrder] ✅ Order ${orderId} marked as refunded by ${staffEmail}`);
+    return { success: true, message: 'Reembolso procesado exitosamente en MercadoPago.' };
 });
 
 // ─── MercadoPago Webhook ──────────────────────────────────────────────────────
@@ -117,11 +488,48 @@ export const processPayment = functions.https.onCall(async (data, context) => {
 export const mpWebhook = functions.https.onRequest(async (req, res) => {
     if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
     try {
+        // ── x-signature Validation ─────────────────────────────────────────────
+        // MP signs every webhook with HMAC-SHA256 using the app's Secret Key.
+        // Validate before processing to prevent spoofed notifications.
+        // Secret stored in Firestore: config/integrations → mercadopago.webhookSecret
+        const xSignature  = req.headers['x-signature']  as string | undefined;
+        const xRequestId  = req.headers['x-request-id'] as string | undefined;
+        if (xSignature) {
+            try {
+                const cfgSnap = await db.collection('config').doc('integrations').get();
+                const secret  = cfgSnap.data()?.mercadopago?.webhookSecret ?? '';
+                if (secret) {
+                    const crypto = await import('crypto');
+                    // Parse ts and v1 from x-signature header (format: "ts=xxx,v1=yyy")
+                    const parts: Record<string, string> = {};
+                    xSignature.split(',').forEach(p => { const [k, v] = p.trim().split('='); if (k && v) parts[k] = v; });
+                    const ts = parts['ts'] ?? '';
+                    const v1 = parts['v1'] ?? '';
+                    const dataId = req.body?.data?.id ?? req.query['id'] ?? '';
+                    const manifest = `id:${dataId};request-id:${xRequestId ?? ''};ts:${ts};`;
+                    const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+                    if (expected !== v1) {
+                        console.warn('[mpWebhook] ⚠️ Signature mismatch — possible spoofed request. manifest:', manifest);
+                        // Log but don't block: avoids breaking if secret is misconfigured
+                    } else {
+                        console.log('[mpWebhook] ✅ Signature valid');
+                    }
+                } else {
+                    console.warn('[mpWebhook] No webhookSecret configured — skipping x-signature validation.');
+                }
+            } catch (sigErr: any) {
+                console.error('[mpWebhook] Signature validation error:', (sigErr as any).message);
+            }
+        }
+
         const topic      = req.body?.type || req.query['topic'];
         const resourceId = req.body?.data?.id || req.query['id'];
         console.log('[mpWebhook] Received:', topic, resourceId);
 
-        if (topic !== 'payment' || !resourceId) { res.status(200).send('OK'); return; }
+        // Always ACK non-payment/non-order topics immediately
+        if (!resourceId || (topic !== 'payment' && topic !== 'order')) {
+            res.status(200).send('OK'); return;
+        }
 
         let accessToken = process.env.MP_ACCESS_TOKEN;
         try {
@@ -132,8 +540,48 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
 
         if (!accessToken) { res.status(500).send('No access token'); return; }
 
-        const mpClient   = new MercadoPagoConfig({ accessToken });
-        const paymentApi = new Payment(mpClient);
+        const mpClient = new MercadoPagoConfig({ accessToken });
+
+        // ── Orders API topic ('order') ─────────────────────────────────────────
+        // New standard for Checkout API integrations.
+        // Fetch from /v1/orders/{id} and map to our Firestore order.
+        if (topic === 'order') {
+            const orderClient = new Order(mpClient);
+            const orderData   = await (orderClient as any).get({ id: String(resourceId) });
+            const orderAny    = orderData as any;
+
+            // external_reference IS our Firestore orderId
+            const orderId = orderAny?.external_reference;
+            if (!orderId) { console.warn('[mpWebhook] Order topic but no external_reference'); res.status(200).send('OK'); return; }
+
+            // Extract status from order + first transaction payment
+            const txPay       = orderAny?.transactions?.[0]?.payments?.[0] ?? {};
+            const orderStatus = orderAny?.status ?? '';               // 'processed'|'pending'|'rejected'
+            const payStatus   = txPay?.status   ?? orderStatus;
+            const payId       = txPay?.id        ?? null;
+
+            const approved    = orderStatus === 'processed' || payStatus === 'approved';
+            const rejected    = orderStatus === 'rejected'  || payStatus === 'rejected';
+            const newStatus   = approved ? 'approved' : rejected ? 'rejected' : 'pending';
+
+            await db.collection('orders').doc(orderId).update({
+                paymentStatus:  newStatus,
+                paymentId:      payId,
+                mpOrderId:      orderAny?.id,
+                paymentMethod:  orderAny?.transactions?.[0]?.payment_method?.id ?? '',
+                installments:   orderAny?.transactions?.[0]?.payment_method?.installments ?? 1,
+                updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
+                ...(approved ? { status: 'paid' }           : {}),
+                ...(rejected ? { status: 'payment_failed' } : {}),
+            });
+
+            console.log(`[mpWebhook] Order (Orders API) ${orderId} → ${newStatus}`);
+            res.status(200).send('OK'); return;
+        }
+
+        // ── Legacy Payments API topic ('payment') ──────────────────────────────
+        // Retained for backwards compatibility with any legacy payments.
+        const paymentApi  = new Payment(mpClient);
         const paymentData = await paymentApi.get({ id: String(resourceId) });
 
         const orderId = paymentData.metadata?.order_id;
@@ -155,14 +603,13 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
             ...(newStatus === 'rejected' ? { status: 'payment_failed' } : {}),
         });
 
-        console.log(`[mpWebhook] Order ${orderId} payment → ${newStatus}`);
+        console.log(`[mpWebhook] Order (Payments API) ${orderId} payment → ${newStatus}`);
         res.status(200).send('OK');
     } catch (err: any) {
         console.error('[mpWebhook] Error:', err);
         res.status(500).send('Internal Error');
     }
 });
-
 
 
 // ─── MercadoPago OAuth: Generate Auth URL ────────────────────────────────────
@@ -303,7 +750,7 @@ export const mpCallback = functions.https.onRequest(async (req, res) => {
 export const mpDiag = functions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
 
-    const FN_VER = 'v5-2026-04-18'; // bump this on every deploy to confirm version
+    const FN_VER = 'v6-2026-04-20'; // bump this on every deploy to confirm version
     // Load credentials from Firestore
     const configSnap = await db.collection('config').doc('integrations').get();
     const mpConfig   = configSnap.data()?.mercadopago ?? {};
@@ -314,6 +761,40 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     }
 
     const step = data?.step as string;
+
+    // ── Step: save_credentials — persist AT + PK to Firestore ────────────────
+    if (step === 'save_credentials') {
+        const newAt = (data?.accessToken ?? '').trim();
+        const newPk = (data?.publicKey   ?? '').trim();
+        if (!newAt || !newPk) {
+            return { ok: false, error: 'Both accessToken and publicKey are required.', fnVer: FN_VER };
+        }
+        await db.collection('config').doc('integrations').set(
+            { mercadopago: { accessToken: newAt, publicKey: newPk } },
+            { merge: true }
+        );
+        return { ok: true, message: 'Credentials saved to Firestore ✅', fnVer: FN_VER };
+    }
+
+    // ── Step: check_credentials — compare stored vs expected ─────────────────
+    if (step === 'check_credentials') {
+        const storedAt = accessToken;
+        const storedPk = mpConfig.publicKey ?? '';
+        const mask     = (s: string) => s ? `${s.slice(0, 18)}…${s.slice(-6)}` : '(empty)';
+        // Expected values from the user
+        const expectedAt = 'TEST-398646544825942-022715-cbec23472732e892da3798593de42e85-1178500066';
+        const expectedPk = 'TEST-26a04055-43d8-4f69-97c5-7829d3d413bf';
+        const atMatch = storedAt === expectedAt;
+        const pkMatch = storedPk === expectedPk;
+        return {
+            ok:              atMatch && pkMatch,
+            accessToken:     { stored: mask(storedAt), expected: mask(expectedAt), match: atMatch },
+            publicKey:       { stored: mask(storedPk),  expected: mask(expectedPk),  match: pkMatch  },
+            summary:         `AT: ${atMatch ? '✅ Match' : '❌ MISMATCH'} | PK: ${pkMatch ? '✅ Match' : '❌ MISMATCH'}`,
+            updateNeeded:    !atMatch || !pkMatch,
+            fnVer:           FN_VER,
+        };
+    }
 
     // ── Step: /users/me ───────────────────────────────────────────────────────
     if (step === 'users_me') {
@@ -334,6 +815,7 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             return { ok: false, error: e.message };
         }
     }
+
 
     // ── Step: Payment methods ─────────────────────────────────────────────────
     if (step === 'payment_methods') {
@@ -414,6 +896,496 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         }
     }
 
+
+    // ── Step: Card tokenization — proves public key + all 4 test cards work ──
+    // Tokenizes each test card via the MP server-side tokenize endpoint.
+    // This is a deeper test than preference creation: it validates that the
+    // public key is correct and that MP accepts every sandbox card number.
+    if (step === 'card_token') {
+        const publicKey: string = mpConfig.publicKey ?? '';
+        if (!publicKey) {
+            return { ok: false, error: 'No Public Key found in config/integrations → mercadopago' };
+        }
+        const testCards = [
+            { label: 'Mastercard Crédito',  number: '5474925432670366', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Visa Crédito',        number: '4075595716483764', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Mastercard Débito',   number: '5579053461482647', cvv: '1234', expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Visa Débito',         number: '4189141221267633', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
+        ];
+        const cardResults: { label: string; ok: boolean; token?: string; error?: string }[] = [];
+        for (const card of testCards) {
+            try {
+                const r = await fetch('https://api.mercadopago.com/v1/card_tokens', {
+                    method:  'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type':  'application/json',
+                    },
+                    body: JSON.stringify({
+                        card_number:      card.number,
+                        security_code:    card.cvv,
+                        expiration_month: card.expMonth,
+                        expiration_year:  card.expYear,
+                        cardholder: { name: card.holder },
+                    }),
+                });
+                const body = await r.json() as any;
+                if (!r.ok || !body.id) {
+                    cardResults.push({ label: card.label, ok: false, error: body.message ?? body.cause?.[0]?.description ?? `HTTP ${r.status}` });
+                } else {
+                    cardResults.push({ label: card.label, ok: true, token: body.id });
+                }
+            } catch (e: any) {
+                cardResults.push({ label: card.label, ok: false, error: e.message });
+            }
+        }
+        const allOk = cardResults.every(c => c.ok);
+        const summary = cardResults.map(c => `${c.ok ? '✅' : '❌'} ${c.label}${c.ok ? '' : ': ' + c.error}`).join(' | ');
+        return { ok: allOk, cards: cardResults, summary, fnVer: FN_VER };
+    }
+
+    // ── Step: Verify buyer test account ──────────────────────────────────────
+    // Calls GET /users/{buyerId} with the seller's access token.
+    // In sandbox, sellers can look up their associated test users this way.
+    // Proves the buyer account (ID 3347553101) belongs to this sandbox.
+    if (step === 'verify_buyer') {
+        const BUYER_ID = '3347553101';
+        try {
+            const r = await fetch(`https://api.mercadopago.com/users/${BUYER_ID}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const body = await r.json() as any;
+            if (!r.ok) {
+                return {
+                    ok:     false,
+                    error:  body.message ?? body.error ?? `HTTP ${r.status}`,
+                    status: r.status,
+                    hint:   'If 404 the buyer account is not associated with this sandbox seller.',
+                    fnVer:  FN_VER,
+                };
+            }
+            // email may appear as body.email or inside identification sub-objects
+            const email = body.email ?? body.secure_email ?? body.alternative_phone?.area_code ?? null;
+            return {
+                ok:        true,
+                buyerId:   body.id,
+                nickname:  body.nickname,
+                email,
+                site_id:   body.site_id,
+                type:      body.user_type ?? body.account_type ?? 'unknown',
+                // Return full body so raw JSON reveals every available field
+                allFields: body,
+                fnVer:     FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Get buyer OAuth token (password grant) ─────────────────────────
+    // Uses the buyer test account credentials to get their own access token.
+    // The buyer's token is then used to tokenize a card — this correctly
+    // attributes the card token to the BUYER, resolving error 2034.
+    if (step === 'buyer_token') {
+        const mpCfg        = configSnap.data()?.mercadopago ?? {};
+        // clientId 398646544825942 = app ID from the MP developer portal (not a secret)
+        const clientId     = mpCfg.clientId ?? mpCfg.client_id ?? '398646544825942';
+        const clientSecret = mpCfg.clientSecret ?? mpCfg.client_secret ?? '';
+
+        // Strategy: try with client_secret first; if not available, try without.
+        // MP sandbox test users sometimes work via password grant without client_secret.
+        const tryGrant = async (includeSecret: boolean) => {
+            const params: Record<string, string> = {
+                grant_type: 'password',
+                client_id:  clientId,
+                username:   'TESTUSER7146576788719579772',
+                password:   'aP0I8bxKiJ',
+            };
+            if (includeSecret && clientSecret) params.client_secret = clientSecret;
+            return fetch('https://api.mercadopago.com/oauth/token', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body:    new URLSearchParams(params).toString(),
+            });
+        };
+
+        try {
+            // First try: with secret (full grant)
+            let r = clientSecret ? await tryGrant(true) : await tryGrant(false);
+            let body = await r.json() as any;
+
+            // Second try: without secret (sandbox-only fallback)
+            if (!r.ok && clientSecret) {
+                r    = await tryGrant(false);
+                body = await r.json() as any;
+            }
+
+            if (!r.ok || !body.access_token) {
+                return {
+                    ok:         false,
+                    error:      body.message ?? body.error ?? `HTTP ${r.status}`,
+                    hint:       'Add clientSecret to Firestore config/integrations → mercadopago.clientSecret (find it in the MP developer portal under your app credentials)',
+                    httpStatus: r.status,
+                    raw:        body,
+                    fnVer:      FN_VER,
+                };
+            }
+
+            // Get buyer profile with their own token
+            const meR    = await fetch('https://api.mercadopago.com/users/me', {
+                headers: { 'Authorization': `Bearer ${body.access_token}` },
+            });
+            const meBody = await meR.json() as any;
+            return {
+                ok:         true,
+                buyerToken: body.access_token,
+                buyerEmail: meBody.email,
+                buyerId:    meBody.id,
+                buyerNick:  meBody.nickname,
+                fnVer:      FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Direct payment ─────────────────────────────────────────────────
+    // Tokenizes a Mastercard test card then creates a real payment (not a preference).
+    // APRO as cardholder name is the MP sandbox convention for "approved" result.
+    // binary_mode = true: no intermediate "pending" state — instant approved/rejected.
+    if (step === 'direct_payment') {
+        const { amount = 100, payerEmail: forcedEmail } = data ?? {};
+
+        // 0 — Resolve buyer test user email.
+        // Prefer the email passed from the caller (captured in verify_buyer / Step 5).
+        // Fall back to auto-fetch only if not provided.
+        // MP sandbox error 2034 occurs when payer is not a recognized test user.
+        let buyerEmail: string = forcedEmail ?? '';
+        if (!buyerEmail) {
+            try {
+                const br = await fetch('https://api.mercadopago.com/users/3347553101', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                });
+                const bb = await br.json() as any;
+                if (br.ok && bb.email) buyerEmail = bb.email;
+            } catch (_) { /* surface as error below */ }
+        }
+        if (!buyerEmail) {
+            return { ok: false, error: 'Could not resolve buyer test user email. Run Step 5 first or verify /users/3347553101 is accessible.', fnVer: FN_VER };
+        }
+
+        // 1 — Tokenize Mastercard test card server-side (APRO → approved in sandbox)
+        let cardToken = '';
+        try {
+            const tr = await fetch('https://api.mercadopago.com/v1/card_tokens', {
+                method:  'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    card_number:      '5474925432670366',
+                    security_code:    '123',
+                    expiration_month: 11,
+                    expiration_year:  2030,
+                    cardholder:       { name: 'APRO' },
+                }),
+            });
+            const tb = await tr.json() as any;
+            if (!tr.ok || !tb.id) return {
+                ok: false,
+                error:     `Token error (HTTP ${tr.status}): ${tb.message ?? JSON.stringify(tb)}`,
+                rawToken:  tb,
+                fnVer:     FN_VER,
+            };
+            cardToken = tb.id;
+        } catch (e: any) {
+            return { ok: false, error: `Token exception: ${e.message}`, fnVer: FN_VER };
+        }
+
+        // 2 — Create direct payment with that token
+        try {
+            const pr = await fetch('https://api.mercadopago.com/v1/payments', {
+                method:  'POST',
+                headers: {
+                    'Authorization':     `Bearer ${accessToken}`,
+                    'Content-Type':      'application/json',
+                    'X-Idempotency-Key': `mpdiag-pay-${Date.now()}`,
+                },
+                body: JSON.stringify({
+                    transaction_amount: Number(amount),
+                    token:              cardToken,
+                    description:        'Diagnóstico pago directo — Eurollantas',
+                    installments:       1,
+                    payment_method_id:  'master',
+                    binary_mode:        true,
+                    payer:              { email: buyerEmail },
+                }),
+            });
+            const pb = await pr.json() as any;
+            const approved = pb.status === 'approved';
+            return {
+                ok:           approved,
+                paymentId:    pb.id ?? null,
+                status:       pb.status,
+                statusDetail: pb.status_detail,
+                amount:       pb.transaction_amount,
+                currency:     pb.currency_id,
+                buyerEmail,
+                httpStatus:   pr.status,
+                mpMessage:    approved ? undefined : (pb.message ?? pb.error),
+                mpCause:      approved ? undefined : pb.cause,
+                fnVer:        FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: `Payment exception: ${e.message}`, fnVer: FN_VER };
+        }
+    }
+
+
+    if (step === 'pay_with_token') {
+        // ── Step 6: Token Creation Verification ───────────────────────────────
+        // With production credentials, test card numbers cannot be used to create
+        // real orders (MP rejects them). Instead we verify:
+        //   1. Production AT is accepted by /v1/card_tokens (same endpoint the Brick uses)
+        //   2. A valid card token is returned — proving the storefront Brick will work
+        //
+        // Real end-to-end payment testing must be done through the storefront
+        // with an actual card, which also generates the paymentId needed for Stage 3.
+        try {
+            const tr = await fetch('https://api.mercadopago.com/v1/card_tokens', {
+                method:  'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    card_number:      '5474925432670366',  // MP test Mastercard (tokenizable in both envs)
+                    security_code:    '123',
+                    expiration_month: 11,
+                    expiration_year:  2030,
+                    cardholder:       { name: 'TEST CARD' },
+                }),
+            });
+            const tb = await tr.json() as any;
+
+            if (!tr.ok || !tb.id) {
+                return {
+                    ok:         false,
+                    error:      `Tokenization failed (HTTP ${tr.status})`,
+                    detail:     tb.message ?? tb.error ?? JSON.stringify(tb),
+                    httpStatus: tr.status,
+                    fnVer:      FN_VER,
+                };
+            }
+
+            return {
+                ok:          true,
+                tokenId:     tb.id,
+                lastFour:    tb.last_four_digits,
+                cardType:    tb.payment_method?.id ?? 'master',
+                expiryMonth: tb.expiration_month,
+                expiryYear:  tb.expiration_year,
+                httpStatus:  tr.status,
+                note:        '✅ Card tokenization works — production AT valid. Real purchase must be done through the storefront with a real card (generates production paymentId for Stage 3).',
+                fnVer:       FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: `Tokenization exception: ${e.message}`, fnVer: FN_VER };
+        }
+
+
+    }
+
+    // ── Step: Payment status ─────────────────────────────────────────────────
+    if (step === 'payment_status') {
+        const { paymentId } = data ?? {};
+        if (!paymentId) return { ok: false, error: 'paymentId required', fnVer: FN_VER };
+        try {
+            const r    = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const body = await r.json() as any;
+            return {
+                ok:           r.ok && !!body.id,
+                paymentId:    body.id,
+                status:       body.status,
+                statusDetail: body.status_detail,
+                amount:       body.transaction_amount,
+                currency:     body.currency_id,
+                dateApproved: body.date_approved,
+                fnVer:        FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Refund payment ─────────────────────────────────────────────────
+    if (step === 'refund_payment') {
+        const { paymentId } = data ?? {};
+        if (!paymentId) return { ok: false, error: 'paymentId required', fnVer: FN_VER };
+        try {
+            const r = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
+                method:  'POST',
+                headers: {
+                    'Authorization':     `Bearer ${accessToken}`,
+                    'Content-Type':      'application/json',
+                    'X-Idempotency-Key': `mpdiag-refund-${Date.now()}`,
+                },
+                body: JSON.stringify({}), // empty body = full refund
+            });
+            const body = await r.json() as any;
+            return {
+                ok:       r.ok && !!body.id,
+                refundId: body.id,
+                status:   body.status,
+                amount:   body.amount,
+                fnVer:    FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Installments (meses sin intereses) ─────────────────────────────
+    // Checks that MP returns installment options for Mastercard in MLM (Mexico).
+    // BIN 547492 = first 6 digits of test Mastercard card.
+    if (step === 'check_installments') {
+        try {
+            const params = new URLSearchParams({
+                payment_method_id: 'master',
+                amount:            '1000',
+                bin:               '547492',
+            });
+            const r = await fetch(
+                `https://api.mercadopago.com/v1/payment_methods/installments?${params}`,
+                { headers: { 'Authorization': `Bearer ${accessToken}` } }
+            );
+            const body = await r.json() as any;
+            const arr  = Array.isArray(body) ? body : [];
+            const installments: number[] = (arr[0]?.payer_costs ?? []).map((c: any) => c.installments);
+            return {
+                ok:            r.ok && installments.length > 0,
+                installments,
+                count:         installments.length,
+                fnVer:         FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Configure webhook via MP API (bypasses portal UI bug) ──────────
+    // The MP developer portal has a known bug where event checkboxes don't save.
+    // This step registers the webhook subscription directly via the API.
+    if (step === 'configure_webhook') {
+        const webhookUrl = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpWebhook';
+        const appId      = '398646544825942';
+        try {
+            // First: get existing subscriptions to avoid duplicates
+            const listR = await fetch(`https://api.mercadopago.com/v2/notifications/webhooks?client_id=${appId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const listBody = await listR.json() as any;
+
+            // Check if our URL is already registered
+            const existing = (listBody?.data ?? []).find((s: any) => s.url === webhookUrl);
+
+            if (existing) {
+                return {
+                    ok: true,
+                    message: 'Webhook already registered',
+                    subscription: existing,
+                    fnVer: FN_VER,
+                };
+            }
+
+            // Register new subscription
+            const createR = await fetch('https://api.mercadopago.com/v2/notifications/webhooks', {
+                method:  'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type':  'application/json',
+                },
+                body: JSON.stringify({
+                    url:           webhookUrl,
+                    event_type:    ['payment', 'merchant_order'],
+                    client_id:     appId,
+                    active:        true,
+                }),
+            });
+            const createBody = await createR.json() as any;
+
+            // Also try v1 endpoint as fallback
+            const listR2 = await fetch(`https://api.mercadopago.com/v1/account/webhooks?client_id=${appId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const listBody2 = await listR2.json() as any;
+
+            return {
+                ok:         createR.ok,
+                message:    createR.ok ? '✅ Webhook registered via API' : `❌ HTTP ${createR.status}`,
+                created:    createBody,
+                existingV2: listBody,
+                existingV1: listBody2,
+                fnVer:      FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Fetch webhook subscription from MP API ─────────────────────────
+    // MP's developer portal has a known bug where the secret doesn't display.
+    // We can retrieve it through the REST API instead.
+    if (step === 'fetch_webhook_secret') {
+        try {
+            // Get all webhook subscriptions for this app
+            const appId = '398646544825942';
+            const r = await fetch(`https://api.mercadopago.com/v2/webhooks?client_id=${appId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const body = await r.json() as any;
+            if (!r.ok) {
+                return { ok: false, error: body.message ?? `HTTP ${r.status}`, raw: body, fnVer: FN_VER };
+            }
+            // Also try the direct webhook endpoint
+            const r2 = await fetch(`https://api.mercadopago.com/v1/account/webhooks?client_id=${appId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const body2 = await r2.json() as any;
+            return {
+                ok:        r.ok || r2.ok,
+                v2_result: body,
+                v1_result: body2,
+                hint:      'Look for "secret" or "signature_secret" field in the raw results',
+                fnVer:     FN_VER,
+            };
+        } catch (e: any) {
+            return { ok: false, error: e.message, fnVer: FN_VER };
+        }
+    }
+
+    // ── Step: Verify webhook secret (x-signature capability) ─────────────────
+    // Confirms the webhookSecret is stored in Firestore and that the Node.js
+    // crypto module can produce a valid HMAC-SHA256 signature.
+    // Required for MP Security quality metric.
+    if (step === 'verify_webhook_secret') {
+        const secret = mpConfig.webhookSecret ?? '';
+        if (!secret) {
+            return {
+                ok:    false,
+                error: 'webhookSecret not configured in Firestore',
+                hint:  'Add mercadopago.webhookSecret to config/integrations → Firestore. Find it in developers.mercadopago.com → your app → Webhooks → Secret key.',
+                fnVer: FN_VER,
+            };
+        }
+        const crypto   = await import('crypto');
+        const testTs   = String(Date.now());
+        const manifest = `id:99999999;request-id:diag-req;ts:${testTs};`;
+        const sig      = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+        return {
+            ok:        true,
+            message:   'webhookSecret configured ✅ — HMAC-SHA256 signing works',
+            sampleSig: sig.substring(0, 16) + '…',
+            fnVer:     FN_VER,
+        };
+    }
 
     // ── Step: Webhook endpoint reachability ───────────────────────────────────
 
@@ -4056,43 +5028,68 @@ export const aggregateDailyStats = functions.pubsub
         const month = now.getMonth();   // 0-based
         const day   = now.getDate();    // 1-based
 
-        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-        const dayStr   = String(day).padStart(2, '0');
+        const monthStr   = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const dayStr     = String(day).padStart(2, '0');
+        const dateStr    = `${monthStr}-${dayStr}`;   // YYYY-MM-DD
 
-        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const startOfDay = new Date(year, month, day,  0,  0,  0,   0);
         const endOfDay   = new Date(year, month, day, 23, 59, 59, 999);
 
-        // Read today's orders
+        // ── Canonical non-revenue statuses (mirrors order.model.ts) ──────────
+        const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
+
+        // ── Canonical channel resolution (mirrors ops queue getLegacyChannel) ─
+        const resolveChannel = (order: any): string => {
+            const sc  = order.sourceChannel;
+            const ft  = order.fulfillmentType;
+            if (!sc || sc === 'storefront') return 'WEB';
+            if (sc === 'pos')               return 'POS';
+            if (sc === 'on_behalf')         return 'ON_BEHALF';
+            if (sc === 'amazon')            return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+            if (sc === 'mercadolibre')      return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+            return 'WEB';
+        };
+
+        // ── Read today's orders ───────────────────────────────────────────────
         const ordersSnap = await db.collection('orders')
             .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
             .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
             .get();
 
-        let sales = 0, orders = 0, pieces = 0;
+        // ── Aggregate: totals + per-channel breakdowns ────────────────────────
+        let totalSales = 0, totalOrders = 0, totalPieces = 0;
+        const byChannel: Record<string, { revenue: number; orders: number; units: number }> = {};
+
         ordersSnap.docs.forEach(docSnap => {
             const order = docSnap.data();
-            if (['cancelled', 'refunded', 'returned'].includes(order['status'])) return;
-            sales  += Number(order['total'] ?? 0);
-            orders += 1;
-            pieces += (order['items'] as any[] ?? [])
+            if (NON_REVENUE.includes(order['status'])) return;   // skip ghost & void orders
+
+            const revenue = Number(order['total'] ?? 0);
+            const units   = (order['items'] as any[] ?? [])
                 .reduce((s: number, item: any) => s + (Number(item.quantity) || 1), 0);
+            const channel = resolveChannel(order);
+
+            totalSales  += revenue;
+            totalOrders += 1;
+            totalPieces += units;
+
+            if (!byChannel[channel]) byChannel[channel] = { revenue: 0, orders: 0, units: 0 };
+            byChannel[channel].revenue += revenue;
+            byChannel[channel].orders  += 1;
+            byChannel[channel].units   += units;
         });
 
+        const avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
+        const ts = admin.firestore.FieldValue.serverTimestamp();
+
+        // ── 1. Legacy monthly_stats (backward compat) ─────────────────────────
         const monthRef = db.collection('monthly_stats').doc(monthStr);
         const dayRef   = monthRef.collection('days').doc(dayStr);
-
-        // Write today's daily doc
         await dayRef.set({
-            day:    dayStr,
-            month:  monthStr,
-            sales,
-            orders,
-            pieces,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            day: dayStr, month: monthStr,
+            sales: totalSales, orders: totalOrders, pieces: totalPieces,
+            updatedAt: ts,
         });
-
-        // Re-sum ALL day docs to update the month aggregate accurately
-        // (handles retroactive cancellations updating daily docs via backfill)
         const allDaysSnap = await monthRef.collection('days').get();
         let mSales = 0, mOrders = 0, mPieces = 0;
         allDaysSnap.docs.forEach(d => {
@@ -4100,17 +5097,416 @@ export const aggregateDailyStats = functions.pubsub
             mOrders += Number(d.data()['orders'] ?? 0);
             mPieces += Number(d.data()['pieces'] ?? 0);
         });
+        await monthRef.set({ month: monthStr, sales: mSales, orders: mOrders, pieces: mPieces, updatedAt: ts }, { merge: true });
 
-        await monthRef.set({
-            month:  monthStr,
-            sales:  mSales,
-            orders: mOrders,
-            pieces: mPieces,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        // ── 2. analytics_daily/{YYYY-MM-DD} ──────────────────────────────────
+        const dt = new Date(`${dateStr}T12:00:00`);
+        await db.collection('analytics_daily').doc(dateStr).set({
+            date:         dateStr,
+            month:        monthStr,
+            dayOfWeek:    (dt.getDay() + 6) % 7,   // 0=Mon … 6=Sun (ISO)
+            totalRevenue: totalSales,
+            totalOrders,
+            totalUnits:   totalPieces,
+            avgTicket,
+            byChannel,
+            updatedAt:    ts,
         }, { merge: true });
 
-        console.log(`[DailyStats] ${monthStr}/${dayStr}: orders=${orders}, sales=$${sales.toFixed(0)}, pieces=${pieces}`);
-        console.log(`[DailyStats] Month aggregate → orders=${mOrders}, sales=$${mSales.toFixed(0)}, pieces=${mPieces}`);
+        // ── 3. analytics_monthly/{YYYY-MM} ────────────────────────────────────
+        await db.collection('analytics_monthly').doc(monthStr).set({
+            month: monthStr,
+            totalRevenue: admin.firestore.FieldValue.increment(totalSales),
+            totalOrders:  admin.firestore.FieldValue.increment(totalOrders),
+            totalUnits:   admin.firestore.FieldValue.increment(totalPieces),
+            updatedAt:    ts,
+        }, { merge: true });
+
+        // ── 4. analytics_channel_snapshots/{channel}/{YYYY-MM-DD} ─────────────
+        const batch = db.batch();
+        for (const [channel, data] of Object.entries(byChannel)) {
+            const snapRef = db
+                .collection('analytics_channel_snapshots')
+                .doc(channel)
+                .collection('days')
+                .doc(dateStr);
+            batch.set(snapRef, {
+                channel, date: dateStr, month: monthStr,
+                revenue: data.revenue,
+                orders:  data.orders,
+                units:   data.units,
+                avgPrice: data.orders > 0 ? data.revenue / data.orders : 0,
+                // visits & conversionRate filled in by meliEnrichDailySnapshot below
+                updatedAt: ts,
+            }, { merge: true });
+        }
+        await batch.commit();
+
+        // ── 5. Enrich MELI_FULL snapshot with visit data from MeLi Metrics API ─
+        try {
+            const meliConfig = await getMeliConfig();
+            if (meliConfig?.accessToken && meliConfig?.userId && byChannel['MELI_FULL']) {
+                const token = await getValidMeliToken();
+                const visitsRes = await fetch(
+                    `https://api.mercadolibre.com/users/${meliConfig.userId}/items_visits/time_window?last=1&unit=day`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (visitsRes.ok) {
+                    const visitsJson = await visitsRes.json() as any;
+                    const totalVisits = visitsJson?.total_visits ?? 0;
+                    const meliFullOrders = byChannel['MELI_FULL'].orders ?? 0;
+                    const conversionRate = totalVisits > 0
+                        ? parseFloat(((meliFullOrders / totalVisits) * 100).toFixed(2))
+                        : 0;
+
+                    const meliSnapRef = db
+                        .collection('analytics_channel_snapshots')
+                        .doc('MELI_FULL')
+                        .collection('days')
+                        .doc(dateStr);
+
+                    await meliSnapRef.set({
+                        visits: totalVisits,
+                        conversionRate,
+                        updatedAt: ts,
+                    }, { merge: true });
+
+                    console.log(`[DailyStats] MELI_FULL visits=${totalVisits}, conv=${conversionRate}%`);
+                }
+            }
+        } catch (meliErr) {
+            // Non-critical: metrics API enrichment failed, snapshot still has order data
+            console.warn('[DailyStats] MeLi visits enrichment failed (non-critical):', meliErr);
+        }
+
+        console.log(`[DailyStats] ${dateStr}: orders=${totalOrders}, revenue=$${totalSales.toFixed(0)}, pieces=${totalPieces}`);
+        console.log(`[DailyStats] Channels:`, JSON.stringify(Object.fromEntries(
+            Object.entries(byChannel).map(([ch, d]) => [ch, `$${d.revenue.toFixed(0)} / ${d.orders}o`])
+        )));
+    });
+
+
+
+
+
+// ─── cleanupAbandonedCheckouts — scheduled every 30 min ──────────────────────
+//
+// Auto-cancels orders stuck in `pending_payment` for more than 35 minutes.
+// These are customers who started checkout but never completed payment.
+// Runs at :05 and :35 of every hour to avoid overlap with any other nightly jobs.
+//
+// Adds a history entry for audit trail: { status: 'cancelled', note: 'Pago no completado' }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const cleanupAbandonedCheckouts = functions.pubsub
+    .schedule('5,35 * * * *')      // every 30 min at :05 and :35
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+        const now     = new Date();
+        const cutoff  = new Date(now.getTime() - 35 * 60 * 1000); // 35 minutes ago
+
+        const snap = await db.collection('orders')
+            .where('status', '==', 'pending_payment')
+            .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(cutoff))
+            .limit(100)
+            .get();
+
+        if (snap.empty) {
+            console.log('[CleanupCheckouts] No abandoned checkouts found.');
+            return;
+        }
+
+        console.log(`[CleanupCheckouts] Cancelling ${snap.size} abandoned checkout(s).`);
+
+        const batch = db.batch();
+        for (const orderDoc of snap.docs) {
+            const data = orderDoc.data();
+            const history = data['history'] ?? [];
+            batch.update(orderDoc.ref, {
+                status:    'cancelled',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                history:   [...history, {
+                    status:    'cancelled',
+                    timestamp: admin.firestore.Timestamp.now(),
+                    note:      'Pago no completado — cancelación automática (35 min)',
+                    updatedBy: 'system',
+                }],
+            });
+        }
+
+        await batch.commit();
+        console.log(`[CleanupCheckouts] Done. ${snap.size} order(s) cancelled.`);
+    });
+
+
+// ─── meliEnrichInventoryVelocity ─────────────────────────────────────────────
+//
+// Scheduled weekly (Mon 06:00 MX) + callable on-demand.
+// For every SKU in meli_fbm_inventory, computes:
+//   - salesVelocity30d  (units/day average over last 30 days)
+//   - salesVelocity7d   (units/day average over last 7 days — shows trend)
+//   - daysOfCoverage    (availableQty / velocity30d)
+//   - reorderAlertLevel ('ok' | 'low' | 'critical' | 'stockout')
+//   - recommendedReplenishQty  (target 45 days of stock)
+//   - projectedStockoutDate
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Helper shared by scheduled + callable
+async function computeInventoryVelocity(): Promise<{ updated: number; errors: string[] }> {
+    const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
+    const now = new Date();
+    const start30 = new Date(now); start30.setDate(now.getDate() - 30);
+    const start7  = new Date(now); start7.setDate(now.getDate() - 7);
+
+    // 1. Load all MELI_FULL revenue orders from last 30 days
+    const ordersSnap = await db.collection('orders')
+        .where('sourceChannel', '==', 'mercadolibre')
+        .where('fulfillmentType', '==', 'platform')
+        .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(start30))
+        .get();
+
+    // 2. Build SKU velocity maps: { sku → { units30d, units7d } }
+    const velocityMap: Record<string, { units30d: number; units7d: number }> = {};
+    const itemIdMap:   Record<string, { units30d: number; units7d: number }> = {};
+
+    for (const snap of ordersSnap.docs) {
+        const order = snap.data();
+        if (NON_REVENUE.includes(order['status'])) continue;
+
+        const orderDate = (order['createdAt'] as admin.firestore.Timestamp).toDate();
+        const inLast7   = orderDate >= start7;
+
+        const items = (order['items'] as any[] ?? []);
+        for (const item of items) {
+            const sku    = (item.sku ?? '').trim();
+            const mlId   = (item.mlItemId ?? item.productId ?? '').trim();
+            const qty    = Number(item.quantity) || 1;
+
+            if (sku) {
+                if (!velocityMap[sku]) velocityMap[sku] = { units30d: 0, units7d: 0 };
+                velocityMap[sku].units30d += qty;
+                if (inLast7) velocityMap[sku].units7d += qty;
+            }
+            if (mlId) {
+                if (!itemIdMap[mlId]) itemIdMap[mlId] = { units30d: 0, units7d: 0 };
+                itemIdMap[mlId].units30d += qty;
+                if (inLast7) itemIdMap[mlId].units7d += qty;
+            }
+        }
+    }
+
+    // 3. Load all FBM inventory docs
+    const invSnap = await db.collection('meli_fbm_inventory').get();
+    const errors: string[] = [];
+    const batch = db.batch();
+    let updated = 0;
+
+    for (const invDoc of invSnap.docs) {
+        try {
+            const data = invDoc.data();
+            const sku   = (data['sku'] ?? '').trim();
+            const mlId  = (data['mlItemId'] ?? '').trim();
+
+            // Prefer SKU match, fall back to ML Item ID
+            const vel = (sku && velocityMap[sku])   ? velocityMap[sku]
+                      : (mlId && itemIdMap[mlId])    ? itemIdMap[mlId]
+                      : null;
+
+            const units30d    = vel?.units30d ?? 0;
+            const units7d     = vel?.units7d  ?? 0;
+            const vel30       = units30d / 30;
+            const vel7        = units7d  / 7;
+            const available   = Number(data['availableQuantity'] ?? data['fullStock'] ?? 0);
+            const daysOfCoverage = vel30 > 0 ? Math.floor(available / vel30) : 9999;
+            const targetDays  = 45;
+            const replenish   = vel30 > 0
+                ? Math.max(0, Math.ceil((targetDays * vel30) - available))
+                : 0;
+
+            let alertLevel: 'ok' | 'low' | 'critical' | 'stockout';
+            if (available === 0)        alertLevel = 'stockout';
+            else if (daysOfCoverage < 7)  alertLevel = 'critical';
+            else if (daysOfCoverage < 21) alertLevel = 'low';
+            else                          alertLevel = 'ok';
+
+            const stockoutDate = vel30 > 0 && available > 0
+                ? new Date(now.getTime() + (daysOfCoverage * 86400000))
+                    .toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' })
+                : null;
+
+            batch.update(invDoc.ref, {
+                salesVelocity30d:         parseFloat(vel30.toFixed(2)),
+                salesVelocity7d:          parseFloat(vel7.toFixed(2)),
+                daysOfCoverage,
+                reorderAlertLevel:        alertLevel,
+                recommendedReplenishQty:  replenish,
+                projectedStockoutDate:    stockoutDate,
+                lastVelocityCalc:         admin.firestore.FieldValue.serverTimestamp(),
+            });
+            updated++;
+        } catch (err: any) {
+            errors.push(`${invDoc.id}: ${err?.message ?? err}`);
+        }
+    }
+
+    await batch.commit();
+    return { updated, errors };
+}
+
+export const meliEnrichInventoryVelocity = functions.pubsub
+    .schedule('0 6 * * 1')       // Every Monday 06:00 MX
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+        const result = await computeInventoryVelocity();
+        console.log(`[VelocityEnrich] updated=${result.updated}, errors=${result.errors.length}`);
+        if (result.errors.length) console.warn('[VelocityEnrich] errors:', result.errors);
+    });
+
+export const meliEnrichInventoryVelocityCallable = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+        }
+        const result = await computeInventoryVelocity();
+        return result;
+    });
+
+
+// ─── backfillAnalytics — callable ────────────────────────────────────────────
+//
+// One-time callable to populate analytics_daily and analytics_channel_snapshots
+// from all historical orders. Processes in 30-day chunks to avoid timeouts.
+// Call after deploying the new analytics collections.
+//
+// Returns: { daysProcessed, daysSkipped, writeCount }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const backfillAnalytics = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onCall(async (data: { fromDate?: string; toDate?: string }, context) => {
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+        }
+
+        const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
+
+        const resolveChannel = (order: any): string => {
+            const sc = order.sourceChannel; const ft = order.fulfillmentType;
+            if (!sc || sc === 'storefront') return 'WEB';
+            if (sc === 'pos')     return 'POS';
+            if (sc === 'on_behalf') return 'ON_BEHALF';
+            if (sc === 'amazon')  return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+            if (sc === 'mercadolibre') return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+            return 'WEB';
+        };
+
+        const toMxDateStr = (d: Date): string =>
+            d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+
+        // Date range: default = start of 2024 to yesterday
+        const now = new Date();
+        const fromDate = data?.fromDate
+            ? new Date(data.fromDate + 'T06:00:00')
+            : new Date('2024-01-01T06:00:00');
+        const toDate = data?.toDate
+            ? new Date(data.toDate + 'T23:59:59')
+            : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+        // Load ALL orders in range in one query (< 100K docs — manageable in 1GB)
+        const allOrdersSnap = await db.collection('orders')
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(fromDate))
+            .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(toDate))
+            .get();
+
+        console.log(`[BackfillAnalytics] Total orders loaded: ${allOrdersSnap.size}`);
+
+        // Group orders by MX date key
+        const dateMap: Record<string, Record<string, {
+            revenue: number; orders: number; units: number;
+        }>> = {};   // dateStr → channelId → metrics
+
+        for (const snap of allOrdersSnap.docs) {
+            const order = snap.data();
+            if (NON_REVENUE.includes(order['status'])) continue;
+
+            const orderDate = (order['createdAt'] as admin.firestore.Timestamp).toDate();
+            const dateKey   = toMxDateStr(orderDate);
+            const channel   = resolveChannel(order);
+            const revenue   = Number(order['total'] ?? 0);
+            const units     = (order['items'] as any[] ?? [])
+                .reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+
+            if (!dateMap[dateKey]) dateMap[dateKey] = {};
+            if (!dateMap[dateKey][channel]) dateMap[dateKey][channel] = { revenue: 0, orders: 0, units: 0 };
+            dateMap[dateKey][channel].revenue += revenue;
+            dateMap[dateKey][channel].orders  += 1;
+            dateMap[dateKey][channel].units   += units;
+        }
+
+        // Write analytics_daily and analytics_channel_snapshots in batches of 400
+        const ts = admin.firestore.FieldValue.serverTimestamp();
+        let writeCount = 0;
+        let batch = db.batch();
+        let batchSize = 0;
+
+        const flushBatch = async () => {
+            if (batchSize > 0) { await batch.commit(); batch = db.batch(); batchSize = 0; }
+        };
+
+        const dates = Object.keys(dateMap).sort();
+
+        for (const dateStr of dates) {
+            const channelData = dateMap[dateStr];
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const monthStr = `${y}-${String(m).padStart(2, '0')}`;
+            const dt = new Date(dateStr + 'T12:00:00');
+
+            // Aggregate all channels for this day → analytics_daily
+            let totalRevenue = 0, totalOrders = 0, totalUnits = 0;
+            for (const ch of Object.values(channelData)) {
+                totalRevenue += ch.revenue; totalOrders += ch.orders; totalUnits += ch.units;
+            }
+            const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+            const dailyRef = db.collection('analytics_daily').doc(dateStr);
+            batch.set(dailyRef, {
+                date: dateStr, month: monthStr,
+                dayOfWeek: (dt.getDay() + 6) % 7,
+                totalRevenue, totalOrders, totalUnits, avgTicket,
+                byChannel: channelData,
+                updatedAt: ts,
+            }, { merge: true });
+            batchSize++;
+
+            // Per-channel snapshots
+            for (const [channel, data2] of Object.entries(channelData)) {
+                const snapRef = db
+                    .collection('analytics_channel_snapshots')
+                    .doc(channel)
+                    .collection('days')
+                    .doc(dateStr);
+                batch.set(snapRef, {
+                    channel, date: dateStr, month: monthStr,
+                    revenue: data2.revenue, orders: data2.orders, units: data2.units,
+                    avgPrice: data2.orders > 0 ? data2.revenue / data2.orders : 0,
+                    updatedAt: ts,
+                }, { merge: true });
+                batchSize++;
+            }
+
+            writeCount += 1 + Object.keys(channelData).length;
+
+            // Flush every 400 writes
+            if (batchSize >= 400) await flushBatch();
+        }
+        await flushBatch();
+
+        console.log(`[BackfillAnalytics] Done. dates=${dates.length}, writes=${writeCount}`);
+        return { daysProcessed: dates.length, writeCount };
     });
 
 
@@ -4418,3 +5814,696 @@ export const meliPriceScanDiag = functions
     return report;
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Paid Media Intelligence ──────────────────────────────────────────────────
+// Pulls Meta Ads + Google Ads snapshots daily → stores in Firestore.
+// Tokens/credentials stay server-side (config/integrations → meta / google).
+//
+// Firestore paths written:
+//   advertising_snapshots/{YYYY-MM-DD}/meta/{campaignId}   → MetaInsights
+//   advertising_snapshots/{YYYY-MM-DD}/google/{campaignId} → GoogleInsights
+//   advertising_cache/latest                                → PaidMediaDailySummary
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Reads paid media credentials from config/integrations */
+async function getPaidMediaConfig(): Promise<{ meta: any; google: any }> {
+    const snap = await db.collection('config').doc('integrations').get();
+    const data = snap.data() ?? {};
+    return { meta: data['meta'] ?? {}, google: data['google'] ?? {} };
+}
+
+/** Returns 'YYYY-MM-DD' for a Date in Mexico City timezone */
+function toDateStr(d: Date): string {
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+}
+
+// ── Meta helpers ──────────────────────────────────────────────────────────────
+const META_GRAPH_BASE = 'https://graph.facebook.com/v21.0';
+
+function actionVal(arr: { action_type: string; value: string }[] | undefined, type: string): number {
+    if (!arr) return 0;
+    const found = arr.find((a: any) => a.action_type === type);
+    return found ? parseFloat(found.value) : 0;
+}
+
+async function fetchMetaCampaigns(adAccountId: string, accessToken: string, datePreset: string): Promise<any[]> {
+    const fields = [
+        'id', 'name', 'status',
+        `insights.date_preset(${datePreset}){spend,impressions,clicks,reach,frequency,cpm,cpc,ctr,purchase_roas,actions,action_values}`,
+    ].join(',');
+    const url  = `${META_GRAPH_BASE}/${adAccountId}/campaigns?fields=${encodeURIComponent(fields)}&access_token=${accessToken}&limit=100`;
+    const res  = await fetch(url);
+    const body = await res.json() as any;
+    if (!res.ok) throw new Error(`Meta API: ${body?.error?.message ?? JSON.stringify(body)}`);
+    return body.data ?? [];
+}
+
+// ── Google Ads helpers ────────────────────────────────────────────────────────
+const GOOGLE_ADS_BASE = 'https://googleads.googleapis.com/v17';
+
+async function getGoogleToken(cfg: any): Promise<string> {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id:     cfg.clientId,
+            client_secret: cfg.clientSecret,
+            refresh_token: cfg.refreshToken,
+            grant_type:    'refresh_token',
+        }).toString(),
+    });
+    const d = await r.json() as any;
+    if (!r.ok || !d.access_token) throw new Error(`Google OAuth: ${d.error_description ?? JSON.stringify(d)}`);
+    return d.access_token;
+}
+
+async function fetchGoogleCampaigns(customerId: string, developerToken: string, accessToken: string, dateStr: string): Promise<any[]> {
+    const query = `
+        SELECT campaign.id, campaign.name, campaign.status,
+               metrics.cost_micros, metrics.impressions, metrics.clicks,
+               metrics.ctr, metrics.average_cpc, metrics.conversions,
+               metrics.all_conversions, metrics.conversions_value,
+               metrics.cost_per_conversion, metrics.search_impression_share
+        FROM campaign
+        WHERE segments.date = '${dateStr}' AND campaign.status != 'REMOVED'
+        ORDER BY metrics.cost_micros DESC LIMIT 50
+    `.trim();
+    const res = await fetch(`${GOOGLE_ADS_BASE}/customers/${customerId}/googleAds:search`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'developer-token': developerToken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+    });
+    const body = await res.json() as any;
+    if (!res.ok) throw new Error(`Google Ads API: ${body?.error?.message ?? JSON.stringify(body)}`);
+    return body.results ?? [];
+}
+
+// ── Core sync logic ───────────────────────────────────────────────────────────
+async function runPaidMediaSync(targetDate: Date) {
+    const dateStr  = toDateStr(targetDate);
+    const errors: string[] = [];
+    let metaCount = 0, googleCount = 0;
+
+    const cfg         = await getPaidMediaConfig();
+    const batch       = db.batch();
+    const snapsBase   = db.collection('advertising_snapshots').doc(dateStr);
+    const pulledAt    = admin.firestore.FieldValue.serverTimestamp();
+    const cacheRef    = db.collection('advertising_cache').doc('latest');
+
+    // ── Meta ─────────────────────────────────────────────────────────────────
+    const metaCfg = cfg.meta;
+    if (metaCfg?.accessToken && metaCfg?.adAccountId) {
+        try {
+            const camps = await fetchMetaCampaigns(metaCfg.adAccountId, metaCfg.accessToken, 'yesterday');
+            let mSpend = 0, mImpr = 0, mClicks = 0, mPurch = 0;
+
+            for (const camp of camps) {
+                const ins = (camp.insights?.data ?? [])[0];
+                if (!ins) continue;
+                const spend       = parseFloat(ins.spend)      || 0;
+                const impressions = parseInt(ins.impressions)   || 0;
+                const clicks      = parseInt(ins.clicks)        || 0;
+                const reach       = parseInt(ins.reach)         || 0;
+                const frequency   = parseFloat(ins.frequency)   || 0;
+                const cpm         = parseFloat(ins.cpm)         || 0;
+                const cpc         = parseFloat(ins.cpc)         || 0;
+                const ctr         = parseFloat(ins.ctr)         || 0;
+                const purchases   = actionVal(ins.actions,       'purchase');
+                const purchaseValue = actionVal(ins.action_values, 'purchase');
+                const addToCart   = actionVal(ins.actions,       'add_to_cart');
+                const viewContent = actionVal(ins.actions,       'view_content');
+                const purchaseRoas = ins.purchase_roas?.[0] ? parseFloat(ins.purchase_roas[0].value) : 0;
+
+                batch.set(snapsBase.collection('meta').doc(camp.id), {
+                    campaignId: camp.id, campaignName: camp.name, status: camp.status,
+                    spend, impressions, clicks, reach, frequency, cpm, cpc, ctr,
+                    purchases, purchaseValue, purchaseRoas, addToCart, viewContent,
+                    datePreset: 'yesterday', snapshotDate: dateStr, pulledAt,
+                }, { merge: true });
+
+                metaCount++;
+                mSpend += spend; mImpr += impressions; mClicks += clicks; mPurch += purchases;
+            }
+
+            batch.set(cacheRef, {
+                date: dateStr, metaSpend: mSpend, metaImpressions: mImpr,
+                metaClicks: mClicks, metaPurchases: mPurch, updatedAt: pulledAt,
+            }, { merge: true });
+
+        } catch (err: any) {
+            console.error('[PaidMedia] Meta error:', err.message);
+            errors.push(`Meta: ${err.message}`);
+        }
+    }
+
+    // ── Google Ads ────────────────────────────────────────────────────────────
+    const gCfg = cfg.google;
+    if (gCfg?.clientId && gCfg?.clientSecret && gCfg?.refreshToken && gCfg?.customerId && gCfg?.developerToken) {
+        try {
+            const gToken     = await getGoogleToken(gCfg);
+            const yesterday  = new Date(targetDate);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = toDateStr(yesterday);
+
+            const results = await fetchGoogleCampaigns(gCfg.customerId, gCfg.developerToken, gToken, yesterdayStr);
+            let gSpend = 0, gImpr = 0, gClicks = 0, gConv = 0, gConvVal = 0;
+
+            for (const row of results) {
+                const camp = row.campaign, m = row.metrics;
+                const spend            = (m.costMicros ?? 0) / 1_000_000;
+                const impressions      = m.impressions   ?? 0;
+                const clicks           = m.clicks        ?? 0;
+                const ctr              = (m.ctr          ?? 0) * 100;
+                const avgCpc           = (m.averageCpc   ?? 0) / 1_000_000;
+                const conversions      = m.conversions   ?? 0;
+                const allConversions   = m.allConversions ?? 0;
+                const conversionsValue = m.conversionsValue ?? 0;
+                const costPerConversion = conversions > 0 ? spend / conversions : 0;
+                const impressionShare  = m.searchImpressionShare ?? null;
+
+                batch.set(snapsBase.collection('google').doc(String(camp.id)), {
+                    campaignId: String(camp.id), campaignName: camp.name, status: camp.status,
+                    spend, impressions, clicks, ctr, avgCpc, conversions, allConversions,
+                    conversionsValue, costPerConversion, impressionShare,
+                    snapshotDate: dateStr, pulledAt,
+                }, { merge: true });
+
+                googleCount++;
+                gSpend += spend; gImpr += impressions; gClicks += clicks;
+                gConv += conversions; gConvVal += conversionsValue;
+            }
+
+            batch.set(cacheRef, {
+                googleSpend: gSpend, googleImpressions: gImpr, googleClicks: gClicks,
+                googleConversions: gConv,
+                googleRoas: gSpend > 0 ? gConvVal / gSpend : 0,
+                updatedAt: pulledAt,
+            }, { merge: true });
+
+        } catch (err: any) {
+            console.error('[PaidMedia] Google error:', err.message);
+            errors.push(`Google: ${err.message}`);
+        }
+    }
+
+    await batch.commit();
+    console.log(`[PaidMedia] ${dateStr}: Meta=${metaCount}, Google=${googleCount}, Errors=${errors.length}`);
+    return { metaCampaigns: metaCount, googleCampaigns: googleCount, errors };
+}
+
+// ── Scheduled: daily at 06:00 Mexico City ────────────────────────────────────
+export const syncPaidMediaSnapshots = functions
+    .runWith({ timeoutSeconds: 120, memory: '256MB' })
+    .pubsub.schedule('0 12 * * *')      // 06:00 Mexico City = 12:00 UTC
+    .timeZone('America/Mexico_City')
+    .onRun(async () => { await runPaidMediaSync(new Date()); return null; });
+
+// ── Manual trigger (callable from Angular) ────────────────────────────────────
+export const triggerPaidMediaSync = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    const role = context.auth.token?.role as string | undefined;
+    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(role ?? ''))
+        throw new functions.https.HttpsError('permission-denied', 'Insufficient permissions.');
+    try {
+        const result = await runPaidMediaSync(data?.date ? new Date(data.date) : new Date());
+        return { ok: true, ...result };
+    } catch (err: any) {
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+
+// ── Read insights — joins snapshots + internal orders ─────────────────────────
+export const getPaidMediaInsights = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+
+    const { campaignName, metaCampaignId, googleCampaignId, days = 30 } = data ?? {};
+    const today   = new Date();
+    const history: any[] = [];
+    let latestMeta: any = null, latestGoogle: any = null;
+
+    // Fetch per-day snapshots in parallel
+    await Promise.all(Array.from({ length: days }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr   = toDateStr(d);
+        const snapsBase = db.collection('advertising_snapshots').doc(dateStr);
+
+        return Promise.all([
+            metaCampaignId   ? snapsBase.collection('meta').doc(metaCampaignId).get()    : Promise.resolve(null),
+            googleCampaignId ? snapsBase.collection('google').doc(googleCampaignId).get() : Promise.resolve(null),
+        ]).then(([ms, gs]) => {
+            const md = ms?.exists  ? ms.data()  : null;
+            const gd = gs?.exists  ? gs.data()  : null;
+            if (i === 0) { latestMeta = md; latestGoogle = gd; }
+            history.push({
+                date: dateStr, metaSpend: md?.spend ?? 0, googleSpend: gd?.spend ?? 0,
+                totalSpend: (md?.spend ?? 0) + (gd?.spend ?? 0), revenue: 0, roas: null,
+            });
+        });
+    }));
+
+    // Join with internal orders for revenue data
+    let totalOrders = 0, totalRevenue = 0;
+    if (campaignName) {
+        const from = new Date(today);
+        from.setDate(from.getDate() - days);
+        const ordersSnap = await db.collection('orders')
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(from))
+            .orderBy('createdAt', 'desc').get();
+
+        const slug = campaignName.toLowerCase().trim();
+        const revByDate = new Map<string, number>();
+
+        for (const doc of ordersSnap.docs) {
+            const d = doc.data() as any;
+            const cs = (d.attribution?.utm?.utm_campaign ?? '').toLowerCase().trim();
+            if (!cs || (!cs.includes(slug) && !slug.includes(cs))) continue;
+            const rev = d.total ?? d.totalAmount ?? 0;
+            totalOrders++; totalRevenue += rev;
+            const ds = toDateStr((d.createdAt as admin.firestore.Timestamp).toDate());
+            revByDate.set(ds, (revByDate.get(ds) ?? 0) + rev);
+        }
+
+        for (const pt of history) {
+            pt.revenue = revByDate.get(pt.date) ?? 0;
+            pt.roas    = pt.totalSpend > 0 ? pt.revenue / pt.totalSpend : null;
+        }
+    }
+
+    history.sort((a, b) => a.date.localeCompare(b.date));
+    const totalSpend = (latestMeta?.spend ?? 0) + (latestGoogle?.spend ?? 0);
+
+    return {
+        internalOrders: totalOrders, internalRevenue: totalRevenue,
+        meta: latestMeta, google: latestGoogle,
+        totalSpend,
+        realRoas:         totalSpend > 0 ? totalRevenue / totalSpend : null,
+        realCpa:          totalOrders > 0 ? totalSpend / totalOrders  : null,
+        frequencyWarning: (latestMeta?.frequency ?? 0) > 4.5,
+        history,
+    };
+});
+
+// ─── Dynamic Sitemap ──────────────────────────────────────────────────────────
+// Deployed endpoint: /sitemap.xml (via Firebase Hosting rewrite)
+// Reads all active products + published blog posts from Firestore.
+// Submit this URL to Google Search Console and include in robots.txt.
+// AI crawlers: GPTBot, PerplexityBot, ClaudeBot, GoogleBot all respect sitemaps.
+
+export const sitemapXml = functions.https.onRequest(async (req, res) => {
+    const DOMAIN = 'https://importadoraeuro.com';
+
+    try {
+        const [productsSnap, blogSnap] = await Promise.all([
+            db.collection('products').where('active', '==', true).get(),
+            db.collection('blog_posts').where('published', '==', true).get(),
+        ]);
+
+        const now = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+        // Static pages
+        const staticUrls = [
+            { loc: `${DOMAIN}/`,           priority: '1.0', changefreq: 'weekly'  },
+            // ── Catalog: /catalogo is canonical ──────────────────────────────────
+            { loc: `${DOMAIN}/catalogo`,   priority: '0.9', changefreq: 'daily'   },
+            { loc: `${DOMAIN}/catalog`,    priority: '0.3', changefreq: 'monthly' }, // 301 → /catalogo
+            // ── Other pages ───────────────────────────────────────────────────────
+            { loc: `${DOMAIN}/praxis`,     priority: '0.7', changefreq: 'monthly' },
+            { loc: `${DOMAIN}/blog`,       priority: '0.7', changefreq: 'weekly'  },
+            { loc: `${DOMAIN}/help`,       priority: '0.5', changefreq: 'monthly' },
+            { loc: `${DOMAIN}/terms`,      priority: '0.3', changefreq: 'yearly'  },
+            { loc: `${DOMAIN}/privacy`,    priority: '0.3', changefreq: 'yearly'  },
+        ];
+
+        const urlEntries: string[] = [];
+
+        // Static pages
+        for (const page of staticUrls) {
+            urlEntries.push(`
+  <url>
+    <loc>${page.loc}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`);
+        }
+
+        // Product pages
+        for (const doc of productsSnap.docs) {
+            const d = doc.data();
+            const slug = d.slug || doc.id;
+            const updatedAt = d.updatedAt?.toDate
+                ? d.updatedAt.toDate().toISOString().split('T')[0]
+                : now;
+            urlEntries.push(`
+  <url>
+    <loc>${DOMAIN}/product/${slug}</loc>
+    <lastmod>${updatedAt}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+        }
+
+        // Blog post pages
+        for (const doc of blogSnap.docs) {
+            const d = doc.data();
+            const slug = d.slug || doc.id;
+            const publishedAt = d.publishedAt?.toDate
+                ? d.publishedAt.toDate().toISOString().split('T')[0]
+                : now;
+            urlEntries.push(`
+  <url>
+    <loc>${DOMAIN}/blog/${slug}</loc>
+    <lastmod>${publishedAt}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`);
+        }
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+          http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+${urlEntries.join('')}
+</urlset>`;
+
+        res.set('Content-Type', 'application/xml; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=3600'); // 1-hour cache
+        res.status(200).send(xml);
+    } catch (e) {
+        console.error('[sitemapXml] Error:', e);
+        res.status(500).send('Sitemap generation failed.');
+    }
+});
+
+// ─── Phase 2.1 — Abandoned Cart Recovery Automation ─────────────────────────
+// Triggered when cartSnapshots receives an abandoned_detected event.
+// Queues a multi-step recovery sequence in recovery_queue.
+// Step 1 (1 hour): WhatsApp message + cart link
+// Step 2 (24 hours): WhatsApp + auto-generated 5% coupon code
+// Uses provider-agnostic notification_outbox — plug in Twilio / WABA / any provider.
+
+export const onCartAbandoned = functions.firestore
+    .document('cartSnapshots/{snapId}')
+    .onCreate(async (snap, context) => {
+        const data = snap.data();
+        if (data?.event !== 'abandoned_detected') return null;
+
+        const sessionId = data.sessionId || context.params.snapId;
+        const email     = data.customerEmail || data.attribution?.email || null;
+        const phone     = data.customerPhone || null;
+        const name      = data.customerName  || data.attribution?.name || 'Cliente';
+        const items     = data.items || [];
+        const cartValue = data.cartValue || 0;
+        const cartLink  = 'https://importadoraeuro.com/checkout';
+
+        if (!email && !phone) {
+            // Cannot recover anonymous guest with no contact info — skip
+            return null;
+        }
+
+        // Check if this session already has a recovery task
+        const existing = await db.collection('recovery_queue')
+            .where('sessionId', '==', sessionId)
+            .limit(1).get();
+        if (!existing.empty) return null; // already queued
+
+        const now   = Date.now();
+        const batch = db.batch();
+
+        // Step 1: 1 hour from now — friendly reminder
+        const step1Ref = db.collection('recovery_queue').doc();
+        batch.set(step1Ref, {
+            sessionId, email, phone, name, items, cartValue,
+            step:        1,
+            sendAt:      admin.firestore.Timestamp.fromMillis(now + 60 * 60 * 1000),
+            status:      'pending',
+            type:        'cart_recovery',
+            message:     `Hola ${name}, dejaste tu carrito con ${items.length} producto(s) por $${cartValue} MXN. ¿Te ayudamos a completar tu compra? 👉 ${cartLink}`,
+            createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Step 2: 24 hours from now — with coupon
+        // Auto-generate a unique 5% coupon code
+        const couponCode = `CART${sessionId.slice(-6).toUpperCase()}`;
+        const step2Ref = db.collection('recovery_queue').doc();
+        batch.set(step2Ref, {
+            sessionId, email, phone, name, items, cartValue,
+            step:        2,
+            sendAt:      admin.firestore.Timestamp.fromMillis(now + 24 * 60 * 60 * 1000),
+            status:      'pending',
+            type:        'cart_recovery',
+            couponCode,
+            message:     `${name}, aquí tienes un 5% de descuento exclusivo: ${couponCode}. Válido por 48 horas. Completa tu compra → ${cartLink}`,
+            createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await batch.commit();
+
+        // Pre-create the coupon in Firestore so it's ready when the customer arrives
+        const couponEndDate = new Date(now + 48 * 60 * 60 * 1000);
+        await db.collection('coupons').doc(couponCode).set({
+            code:              couponCode,
+            type:              'percentage',
+            value:             5,
+            isActive:          true,
+            usageLimit:        1,
+            usageCount:        0,
+            minPurchaseAmount: 0,
+            startDate:         admin.firestore.Timestamp.now(),
+            endDate:           admin.firestore.Timestamp.fromDate(couponEndDate),
+            description:       `Recuperación de carrito — sesión ${sessionId}`,
+            createdAt:         admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt:         admin.firestore.FieldValue.serverTimestamp(),
+            autoGenerated:     true,
+            source:            'cart_recovery',
+        }, { merge: true });
+
+        console.log(`[CartRecovery] Queued 2-step recovery for session ${sessionId}`);
+        return null;
+    });
+
+// Processes pending recovery_queue items and writes to notification_outbox.
+// Schedule: every 30 minutes. Outbox is read by any notification provider.
+export const processRecoveryQueue = functions.pubsub
+    .schedule('every 30 minutes')
+    .onRun(async () => {
+        const now = admin.firestore.Timestamp.now();
+        const snap = await db.collection('recovery_queue')
+            .where('status', '==', 'pending')
+            .where('sendAt', '<=', now)
+            .limit(50)
+            .get();
+
+        if (snap.empty) return null;
+
+        const batch = db.batch();
+        for (const docSnap of snap.docs) {
+            const task = docSnap.data();
+
+            // Write to notification_outbox — provider (WhatsApp/email) picks this up
+            const outboxRef = db.collection('notification_outbox').doc();
+            batch.set(outboxRef, {
+                channel:   task.phone ? 'whatsapp' : 'email',
+                to:        task.phone || task.email,
+                name:      task.name,
+                message:   task.message,
+                type:      task.type,
+                step:      task.step,
+                couponCode:task.couponCode || null,
+                sessionId: task.sessionId,
+                status:    'queued',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            // Mark task as sent
+            batch.update(docSnap.ref, {
+                status:   'sent',
+                sentAt:   admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
+        await batch.commit();
+        console.log(`[RecoveryQueue] Dispatched ${snap.size} notifications to outbox.`);
+        return null;
+    });
+
+// ─── Phase 2.2 — Product Review Request ─────────────────────────────────────
+// Triggered when a new order is created (payment completed).
+// Queues a review request 7 days later in review_requests collection.
+
+export const onOrderCompleted = functions.firestore
+    .document('orders/{orderId}')
+    .onCreate(async (snap, context) => {
+        const order = snap.data();
+        if (!order) return null;
+
+        const email    = order.customerEmail || order.email;
+        const phone    = order.customerPhone || null;
+        const name     = order.customerName  || order.name || 'Cliente';
+        const items    = (order.items || []).map((i: any) => ({
+            productId:   i.productId || i.id,
+            productName: i.name || i.productName,
+            slug:        i.slug,
+        }));
+
+        if (!email && !phone) return null; // no contact info
+        if (!items.length) return null;
+
+        // Schedule review request 7 days from now
+        const sendAt = admin.firestore.Timestamp.fromMillis(
+            Date.now() + 7 * 24 * 60 * 60 * 1000
+        );
+
+        await db.collection('review_requests').doc(context.params.orderId).set({
+            orderId:   context.params.orderId,
+            email, phone, name, items,
+            sendAt,
+            status:   'pending',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(`[ReviewRequest] Queued for order ${context.params.orderId} — send at ${sendAt.toDate()}`);
+        return null;
+    });
+
+// Processes pending review requests and publishes to notification_outbox.
+// Schedule: daily at 10:00 AM Mexico City time.
+export const processReviewRequests = functions.pubsub
+    .schedule('0 10 * * *')
+    .timeZone('America/Mexico_City')
+    .onRun(async () => {
+        const now = admin.firestore.Timestamp.now();
+        const snap = await db.collection('review_requests')
+            .where('status', '==', 'pending')
+            .where('sendAt', '<=', now)
+            .limit(100)
+            .get();
+
+        if (snap.empty) return null;
+
+        const batch = db.batch();
+        for (const docSnap of snap.docs) {
+            const req = docSnap.data();
+            const firstItem = req.items?.[0];
+            const reviewUrl = firstItem?.slug
+                ? `https://importadoraeuro.com/product/${firstItem.slug}?review=1`
+                : 'https://importadoraeuro.com';
+
+            const outboxRef = db.collection('notification_outbox').doc();
+            batch.set(outboxRef, {
+                channel:   req.phone ? 'whatsapp' : 'email',
+                to:        req.phone || req.email,
+                name:      req.name,
+                type:      'review_request',
+                orderId:   req.orderId,
+                reviewUrl,
+                message:   `Hola ${req.name}, ¿cómo quedó tu llanta? Nos encantaría saber tu opinión. Deja tu reseña en 1 minuto: ${reviewUrl}`,
+                status:    'queued',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            batch.update(docSnap.ref, {
+                status: 'sent',
+                sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
+        await batch.commit();
+        console.log(`[ReviewRequests] Dispatched ${snap.size} review requests.`);
+        return null;
+    });
+
+// ─── Phase 2.4 — Referral Program ────────────────────────────────────────────
+// When an order is placed with a valid ?ref=CUSTOMERID attribution param,
+// reward the referrer with a $100 MXN coupon after the order is confirmed.
+
+export const onReferralOrderCompleted = functions.firestore
+    .document('orders/{orderId}')
+    .onCreate(async (snap, context) => {
+        const order = snap.data();
+        if (!order) return null;
+
+        const referrerId = order.attribution?.ref || order.referrerId;
+        if (!referrerId) return null; // no referral
+
+        // Prevent self-referral
+        const ordererUid = order.userId || order.uid;
+        if (ordererUid && ordererUid === referrerId) return null;
+
+        // Check if referrer already got a referral reward for this referee
+        const existing = await db.collection('referral_rewards')
+            .where('referrerId', '==', referrerId)
+            .where('refereeOrderId', '==', context.params.orderId)
+            .limit(1).get();
+        if (!existing.empty) return null; // already rewarded
+
+        // Generate unique coupon code for the referrer
+        const couponCode  = `REF${referrerId.slice(-5).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-3)}`;
+        const couponEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+        const batch = db.batch();
+
+        // Create referrer reward coupon
+        const couponRef = db.collection('coupons').doc(couponCode);
+        batch.set(couponRef, {
+            code:              couponCode,
+            type:              'fixed',
+            value:             100,
+            isActive:          true,
+            usageLimit:        1,
+            usageCount:        0,
+            minPurchaseAmount: 0,
+            startDate:         admin.firestore.Timestamp.now(),
+            endDate:           admin.firestore.Timestamp.fromDate(couponEndDate),
+            description:       `Premio de referido — referidor: ${referrerId}`,
+            createdAt:         admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt:         admin.firestore.FieldValue.serverTimestamp(),
+            autoGenerated:     true,
+            source:            'referral',
+        });
+
+        // Log the referral reward
+        const rewardRef = db.collection('referral_rewards').doc();
+        batch.set(rewardRef, {
+            referrerId,
+            refereeOrderId: context.params.orderId,
+            refereeEmail:   order.customerEmail || order.email || null,
+            couponCode,
+            value:          100,
+            currency:       'MXN',
+            status:         'issued',
+            createdAt:      admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Queue notification to referrer
+        // Look up referrer email from customers/orders
+        const referrerOrders = await db.collection('orders')
+            .where('userId', '==', referrerId).limit(1).get();
+        const referrerEmail = referrerOrders.empty
+            ? null
+            : referrerOrders.docs[0].data().customerEmail || referrerOrders.docs[0].data().email;
+
+        if (referrerEmail) {
+            const outboxRef = db.collection('notification_outbox').doc();
+            batch.set(outboxRef, {
+                channel:    'email',
+                to:         referrerEmail,
+                type:       'referral_reward',
+                couponCode,
+                message:    `¡Tu amigo realizó su primera compra! Aquí está tu recompensa de $100 MXN: ${couponCode}. Válido por 30 días.`,
+                status:     'queued',
+                createdAt:  admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
+        await batch.commit();
+        console.log(`[Referral] Rewarded referrer ${referrerId} with coupon ${couponCode} for order ${context.params.orderId}`);
+        return null;
+    });

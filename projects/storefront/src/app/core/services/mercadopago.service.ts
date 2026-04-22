@@ -41,8 +41,33 @@ export class MercadoPagoService {
     // ── Public Key Resolution ──────────────────────────────────────────────────
 
     /**
+     * Single Firestore read returning both publicKey and installments config.
+     * Use this instead of calling loadPublicKey() + loadInstallmentsConfig() separately
+     * to avoid 2 sequential round-trips (~1-2s extra latency) before the Brick loads.
+     */
+    async loadConfig(): Promise<{ publicKey: string; installmentsCfg: { enabled: boolean; max: number } }> {
+        const ref  = doc(this.firestore, 'config/integrations');
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+            throw new Error('MercadoPago Public Key not configured. Go to Admin → Integrations.');
+        }
+        const mp = snap.data()?.['mercadopago'] ?? {};
+        const publicKey = mp.publicKey;
+        if (!publicKey) {
+            throw new Error('MercadoPago Public Key not configured. Go to Admin → Integrations.');
+        }
+        return {
+            publicKey,
+            installmentsCfg: {
+                enabled: mp.installmentsEnabled ?? false,
+                max:     mp.maxInstallments     ?? 1,
+            },
+        };
+    }
+
+    /**
      * Fetches the MP Public Key from Firestore config/integrations.
-     * Falls back to environment if doc not found.
+     * @deprecated Use loadConfig() to avoid a second round-trip.
      */
     async loadPublicKey(): Promise<string> {
         try {
@@ -60,7 +85,7 @@ export class MercadoPagoService {
 
     /**
      * Fetches the installments config from Firestore.
-     * Returns { enabled: false, max: 1 } as safe defaults.
+     * @deprecated Use loadConfig() to avoid a second round-trip.
      */
     async loadInstallmentsConfig(): Promise<{ enabled: boolean; max: number }> {
         try {
@@ -139,7 +164,6 @@ export class MercadoPagoService {
                             textPrimaryColor: '#f4f4f5',
                             inputBackgroundColor: 'rgba(255,255,255,0.05)',
                             formBackgroundColor: 'transparent',
-                            inputBorderColor: 'rgba(255,255,255,0.12)',
                         },
                     },
                     hideFormTitle: true,

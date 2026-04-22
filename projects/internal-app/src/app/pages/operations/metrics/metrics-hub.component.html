@@ -1,0 +1,608 @@
+<section class="mhub-page">
+
+  <!-- ── Page Header ─────────────────────────────────────────────────────── -->
+  <div class="mhub-header">
+    <div class="mhub-header-text">
+      <h1 class="mhub-title">Métricas de Canales</h1>
+      <p class="mhub-subtitle">Vista general de todos los canales de venta · datos pre-agregados</p>
+    </div>
+
+    <div class="mhub-header-actions">
+      <!-- Date Range Selector (hidden in compare mode) -->
+      @if (!compareMode()) {
+        <div class="mhub-range-selector">
+          @for (r of dateRanges; track r.type) {
+            <button class="range-btn" [class.active]="selectedRange().type === r.type" (click)="selectRange(r)">
+              {{ r.label }}
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Compare toggle -->
+      <button class="cmp-toggle-btn" [class.active]="compareMode()" (click)="toggleCompare()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+          <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+        </svg>
+        {{ compareMode() ? 'Cerrar comparación' : 'Comparar períodos' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════ COMPARE MODE ══════════ -->
+  @if (compareMode()) {
+
+    <!-- ── Compare — Period Picker Bar ────────────────────────────────────── -->
+    <div class="cmp-bar">
+      <!-- Presets -->
+      <div class="cmp-presets">
+        <span class="cmp-presets-lbl">Acceso rápido:</span>
+        <button class="cmp-preset-btn" (click)="applyPreset('monthVsPrev')">Este mes vs ant.</button>
+        <button class="cmp-preset-btn" (click)="applyPreset('prevMonthVs2Mo')">Mes ant. vs hace 2</button>
+        <button class="cmp-preset-btn" (click)="applyPreset('sameMonthPrevYear')">Mismo mes año ant.</button>
+      </div>
+
+      <!-- Custom pickers -->
+      <div class="cmp-pickers">
+        <div class="cmp-pick cmp-a-pick">
+          <span class="cmp-pick-tag">A</span>
+          <input type="month" class="cmp-month-input" [value]="periodAKey()" (change)="onPeriodAChange($event)" />
+        </div>
+
+        <button class="cmp-swap-btn" (click)="swapPeriods()" title="Intercambiar períodos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+            <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+          </svg>
+        </button>
+
+        <div class="cmp-pick cmp-b-pick">
+          <span class="cmp-pick-tag">B</span>
+          <input type="month" class="cmp-month-input" [value]="periodBKey()" (change)="onPeriodBChange($event)" />
+        </div>
+
+        <button class="cmp-run-btn" (click)="loadCompare()" [disabled]="compareLoading()">
+          @if (compareLoading()) {
+            <span class="cmp-spinner"></span> Cargando…
+          } @else {
+            Comparar →
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Compare — Loading ──────────────────────────────────────────────── -->
+    @if (compareLoading()) {
+      <div class="mhub-loading">
+        <div class="mhub-spinner"></div>
+        <span>Comparando períodos…</span>
+      </div>
+    }
+
+    <!-- ── Compare — KPI Cards ────────────────────────────────────────────── -->
+    @if (!compareLoading()) {
+      <div class="cmp-kpi-grid">
+        @for (k of cmpKpis(); track k.key) {
+          <div class="cmp-kpi-card">
+            <div class="cmp-kpi-header">
+              <span class="cmp-kpi-icon">{{ k.icon }}</span>
+              <span class="cmp-kpi-title">{{ k.label }}</span>
+              @if (k.winner !== 'tie') {
+                <span class="cmp-winner-badge" [class.winner-b]="k.winner === 'B'">
+                  {{ k.winner === 'B' ? 'B mejor' : 'A mejor' }}
+                </span>
+              }
+            </div>
+
+            <div class="cmp-kpi-body">
+              <!-- Period A -->
+              <div class="cmp-kpi-col">
+                <div class="cmp-period-lbl cmp-a-lbl">{{ periodALabel() }}</div>
+                <div class="cmp-kpi-val cmp-a-val">{{ k.aFmt }}</div>
+                <div class="cmp-bar-track">
+                  <div class="cmp-bar-fill cmp-a-bar" [style.width.%]="k.aBar"></div>
+                </div>
+              </div>
+
+              <!-- VS divider -->
+              <div class="cmp-vs-chip">VS</div>
+
+              <!-- Period B -->
+              <div class="cmp-kpi-col cmp-kpi-col-b">
+                <div class="cmp-period-lbl cmp-b-lbl">{{ periodBLabel() }}</div>
+                <div class="cmp-kpi-val cmp-b-val">{{ k.bFmt }}</div>
+                <div class="cmp-bar-track">
+                  <div class="cmp-bar-fill cmp-b-bar" [style.width.%]="k.bBar"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delta footer -->
+            <div class="cmp-kpi-delta"
+                 [class.delta-pos]="k.winner === 'B'"
+                 [class.delta-neg]="k.winner === 'A'">
+              @if (k.delta !== null) {
+                <span class="delta-arrow">{{ k.delta >= 0 ? '▲' : '▼' }}</span>
+                <span>{{ formatDelta(k.delta) }}</span>
+                <span class="delta-ctx">B vs A</span>
+              } @else {
+                <span class="delta-new">Sin datos comparables</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ── Compare — Channel Table ──────────────────────────────────────── -->
+      <div class="mhub-section">
+        <h2 class="mhub-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+          </svg>
+          Canal a Canal — {{ periodALabel() | slice:0:10 }} vs {{ periodBLabel() | slice:0:10 }}
+        </h2>
+
+        <div class="mhub-channel-table-wrap">
+          <table class="mhub-channel-table cmp-ch-table">
+            <thead>
+              <tr>
+                <th>Canal</th>
+                <th class="text-right cmp-a-head">Rev A</th>
+                <th class="text-right cmp-b-head">Rev B</th>
+                <th class="text-right">Δ Rev</th>
+                <th class="text-right cmp-a-head">Ords A</th>
+                <th class="text-right cmp-b-head">Ords B</th>
+                <th class="text-right">Δ Ords</th>
+                <th>Ganador</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of cmpChannelRows(); track row.id) {
+                <tr class="channel-row">
+                  <td>
+                    <span class="ch-dot" [style.background]="row.color"></span>
+                    <span class="ch-name">{{ row.label }}</span>
+                  </td>
+                  <td class="text-right cmp-a-val-sm">
+                    {{ row.aRev | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </td>
+                  <td class="text-right cmp-b-val-sm">
+                    {{ row.bRev | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </td>
+                  <td class="text-right">
+                    <span class="cmp-delta-chip"
+                          [class.chip-pos]="isDeltaPositive(row.revDelta)"
+                          [class.chip-neg]="isDeltaNegative(row.revDelta)">
+                      {{ formatDelta(row.revDelta) }}
+                    </span>
+                  </td>
+                  <td class="text-right cmp-a-val-sm">{{ row.aOrd }}</td>
+                  <td class="text-right cmp-b-val-sm">{{ row.bOrd }}</td>
+                  <td class="text-right">
+                    <span class="cmp-delta-chip"
+                          [class.chip-pos]="isDeltaPositive(row.ordDelta)"
+                          [class.chip-neg]="isDeltaNegative(row.ordDelta)">
+                      {{ formatDelta(row.ordDelta) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="cmp-winner-ch" [class.winner-a]="row.winner === 'A'" [class.winner-b]="row.winner === 'B'">
+                      {{ row.winner === 'tie' ? '—' : row.winner }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Compare — Dual Heatmaps ─────────────────────────────────────── -->
+      <div class="cmp-heatmap-pair">
+        <div class="cmp-hm-panel">
+          <div class="cmp-hm-label cmp-a-tag-lg">A — {{ periodALabel() }}</div>
+          <app-metrics-heatmap [docs]="docsA()"></app-metrics-heatmap>
+        </div>
+        <div class="cmp-hm-panel">
+          <div class="cmp-hm-label cmp-b-tag-lg">B — {{ periodBLabel() }}</div>
+          <app-metrics-heatmap [docs]="docsB()"></app-metrics-heatmap>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ══════════ STANDARD VIEW ══════════ -->
+  @if (!compareMode()) {
+
+    <!-- ── Loading Skeleton ────────────────────────────────────────────────── -->
+    @if (isLoading()) {
+      <div class="mhub-loading">
+        <div class="mhub-spinner"></div>
+        <span>Cargando métricas…</span>
+      </div>
+    }
+
+    @if (!isLoading()) {
+
+      <!-- ── KPI Hero Cards ──────────────────────────────────────────────── -->
+      <div class="mhub-kpi-grid">
+
+        <div class="kpi-card kpi-emerald">
+          <div class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Ingresos</span>
+            <span class="kpi-value">{{ kpis().revenue.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            <span class="kpi-delta" [class.positive]="isDeltaPositive(kpis().revenue.delta)" [class.negative]="isDeltaNegative(kpis().revenue.delta)">
+              {{ formatDelta(kpis().revenue.delta) }} vs periodo anterior
+            </span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-indigo">
+          <div class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Órdenes</span>
+            <span class="kpi-value">{{ kpis().orders.value | number }}</span>
+            <span class="kpi-delta" [class.positive]="isDeltaPositive(kpis().orders.delta)" [class.negative]="isDeltaNegative(kpis().orders.delta)">
+              {{ formatDelta(kpis().orders.delta) }} vs periodo anterior
+            </span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-violet">
+          <div class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Ticket Promedio</span>
+            <span class="kpi-value">{{ kpis().avgTicket.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            <span class="kpi-delta" [class.positive]="isDeltaPositive(kpis().avgTicket.delta)" [class.negative]="isDeltaNegative(kpis().avgTicket.delta)">
+              {{ formatDelta(kpis().avgTicket.delta) }} vs periodo anterior
+            </span>
+          </div>
+        </div>
+
+        <div class="kpi-card kpi-amber">
+          <div class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Unidades Vendidas</span>
+            <span class="kpi-value">{{ kpis().units.value | number }}</span>
+            <span class="kpi-delta" [class.positive]="isDeltaPositive(kpis().units.delta)" [class.negative]="isDeltaNegative(kpis().units.delta)">
+              {{ formatDelta(kpis().units.delta) }} vs periodo anterior
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Channel Breakdown Table ─────────────────────────────────────── -->
+      <div class="mhub-section">
+        <h2 class="mhub-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+          </svg>
+          Desglose por Canal
+        </h2>
+
+        <div class="mhub-channel-table-wrap">
+          <table class="mhub-channel-table">
+            <thead>
+              <tr>
+                <th>Canal</th>
+                <th class="text-right">Ingresos</th>
+                <th class="text-right">Órdenes</th>
+                <th class="text-right">Unidades</th>
+                <th class="text-right">Ticket Prom.</th>
+                <th class="text-right">% del Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of channelRows(); track row.id) {
+                <tr class="channel-row">
+                  <td>
+                    <span class="ch-dot" [style.background]="CHANNEL_LABELS[row.id]?.color ?? '#71717a'"></span>
+                    <span class="ch-name">{{ row.label }}</span>
+                  </td>
+                  <td class="text-right font-semibold text-emerald-400">
+                    {{ row.revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </td>
+                  <td class="text-right text-zinc-300">{{ row.orders | number }}</td>
+                  <td class="text-right text-zinc-400">{{ row.units | number }}</td>
+                  <td class="text-right text-zinc-400">
+                    {{ row.avgTicket | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  </td>
+                  <td class="text-right">
+                    <div class="share-bar-wrap">
+                      <div class="share-bar"
+                        [style.width.%]="row.share * 100"
+                        [style.background]="CHANNEL_LABELS[row.id]?.color ?? '#71717a'">
+                      </div>
+                      <span class="share-pct">{{ row.share | percent:'1.1-1' }}</span>
+                    </div>
+                  </td>
+                  <td class="text-right">
+                    @if (row.route) {
+                      <a [routerLink]="row.route" class="ch-drilldown-btn">
+                        Ver reporte
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </a>
+                    }
+                  </td>
+                </tr>
+
+                <!-- Revenue share visual bar row -->
+                <tr class="share-row">
+                  <td colspan="7">
+                    <div class="share-full-bar">
+                      <div class="share-fill"
+                        [style.width.%]="row.share * 100"
+                        [style.background]="CHANNEL_LABELS[row.id]?.color ?? '#71717a'">
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Ingresos + Órdenes — Tendencia Diaria ─────────────────────────── -->
+      <div class="mhub-section">
+        <div class="mhub-trend-header">
+          <div>
+            <h2 class="mhub-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                <polyline points="16 7 22 7 22 13"/>
+              </svg>
+              Ingresos + Órdenes — Tendencia Diaria
+            </h2>
+            <p class="mhub-section-sub">
+              Barras = órdenes (eje derecho) · Línea = ingresos MXN (eje izquierdo)
+              @if (showForecast()) {
+                · <span class="fcst-sub-tag">Pronóstico activo — regresión lineal + patrón día/semana</span>
+              }
+            </p>
+          </div>
+
+          <!-- Forecast toggle — only visible in MTD view -->
+          @if (isMTD()) {
+            <button class="fcst-toggle" [class.fcst-toggle--on]="showForecast()" (click)="toggleForecast()">
+              <span class="fcst-toggle-track">
+                <span class="fcst-toggle-thumb"></span>
+              </span>
+              <span class="fcst-toggle-lbl">🔮 Pronóstico</span>
+            </button>
+          }
+        </div>
+
+        <div class="mhub-trend-chart">
+          <canvas #trendCanvas></canvas>
+        </div>
+
+        <!-- ══ FORECAST PANEL ══════════════════════════════════════════════════ -->
+        @if (showForecast() && forecastResult()) {
+          <div class="fcst-panel">
+
+            <!-- ── Hero stat row ─────────────────────────────────────────────── -->
+            <div class="fcst-hero-grid">
+
+              <!-- Projected total -->
+              <div class="fcst-hero-card fcst-hero-main">
+                <div class="fcst-hero-glow"></div>
+                <span class="fcst-hero-label">Proyección fin de mes</span>
+                <span class="fcst-hero-val">{{ fmtMoney(forecastResult()!.summary.projected) }}</span>
+                <span class="fcst-hero-range">
+                  {{ fmtMoney(forecastResult()!.summary.low) }} –
+                  {{ fmtMoney(forecastResult()!.summary.high) }}
+                </span>
+                <span class="fcst-hero-sub">intervalo 1.5σ</span>
+              </div>
+
+              <!-- Trend velocity -->
+              <div class="fcst-hero-card"
+                   [class.fcst-hero-up]="forecastResult()!.summary.slope > 0"
+                   [class.fcst-hero-down]="forecastResult()!.summary.slope < 0">
+                <span class="fcst-hero-label">Tendencia</span>
+                <span class="fcst-hero-trend-icon">
+                  @if (forecastResult()!.summary.slope > 20) { 🚀 }
+                  @else if (forecastResult()!.summary.slope > 0) { 📈 }
+                  @else if (forecastResult()!.summary.slope < 0) { 📉 }
+                  @else { ➡️ }
+                </span>
+                <span class="fcst-hero-val-sm">
+                  @if (forecastResult()!.summary.slope > 0) { Acelerando }
+                  @else if (forecastResult()!.summary.slope < 0) { Desacelerando }
+                  @else { Estable }
+                </span>
+                <span class="fcst-hero-sub">
+                  {{ forecastResult()!.summary.slope >= 0 ? '+' : '' }}{{ fmtMoney(forecastResult()!.summary.slope) }}/día vs tendencia
+                </span>
+              </div>
+
+              <!-- Pace progress -->
+              <div class="fcst-hero-card"
+                   [class.fcst-hero-up]="forecastResult()!.summary.paceProgress >= 1"
+                   [class.fcst-hero-down]="forecastResult()!.summary.paceProgress < 0.9">
+                <span class="fcst-hero-label">Ritmo vs objetivo</span>
+                <span class="fcst-hero-val-sm">
+                  {{ (forecastResult()!.summary.paceProgress * 100).toFixed(0) }}%
+                  @if (forecastResult()!.summary.paceProgress >= 1) { adelante }
+                  @else { del ritmo esperado }
+                </span>
+                <div class="fcst-pace-bar-track">
+                  <div class="fcst-pace-bar-fill"
+                       [class.fcst-pace-ahead]="forecastResult()!.summary.paceProgress >= 1"
+                       [class.fcst-pace-behind]="forecastResult()!.summary.paceProgress < 0.9"
+                       [style.width.%]="capAt(forecastResult()!.summary.paceProgress * 100, 100)">
+                  </div>
+                  <div class="fcst-pace-bar-pivot"></div>
+                </div>
+                <span class="fcst-hero-sub">
+                  Acumulado: {{ fmtMoney(forecastResult()!.summary.mtdActual) }} ·
+                  {{ forecastResult()!.summary.daysIn }}/{{ forecastResult()!.summary.daysIn + forecastResult()!.summary.daysLeft }} días
+                </span>
+              </div>
+
+              <!-- vs prior month -->
+              @if (forecastResult()!.summary.paceVsPrior !== null) {
+                <div class="fcst-hero-card"
+                     [class.fcst-hero-up]="forecastResult()!.summary.paceVsPrior! > 0"
+                     [class.fcst-hero-down]="forecastResult()!.summary.paceVsPrior! < 0">
+                  <span class="fcst-hero-label">vs mismo período mes ant.</span>
+                  <span class="fcst-hero-val-sm">
+                    {{ forecastResult()!.summary.paceVsPrior! >= 0 ? '+' : '' }}{{ forecastResult()!.summary.paceVsPrior!.toFixed(1) }}%
+                  </span>
+                  <span class="fcst-hero-sub">ritmo acumulado actual</span>
+                </div>
+              }
+            </div>
+
+            <!-- ── Forecast calendar ──────────────────────────────────────────── -->
+            <div class="fcst-cal-wrapper">
+              <div class="fcst-cal-title">📅 Pronóstico día a día</div>
+              <div class="fcst-cal-grid">
+                <!-- Day-of-week headers -->
+                @for (h of ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; track h) {
+                  <div class="fcst-cal-dow">{{ h }}</div>
+                }
+                <!-- Calendar cells -->
+                @for (cell of forecastResult()!.calendarDays; track $index) {
+                  <div class="fcst-cal-cell"
+                       [class.fcst-cal-empty]="cell.isEmpty"
+                       [class.fcst-cal-actual]="cell.isActual && !cell.isEmpty"
+                       [class.fcst-cal-today]="cell.isToday"
+                       [class.fcst-cal-future]="cell.isFuture"
+                       [class.fcst-cal-weekend]="(cell.dow === 0 || cell.dow === 6) && !cell.isEmpty"
+                       [style.--intensity]="cell.intensity">
+                    @if (!cell.isEmpty) {
+                      <span class="fcst-cal-day-num">{{ cell.day }}</span>
+                      <span class="fcst-cal-day-val">{{ cell.valueFmt }}</span>
+                      @if (cell.isToday) {
+                        <span class="fcst-cal-today-pip"></span>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+              <div class="fcst-cal-legend">
+                <span class="fcst-cal-leg fcst-leg-actual">■ Real</span>
+                <span class="fcst-cal-leg fcst-leg-future">⬚ Estimado</span>
+                <span class="fcst-cal-leg fcst-leg-today">◆ Hoy</span>
+              </div>
+            </div>
+
+            <!-- ── Best upcoming days ─────────────────────────────────────────── -->
+            @if (forecastResult()!.summary.daysLeft > 0) {
+              <div class="fcst-best-days">
+                <div class="fcst-cal-title">🏆 Mejores días previstos</div>
+                <div class="fcst-best-list">
+                  @for (d of forecastResult()!.summary.bestFutureDays; track d.label; let i = $index) {
+                    <div class="fcst-best-item">
+                      <span class="fcst-best-rank">#{{ i + 1 }}</span>
+                      <div class="fcst-best-dow-badge">{{ d.dowKey }}</div>
+                      <div class="fcst-best-info">
+                        <span class="fcst-best-lbl">{{ d.label }}</span>
+                        <div class="fcst-best-bar-track">
+                          <div class="fcst-best-bar-fill"
+                               [style.width.%]="(d.predicted / forecastResult()!.summary.bestFutureDays[0].predicted) * 100">
+                          </div>
+                        </div>
+                      </div>
+                      <span class="fcst-best-val">{{ fmtMoney(d.predicted) }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+          </div><!-- /fcst-panel -->
+        }
+      </div>
+
+      <!-- ── Multi-Channel Heatmap ──────────────────────────────────────────── -->
+      <div class="mhub-section">
+        <h2 class="mhub-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Mapa de Calor — Todos los Canales
+        </h2>
+        <p class="mhub-section-sub">Comparación de actividad de ventas · escala relativa por canal</p>
+        <app-metrics-heatmap [docs]="dailyDocs()"></app-metrics-heatmap>
+      </div>
+
+      <!-- ── Daily Trend note ────────────────────────────────────────────── -->
+      <div class="mhub-section mhub-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Los datos se agregan noche a noche automáticamente. El reporte de ayer estará disponible a partir de las 00:05 hora Ciudad de México.
+        Para reportes de canal individuales, selecciona <strong>Ver reporte →</strong> en la tabla.
+      </div>
+
+    }
+  }
+
+  <!-- ── Admin: Backfill Historical Data ───────────────────────────────────── -->
+  @if (!isLoading() && !compareMode() && dailyDocs().length === 0) {
+    <div class="mhub-section mhub-backfill">
+      <div class="backfill-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" width="20" height="20">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        <div>
+          <h3 class="backfill-title">Sin datos para este período</h3>
+          <p class="backfill-sub">Ejecuta el backfill histórico para poblar los datos desde las órdenes existentes.</p>
+        </div>
+      </div>
+      <button class="backfill-btn" (click)="runBackfill()" [disabled]="isBackfilling()">
+        @if (isBackfilling()) {
+          <span class="mhub-spinner-sm"></span>
+          Ejecutando… (puede tardar ~90 seg)
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Ejecutar Backfill Histórico
+        }
+      </button>
+      @if (backfillResult()) {
+        <div class="backfill-result">
+          ✅ Completado — {{ backfillResult()!.daysProcessed }} días procesados · {{ backfillResult()!.writeCount }} documentos escritos.
+        </div>
+      }
+    </div>
+  }
+
+</section>

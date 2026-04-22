@@ -1805,7 +1805,10 @@
           "DELIVERED": "Entregado",
           "CANCELLED": "Cancelado",
           "REFUNDED": "Reembolsado",
-          "RETURNED": "Devuelto"
+          "RETURNED": "Devuelto",
+          "PENDING_PAYMENT": "Pago Pendiente",
+          "PAID": "Pagado",
+          "PAYMENT_FAILED": "Pago Rechazado"
         },
         "TABLE": {
           "ORDER_NUMBER": "Pedido #",
@@ -4086,7 +4089,11 @@
         "CANCELLED": "Cancelado",
         "REFUNDED": "Reembolsado",
         "ALL": "Todos",
-        "UNASSIGNED": "Sin Asignar"
+        "UNASSIGNED": "Sin Asignar",
+        "PENDING_PAYMENT": "Pago Pendiente",
+        "PAID": "Pagado",
+        "PAYMENT_FAILED": "Pago Rechazado",
+        "REFUND_PENDING": "Reembolso en Revisión"
       },
       "QUICK_ACTIONS": "Acciones Rápidas",
       "START_PROCESSING": "Iniciar Proceso",

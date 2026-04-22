@@ -38,6 +38,19 @@ export interface IntegrationConfig {
         apiSecret: string;
         connected: boolean;
     };
+    meta?: {
+        adAccountId: string;
+        accessToken: string;
+        connected: boolean;
+    };
+    google?: {
+        customerId: string;
+        developerToken: string;
+        clientId: string;
+        clientSecret: string;
+        refreshToken: string;
+        connected: boolean;
+    };
 }
 
 @Injectable({

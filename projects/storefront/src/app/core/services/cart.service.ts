@@ -405,6 +405,18 @@ export class CartService {
     }
 
     /**
+     * Silently refreshes cart item prices with fresh values from Firestore.
+     * Called by CheckoutComponent.refreshCartPrices() at checkout entry.
+     * Does NOT write a snapshot — this is a system correction, not a user action.
+     */
+    refreshPrices(updatedItems: CartItem[]): void {
+        const current = this.cartState();
+        this.cartState.set({ ...current, items: updatedItems, updatedAt: Date.now() });
+        console.log('[Cart] Prices refreshed from Firestore at checkout entry.');
+    }
+
+
+    /**
      * Phase 1: Soft-delete the cart instead of silently erasing.
      * Persists cleared_by_user status and preserves the items snapshot
      * for recovery, segmentation, and product intelligence.

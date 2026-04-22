@@ -14,7 +14,284 @@
     <p>{{ 'MARKETING.DASHBOARD.CHARTS.NO_DATA' | translate }}</p>
 </div>
 
-<div *ngIf="!isLoading() && !noData()" class="mktc-grid">
+<div *ngIf="!isLoading() && !noData()" class="mktc-grid">    <!-- ── Sales Heatmap ─────────────────────────────────────────────────── -->
+    <div class="mktc-card mktc-card-full mktc-heatmap-card">
+
+        <!-- Header -->
+        <div class="mktc-card-header">
+            <div class="mktc-card-icon emerald">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8"  y1="2" x2="8"  y2="6"/>
+                    <line x1="3"  y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
+            <div class="mktc-heatmap-header-text">
+                <h3 class="mktc-card-title">Mapa de Calor de Ventas</h3>
+                <span class="mktc-card-sub">Comparación de canales — escala relativa por canal</span>
+            </div>
+            <!-- View toggle -->
+            <div class="mktc-heatmap-toggle">
+                <button class="hm-toggle-btn" id="heatmap-btn-daily"
+                        [class.active]="heatmapView() === 'daily'"
+                        (click)="setHeatmapView('daily')">Días</button>
+                <button class="hm-toggle-btn" id="heatmap-btn-hourly"
+                        [class.active]="heatmapView() === 'hourly'"
+                        (click)="setHeatmapView('hourly')">Por hora</button>
+                <button class="hm-toggle-btn" id="heatmap-btn-dayhour"
+                        [class.active]="heatmapView() === 'dayhour'"
+                        (click)="setHeatmapView('dayhour')">Día/Hora</button>
+                <button class="hm-toggle-btn" id="heatmap-btn-weekly"
+                        [class.active]="heatmapView() === 'weekly'"
+                        (click)="setHeatmapView('weekly')">Semanas</button>
+                <button class="hm-toggle-btn" id="heatmap-btn-monthly"
+                        [class.active]="heatmapView() === 'monthly'"
+                        (click)="setHeatmapView('monthly')">Meses</button>
+            </div>
+        </div>
+
+        <!-- Compare views (always active) -->
+        <div class="hm-compare-wrap">
+
+            <!-- DAILY compare: one column per day — answers 'ML Full vs Classic on day X?' -->
+            <div *ngIf="heatmapView() === 'daily'" class="hm-compare-daily">
+                <div class="hm-compare-scroll">
+                    <table class="hm-compare-table">
+                        <thead *ngIf="channelDayRows().length > 0">
+                            <!-- Row 1: day numbers -->
+                            <tr>
+                                <th class="hm-col-label"></th>
+                                <th class="hm-col-stat"></th>
+                                <th *ngFor="let h of heatmapDayHeaders()"
+                                    class="hm-col-day-hd"
+                                    [class.hm-weekend]="h.isWeekend">
+                                    <span class="hm-dh-num">{{ h.dayNum }}</span>
+                                    <span class="hm-dh-dow">{{ h.dow.slice(0,2) }}</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of channelDayRows()" class="hm-compare-row">
+                                <td class="hm-col-label hm-col-label-sticky">
+                                    <span class="hm-ch-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                                    <span class="hm-ch-name">{{ row.channel }}</span>
+                                </td>
+                                <td class="hm-col-stat">
+                                    <span class="hm-ch-badge" [style.color]="'rgb(' + row.rgb + ')'">{{ row.totalOrders }}</span>
+                                </td>
+                                <td *ngFor="let cell of row.cells; let i = index"
+                                    class="hm-col-day"
+                                    [class.hm-weekend]="heatmapDayHeaders()[i]?.isWeekend">
+                                    <div class="hm-day-cell"
+                                         [style.background]="cell.bgColor"
+                                         [title]="cell.tooltip">
+                                        <span *ngIf="cell.orders > 0" class="hm-day-num-inner"
+                                              [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- HOURLY compare: 24 columns (0h-23h) x channel rows -->
+            <div *ngIf="heatmapView() === 'hourly'" class="hm-compare-hourly">
+                <div class="hm-compare-scroll">
+                    <table class="hm-compare-table">
+                        <thead *ngIf="channelHourRows().length > 0">
+                            <!-- Row 1: time-of-day zone labels -->
+                            <tr class="hm-zone-row">
+                                <th class="hm-col-label"></th>
+                                <th class="hm-col-stat"></th>
+                                <th colspan="6" class="hm-zone-hd hm-zone-night">Madrugada&nbsp;0–5h</th>
+                                <th colspan="6" class="hm-zone-hd hm-zone-morning">Mañana&nbsp;6–11h</th>
+                                <th colspan="6" class="hm-zone-hd hm-zone-afternoon">Tarde&nbsp;12–17h</th>
+                                <th colspan="6" class="hm-zone-hd hm-zone-evening">Noche&nbsp;18–23h</th>
+                            </tr>
+                            <!-- Row 2: individual hour numbers -->
+                            <tr>
+                                <th class="hm-col-label"></th>
+                                <th class="hm-col-stat"></th>
+                                <th *ngFor="let h of hourHeaders"
+                                    class="hm-col-day-hd"
+                                    [class.hm-zone-start]="h === 6 || h === 12 || h === 18">
+                                    <span class="hm-dh-num">{{ h }}</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of channelHourRows()" class="hm-compare-row">
+                                <td class="hm-col-label hm-col-label-sticky">
+                                    <span class="hm-ch-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                                    <span class="hm-ch-name">{{ row.channel }}</span>
+                                </td>
+                                <td class="hm-col-stat">
+                                    <span class="hm-ch-badge" [style.color]="'rgb(' + row.rgb + ')'">{{ row.totalOrders }}</span>
+                                </td>
+                                <td *ngFor="let cell of row.cells"
+                                    class="hm-col-day"
+                                    [class.hm-zone-start]="cell.hour === 6 || cell.hour === 12 || cell.hour === 18">
+                                    <div class="hm-day-cell"
+                                         [style.background]="cell.bgColor"
+                                         [title]="cell.tooltip">
+                                        <span *ngIf="cell.orders > 0" class="hm-day-num-inner"
+                                              [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- DAY×HOUR view: accordion, one expandable panel per channel -->
+            <div *ngIf="heatmapView() === 'dayhour'" class="hm-dayhour-wrap">
+                <div *ngFor="let row of channelDayHourRows()" class="hm-dayhour-panel">
+
+                    <!-- Panel header (always visible, click to expand) -->
+                    <div class="hm-dayhour-header" (click)="toggleDayHourChannel(row.channel)">
+                        <span class="hm-ch-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                        <span class="hm-dh-ch-name">{{ row.channel }}</span>
+                        <span class="hm-ch-badge" [style.color]="'rgb(' + row.rgb + ')'">{{ row.totalOrders }} órd.</span>
+                        <svg class="hm-chevron" [class.open]="isChannelExpanded(row.channel)"
+                             xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="2.5"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+
+                    <!-- Panel body (only when expanded) -->
+                    <div *ngIf="isChannelExpanded(row.channel)" class="hm-dayhour-body">
+                        <div class="hm-compare-scroll">
+                            <table class="hm-compare-table">
+                                <thead>
+                                    <!-- Row 1: zone labels -->
+                                    <tr class="hm-zone-row">
+                                        <th class="hm-dh-dow-th"></th>
+                                        <th colspan="6" class="hm-zone-hd hm-zone-night">Madrugada&nbsp;0–5h</th>
+                                        <th colspan="6" class="hm-zone-hd hm-zone-morning">Mañana&nbsp;6–11h</th>
+                                        <th colspan="6" class="hm-zone-hd hm-zone-afternoon">Tarde&nbsp;12–17h</th>
+                                        <th colspan="6" class="hm-zone-hd hm-zone-evening">Noche&nbsp;18–23h</th>
+                                    </tr>
+                                    <!-- Row 2: hour numbers -->
+                                    <tr>
+                                        <th class="hm-dh-dow-th"></th>
+                                        <th *ngFor="let h of hourHeaders"
+                                            class="hm-col-day-hd"
+                                            [class.hm-zone-start]="h === 6 || h === 12 || h === 18">
+                                            <span class="hm-dh-num">{{ h }}</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- 7 rows: Mon–Sun -->
+                                    <tr *ngFor="let dowRow of row.grid; let d = index" class="hm-compare-row">
+                                        <td class="hm-dh-dow-td">{{ dowLabels[d] }}</td>
+                                        <td *ngFor="let cell of dowRow"
+                                            class="hm-col-day"
+                                            [class.hm-zone-start]="cell.hour === 6 || cell.hour === 12 || cell.hour === 18">
+                                            <div class="hm-day-cell"
+                                                 [style.background]="cell.bgColor"
+                                                 [title]="cell.tooltip">
+                                                <span *ngIf="cell.orders > 0" class="hm-day-num-inner"
+                                                      [style.color]="'rgb(' + row.rgb + ')'">{{ cell.orders }}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- WEEKLY compare: stacked rows, one per channel -->
+            <div *ngIf="heatmapView() === 'weekly'" class="hm-compare-weekly">
+                <div class="hm-compare-scroll">
+                    <table class="hm-compare-table">
+                        <!-- Month label header (aligns with week columns) -->
+                        <thead *ngIf="channelRows().length > 0">
+                            <tr>
+                                <th class="hm-col-label"></th>
+                                <th class="hm-col-stat"></th>
+                                <th *ngFor="let week of channelRows()[0].weeks" class="hm-col-week">
+                                    <span class="hm-col-month">{{ week.monthLabel }}</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of channelRows()" class="hm-compare-row">
+                                <!-- Channel label — sticky left -->
+                                <td class="hm-col-label hm-col-label-sticky">
+                                    <span class="hm-ch-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                                    <span class="hm-ch-name">{{ row.channel }}</span>
+                                </td>
+                                <!-- Total orders badge -->
+                                <td class="hm-col-stat">
+                                    <span class="hm-ch-badge" [style.color]="'rgb(' + row.rgb + ')'">{{ row.totalOrders }}</span>
+                                </td>
+                                <!-- One cell per week (7 mini cells inside) -->
+                                <td *ngFor="let week of row.weeks" class="hm-col-week">
+                                    <div class="hm-mini-col">
+                                        <div *ngFor="let cell of week.days"
+                                             class="hm-cell"
+                                             [style.background]="cell.bgColor"
+                                             [title]="cell.tooltip">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <!-- DOW legend row -->
+                    <div class="hm-dow-hint">Lun · Mar · Mié · Jue · Vie · Sáb · Dom</div>
+                </div>
+            </div>
+
+            <!-- MONTHLY compare: one large block per month, order count inside -->
+            <div *ngIf="heatmapView() === 'monthly'" class="hm-compare-monthly">
+                <div class="hm-compare-scroll">
+                    <table class="hm-compare-table">
+                        <thead *ngIf="channelRows().length > 0">
+                            <tr>
+                                <th class="hm-col-label"></th>
+                                <th class="hm-col-stat"></th>
+                                <th *ngFor="let ms of channelRows()[0].monthSummary" class="hm-col-month-hd">
+                                    {{ ms.label }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let row of channelRows()" class="hm-compare-row">
+                                <td class="hm-col-label hm-col-label-sticky">
+                                    <span class="hm-ch-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                                    <span class="hm-ch-name">{{ row.channel }}</span>
+                                </td>
+                                <td class="hm-col-stat">
+                                    <span class="hm-ch-badge" [style.color]="'rgb(' + row.rgb + ')'">{{ row.totalOrders }}</span>
+                                </td>
+                                <td *ngFor="let ms of row.monthSummary" class="hm-col-month-cell">
+                                    <div class="hm-month-block-cell"
+                                         [style.background]="ms.bgColor"
+                                         [title]="ms.tooltip">
+                                        <span *ngIf="ms.orders > 0" class="hm-month-num"
+                                              [style.color]="'rgb(' + row.rgb + ')'">{{ ms.orders }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 
     <!-- Channel Mix -->
     <div class="mktc-card">

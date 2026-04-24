@@ -483,49 +483,50 @@
                     </button>
                     
                     <div class="flex items-center gap-3 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
-                        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Total Heat Nodes</span>
-                        <span class="text-sm font-black text-rose-500 font-mono">{{ rawHeatmapData().length }}</span>
+                        <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Estados activos</span>
+                        <span class="text-sm font-black text-rose-500 font-mono">{{ stateMetricsSignal().length }}</span>
                     </div>
                 </div>
             </div>
             
             <div class="chart-body p-0" style="height: 500px; width: 100%;">
                 @if (!showGeographicTable()) {
-                    <google-map height="500px" width="100%" [options]="mapOptions" (mapInitialized)="updateHeatmapSignal()">
-                        @if (heatmapDataSignal().length > 0) {
-                            <map-heatmap-layer [data]="heatmapDataSignal()" [options]="heatmapOptions"></map-heatmap-layer>
-                            
-                            <!-- Invisible markers used for hovering/clicking to show tooltips -->
+                    <google-map height="500px" width="100%" [options]="mapOptions">
+                        @if (stateMetricsSignal().length > 0) {
+
+                            <!-- Scaled circle SVG markers — one per state, radius proportional to order count -->
                             @for (metric of stateMetricsSignal(); track metric.name) {
-                                <map-marker 
-                                    #marker="mapMarker"
+                                <map-marker #markerRef="mapMarker"
                                     [position]="{lat: metric.lat, lng: metric.lng}"
-                                    [options]="{opacity: 0, title: metric.name}"
-                                    (mapClick)="openInfoWindow(marker, metric)">
+                                    [title]="metric.name"
+                                    [options]="{
+                                        icon: metric.markerIcon,
+                                        optimized: false,
+                                        cursor: 'pointer'
+                                    }"
+                                    (mapClick)="openInfoWindowAtMarker(markerRef, metric)">
                                 </map-marker>
                             }
-                            
-                            <!-- Floating Info Window -->
-                            <map-info-window>
+
+                            <!-- Floating Info Window (attached to a fixed position) -->
+                            <map-info-window #infoWindow>
                                 @if (activeStateMetric) {
-                                    <div class="bg-zinc-800 border border-zinc-700 p-4 rounded-lg shadow-2xl min-w-[200px]" style="background-color: #27272a; color: white;">
-                                        <h4 class="font-bold text-white text-base border-b border-zinc-700 pb-2 mb-3 uppercase tracking-wider flex items-center">
-                                            <app-icon name="map-pin" [size]="16" class="mr-2 text-rose-500"></app-icon> 
-                                            {{ activeStateMetric.name }}
+                                    <div style="background-color:#27272a;color:white;padding:16px;border-radius:10px;min-width:200px;border:1px solid #3f3f46">
+                                        <h4 style="font-weight:800;font-size:14px;border-bottom:1px solid #3f3f46;padding-bottom:8px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px">
+                                            📍 {{ activeStateMetric.name }}
                                         </h4>
-                                        
-                                        <div class="space-y-2 text-sm">
-                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded">
-                                                <span class="text-zinc-400">Total Orders</span>
-                                                <span class="font-mono font-bold text-white">{{ activeStateMetric.orders }}</span>
+                                        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+                                            <div style="display:flex;justify-content:space-between;background:#18181b;padding:6px 10px;border-radius:6px">
+                                                <span style="color:#a1a1aa">Órdenes</span>
+                                                <span style="font-weight:700">{{ activeStateMetric.orders }}</span>
                                             </div>
-                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded">
-                                                <span class="text-zinc-400">Items Sold</span>
-                                                <span class="font-mono font-bold text-white">{{ activeStateMetric.pieces }}</span>
+                                            <div style="display:flex;justify-content:space-between;background:#18181b;padding:6px 10px;border-radius:6px">
+                                                <span style="color:#a1a1aa">Piezas</span>
+                                                <span style="font-weight:700">{{ activeStateMetric.pieces }}</span>
                                             </div>
-                                            <div class="flex justify-between items-center bg-zinc-900/50 p-2 rounded border-l-2 border-teal-500">
-                                                <span class="text-zinc-400">Sales Value</span>
-                                                <span class="font-mono font-bold text-teal-400">{{ formatCurrency(activeStateMetric.sales) }}</span>
+                                            <div style="display:flex;justify-content:space-between;background:#18181b;padding:6px 10px;border-radius:6px;border-left:3px solid #2dd4bf">
+                                                <span style="color:#a1a1aa">Venta Neta</span>
+                                                <span style="font-weight:700;color:#2dd4bf">{{ formatCurrency(activeStateMetric.sales) }}</span>
                                             </div>
                                         </div>
                                     </div>

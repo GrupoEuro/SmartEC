@@ -94,6 +94,8 @@ export type OrderHistoryAction =
     | 'status_change'
     | 'note_added'
     | 'label_generated'
+    | 'label_downloaded'     // Staff downloaded the MeLi / SkyDropX shipping label
+    | 'acknowledged'         // Staff took ownership of this order in the warehouse
     | 'refund_approved'
     | 'refund_rejected'
     | 'assigned'
@@ -148,7 +150,9 @@ export interface Order {
     /** MeLi shipping mode: 'me2' (Flex/Classic merchant ship) | 'fulfillment' (Meli Full) | 'not_specified' */
     meliShipMode?: 'me2' | 'fulfillment' | 'not_specified';
     externalOrderId?: string; // ID from Amazon/ML (e.g., '114-1234567-1234567')
-    shippingLabelUrl?: string; // PDF URL for shipping label from external provider
+    shippingLabelUrl?: string; // PDF URL — from SkyDropX (web orders) or Firebase Storage (MeLi Classic auto-fetch)
+    labelStoragePath?: string;             // GCS path — meli-labels/{orderId}.pdf (set by sync auto-fetch)
+    labelAutoFetchedAt?: any;              // Timestamp when sync auto-stored the label
     nativeSla?: any;
 
     // [NEW] ON_BEHALF metadata
@@ -172,6 +176,19 @@ export interface Order {
     shippingMethod?: ShippingMethod;
     trackingNumber?: string;
     carrier?: string;
+
+    // MeLi-specific fields (stored by meliSyncOrders — now properly typed)
+    shippingId?: string;               // MeLi shipmentId — used for label download
+    meliDelayed?: boolean;             // MeLi has flagged a dispatch delay
+    meliPackId?: string;               // Pack-level order ID (webhooks reference this)
+
+    // MeLi Classic internal workflow stamps
+    acknowledgedAt?: Timestamp | Date;      // When staff clicked "Tomar orden"
+    acknowledgedBy?: string;               // Staff UID
+    acknowledgedByName?: string;           // Staff display name
+    labelDownloadedAt?: Timestamp | Date;  // When label PDF was first downloaded
+    labelDownloadedBy?: string;            // Staff UID
+    dropOffAt?: Timestamp | Date;          // When staff confirmed physical drop-off
 
     // Meta
     createdAt: Timestamp | Date;

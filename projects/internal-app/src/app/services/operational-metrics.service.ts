@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, combineLatest, map, of } from 'rxjs';
 import { OrderService } from '../core/services/order.service';
+import { GlobalOrderCacheService } from '../core/services/global-order-cache.service';
 import { Timestamp } from '@angular/fire/firestore';
 
 // Interfaces
@@ -71,6 +72,7 @@ export interface SLAStatus {
 })
 export class OperationalMetricsService {
     private orderService = inject(OrderService);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private cache = new Map<string, { data: any; timestamp: number }>();
     private cacheDuration = 5 * 60 * 1000; // 5 minutes
 
@@ -82,13 +84,10 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        return this.globalOrderCache.get(startDate, endDate).pipe(
             map(orders => {
-                // Filter orders in period
-                const periodOrders = orders.filter(o => {
-                    const orderDate = this.getOrderDate(o);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
+                // orders already scoped to [startDate, endDate] by cache query
+                const periodOrders = orders;
 
                 // Calculate metrics
                 const totalOrders = periodOrders.length;
@@ -156,13 +155,10 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        return this.globalOrderCache.get(startDate, endDate).pipe(
             map(orders => {
-                // Filter orders in period
-                const periodOrders = orders.filter(o => {
-                    const orderDate = this.getOrderDate(o);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
+                // orders already scoped to [startDate, endDate] by cache query
+                const periodOrders = orders;
 
                 let compliantOrders = 0;
                 let atRiskOrders = 0;
@@ -217,13 +213,10 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        return this.globalOrderCache.get(startDate, endDate).pipe(
             map(orders => {
-                // Filter orders in period
-                const periodOrders = orders.filter(o => {
-                    const orderDate = this.getOrderDate(o);
-                    return orderDate >= startDate && orderDate <= endDate;
-                });
+                // orders already scoped to [startDate, endDate] by cache query
+                const periodOrders = orders;
 
                 // Group by staff (using assignedTo)
                 const staffMap = new Map<string, { orders: any[]; totalTime: number; name: string }>();
@@ -289,7 +282,9 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        const trendEnd = new Date();
+        const trendStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        return this.globalOrderCache.get(trendStart, trendEnd).pipe(
             map(orders => {
                 const trend: TrendData[] = [];
                 const now = new Date();
@@ -342,7 +337,9 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        const slaEnd = new Date();
+        const slaStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        return this.globalOrderCache.get(slaStart, slaEnd).pipe(
             map(orders => {
                 const trend: TrendData[] = [];
                 const now = new Date();
@@ -456,20 +453,13 @@ export class OperationalMetricsService {
         const cached = this.getFromCache(cacheKey);
         if (cached) return of(cached);
 
-        return this.orderService.getOrders().pipe(
+        return this.globalOrderCache.get(startDate, endDate).pipe(
             map(orders => {
-                console.log(`🔍 [Metrics] Filtering Orders: ${orders.length} total available.`);
+                console.log(`🔍 [Metrics] Using cached orders: ${orders.length} in range.`);
                 console.log(`🔍 [Metrics] Range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
 
-                const periodOrders = orders.filter(o => {
-                    const orderDate = this.getOrderDate(o);
-                    const inRange = orderDate >= startDate && orderDate <= endDate;
-                    if (!inRange && Math.random() < 0.01) {
-                        // Sample log for rejected orders
-                        console.log(`   [Excluded] Order Date: ${orderDate.toISOString()} (Outside Range)`);
-                    }
-                    return inRange;
-                });
+                // orders already scoped to [startDate, endDate] by cache query
+                const periodOrders = orders;
 
                 console.log(`✅ [Metrics] ${periodOrders.length} orders found in range.`);
 

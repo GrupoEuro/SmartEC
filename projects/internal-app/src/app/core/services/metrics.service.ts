@@ -3,6 +3,7 @@ import { Firestore, collection, query, where, orderBy, limit, getDocs, Timestamp
 import { Observable, combineLatest, map, of } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { OrderService } from './order.service';
+import { GlobalOrderCacheService } from './global-order-cache.service';
 import { ProductService } from './product.service';
 import { UserManagementService } from './user-management.service';
 import { DailyMetrics, KPICard, MetricChartData, RevenueTrendPoint, OrderStatusCount, TopProduct } from '../models/business-metrics.model';
@@ -13,6 +14,7 @@ import { DailyMetrics, KPICard, MetricChartData, RevenueTrendPoint, OrderStatusC
 export class MetricsService {
     private firestore = inject(Firestore);
     private orderService = inject(OrderService);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private productService = inject(ProductService);
     private userService = inject(UserManagementService);
     private translate = inject(TranslateService);
@@ -23,7 +25,7 @@ export class MetricsService {
     getKPICards(startDate?: Date, endDate?: Date): Observable<KPICard[]> {
         return combineLatest([
             startDate && endDate
-                ? this.orderService.getOrdersByDateRange(startDate, endDate)
+                ? this.globalOrderCache.get(startDate, endDate)
                 : this.orderService.getOrders(),
             this.productService.getProducts(),
             this.userService.getCustomers()
@@ -184,7 +186,7 @@ export class MetricsService {
      */
     getRevenueTrend(days: number = 30, startDate?: Date, endDate?: Date): Observable<MetricChartData> {
         return (startDate && endDate
-            ? this.orderService.getOrdersByDateRange(startDate, endDate)
+            ? this.globalOrderCache.get(startDate, endDate)
             : this.orderService.getOrders()
         ).pipe(
             map(orders => {
@@ -238,7 +240,7 @@ export class MetricsService {
      */
     getOrderDistribution(startDate?: Date, endDate?: Date): Observable<MetricChartData> {
         return (startDate && endDate
-            ? this.orderService.getOrdersByDateRange(startDate, endDate)
+            ? this.globalOrderCache.get(startDate, endDate)
             : this.orderService.getOrders()
         ).pipe(
             map(orders => {
@@ -275,7 +277,7 @@ export class MetricsService {
     getTopProducts(limitCount: number = 5, startDate?: Date, endDate?: Date): Observable<MetricChartData> {
         return combineLatest([
             startDate && endDate
-                ? this.orderService.getOrdersByDateRange(startDate, endDate)
+                ? this.globalOrderCache.get(startDate, endDate)
                 : this.orderService.getOrders(),
             this.productService.getProducts()
         ]).pipe(

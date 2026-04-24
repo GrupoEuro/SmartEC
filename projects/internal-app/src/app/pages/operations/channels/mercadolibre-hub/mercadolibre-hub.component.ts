@@ -513,6 +513,67 @@ export class MercadolibreHubComponent implements OnInit {
         }
     }
 
+    isBackfillingAddresses = signal<boolean>(false);
+    backfillAddressesResult = signal<any>(null);
+
+    async backfillAddresses() {
+        if (this.isBackfillingAddresses()) return;
+        this.isBackfillingAddresses.set(true);
+        this.backfillAddressesResult.set(null);
+        this.toast.info('Recuperando direcciones de envío (últimos 12 meses)… ~30-60 seg, no cierres esta pestaña.');
+        try {
+            // timeout: 540000 ms = 9 min (matches Cloud Function limit)
+            const fn = httpsCallable(this.functions, 'meliBackfillAddresses', { timeout: 540000 });
+            const result: any = await fn({ monthsBack: 12, batchLimit: 400 });
+            const d = result.data;
+            this.backfillAddressesResult.set(d);
+            if ((d?.fixed ?? 0) === 0) {
+                this.toast.success('Todos los pedidos ya tienen dirección registrada. ✅');
+            } else {
+                this.toast.success(`✅ ${d.fixed} pedidos actualizados con dirección de envío. El mapa geográfico ya puede mostrar los datos.`);
+            }
+        } catch (err: any) {
+            console.error('Backfill Addresses Error:', err);
+            this.toast.error('Error al recuperar direcciones de envío.');
+        } finally {
+            this.isBackfillingAddresses.set(false);
+        }
+    }
+
+    // ── Address Diagnostic (read-only) ────────────────────────────────────────
+    isDiagnosing        = signal<boolean>(false);
+    diagnosisResult     = signal<any>(null);
+    diagnoseDateFrom    = signal<string>(new Date(Date.now() - 3 * 86400_000).toISOString().slice(0, 10));
+    diagnoseDateTo      = signal<string>(new Date().toISOString().slice(0, 10));
+    diagnosisSampleSize = signal<number>(5);
+    showDiagnosisPanel  = signal<boolean>(false);
+
+    async diagnoseAddresses() {
+        if (this.isDiagnosing()) return;
+        this.isDiagnosing.set(true);
+        this.diagnosisResult.set(null);
+        this.showDiagnosisPanel.set(true);
+        try {
+            const fn = httpsCallable(this.functions, 'meliDiagnoseAddresses', { timeout: 90000 });
+            const result: any = await fn({
+                dateFrom: this.diagnoseDateFrom(),
+                dateTo:   this.diagnoseDateTo(),
+                limit:    this.diagnosisSampleSize(),
+            });
+            this.diagnosisResult.set(result.data);
+        } catch (err: any) {
+            console.error('Diagnose Error:', err);
+            this.toast.error('Error al ejecutar diagnóstico: ' + err.message);
+        } finally {
+            this.isDiagnosing.set(false);
+        }
+    }
+
+    copyDiagnosisJson() {
+        const json = JSON.stringify(this.diagnosisResult(), null, 2);
+        navigator.clipboard.writeText(json).then(() => this.toast.success('JSON copiado al portapapeles ✅'));
+    }
+
     isDownloadingLabel = signal<string | null>(null);
 
     async downloadMeliLabel(order: any) {

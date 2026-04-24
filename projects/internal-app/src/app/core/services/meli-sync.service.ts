@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Firestore, collection, doc, writeBatch, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, doc, writeBatch, getDocs, query, where, updateDoc, Timestamp, arrayUnion } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { SecretsService } from './config/secrets.service';
 import { MeliTokens } from './meli.service';
@@ -149,5 +149,30 @@ export class MeliSyncService {
         return from(
             fn({ shippingId }).then(result => ({ pdfBase64: result.data.pdfBase64 }))
         );
+    }
+
+    /**
+     * Internal acknowledge: stamps acknowledgedAt/By on the Firestore order doc
+     * via the meliAcknowledgeOrder Cloud Function.
+     * Does NOT call any MeLi API — ready_to_ship is set by MeLi automatically.
+     */
+    async acknowledgeOrder(orderId: string, staffName: string): Promise<void> {
+        const fn = httpsCallable<{ orderId: string; staffName: string }, { success: boolean }>(
+            this.functions,
+            'meliAcknowledgeOrder'
+        );
+        await fn({ orderId, staffName });
+    }
+
+    /**
+     * Stamp labelDownloadedAt on the order document when staff downloads the MeLi label.
+     * Called from the UI after a successful label PDF fetch.
+     */
+    async stampLabelDownloaded(orderId: string, staffUid: string): Promise<void> {
+        const orderRef = doc(this.firestore, 'orders', orderId);
+        await updateDoc(orderRef, {
+            labelDownloadedAt: Timestamp.now(),
+            labelDownloadedBy: staffUid,
+        });
     }
 }

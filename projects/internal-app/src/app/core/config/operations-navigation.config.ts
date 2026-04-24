@@ -232,8 +232,15 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
             {
                 id: 'mercadolibre',
                 title: 'MercadoLibre Hub',
-                icon: 'shopping-bag', // Best available lucide icon for shopping
+                icon: 'shopping-bag',
                 route: '/operations/channels/mercadolibre'
+            },
+            {
+                id: 'amazon',
+                title: 'Amazon Hub',
+                icon: 'package',
+                route: '/operations/channels/amazon',
+                badge: { text: 'NEW', color: 'bg-orange-500' }
             }
         ]
     }

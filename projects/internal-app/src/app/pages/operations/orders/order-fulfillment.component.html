@@ -309,6 +309,398 @@
     </app-order-notes>
 </div>
 
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CHANNEL-AWARE WORKFLOW PANEL
+     ══════════════════════════════════════════════════════════════════════════ -->
+@switch (workflowMode()) {
+
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    <!-- LAYOUT A: MELI FULL — Read-only, MeLi manages everything              -->
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    @case ('meli_full') {
+    <div class="workflow-panel workflow-meli-full mb-8">
+        <div class="channel-header channel-header--full">
+            <div class="channel-header__icon">🏭</div>
+            <div>
+                <div class="channel-header__title">MELI FULL — Fulfillment delegado a MercadoLibre</div>
+                <div class="channel-header__sub">MercadoLibre gestiona el embalaje, envío y seguimiento de este pedido</div>
+            </div>
+        </div>
+
+        <!-- MeLi tracking link -->
+        <div class="workflow-info-row" *ngIf="order()?.shippingId">
+            <span class="workflow-label">Seguimiento MeLi</span>
+            <a [href]="getMeliTrackingUrl()" target="_blank"
+               class="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-300 font-mono text-sm font-medium transition-colors">
+                <app-icon name="external-link" [size]="14"></app-icon>
+                {{ order()!.shippingId }}
+            </a>
+        </div>
+        <div class="workflow-info-row">
+            <span class="workflow-label">Estado MeLi</span>
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
+                  [ngClass]="getStatusBadgeClass(order()!.status)">
+                {{ order()!.status }}
+            </span>
+        </div>
+        <div class="mt-4 p-3 bg-zinc-700/30 border border-zinc-600/50 rounded-lg text-sm text-zinc-400">
+            <app-icon name="info" [size]="14" class="inline mr-1.5 text-zinc-500"></app-icon>
+            No se requiere ninguna acción de tu parte. Solo puedes agregar notas internas.
+        </div>
+    </div>
+    }
+
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    <!-- LAYOUT B: MELI CLASSIC — Merchant Fulfilled (4-step guided)           -->
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    @case ('meli_classic') {
+    <div class="workflow-panel mb-8">
+        <!-- Channel Header + SLA Banner -->
+        <div class="channel-header channel-header--classic">
+            <div class="channel-header__icon">📦</div>
+            <div class="flex-1">
+                <div class="channel-header__title">MELI CLASSIC — Merchant Fulfilled</div>
+                <div class="channel-header__sub">Tú preparas y entregas al transportista MercadoEnvíos</div>
+            </div>
+            <!-- SLA Urgency Badge -->
+            <div *ngIf="order()?.nativeSla" class="sla-badge" [ngClass]="'sla-badge--' + slaUrgency()">
+                <app-icon name="clock" [size]="14"></app-icon>
+                {{ slaLabel() }}
+            </div>
+        </div>
+
+        <!-- SLA bar (full-width under header) -->
+        <div *ngIf="order()?.nativeSla" class="sla-banner" [ngClass]="'sla-banner--' + slaUrgency()">
+            <div class="sla-banner__content">
+                <span class="sla-banner__urgency-icon">
+                    @if (slaUrgency() === 'overdue') { ⛔ }
+                    @else if (slaUrgency() === 'critical') { 🔴 }
+                    @else if (slaUrgency() === 'warning') { 🟡 }
+                    @else { 🟢 }
+                </span>
+                <span class="font-semibold">Límite despacho:</span>
+                <span class="font-mono">{{ slaDeadlineFormatted() }}</span>
+                <span class="sla-banner__countdown">— {{ slaLabel() }}</span>
+                <span *ngIf="$any(order())?.meliDelayed"
+                      class="ml-2 px-2 py-0.5 rounded text-xs font-bold bg-red-900/50 text-red-400 border border-red-700/50">
+                    ⚠ MeLi reporta retraso
+                </span>
+            </div>
+        </div>
+
+        <!-- Step Progress Tracker -->
+        <div class="step-tracker">
+            <div class="step-item" [class.step-item--done]="meliStep() > 1" [class.step-item--active]="meliStep() === 1">
+                <div class="step-circle">
+                    @if (meliStep() > 1) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 1 }
+                </div>
+                <span class="step-label">Tomar</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="meliStep() > 1"></div>
+            <div class="step-item" [class.step-item--done]="meliStep() > 2" [class.step-item--active]="meliStep() === 2" [class.step-item--locked]="meliStep() < 2">
+                <div class="step-circle">
+                    @if (meliStep() > 2) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 2 }
+                </div>
+                <span class="step-label">Guía</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="meliStep() > 2"></div>
+            <div class="step-item" [class.step-item--done]="meliStep() > 3" [class.step-item--active]="meliStep() === 3" [class.step-item--locked]="meliStep() < 3">
+                <div class="step-circle">
+                    @if (meliStep() > 3) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 3 }
+                </div>
+                <span class="step-label">Asignar</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="meliStep() > 3"></div>
+            <div class="step-item" [class.step-item--done]="meliStep() >= 4" [class.step-item--active]="meliStep() === 3" [class.step-item--locked]="meliStep() < 3">
+                <div class="step-circle">
+                    @if (meliStep() >= 4) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 4 }
+                </div>
+                <span class="step-label">Entregar</span>
+            </div>
+        </div>
+
+        <!-- Active Step Content -->
+        <div class="step-content">
+
+            <!-- STEP 1: Acknowledge -->
+            @if (meliStep() === 1) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 1</span>
+                    <h4 class="step-action-card__title">Confirmar recepción de la orden</h4>
+                </div>
+                <p class="step-action-card__desc">
+                    Haz clic para confirmar que recibiste esta orden y te harás responsable de prepararla y entregarla a tiempo.
+                </p>
+                <button class="btn-primary-action" (click)="acknowledgeOrder()" [disabled]="isAcknowledging()">
+                    <app-icon name="hand" [size]="16"></app-icon>
+                    {{ isAcknowledging() ? 'Confirmando...' : 'Tomar esta orden' }}
+                </button>
+            </div>
+            }
+
+            <!-- STEP 2: Download Label -->
+            @if (meliStep() === 2) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 2</span>
+                    <h4 class="step-action-card__title">Descargar guía de envío MercadoLibre</h4>
+                </div>
+                <div class="workflow-info-row mb-3">
+                    <span class="workflow-label">Tomado por</span>
+                    <span class="text-sm font-medium text-zinc-200">
+                        {{ $any(order())?.acknowledgedByName || 'Staff' }}
+                        · {{ formatDate($any(order())?.acknowledgedAt) }}
+                    </span>
+                </div>
+                <!-- STATE 1: Label already stored in Firebase Storage (fastest path) -->
+                @if ($any(order())?.shippingLabelUrl) {
+                    <div class="workflow-info-row mb-2">
+                        <span class="workflow-label">Shipping ID</span>
+                        <span class="font-mono text-sm text-zinc-200">{{ order()!.shippingId }}</span>
+                    </div>
+                    <!-- Auto-fetch badge -->
+                    <div class="flex items-center gap-1.5 px-4 mb-3">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-900/30 text-emerald-400 border border-emerald-700/40">
+                            <app-icon name="zap" [size]="10"></app-icon>
+                            Guía lista automáticamente
+                        </span>
+                        <span class="text-[10px] text-zinc-600">{{ formatDate($any(order())?.labelAutoFetchedAt) }}</span>
+                    </div>
+                    <p class="step-action-card__desc">
+                        La guía ya fue descargada automáticamente. Imprímela y pégala en el paquete.
+                    </p>
+                    <!-- Direct link → opens PDF from Storage, no CF call needed -->
+                    <a [href]="$any(order())?.shippingLabelUrl" target="_blank"
+                       class="btn-primary-action"
+                       (click)="meliSync.stampLabelDownloaded(order()!.id!, currentActor.uid)">
+                        <app-icon name="printer" [size]="16"></app-icon>
+                        🖨️ Imprimir Guía
+                    </a>
+
+                <!-- STATE 2: No stored label yet, but we have a shippingId → manual CF fetch -->
+                } @else if (order()?.shippingId) {
+                    <div class="workflow-info-row mb-4">
+                        <span class="workflow-label">Shipping ID</span>
+                        <span class="font-mono text-sm text-zinc-200">{{ order()!.shippingId }}</span>
+                    </div>
+                    <p class="step-action-card__desc">
+                        La guía está siendo procesada. Puedes descargarla manualmente ahora o esperar la próxima sincronización automática (máx. 30 min).
+                    </p>
+                    <button class="btn-primary-action" (click)="downloadMeliLabel()" [disabled]="isDownloadingLabel()">
+                        <app-icon name="download" [size]="16"></app-icon>
+                        {{ isDownloadingLabel() ? 'Descargando...' : '📄 Descargar Guía Manualmente' }}
+                    </button>
+
+                <!-- STATE 3: No shippingId yet — order arrived before payment fully confirmed -->
+                } @else {
+                    <div class="p-4 bg-amber-900/20 border border-amber-600/40 rounded-lg text-amber-400 text-sm">
+                        <app-icon name="clock" [size]="14" class="inline mr-1.5"></app-icon>
+                        Esperando confirmación de MercadoLibre. La guía aparecerá automáticamente en la próxima sincronización.
+                    </div>
+                }
+            </div>
+            }
+
+            <!-- STEP 3: Assignment (uses existing component) + Drop-off button -->
+            @if (meliStep() === 3) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 3</span>
+                    <h4 class="step-action-card__title">Asignar y preparar paquete</h4>
+                </div>
+                <div class="workflow-info-row mb-3">
+                    <span class="workflow-label">Guía descargada</span>
+                    <span class="text-sm text-emerald-400 font-medium">
+                        ✓ {{ formatDate($any(order())?.labelDownloadedAt) }}
+                    </span>
+                </div>
+                <p class="step-action-card__desc">Asigna al encargado de bodega y confirma cuando el paquete esté listo para entregar al transportista.</p>
+            </div>
+
+            <!-- Drop-off confirmation button -->
+            <div class="mt-4 p-4 bg-zinc-700/30 border border-zinc-600/50 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold text-zinc-200 mb-1">¿Paquete listo para entrega?</div>
+                        <div class="text-xs text-zinc-400">Confirma cuando lo hayas entregado al punto de recolecta o transportista MercadoLibre</div>
+                    </div>
+                    <button class="btn-success-action" (click)="confirmMeliDropOff()" [disabled]="isConfirmingDropOff()">
+                        <app-icon name="check-circle" [size]="16"></app-icon>
+                        {{ isConfirmingDropOff() ? 'Confirmando...' : 'Confirmar entrega al transportista' }}
+                    </button>
+                </div>
+            </div>
+            }
+
+            <!-- STEP 4: Done — shipped -->
+            @if (meliStep() >= 4) {
+            <div class="step-done-card">
+                <app-icon name="check-circle" [size]="24" class="text-emerald-400"></app-icon>
+                <div>
+                    <div class="font-semibold text-emerald-300">Enviado — MeLi actualizará el seguimiento</div>
+                    <div class="text-sm text-zinc-400 mt-1">
+                        Entregado: {{ formatDate($any(order())?.dropOffAt || order()!.updatedAt) }}
+                    </div>
+                    <a *ngIf="order()?.shippingId" [href]="getMeliTrackingUrl()" target="_blank"
+                       class="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-300 text-sm mt-2 transition-colors">
+                        <app-icon name="external-link" [size]="12"></app-icon>
+                        Ver seguimiento en MercadoLibre
+                    </a>
+                </div>
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    <!-- LAYOUT C: WEB / STOREFRONT — Full fulfillment (5-step guided)         -->
+    <!-- ───────────────────────────────────────────────────────────────────── -->
+    @case ('web') {
+    <div class="workflow-panel mb-8">
+        <!-- Channel Header + SLA -->
+        <div class="channel-header channel-header--web">
+            <div class="channel-header__icon">🌐</div>
+            <div class="flex-1">
+                <div class="channel-header__title">WEB ORDER — Fulfillment Completo</div>
+                <div class="channel-header__sub">Picking → Guía SkyDropX → Envío → Entrega</div>
+            </div>
+            <div class="sla-badge sla-badge--ok" *ngIf="order()?.slaDeadline">
+                <app-icon name="clock" [size]="14"></app-icon>
+                SLA: {{ formatDate(order()!.slaDeadline) }}
+            </div>
+        </div>
+
+        <!-- 5-Step Tracker -->
+        <div class="step-tracker">
+            <!-- Step 1: Payment -->
+            <div class="step-item" [class.step-item--done]="webStep() > 1" [class.step-item--active]="webStep() === 1">
+                <div class="step-circle">
+                    @if (webStep() > 1) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 1 }
+                </div>
+                <span class="step-label">Pago</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="webStep() > 1"></div>
+            <!-- Step 2: Picking -->
+            <div class="step-item" [class.step-item--done]="webStep() > 2" [class.step-item--active]="webStep() === 2" [class.step-item--locked]="webStep() < 2">
+                <div class="step-circle">
+                    @if (webStep() > 2) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 2 }
+                </div>
+                <span class="step-label">Picking</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="webStep() > 2"></div>
+            <!-- Step 3: Label -->
+            <div class="step-item" [class.step-item--done]="webStep() > 3" [class.step-item--active]="webStep() === 3" [class.step-item--locked]="webStep() < 3">
+                <div class="step-circle">
+                    @if (webStep() > 3) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 3 }
+                </div>
+                <span class="step-label">Guía</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="webStep() > 3"></div>
+            <!-- Step 4: Shipped -->
+            <div class="step-item" [class.step-item--done]="webStep() > 4" [class.step-item--active]="webStep() === 4" [class.step-item--locked]="webStep() < 4">
+                <div class="step-circle">
+                    @if (webStep() > 4) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 4 }
+                </div>
+                <span class="step-label">Envío</span>
+            </div>
+            <div class="step-connector" [class.step-connector--done]="webStep() > 4"></div>
+            <!-- Step 5: Delivered -->
+            <div class="step-item" [class.step-item--done]="webStep() >= 5" [class.step-item--active]="webStep() === 5" [class.step-item--locked]="webStep() < 5">
+                <div class="step-circle">
+                    @if (webStep() >= 5) { <app-icon name="check" [size]="14"></app-icon> }
+                    @else { 5 }
+                </div>
+                <span class="step-label">Entrega</span>
+            </div>
+        </div>
+
+        <!-- Step Content -->
+        <div class="step-content">
+            @if (webStep() === 1) {
+            <div class="step-done-card step-done-card--payment">
+                <app-icon name="check-circle" [size]="20" class="text-emerald-400"></app-icon>
+                <div>
+                    <div class="font-semibold text-emerald-300">Pago confirmado</div>
+                    <div class="text-xs text-zinc-400 mt-0.5">{{ order()!.paymentMethod | uppercase }} · {{ formatCurrency(order()!.total) }}</div>
+                </div>
+            </div>
+            }
+
+            @if (webStep() === 2) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 2</span>
+                    <h4 class="step-action-card__title">Picking — Preparar paquete</h4>
+                </div>
+                <p class="step-action-card__desc">Marca cada artículo conforme lo recoges del almacén.</p>
+            </div>
+            }
+
+            @if (webStep() === 3) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 3</span>
+                    <h4 class="step-action-card__title">Generar guía SkyDropX</h4>
+                </div>
+                <p class="step-action-card__desc">Selecciona la tarifa y genera la guía de envío. La guía se vinculará automáticamente a esta orden.</p>
+                <button class="btn-primary-action" (click)="showShippingPanel.set(true)" *ngIf="!showShippingPanel()">
+                    <app-icon name="truck" [size]="16"></app-icon>
+                    Abrir panel SkyDropX
+                </button>
+            </div>
+            }
+
+            @if (webStep() === 4) {
+            <div class="step-action-card step-action-card--active">
+                <div class="step-action-card__header">
+                    <span class="step-number-badge">PASO 4</span>
+                    <h4 class="step-action-card__title">Confirmar envío</h4>
+                </div>
+                <div class="workflow-info-row mb-3" *ngIf="order()?.trackingNumber">
+                    <span class="workflow-label">Guía</span>
+                    <span class="font-mono text-sm text-zinc-200">{{ order()!.carrier }} · {{ order()!.trackingNumber }}</span>
+                </div>
+                <button class="btn-success-action" (click)="quickUpdateStatus('shipped')" [disabled]="isUpdating()">
+                    <app-icon name="send" [size]="16"></app-icon>
+                    {{ isUpdating() ? 'Actualizando...' : 'Marcar como Enviado' }}
+                </button>
+            </div>
+            }
+
+            @if (webStep() >= 5) {
+            <div class="step-done-card">
+                <app-icon name="check-circle" [size]="24" class="text-emerald-400"></app-icon>
+                <div>
+                    <div class="font-semibold text-emerald-300">Entregado al cliente ✓</div>
+                    <div class="text-sm text-zinc-400 mt-1">Tracking: {{ order()!.carrier }} · {{ order()!.trackingNumber }}</div>
+                </div>
+            </div>
+            }
+
+            <!-- Quick action: Mark delivered (visible from step 4+) -->
+            @if (webStep() === 4 && order()?.status === 'shipped') {
+            <button class="btn-glass mt-3" (click)="quickUpdateStatus('delivered')">
+                <app-icon name="check-circle" [size]="14"></app-icon>
+                Confirmar entrega al cliente
+            </button>
+            }
+        </div>
+    </div>
+    }
+}
+<!-- END WORKFLOW PANEL -->
+
 <!-- Items to Pick Section (Full Width) -->
 <div class="mb-8">
     <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700">
@@ -1062,3 +1454,72 @@
         </div>
     </div>
 </div>
+<!-- ── Staff Cancel Modal (paid web orders → refund_pending) ─────────── -->
+@if (showStaffCancelModal()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" (click)="showStaffCancelModal.set(false)">
+    <div class="bg-zinc-900 border border-red-700/40 rounded-2xl shadow-2xl p-7 w-full max-w-md mx-4 relative" (click)="$event.stopPropagation()">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-full bg-red-900/30 border border-red-700/50 flex items-center justify-center flex-shrink-0">
+                <app-icon name="alert-triangle" [size]="20" class="text-red-400"></app-icon>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-white">Cancelar Orden Pagada</h3>
+                <p class="text-xs text-zinc-400 mt-0.5">Esta orden ya fue cobrada. Se iniciará proceso de reembolso.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-5">
+            <div class="bg-zinc-800/60 rounded-xl p-3 border border-zinc-700">
+                <span class="text-xs text-zinc-500 uppercase font-bold block mb-1">Total</span>
+                <span class="font-bold text-white text-lg">{{ formatCurrency(order()!.total) }}</span>
+            </div>
+            <div class="bg-zinc-800/60 rounded-xl p-3 border border-zinc-700">
+                <span class="text-xs text-zinc-500 uppercase font-bold block mb-1">ID de Pago</span>
+                <span class="font-mono text-xs text-zinc-200 break-all">{{ order()!.paymentId || 'N/A' }}</span>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
+                Motivo de cancelación *
+            </label>
+            <textarea
+                class="w-full bg-zinc-800 border border-zinc-600 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-red-500 focus:outline-none transition-colors resize-none"
+                rows="3"
+                placeholder="Ej. Cliente solicitó cancelación, producto agotado, error de precio..."
+                [value]="staffCancelReason()"
+                (input)="staffCancelReason.set($any($event.target).value)">
+            </textarea>
+        </div>
+
+        <div class="p-3 bg-amber-900/20 border border-amber-700/30 rounded-lg mb-5">
+            <p class="text-xs text-amber-300 leading-relaxed">
+                ⚠️ La orden pasará a estado <strong>Reembolso Pendiente</strong>.
+                Deberás aprobar el reembolso en el panel siguiente antes de que los fondos sean devueltos al cliente vía MercadoPago.
+            </p>
+        </div>
+
+        <div class="flex gap-3">
+            <button type="button"
+                class="flex-1 px-4 py-2.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded-xl font-semibold text-sm transition-colors"
+                (click)="showStaffCancelModal.set(false)"
+                [disabled]="isCancellingOrder()">
+                Conservar Orden
+            </button>
+            <button type="button"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-white text-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-900/30"
+                style="background: linear-gradient(135deg, #dc2626, #b91c1c)"
+                (click)="confirmStaffCancel()"
+                [disabled]="isCancellingOrder()">
+                @if (isCancellingOrder()) {
+                    <div class="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full"></div>
+                    Procesando...
+                } @else {
+                    <app-icon name="x-circle" [size]="16"></app-icon>
+                    Cancelar y Solicitar Reembolso
+                }
+            </button>
+        </div>
+    </div>
+</div>
+}

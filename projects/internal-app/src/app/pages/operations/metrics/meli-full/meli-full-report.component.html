@@ -173,7 +173,7 @@
   }
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <!-- TAB 2: INVENTARIO FULL                                                 -->
+  <!-- TAB 2: INVENTARIO FULL — Professional Data Grid                       -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
   @if (activeTab() === 'inventory') {
 
@@ -182,6 +182,36 @@
     }
 
     @if (!isLoadingInv()) {
+      <!-- Potential Sales Value Banner -->
+      <div class="inv-potential-banner">
+        <div class="ipb-stat">
+          <span class="ipb-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Valor potencial bruto en almacén
+          </span>
+          <span class="ipb-value orange">{{ inventoryPotentialValue() | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          <span class="ipb-sub">{{ inventoryTotalUnits() | number }} unidades × precio lista</span>
+        </div>
+        <div class="ipb-divider"></div>
+        <div class="ipb-stat">
+          <span class="ipb-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            Neto estimado en almacén
+          </span>
+          <span class="ipb-value emerald">{{ inventoryPotentialNet() | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          <span class="ipb-sub">después de comisiones MeLi + envío est.</span>
+        </div>
+        <div class="ipb-divider"></div>
+        <div class="ipb-stat">
+          <span class="ipb-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            SKUs con stock disponible
+          </span>
+          <span class="ipb-value violet">{{ inventoryInStockCount() }} / {{ inventory().length }}</span>
+          <span class="ipb-sub">del total de SKUs Full activos</span>
+        </div>
+      </div>
+
       <!-- Inventory Health Summary Cards -->
       <div class="inv-health-grid">
         <button class="inv-health-card ok"       [class.active]="inventoryFilter() === 'ok'"       (click)="setInventoryFilter('ok')">
@@ -211,50 +241,133 @@
         </button>
       </div>
 
-      <!-- Sync Button -->
-      <div class="melf-actions-row">
-        <button class="sync-btn" (click)="syncInventory()" [disabled]="isSyncingInv()">
-          @if (isSyncingInv()) {
-            <span class="melf-spinner-sm"></span> Sincronizando…
-          } @else {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Sincronizar Inventario MeLi
+      <!-- Toolbar: Search + Sync -->
+      <div class="inv-toolbar">
+        <div class="inv-search-wrap">
+          <svg class="inv-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input class="inv-search-input" type="text" placeholder="Buscar por SKU, producto o ID MeLi…"
+                 [value]="invSearch()"
+                 (input)="setInvSearch($any($event.target).value)">
+          @if (invSearch()) {
+            <button class="inv-search-clear" (click)="setInvSearch('')">✕</button>
           }
-        </button>
+        </div>
+        <div class="inv-toolbar-right">
+          <span class="inv-count-chip">{{ pagedInventory().length }} de {{ sortedFilteredInventory().length }} SKUs</span>
+
+          <!-- Lead Time editable chip -->
+          <label class="leadtime-chip" title="Días de tránsito: tu almacén → bodega MeLi Full">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <span class="leadtime-label">Lead time</span>
+            <input class="leadtime-input"
+                   type="number" min="1" max="90"
+                   [value]="leadTimeDays()"
+                   (change)="saveLeadTime(+$any($event.target).value)"
+                   (keydown.enter)="saveLeadTime(+$any($event.target).value); $any($event.target).blur()"
+                   [disabled]="isSavingConfig()">
+            <span class="leadtime-unit">d</span>
+            @if (isSavingConfig()) { <span class="melf-spinner-sm leadtime-spinner"></span> }
+          </label>
+
+          <button class="sync-btn" (click)="syncInventory()" [disabled]="isSyncingInv()">
+            @if (isSyncingInv()) {
+              <span class="melf-spinner-sm"></span> Sincronizando…
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Sincronizar
+            }
+          </button>
+        </div>
       </div>
 
-      <!-- Burn Rate Table -->
+      <!-- Professional Inventory Table -->
       <div class="melf-card melf-card-full">
-        <div class="melf-card-header">
-          <h3 class="melf-card-title">Burn Rate por SKU</h3>
-        </div>
         <div class="melf-table-wrap">
-          <table class="melf-table">
+          <table class="melf-table inv-table">
             <thead>
               <tr>
-                <th>SKU / Producto</th>
-                <th class="text-right">Stock ML</th>
-                <th class="text-right">Reservado</th>
-                <th class="text-right">Vel. 30d</th>
-                <th class="text-right">Vel. 7d</th>
-                <th>Días Cobertura</th>
-                <th class="text-right">Alerta</th>
-                <th class="text-right">Reponer</th>
+                <!-- Sortable column headers -->
+                <th class="inv-th-sortable" (click)="sortInv('title')">
+                  SKU / Producto
+                  <span class="sort-icon">{{ invSortCol() === 'title' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('fullStock')">
+                  Stock ML
+                  <span class="sort-icon">{{ invSortCol() === 'fullStock' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('fullStockReserved')">
+                  Reservado
+                  <span class="sort-icon">{{ invSortCol() === 'fullStockReserved' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('salesVelocity30d')">
+                  Vel. 30d
+                  <span class="sort-icon">{{ invSortCol() === 'salesVelocity30d' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('salesVelocity7d')">
+                  Vel. 7d
+                  <span class="sort-icon">{{ invSortCol() === 'salesVelocity7d' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('unitsSold30d')" title="Unidades vendidas en los últimos 30 días">
+                  Vend. 30d
+                  <span class="sort-icon">{{ invSortCol() === 'unitsSold30d' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('unitsSold7d')" title="Unidades vendidas en los últimos 7 días">
+                  Vend. 7d
+                  <span class="sort-icon">{{ invSortCol() === 'unitsSold7d' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable" (click)="sortInv('daysOfCoverage')">
+                  Cobertura
+                  <span class="sort-icon">{{ invSortCol() === 'daysOfCoverage' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('reorderAlertLevel')">
+                  Alerta
+                  <span class="sort-icon">{{ invSortCol() === 'reorderAlertLevel' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="text-right">Agotamiento</th>
+                <th class="inv-th-sortable text-right" (click)="sortInv('recommendedReplenishQty')">
+                  Reponer
+                  <span class="sort-icon">{{ invSortCol() === 'recommendedReplenishQty' ? (invSortDir() === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                </th>
+                <th class="text-right" title="Velocidad usada para planear reposición. Override manual &gt; recuperación 7d &gt; 30d">
+                  Vel. Plan
+                </th>
               </tr>
             </thead>
             <tbody>
-              @for (item of filteredInventory(); track item.id) {
-                <tr class="melf-row">
+              @if (pagedInventory().length === 0) {
+                <tr>
+                  <td colspan="12" class="inv-empty-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="1.5" width="32" height="32"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    Sin resultados para esta búsqueda o filtro
+                  </td>
+                </tr>
+              }
+              @for (item of pagedInventory(); track item.id) {
+                <tr class="melf-row" [class.row-stockout]="item.reorderAlertLevel === 'stockout'"
+                                     [class.row-critical]="item.reorderAlertLevel === 'critical'">
                   <td>
                     <div class="inv-title-wrap">
-                      <span class="inv-title">{{ item.title }}</span>
-                      @if (item.sku) { <span class="listing-sku">{{ item.sku }}</span> }
+                      <span class="inv-alert-dot" [class]="alertClass(item.reorderAlertLevel)"></span>
+                      <div>
+                        <span class="inv-title">{{ item.title }}</span>
+                        <div class="inv-meta-row">
+                          @if (item.sku) { <span class="listing-sku">{{ item.sku }}</span> }
+                          @if (item.mlItemId) { <span class="inv-mlid">{{ item.mlItemId }}</span> }
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td class="text-right font-medium text-zinc-200">{{ item.fullStock | number }}</td>
                   <td class="text-right text-zinc-500">{{ item.fullStockReserved | number }}</td>
                   <td class="text-right text-zinc-300">
-                    {{ (item.salesVelocity30d | number:'1.1-1') ?? '—' }}
+                    <div class="vel30d-cell">
+                      {{ (item.salesVelocity30d !== undefined ? (item.salesVelocity30d | number:'1.1-1') : '—') }}
+                      @if (isRecovering(item)) {
+                        <span class="recovery-pill" title="Vel. 7d > vel. 30d ×1.3 — posible recuperación post-agotamiento">&#x1F4C8; Rec</span>
+                      }
+                    </div>
                   </td>
                   <td class="text-right">
                     @if (item.salesVelocity7d !== undefined && item.salesVelocity30d !== undefined) {
@@ -262,6 +375,26 @@
                             [class.vel-down]="item.salesVelocity7d < item.salesVelocity30d">
                         {{ item.salesVelocity7d | number:'1.1-1' }}
                         {{ item.salesVelocity7d > item.salesVelocity30d ? '↑' : (item.salesVelocity7d < item.salesVelocity30d ? '↓' : '') }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <!-- Units sold columns: explicit raw unit counts -->
+                  <td class="text-right">
+                    @if (item.unitsSold30d !== undefined) {
+                      <span class="units-sold-badge">{{ item.unitsSold30d }}</span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    @if (item.unitsSold7d !== undefined) {
+                      <span class="units-sold-badge"
+                            [class.units-hot]="(item.unitsSold7d / 7) > (item.salesVelocity30d ?? 0)"
+                            [class.units-cold]="(item.unitsSold7d / 7) < (item.salesVelocity30d ?? 0) && item.unitsSold7d > 0">
+                        {{ item.unitsSold7d }}
+                        @if (item.salesVelocity30d !== undefined) {
+                          <span class="units-trend">
+                            {{ (item.unitsSold7d / 7) > item.salesVelocity30d ? '🔥' : ((item.unitsSold7d / 7) < item.salesVelocity30d && item.unitsSold7d > 0 ? '↓' : '') }}
+                          </span>
+                        }
                       </span>
                     } @else { <span class="text-zinc-600">—</span> }
                   </td>
@@ -284,17 +417,59 @@
                     </span>
                   </td>
                   <td class="text-right">
+                    @if (item.projectedStockoutDate) {
+                      <span class="stockout-date" [class.date-urgent]="(item.daysOfCoverage ?? 99) < 7">
+                        {{ item.projectedStockoutDate | slice:0:10 }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
                     @if ((item.recommendedReplenishQty ?? 0) > 0) {
                       <span class="replenish-qty">+{{ item.recommendedReplenishQty }}u</span>
                     } @else {
                       <span class="text-zinc-600">—</span>
                     }
                   </td>
+                  <!-- Planning velocity: override input or computed value -->
+                  <td class="text-right">
+                    <div class="vel-plan-cell">
+                      @if (item.velocityOverride != null) {
+                        <span class="vel-override-badge" title="Override manual activo">&#x1F527;</span>
+                      }
+                      <input class="vel-override-input"
+                             type="number" min="0" step="0.1"
+                             [value]="item.velocityOverride ?? ''"
+                             placeholder="{{ (planningVelocities()[item.id] | number:'1.1-1') ?? '—' }}"
+                             title="Override manual de velocidad (u/día). Vacío = usar calculado."
+                             (change)="setVelocityOverride(item.id, $any($event.target).value)"
+                             (keydown.enter)="setVelocityOverride(item.id, $any($event.target).value); $any($event.target).blur()">
+                      <span class="vel-plan-unit">u/d</span>
+                    </div>
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination -->
+        @if (invTotalPages() > 1) {
+          <div class="inv-pagination">
+            <button class="page-btn" [disabled]="invPage() === 1" (click)="setInvPage(1)">«</button>
+            <button class="page-btn" [disabled]="invPage() === 1" (click)="setInvPage(invPage() - 1)">‹</button>
+            @for (p of invPageNumbers(); track p) {
+              <button class="page-btn" [class.page-active]="p === invPage()" (click)="setInvPage(p)">{{ p }}</button>
+            }
+            <button class="page-btn" [disabled]="invPage() === invTotalPages()" (click)="setInvPage(invPage() + 1)">›</button>
+            <button class="page-btn" [disabled]="invPage() === invTotalPages()" (click)="setInvPage(invTotalPages())">»</button>
+            <span class="page-info">Página {{ invPage() }} de {{ invTotalPages() }}</span>
+            <select class="page-size-select" [value]="invPageSize()" (change)="setInvPageSize(+$any($event.target).value)">
+              <option [value]="10">10 / página</option>
+              <option [value]="25">25 / página</option>
+              <option [value]="50">50 / página</option>
+            </select>
+          </div>
+        }
       </div>
 
       <!-- Burn Rate Projection Chart -->
@@ -313,118 +488,208 @@
   }
 
   <!-- ══════════════════════════════════════════════════════════════════════ -->
-  <!-- TAB 3: ESCENARIOS v2 — Sales Decision Engine                          -->
+  <!-- TAB 3: ESCENARIOS — Full Portfolio Command View                       -->
   <!-- ══════════════════════════════════════════════════════════════════════ -->
   @if (activeTab() === 'scenarios') {
 
-    <!-- ── SECTION 1: Smart Listing Picker + Situational Awareness Panel ── -->
-    <div class="melf-card sc-picker-card">
-      <div class="sc-picker-header">
-        <div class="sc-picker-field">
-          <label class="sc-label">Selecciona una publicación para analizar</label>
-          <select class="sc-select sc-select-wide"
-                  [value]="scenarioListingId()"
-                  (change)="scenarioListingId.set($any($event.target).value); scenarioPct.set(0)">
-            <option value="">— Elige una publicación Full —</option>
-            @for (l of listings(); track l.id) {
-              <option [value]="l.id">{{ l.title | slice:0:70 }}</option>
-            }
-          </select>
-        </div>
+    <!-- ── SECTION 1: All-SKUs Command Table ─────────────────────────────── -->
+    <div class="melf-card melf-card-full sc-command-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Portfolio Full — Vista de Mando
+        </h3>
+        <p class="melf-card-sub">Todos tus SKUs Full en una sola vista · Haz clic en cualquier fila para analizar</p>
       </div>
 
-      @if (!scenarioListing()) {
-        <div class="sc-empty-hint">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#52525b" stroke-width="1.5" width="32" height="32"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span>Selecciona una publicación para ver el análisis completo y el simulador de precio</span>
-        </div>
-      }
+      <div class="sc-cmd-table-wrap">
+        <table class="sc-cmd-table">
+          <thead>
+            <tr>
+              <th class="w-8"></th>
+              <th>Producto</th>
+              <th class="text-right">Precio</th>
+              <th class="text-right">P. Ganador</th>
+              <th class="text-right">Gap</th>
+              <th class="text-right">Vel 30d</th>
+              <th class="text-right">Vel 7d</th>
+              <th class="text-right">Stock</th>
+              <th class="text-right">Días</th>
+              <th class="text-center">Alerta</th>
+              <th class="text-right">Reponer</th>
+              <th class="text-right">Neto/u</th>
+              <th class="text-right">Rev/mes</th>
+              <th class="w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of scenariosTableData(); track row.listing.id) {
+              <tr class="sc-cmd-row"
+                  [class.sc-cmd-selected]="row.isSelected"
+                  (click)="scenarioListingId.set(row.listing.id); scenarioPct.set(0)">
 
-      @if (scenarioListing()) {
-        <div class="context-panel">
-          <!-- Thumbnail -->
-          @if (scenarioListing()!.thumbnail) {
-            <img [src]="scenarioListing()!.thumbnail" [alt]="scenarioListing()!.title" class="cp-thumb">
-          }
+                <!-- Alert dot -->
+                <td><span class="alert-dot" [class]="alertClass(row.inv?.reorderAlertLevel)"></span></td>
 
-          <!-- Title + SKU -->
-          <div class="cp-title-col">
-            <p class="cp-title">{{ scenarioListing()!.title }}</p>
-            @if (scenarioListing()!.sku) { <span class="cp-sku">{{ scenarioListing()!.sku }}</span> }
-            <a [href]="scenarioListing()!.permalink" target="_blank" class="cp-ml-link">Ver en MercadoLibre ↗</a>
-          </div>
+                <!-- Product -->
+                <td class="sc-product-cell">
+                  @if (row.listing.thumbnail) {
+                    <img [src]="row.listing.thumbnail" class="sc-thumb-sm" [alt]="row.listing.title">
+                  }
+                  <div>
+                    <span class="sc-prod-title">{{ row.listing.title | slice:0:48 }}</span>
+                    <div class="sc-prod-meta">
+                      @if (row.listing.sku) { <span class="listing-sku">{{ row.listing.sku }}</span> }
+                      <span class="inv-mlid">{{ row.listing.id }}</span>
+                    </div>
+                  </div>
+                </td>
 
-          <!-- Stats chips -->
-          <div class="cp-stats-grid">
-            <div class="cp-stat">
-              <span class="cp-stat-label">Precio actual</span>
-              <span class="cp-stat-val orange">{{ scenarioListing()!.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
-            </div>
-            <div class="cp-stat">
-              <span class="cp-stat-label">Precio ganador</span>
-              @if (scenarioListing()!.priceToWin != null) {
-                <span class="cp-stat-val"
-                      [class.emerald]="scenarioListing()!.price <= scenarioListing()!.priceToWin!"
-                      [class.red]="scenarioListing()!.price > scenarioListing()!.priceToWin!">
-                  {{ scenarioListing()!.priceToWin! | currency:'MXN':'symbol-narrow':'1.0-0' }}
-                </span>
-              } @else {
-                <span class="cp-stat-val text-zinc-600">—</span>
-              }
-            </div>
-            <div class="cp-stat">
-              <span class="cp-stat-label">Neto actual/u</span>
-              <span class="cp-stat-val emerald">{{ scenarioListing()!.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
-            </div>
-            <div class="cp-stat">
-              <span class="cp-stat-label">Comisión ML</span>
-              <span class="cp-stat-val">{{ (scenarioListing()!.selling_fee_amount / scenarioListing()!.price) * 100 | number:'1.1-1' }}%</span>
-            </div>
-            <div class="cp-stat">
-              <span class="cp-stat-label">Salud listing</span>
-              <span class="cp-stat-val"
-                    [class.emerald]="(scenarioListing()!.health ?? 0) >= 80"
-                    [class.yellow]="(scenarioListing()!.health ?? 0) >= 60 && (scenarioListing()!.health ?? 0) < 80"
-                    [class.red]="(scenarioListing()!.health ?? 0) < 60">
-                {{ scenarioListing()!.health ?? '—' }}/100
-              </span>
-            </div>
-            @if (scenarioInventory()) {
-              <div class="cp-stat">
-                <span class="cp-stat-label">Velocidad 30d</span>
-                <span class="cp-stat-val">{{ scenarioInventory()!.salesVelocity30d | number:'1.2-2' }} u/d</span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-stat-label">Velocidad 7d</span>
-                <span class="cp-stat-val"
-                      [class.emerald]="(scenarioInventory()!.salesVelocity7d ?? 0) > (scenarioInventory()!.salesVelocity30d ?? 0)"
-                      [class.red]="(scenarioInventory()!.salesVelocity7d ?? 0) < (scenarioInventory()!.salesVelocity30d ?? 0)">
-                  {{ scenarioInventory()!.salesVelocity7d | number:'1.2-2' }} u/d
-                  {{ (scenarioInventory()!.salesVelocity7d ?? 0) > (scenarioInventory()!.salesVelocity30d ?? 0) ? '↑' : ((scenarioInventory()!.salesVelocity7d ?? 0) < (scenarioInventory()!.salesVelocity30d ?? 0) ? '↓' : '→') }}
-                </span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-stat-label">Stock / Cobertura</span>
-                <span class="cp-stat-val"
-                      [class.emerald]="(scenarioInventory()!.daysOfCoverage ?? 0) >= 21"
-                      [class.yellow]="(scenarioInventory()!.daysOfCoverage ?? 0) >= 7 && (scenarioInventory()!.daysOfCoverage ?? 0) < 21"
-                      [class.red]="(scenarioInventory()!.daysOfCoverage ?? 0) < 7">
-                  {{ scenarioInventory()!.availableQuantity }} u · {{ scenarioInventory()!.daysOfCoverage ?? '?' }}d
-                </span>
-              </div>
-              <div class="cp-stat">
-                <span class="cp-stat-label">Tier elasticidad</span>
-                <span class="cp-stat-val"
-                      [class.emerald]="velocityTier() === 'high'"
-                      [class.orange]="velocityTier() === 'medium'"
-                      [class.violet]="velocityTier() === 'low'">
-                  {{ velocityTier() === 'high' ? '🔥 Alta' : velocityTier() === 'medium' ? '📊 Media' : '🐢 Baja' }}
-                </span>
-              </div>
+                <!-- Price current -->
+                <td class="text-right font-medium text-zinc-100">
+                  {{ row.listing.price | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                </td>
+
+                <!-- Price to win -->
+                <td class="text-right">
+                  @if (row.listing.priceToWin != null) {
+                    <span [class.emerald]="row.listing.price <= row.listing.priceToWin!"
+                          [class.red]="row.listing.price > row.listing.priceToWin!">
+                      {{ row.listing.priceToWin | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    </span>
+                  } @else { <span class="text-zinc-600 text-xs">—</span> }
+                </td>
+
+                <!-- Price gap vs competitor -->
+                <td class="text-right">
+                  @if (row.gap != null) {
+                    <span class="gap-chip" [class.gap-winning]="row.gap <= 0" [class.gap-losing]="row.gap > 0">
+                      {{ row.gap > 0 ? '+' : '' }}{{ row.gap | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                      <span class="gap-pct">&nbsp;{{ row.gapPct! > 0 ? '+' : '' }}{{ row.gapPct! | number:'1.0-1' }}%</span>
+                    </span>
+                  } @else { <span class="text-zinc-600 text-xs">Sin datos</span> }
+                </td>
+
+                <!-- Velocity 30d -->
+                <td class="text-right">
+                  @if ((row.inv?.salesVelocity30d ?? 0) > 0) {
+                    <span class="vel-num">{{ row.inv?.salesVelocity30d | number:'1.1-1' }}<span class="vel-u"> u/d</span></span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+
+                <!-- Velocity 7d with trend -->
+                <td class="text-right">
+                  @if ((row.inv?.salesVelocity7d ?? 0) > 0 && (row.inv?.salesVelocity30d ?? 0) > 0) {
+                    <span [class.vel-up]="(row.inv?.salesVelocity7d ?? 0) > (row.inv?.salesVelocity30d ?? 0)"
+                          [class.vel-down]="(row.inv?.salesVelocity7d ?? 0) < (row.inv?.salesVelocity30d ?? 0)">
+                      {{ row.inv?.salesVelocity7d | number:'1.1-1' }}
+                      {{ (row.inv?.salesVelocity7d ?? 0) > (row.inv?.salesVelocity30d ?? 0) ? '↑' : ((row.inv?.salesVelocity7d ?? 0) < (row.inv?.salesVelocity30d ?? 0) ? '↓' : '→') }}
+                    </span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+
+                <!-- Stock -->
+                <td class="text-right font-medium text-zinc-200">
+                  {{ (row.inv?.availableQuantity ?? row.listing.available_quantity) | number }}
+                </td>
+
+                <!-- Days of coverage (coloured using leadTimeDays) -->
+                <td class="text-right">
+                  @if ((row.inv?.daysOfCoverage ?? 9999) < 9999) {
+                    <span [class.red]="(row.inv?.daysOfCoverage ?? 0) < leadTimeDays()"
+                          [class.yellow]="(row.inv?.daysOfCoverage ?? 0) >= leadTimeDays() && (row.inv?.daysOfCoverage ?? 0) < leadTimeDays() + 7"
+                          [class.emerald]="(row.inv?.daysOfCoverage ?? 0) >= leadTimeDays() + 7">
+                      {{ row.inv?.daysOfCoverage }}d
+                    </span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+
+                <!-- Alert badge -->
+                <td class="text-center">
+                  <span [class]="alertBadgeClass(row.inv?.reorderAlertLevel)">
+                    {{ alertLabel(row.inv?.reorderAlertLevel) }}
+                  </span>
+                </td>
+
+                <!-- Recommended replenish qty -->
+                <td class="text-right">
+                  @if ((row.inv?.recommendedReplenishQty ?? 0) > 0) {
+                    <span class="replenish-chip-sm">+{{ row.inv?.recommendedReplenishQty }}u</span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+
+                <!-- Net per unit -->
+                <td class="text-right emerald font-medium">
+                  {{ row.listing.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                </td>
+
+                <!-- Estimated monthly revenue -->
+                <td class="text-right text-zinc-400 text-xs">
+                  @if ((row.inv?.salesVelocity30d ?? 0) > 0) {
+                    {{ (row.inv!.salesVelocity30d! * 30 * row.listing.price) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+
+                <!-- Analizar button -->
+                <td>
+                  <button class="sc-cmd-btn"
+                          [class.sc-cmd-btn-active]="row.isSelected"
+                          (click)="$event.stopPropagation(); scenarioListingId.set(row.listing.id); scenarioPct.set(0)">
+                    {{ row.isSelected ? '✓' : '→' }}
+                  </button>
+                </td>
+              </tr>
             }
-          </div>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Portfolio KPI footer -->
+      <div class="sc-portfolio-footer">
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Revenue portfolio est./mes</span>
+          <span class="sc-pf-val orange">{{ portfolioRevenue() | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
         </div>
-      }
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Neto portfolio est./mes</span>
+          <span class="sc-pf-val emerald">{{ portfolioNet() | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Valor potencial en almacén</span>
+          <span class="sc-pf-val orange" title="Suma de (unidades disponibles × precio lista) para todos los SKUs Full">
+            {{ inventoryPotentialValue() | currency:'MXN':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Neto potencial en almacén</span>
+          <span class="sc-pf-val emerald" title="Suma de (unidades disponibles × neto/u) — después de comisiones y envío estimado">
+            {{ inventoryPotentialNet() | currency:'MXN':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Ganando Buy Box</span>
+          <span class="sc-pf-val" [class.emerald]="portfolioWinning() === listings().length"
+                                  [class.yellow]="portfolioWinning() > 0 && portfolioWinning() < listings().length"
+                                  [class.red]="portfolioWinning() === 0">
+            {{ portfolioWinning() }} / {{ listings().length }}
+          </span>
+        </div>
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Stock crítico o agotado</span>
+          <span class="sc-pf-val" [class.red]="invAlerts().critical + invAlerts().stockout > 0"
+                                  [class.emerald]="invAlerts().critical + invAlerts().stockout === 0">
+            {{ invAlerts().critical + invAlerts().stockout }} SKUs
+          </span>
+        </div>
+        <div class="sc-pf-stat">
+          <span class="sc-pf-label">Salud promedio</span>
+          <span class="sc-pf-val" [class.emerald]="(perfKpis().avgHealth ?? 0) >= 80"
+                                  [class.yellow]="(perfKpis().avgHealth ?? 0) >= 60 && (perfKpis().avgHealth ?? 0) < 80"
+                                  [class.red]="(perfKpis().avgHealth ?? 0) < 60">
+            {{ perfKpis().avgHealth != null ? ((perfKpis().avgHealth!) | number:'1.0-0') + '/100' : '—' }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- ── SECTION 2: Simulators 2-col ───────────────────────────────────── -->
@@ -442,10 +707,45 @@
 
         <div class="scenario-controls">
           @if (!scenarioListing()) {
-            <p class="sc-no-listing">← Elige una publicación arriba para comenzar</p>
+            <p class="sc-no-listing">← Haz clic en una fila de la tabla para comenzar</p>
           }
 
           @if (scenarioListing()) {
+            <!-- Compact selected-item banner -->
+            <div class="sc-selected-banner">
+              @if (scenarioListing()!.thumbnail) {
+                <img [src]="scenarioListing()!.thumbnail" class="sc-banner-thumb" [alt]="scenarioListing()!.title">
+              }
+              <div class="sc-banner-info">
+                <span class="sc-banner-title">{{ scenarioListing()!.title | slice:0:55 }}</span>
+                <div class="sc-banner-meta">
+                  @if (scenarioListing()!.sku) { <span class="listing-sku">{{ scenarioListing()!.sku }}</span> }
+                  <a [href]="scenarioListing()!.permalink" target="_blank" class="cp-ml-link">Ver en MeLi ↗</a>
+                </div>
+              </div>
+              <div class="sc-banner-stats">
+                <span class="sc-banner-stat"><span class="sc-bs-label">Precio</span><span class="orange">{{ scenarioListing()!.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span></span>
+                <span class="sc-banner-stat"><span class="sc-bs-label">Neto/u</span><span class="emerald">{{ scenarioListing()!.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span></span>
+                @if (scenarioInventory()) {
+                  <span class="sc-banner-stat"><span class="sc-bs-label">Vel. 30d</span><span>{{ scenarioInventory()!.salesVelocity30d | number:'1.2-2' }} u/d</span></span>
+                  <span class="sc-banner-stat"><span class="sc-bs-label">Cobertura</span>
+                    <span [class.red]="(scenarioInventory()!.daysOfCoverage ?? 0) < leadTimeDays()"
+                          [class.yellow]="(scenarioInventory()!.daysOfCoverage ?? 0) >= leadTimeDays() && (scenarioInventory()!.daysOfCoverage ?? 0) < leadTimeDays() + 14"
+                          [class.emerald]="(scenarioInventory()!.daysOfCoverage ?? 0) >= leadTimeDays() + 14">
+                      {{ scenarioInventory()!.availableQuantity }}u · {{ scenarioInventory()!.daysOfCoverage ?? '?' }}d
+                    </span>
+                  </span>
+                }
+                <span class="sc-banner-stat"><span class="sc-bs-label">Tier</span>
+                  <span [class.emerald]="velocityTier() === 'high'"
+                        [class.orange]="velocityTier() === 'medium'"
+                        [class.violet]="velocityTier() === 'low'">
+                    {{ velocityTier() === 'high' ? '🔥 Alta' : velocityTier() === 'medium' ? '📊 Media' : '🐢 Baja' }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
             <label class="sc-label">Cambio de precio</label>
             <div class="sc-slider-wrap">
               <span class="sc-slider-min sc-minus">−30%</span>
@@ -588,9 +888,9 @@
                     </td>
                     <td class="text-right font-medium text-zinc-200">{{ item.availableQuantity }}</td>
                     <td class="text-right">
-                      <span [class.red]="(item.daysOfCoverage ?? 99) < 7"
-                            [class.yellow]="(item.daysOfCoverage ?? 99) >= 7 && (item.daysOfCoverage ?? 99) < 21"
-                            [class.emerald]="(item.daysOfCoverage ?? 99) >= 21">
+                      <span [class.red]="(item.daysOfCoverage ?? 99) < leadTimeDays()"
+                            [class.yellow]="(item.daysOfCoverage ?? 99) >= leadTimeDays() && (item.daysOfCoverage ?? 99) < leadTimeDays() + 7"
+                            [class.emerald]="(item.daysOfCoverage ?? 99) >= leadTimeDays() + 7">
                         {{ item.daysOfCoverage ?? '?' }}d
                       </span>
                     </td>
@@ -649,12 +949,635 @@
         <span class="ml-item ml-blue">🔵 Bajar precio (alta velocidad + perdiendo)</span>
         <span class="ml-item ml-yellow">🟡 Revisar listing (precio ok + baja velocidad)</span>
         <span class="ml-item ml-red">🔴 Acción urgente (perdiendo + baja velocidad)</span>
+        <span class="ml-item ml-zinc">⚫ Sin datos de precio competidor</span>
       </div>
       <div class="melf-chart-wrap matrix-wrap">
         <canvas #matrixCanvas></canvas>
       </div>
     </div>
 
+    <!-- ── SECTION 4: Demand Events Manager ─────────────────────────────── -->
+    <div class="melf-card melf-card-full event-manager-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Eventos de Demanda
+        </h3>
+        <p class="melf-card-sub">Programa eventos (Hot Sale, Buen Fin…) para que la reposición se ajuste automáticamente a la demanda esperada</p>
+      </div>
+
+      @if (isLoadingEvents()) {
+        <div class="melf-loading"><div class="melf-spinner"></div><span>Cargando eventos…</span></div>
+      } @else {
+        <div class="event-list">
+          @for (ev of demandEvents(); track ev.id) {
+            <div class="event-row" [class.event-inactive]="!ev.active">
+              <div class="event-toggle">
+                <button class="ev-toggle-btn" [class.ev-active]="ev.active" (click)="toggleEvent(ev.id)"
+                        [title]="ev.active ? 'Desactivar' : 'Activar'">
+                  {{ ev.active ? '●' : '○' }}
+                </button>
+              </div>
+              <div class="event-info">
+                <span class="event-name">{{ ev.name }}</span>
+                <span class="event-dates">{{ ev.startDate }} → {{ ev.endDate }}</span>
+              </div>
+              <div class="event-multiplier">
+                <span class="ev-mult-badge">×{{ ev.multiplier | number:'1.1-1' }}</span>
+                <span class="ev-mult-label">demanda esperada</span>
+              </div>
+              <button class="ev-delete-btn" (click)="deleteEvent(ev.id)" title="Eliminar evento">✕</button>
+            </div>
+          }
+          @if (demandEvents().length === 0) {
+            <p class="event-empty">No hay eventos configurados. Agrega Hot Sale u otros eventos clave.</p>
+          }
+        </div>
+
+        <!-- Add Event Form -->
+        @if (!showEventForm()) {
+          <button class="ev-add-btn" (click)="showEventForm.set(true)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Agregar evento
+          </button>
+        } @else {
+          <div class="ev-form">
+            <input class="ev-input" type="text" placeholder="Nombre del evento" [value]="newEvent().name"
+                   (input)="updateNewEventField('name', $any($event.target).value)">
+            <input class="ev-input ev-input-date" type="date" title="Fecha inicio"
+                   [value]="newEvent().startDate"
+                   (change)="updateNewEventField('startDate', $any($event.target).value)">
+            <input class="ev-input ev-input-date" type="date" title="Fecha fin"
+                   [value]="newEvent().endDate"
+                   (change)="updateNewEventField('endDate', $any($event.target).value)">
+            <label class="ev-mult-label-input">
+              ×
+              <input class="ev-input ev-input-mult" type="number" min="1.0" max="10" step="0.1"
+                     [value]="newEvent().multiplier"
+                     (input)="updateNewEventField('multiplier', +$any($event.target).value)">
+              multiplicador
+            </label>
+            <div class="ev-form-actions">
+              <button class="ev-save-btn" (click)="saveDemandEvent()" [disabled]="isSavingEvent()">
+                @if (isSavingEvent()) { <span class="melf-spinner-sm"></span> } @else { Guardar }
+              </button>
+              <button class="ev-cancel-btn" (click)="showEventForm.set(false)">Cancelar</button>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- ── SECTION 5: May 2025 Historical Analysis → May 2026 Forecast ──── -->
+    <div class="melf-card melf-card-full forecast-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Mayo 2025 → Pronóstico Hot Sale 2026
+        </h3>
+        <p class="melf-card-sub">Datos reales de mayo 2025 (MELI FULL) para estimar el impacto del Hot Sale 2026</p>
+      </div>
+
+      @if (isLoadingMay2025()) {
+        <div class="melf-loading"><div class="melf-spinner"></div><span>Analizando mayo 2025…</span></div>
+      } @else if (!may2025()?.loaded) {
+        <div class="forecast-no-data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="1.5" width="32" height="32"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>No se encontraron datos de mayo 2025 en analytics_daily.<br><small>Asegúrate de que el backfill se ejecutó correctamente.</small></span>
+        </div>
+      } @else {
+        <!-- Stockout warning -->
+        @if (may2025()!.hasStockoutWarning) {
+          <div class="forecast-warning">
+            ⚠️ <strong>Advertencia:</strong> Las ventas durante la semana del Hot Sale 2025 fueron
+            <strong>menores</strong> al resto del mes — posible agotamiento de stock durante el evento.
+            El multiplicador calculado puede estar <strong>subestimado</strong>. Ajústalo manualmente en el evento.
+          </div>
+        }
+
+        <!-- KPI summary row -->
+        <div class="forecast-kpi-row">
+          <div class="fkpi">
+            <span class="fkpi-label">Ingresos total mayo 2025</span>
+            <span class="fkpi-value orange">{{ may2025()!.totalRevenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="fkpi">
+            <span class="fkpi-label">Unidades vendidas mayo 2025</span>
+            <span class="fkpi-value">{{ may2025()!.totalUnits | number }}</span>
+          </div>
+          <div class="fkpi">
+            <span class="fkpi-label">Prom. diario normal</span>
+            <span class="fkpi-value">{{ may2025()!.normalAvgUnits | number:'1.1-1' }} u/día</span>
+          </div>
+          <div class="fkpi">
+            <span class="fkpi-label">Prom. diario Hot Sale 2025</span>
+            <span class="fkpi-value" [class.orange]="!may2025()!.hasStockoutWarning" [class.red]="may2025()!.hasStockoutWarning">
+              {{ may2025()!.hotSaleAvgUnits | number:'1.1-1' }} u/día
+            </span>
+          </div>
+          <div class="fkpi fkpi-highlight">
+            <span class="fkpi-label">Multiplicador Hot Sale</span>
+            <span class="fkpi-value orange">×{{ may2025()!.hotSaleMultiplier | number:'1.1-1' }}</span>
+            <span class="fkpi-sub">{{ may2025()!.hasStockoutWarning ? '⚠ Posiblemente subestimado' : 'Basado en datos reales' }}</span>
+          </div>
+        </div>
+
+        <!-- Chart: May 2025 daily with Hot Sale zone shaded -->
+        <div class="melf-chart-wrap" style="height: 220px; margin-bottom: 1.25rem;">
+          <canvas #may2025Canvas></canvas>
+        </div>
+
+        <!-- Per-SKU forecast table -->
+        <h4 class="forecast-subtitle">Stock adicional recomendado para Hot Sale 2026 (por SKU)</h4>
+        <div class="melf-table-wrap">
+          <table class="melf-table forecast-table">
+            <thead>
+              <tr>
+                <th>SKU / Producto</th>
+                <th class="text-right">Stock actual</th>
+                <th class="text-right">Vel. Plan (u/día)</th>
+                <th class="text-right">Dem. normal 7d</th>
+                <th class="text-right">Dem. Hot Sale 7d <span style="opacity:.5;font-weight:400">×{{ may2025()!.hotSaleMultiplier | number:'1.1-1' }}</span></th>
+                <th class="text-right" style="color:#fb923c">Stock extra necesario</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of inventory(); track item.id) {
+                <tr class="melf-row">
+                  <td>
+                    <div class="inv-title-wrap">
+                      <span class="inv-alert-dot" [class]="alertClass(item.reorderAlertLevel)"></span>
+                      <div>
+                        <span class="inv-title">{{ item.title | slice:0:55 }}</span>
+                        @if (item.sku) { <span class="listing-sku">{{ item.sku }}</span> }
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-right text-zinc-300">{{ item.availableQuantity | number }}</td>
+                  <td class="text-right">
+                    <span [class.orange]="item.velocityOverride != null" [class.emerald]="isRecovering(item) && item.velocityOverride == null">
+                      {{ planningVelocities()[item.id] ?? 0 | number:'1.1-1' }}
+                    </span>
+                    @if (item.velocityOverride != null) { <span class="listing-sku">🔧</span> }
+                    @if (isRecovering(item) && item.velocityOverride == null) { <span class="listing-sku">📈</span> }
+                  </td>
+                  <td class="text-right text-zinc-400">{{ (planningVelocities()[item.id] ?? 0) * 7 | number:'1.0-0' }} u</td>
+                  <td class="text-right orange">{{ (planningVelocities()[item.id] ?? 0) * 7 * may2025()!.hotSaleMultiplier | number:'1.0-0' }} u</td>
+                  <td class="text-right">
+                    @if (((planningVelocities()[item.id] ?? 0) * 7 * (may2025()!.hotSaleMultiplier - 1)) > 0) {
+                      <span class="hs-extra-badge">+{{ (planningVelocities()[item.id] ?? 0) * 7 * (may2025()!.hotSaleMultiplier - 1) | number:'1.0-0' }} u</span>
+                    } @else {
+                      <span class="text-zinc-600">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+
+    <!-- ── SECTION 6: Mayo 2026 — Mejor Mes MeLi Full ───────────────────── -->
+    @if (mayScenario()) {
+    <div class="melf-card melf-card-full may-scenario-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Mayo 2026 — El Mejor Mes de MeLi Full
+        </h3>
+        <p class="melf-card-sub">
+          Estrategia basada en datos reales mayo 2025 · Mercado combinado Full + Classic ·
+          Hot Sale {{ mayScenario()!.normalDays }} días normales + {{ mayScenario()!.hotSaleDays }}d peak
+        </p>
+      </div>
+
+      <!-- No-velocity warning -->
+      @if (noVelocityData()) {
+        <div class="sc-alert may-vel-warning">
+          <strong>⚠️ Sin datos de velocidad</strong> — Las proyecciones mostrarán 0 unidades porque el inventario todavía no tiene velocidades calculadas.
+          <br>Haz clic en <strong>"Sincronizar"</strong> (pestaña Inventario) para calcular velocidades desde las órdenes reales, luego regresa aquí.
+        </div>
+      }
+
+      <!-- Combined Market Opportunity Banner -->
+      <div class="combined-market-banner">
+        <div class="cmb-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Mercado MeLi combinado (Full + Classic)
+        </div>
+        <div class="cmb-kpis">
+          <div class="cmb-kpi">
+            <span class="cmb-label">Mayo 2025 Real</span>
+            <span class="cmb-val">{{ mayScenario()!.combinedMay2025 | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="cmb-kpi">
+            <span class="cmb-label">Objetivo Mayo 2026 (+10%)</span>
+            <span class="cmb-val violet">{{ mayScenario()!.combinedMay2026Target | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="cmb-kpi">
+            <span class="cmb-label">Participación Full 2025</span>
+            <span class="cmb-val">{{ mayScenario()!.fullShareMay2025 | percent:'1.1-1' }}</span>
+          </div>
+          <div class="cmb-kpi">
+            <span class="cmb-label">Mult. Full real (×{{ mayScenario()!.multiplier | number:'1.2-2' }})</span>
+            <span class="cmb-val">vs Classic ×{{ mayScenario()!.classicMultiplier | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <p class="cmb-insight">
+          💡 <strong>Classic superó a Full ×{{ (mayScenario()!.classicMultiplier / mayScenario()!.multiplier) | number:'1.1-1' }}x</strong> durante Hot Sale — Full tuvo limitaciones de stock.
+          Con inventario adecuado, Full puede igualar o superar ese rendimiento.
+        </p>
+      </div>
+
+      <!-- 3-Variant KPI Banner -->
+      <div class="may-variants-banner">
+
+        <!-- Conservador: hold current share -->
+        <div class="may-variant conserv">
+          <div class="mv-label">
+            <span class="mv-dot conserv-dot"></span>Conservador
+          </div>
+          <div class="mv-caption">Misma participación 34.5% · Sin cambio de precios · Full ×{{ mayScenario()!.multiplier | number:'1.1-1' }}</div>
+          <div class="mv-kpi-row">
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Unidades</span>
+              <span class="mv-kpi-val">{{ mayScenario()!.conservative.units | number:'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Revenue Full</span>
+              <span class="mv-kpi-val orange">{{ mayScenario()!.conservative.revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Neto est.</span>
+              <span class="mv-kpi-val emerald">{{ mayScenario()!.conservative.net | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Share mercado</span>
+              <span class="mv-kpi-val">{{ mayScenario()!.conservative.marketSharePct | percent:'1.0-1' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Champion: match Classic multiplier, grow to 45% share -->
+        <div class="may-variant peak">
+          <div class="mv-label">
+            <span class="mv-dot peak-dot"></span>Campeón 🔥
+            <span class="mv-badge-mult">×{{ mayScenario()!.classicMultiplier | number:'1.1-1' }}</span>
+          </div>
+          <div class="mv-caption">Iguala mult. Classic · Stock para Hot Sale · Full llega al 45% del mercado</div>
+          <div class="mv-kpi-row">
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Unidades</span>
+              <span class="mv-kpi-val">{{ mayScenario()!.champion.units | number:'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Revenue Full</span>
+              <span class="mv-kpi-val orange">{{ mayScenario()!.champion.revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Neto est.</span>
+              <span class="mv-kpi-val emerald">{{ mayScenario()!.champion.net | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Share mercado</span>
+              <span class="mv-kpi-val orange">{{ mayScenario()!.champion.marketSharePct | percent:'1.0-1' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optimistic: 55% share + buy-box wins -->
+        <div class="may-variant opt">
+          <div class="mv-label">
+            <span class="mv-dot opt-dot"></span>Optimista 🏆
+          </div>
+          <div class="mv-caption">Full toma 55% del mercado · Gana buy-box · mercado crece 20%</div>
+          <div class="mv-kpi-row">
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Unidades</span>
+              <span class="mv-kpi-val">{{ mayScenario()!.optimistic.units | number:'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Revenue Full</span>
+              <span class="mv-kpi-val orange">{{ mayScenario()!.optimistic.revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Neto est.</span>
+              <span class="mv-kpi-val emerald">{{ mayScenario()!.optimistic.net | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+            </div>
+            <div class="mv-kpi">
+              <span class="mv-kpi-label">Share mercado</span>
+              <span class="mv-kpi-val violet">{{ mayScenario()!.optimistic.marketSharePct | percent:'1.0-1' }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /may-variants-banner -->
+
+      <!-- Per-SKU Champion Table -->
+      <h4 class="forecast-subtitle" style="margin-top:1.5rem">Por SKU — Escenario Campeón Mayo 2026</h4>
+      <div class="melf-table-wrap">
+        <table class="melf-table may-sku-table">
+          <thead>
+            <tr>
+              <th>SKU / Producto</th>
+              <th class="text-right">Vel. Plan</th>
+              <th class="text-right">25d normales</th>
+              <th class="text-right">7d Hot Sale ×{{ mayScenario()!.classicMultiplier | number:'1.1-1' }}</th>
+              <th class="text-right" style="color:#fb923c">Revenue est.</th>
+              <th class="text-right" style="color:#34d399">Neto est.</th>
+              <th class="text-right">Gap vs Buy Box</th>
+              <th class="text-right">Stock extra</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of mayScenario()!.skuRows; track row.item.id) {
+              <tr class="melf-row">
+                <td>
+                  <div class="inv-title-wrap">
+                    <span class="inv-alert-dot" [class]="alertClass(row.item.reorderAlertLevel)"></span>
+                    <div>
+                      <span class="inv-title">{{ (row.listing?.title ?? row.item.title) | slice:0:50 }}</span>
+                      @if (row.item.sku) { <span class="listing-sku">{{ row.item.sku }}</span> }
+                    </div>
+                  </div>
+                </td>
+                <td class="text-right">
+                  @if (row.planVel > 0) {
+                    <span class="vel-num">{{ row.planVel | number:'1.2-2' }}<span class="vel-u"> u/d</span></span>
+                  } @else {
+                    <span class="text-zinc-600">—</span>
+                  }
+                </td>
+                <td class="text-right text-zinc-400">{{ row.normalUnits | number:'1.0-0' }} u</td>
+                <td class="text-right orange font-medium">{{ row.hsUnits | number:'1.0-0' }} u</td>
+                <td class="text-right font-medium">
+                  @if (row.grossRevenue > 0) {
+                    <span class="orange">{{ row.grossRevenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right">
+                  @if (row.netRevenue > 0) {
+                    <span class="emerald">{{ row.netRevenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right">
+                  @if (row.priceGap != null) {
+                    <span [class.win-gap-pos]="row.priceGap <= 0" [class.win-gap-neg]="row.priceGap > 0">
+                      {{ row.priceGap > 0 ? '+' : '' }}{{ row.priceGap | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    </span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right">
+                  @if (row.stockGap > 0) {
+                    <span class="hs-extra-badge">+{{ row.stockGap | number:'1.0-0' }} u</span>
+                  } @else {
+                    <span class="may-surplus-badge">✓ OK</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Export footer -->
+      <div class="may-export-footer">
+        <div class="may-footer-meta">
+          <span class="may-footer-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Full ×{{ mayScenario()!.multiplier | number:'1.1-1' }} · Classic ×{{ mayScenario()!.classicMultiplier | number:'1.1-1' }}
+          </span>
+          <span class="may-footer-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Mercado objetivo: {{ mayScenario()!.combinedMay2026Target | currency:'MXN':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+        <button class="sc-export-btn may-export-btn" (click)="exportMayScenario()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar escenario mayo 2026 (.tsv)
+        </button>
+      </div>
+    </div>
+    }<!-- /mayScenario -->
+
+    <!-- ── SECTION 7: Cross-Channel Champions ───────────────────────────── -->
+    <div class="melf-card melf-card-full champion-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Campeones Cross-Canal — Top Regular vs Full
+        </h3>
+        <p class="melf-card-sub">
+          Tus 15 mejores vendedores en MeLi Clásico/Regular &nbsp;·&nbsp;
+          @if (championsNotInFull() > 0) {
+            <strong class="yellow">{{ championsNotInFull() }} candidato{{ championsNotInFull() !== 1 ? 's' : '' }} para migrar a Full</strong>
+          } @else {
+            <span class="emerald">Todos tus top sellers ya están en Full ✓</span>
+          }
+        </p>
+      </div>
+
+      @if (!classicListings().length) {
+        <div class="melf-loading">
+          <div class="melf-spinner"></div><span>Cargando publicaciones clásicas…</span>
+        </div>
+      } @else {
+        <div class="melf-table-wrap">
+          <table class="melf-table champion-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Producto (Regular/Clásico)</th>
+                <th class="text-right">Vendidos total</th>
+                <th class="text-right">Precio</th>
+                <th class="text-center">En Full</th>
+                <th class="text-right">Stock Full</th>
+                <th class="text-right">Vel. Full (30d)</th>
+                <th class="text-right">Cobertura</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (ch of classicChampions(); track ch.id; let i = $index) {
+                <tr class="melf-row" [class.champion-in-full]="ch.isInFull" [class.champion-missing]="!ch.isInFull">
+                  <td>
+                    <span class="champ-rank" [class.champ-rank-top]="i < 3">{{ i + 1 }}</span>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:.6rem">
+                      @if (ch.thumbnail) {
+                        <img [src]="ch.thumbnail" [alt]="ch.title" class="sc-thumb-sm">
+                      }
+                      <div>
+                        <span class="inv-title">{{ ch.title | slice:0:52 }}</span>
+                        @if (ch.sku) { <span class="listing-sku">{{ ch.sku }}</span> }
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-right font-medium text-zinc-200">{{ ch.soldQuantity | number }}</td>
+                  <td class="text-right text-zinc-300">{{ ch.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-center">
+                    @if (ch.isInFull) {
+                      <span class="champ-full-badge champ-in">✅ Full</span>
+                    } @else {
+                      <span class="champ-full-badge champ-out">⚡ Candidato</span>
+                    }
+                  </td>
+                  <td class="text-right">
+                    @if (ch.fullItem) {
+                      <span [class.red]="ch.fullItem.reorderAlertLevel === 'stockout' || ch.fullItem.reorderAlertLevel === 'critical'"
+                            [class.yellow]="ch.fullItem.reorderAlertLevel === 'low'"
+                            [class.emerald]="ch.fullItem.reorderAlertLevel === 'ok'">
+                        {{ ch.fullItem.availableQuantity | number }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    @if (ch.fullItem?.salesVelocity30d !== undefined) {
+                      <span class="vel-num">{{ ch.fullItem!.salesVelocity30d | number:'1.1-1' }}<span class="vel-u"> u/d</span></span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    @if (ch.fullItem?.daysOfCoverage !== undefined) {
+                      <span [class.red]="ch.fullItem!.daysOfCoverage! < leadTimeDays()"
+                            [class.yellow]="ch.fullItem!.daysOfCoverage! >= leadTimeDays() && ch.fullItem!.daysOfCoverage! < leadTimeDays() + 7"
+                            [class.emerald]="ch.fullItem!.daysOfCoverage! >= leadTimeDays() + 7">
+                        {{ ch.fullItem!.daysOfCoverage }}d
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td>
+                    <a [href]="ch.permalink" target="_blank" class="melf-link-btn" title="Ver en ML">↗</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div><!-- /champion-card -->
+
+    <!-- ── SECTION 8: Playbook Mayo 2026 ─────────────────────────────────── -->
+    @if (mayScenario()) {
+    <div class="melf-card melf-card-full playbook-card">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Playbook Mayo 2026 — Acciones Prioritarias
+        </h3>
+        <p class="melf-card-sub">Ordenado por impacto en revenue · Toma acción antes del 10 de mayo para que llegue a tiempo al Hot Sale</p>
+      </div>
+
+      <!-- Action summary chips -->
+      <div class="pb-summary-chips">
+        @if (playbookCounts().reponer > 0) {
+          <span class="pb-chip pb-action-reponer">🚨 {{ playbookCounts().reponer }} Reponer urgente</span>
+        }
+        @if (playbookCounts().precio > 0) {
+          <span class="pb-chip pb-action-precio">💰 {{ playbookCounts().precio }} Bajar precio</span>
+        }
+        @if (playbookCounts().mantener > 0) {
+          <span class="pb-chip pb-action-mantener">✅ {{ playbookCounts().mantener }} Mantener</span>
+        }
+        @if (playbookCounts().revisar > 0) {
+          <span class="pb-chip pb-action-revisar">🔍 {{ playbookCounts().revisar }} Revisar</span>
+        }
+      </div>
+
+      <!-- No velocity data → helpful message instead of empty table -->
+      @if (noVelocityData()) {
+        <div class="sc-alert may-vel-warning">
+          <strong>⚠️ Sin datos de velocidad</strong> — El Playbook necesita velocidades de venta para calcular acciones.
+          <br>Ve a la pestaña <strong>Inventario</strong> y haz clic en <strong>"Sincronizar"</strong>.
+          Cuando las velocidades estén cargadas, el Playbook mostrará qué SKUs reponer, ajustar precio o mantener.
+        </div>
+      } @else if (playbook().length === 0) {
+        <div class="forecast-no-data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span>No hay SKUs Full en inventario todavía.<br><small>Sincroniza el inventario desde la pestaña Inventario.</small></span>
+        </div>
+      } @else {
+      <div class="melf-table-wrap">
+        <table class="melf-table playbook-table">
+          <thead>
+            <tr>
+              <th>SKU / Producto</th>
+              <th class="text-center">Acción</th>
+              <th class="text-right">Vel. Plan</th>
+              <th class="text-right">Unid. Mayo</th>
+              <th class="text-right">Revenue mayo</th>
+              <th class="text-right">Gap vs BB</th>
+              <th class="text-right">Stock extra</th>
+              <th class="text-right">Cobertura actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of playbook(); track row.item.id) {
+              <tr class="melf-row"
+                  [class.pb-row-urgent]="row.action === 'REPONER_URGENTE'"
+                  [class.pb-row-price]="row.action === 'BAJAR_PRECIO'">
+                <td>
+                  <div class="inv-title-wrap">
+                    <span class="inv-alert-dot" [class]="alertClass(row.item.reorderAlertLevel)"></span>
+                    <div>
+                      <span class="inv-title">{{ (row.listing?.title ?? row.item.title) | slice:0:52 }}</span>
+                      @if (row.item.sku) { <span class="listing-sku">{{ row.item.sku }}</span> }
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="pb-action-badge" [class]="playbookActionClass(row.action)">
+                    {{ playbookActionLabel(row.action) }}
+                  </span>
+                </td>
+                <td class="text-right">
+                  @if (row.planVel > 0) {
+                    <span class="vel-num">{{ row.planVel | number:'1.2-2' }}<span class="vel-u"> u/d</span></span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right font-medium text-zinc-200">
+                  {{ (row.normalUnits + row.hsUnits) | number:'1.0-0' }} u
+                </td>
+                <td class="text-right">
+                  @if (row.grossRevenue > 0) {
+                    <span class="orange font-medium">{{ row.grossRevenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right">
+                  @if (row.priceGap != null) {
+                    <span [class.win-gap-pos]="row.priceGap <= 0" [class.win-gap-neg]="row.priceGap > 0">
+                      {{ row.priceGap > 0 ? '+' : '' }}{{ row.priceGap | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                    </span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+                <td class="text-right">
+                  @if (row.stockGap > 0) {
+                    <span class="hs-extra-badge">+{{ row.stockGap | number:'1.0-0' }} u</span>
+                  } @else {
+                    <span class="may-surplus-badge">✓</span>
+                  }
+                </td>
+                <td class="text-right">
+                  @if (row.item.daysOfCoverage !== undefined) {
+                    <span [class.red]="row.item.daysOfCoverage < leadTimeDays()"
+                          [class.yellow]="row.item.daysOfCoverage >= leadTimeDays() && row.item.daysOfCoverage < leadTimeDays() + 7"
+                          [class.emerald]="row.item.daysOfCoverage >= leadTimeDays() + 7">
+                      {{ row.item.daysOfCoverage }}d
+                    </span>
+                  } @else { <span class="text-zinc-600">—</span> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }<!-- /else data ready -->
+    </div><!-- /playbook-card -->
+    }<!-- /mayScenario guard -->
+
   }
+
 
 </section>

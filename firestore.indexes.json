@@ -1,6 +1,32 @@
 {
     "indexes": [
         {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "sourceChannel", "order": "ASCENDING" },
+                { "fieldPath": "createdAt",     "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "fulfillmentType", "order": "ASCENDING" },
+                { "fieldPath": "sourceChannel",   "order": "ASCENDING" },
+                { "fieldPath": "createdAt",       "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "sourceChannel",   "order": "ASCENDING" },
+                { "fieldPath": "fulfillmentType", "order": "ASCENDING" },
+                { "fieldPath": "createdAt",       "order": "DESCENDING" }
+            ]
+        },
+        {
             "collectionGroup": "pdfs",
             "queryScope": "COLLECTION",
             "fields": [
@@ -914,6 +940,14 @@
                     "fieldPath": "refereeOrderId",
                     "order": "ASCENDING"
                 }
+            ]
+        },
+        {
+            "collectionGroup": "scans",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                { "fieldPath": "userId",    "order": "ASCENDING" },
+                { "fieldPath": "scannedAt", "order": "DESCENDING" }
             ]
         }
     ],

@@ -15,8 +15,189 @@
             <app-icon name="truck" [size]="16" [ngClass]="{'animate-pulse': isBackfillingShipping()}"></app-icon>
             {{ isBackfillingShipping() ? 'Recuperando envíos...' : 'Recuperar Costos Envío' }}
         </button>
+        <!-- One-time backfill: patches shippingAddress.state for all MeLi orders — fixes geo map -->
+        <button (click)="backfillAddresses()" [disabled]="isSyncing() || isBackfillingAddresses()"
+            title="Re-fetches /shipments API for all MeLi orders that have no state. Fixes the Distribución Geográfica map."
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="background: linear-gradient(135deg, #10b981, #059669); border: 1px solid rgba(16,185,129,0.5);">
+            <app-icon name="map-pin" [size]="16" [ngClass]="{'animate-pulse': isBackfillingAddresses()}"></app-icon>
+            {{ isBackfillingAddresses() ? 'Recuperando direcciones...' : 'Recuperar Direcciones' }}
+        </button>
+        <!-- READ-ONLY diagnostic — checks what data MeLi API can provide for a sample of orders -->
+        <button (click)="showDiagnosisPanel.set(true)"
+            title="Análisis de datos sin escrituras. Muestra qué info está disponible en la API de MeLi para una muestra de pedidos."
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg shadow-violet-500/20"
+            style="background: linear-gradient(135deg, #7c3aed, #5b21b6); border: 1px solid rgba(124,58,237,0.5);">
+            <app-icon name="search" [size]="16"></app-icon>
+            Diagnose
+        </button>
     </div>
 </app-admin-page-header>
+
+<!-- ── Address Diagnostic Panel ───────────────────────────────────────────── -->
+@if (showDiagnosisPanel()) {
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);">
+    <div class="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+         style="background:#18181b;border:1px solid #3f3f46;">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-700">
+            <div>
+                <h2 class="text-lg font-black text-white tracking-tight">🔍 Diagnóstico de Direcciones</h2>
+                <p class="text-xs text-zinc-400 mt-0.5">Solo lectura — no escribe nada en Firestore. Muestra qué datos puede proveer la API de MeLi.</p>
+            </div>
+            <button (click)="showDiagnosisPanel.set(false)" class="text-zinc-500 hover:text-white transition-colors p-1">
+                <app-icon name="x" [size]="20"></app-icon>
+            </button>
+        </div>
+
+        <!-- Controls -->
+        <div class="px-6 py-4 border-b border-zinc-700 flex flex-wrap gap-4 items-end">
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Desde</label>
+                <input type="date" [value]="diagnoseDateFrom()"
+                    (change)="diagnoseDateFrom.set($any($event.target).value)"
+                    class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Hasta</label>
+                <input type="date" [value]="diagnoseDateTo()"
+                    (change)="diagnoseDateTo.set($any($event.target).value)"
+                    class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Muestra (máx 10)</label>
+                <input type="number" [value]="diagnosisSampleSize()" min="1" max="10"
+                    (change)="diagnosisSampleSize.set(+$any($event.target).value)"
+                    class="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white w-24 focus:outline-none focus:border-violet-500">
+            </div>
+            <button (click)="diagnoseAddresses()" [disabled]="isDiagnosing()"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-50 transition-all hover:brightness-110"
+                style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:1px solid rgba(124,58,237,0.5);">
+                <app-icon name="play" [size]="16" [ngClass]="{'animate-pulse': isDiagnosing()}"></app-icon>
+                {{ isDiagnosing() ? 'Analizando…' : 'Ejecutar Diagnóstico' }}
+            </button>
+            @if (diagnosisResult()) {
+                <button (click)="copyDiagnosisJson()"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-zinc-300 border border-zinc-600 hover:border-zinc-400 transition-all">
+                    <app-icon name="copy" [size]="16"></app-icon>
+                    Copiar JSON completo
+                </button>
+            }
+        </div>
+
+        <!-- Loading state -->
+        @if (isDiagnosing()) {
+        <div class="flex items-center justify-center gap-3 py-16 text-zinc-400">
+            <div class="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-sm">Consultando MeLi API (5 pedidos × 2 endpoints)…</span>
+        </div>
+        }
+
+        <!-- Results -->
+        @if (diagnosisResult(); as dr) {
+
+        <!-- Summary cards -->
+        <div class="px-6 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="rounded-xl p-3 text-center" style="background:#27272a;border:1px solid #3f3f46;">
+                <div class="text-2xl font-black text-white">{{ dr.summary.totalInWindow }}</div>
+                <div class="text-xs text-zinc-400 mt-1">Pedidos en ventana</div>
+            </div>
+            <div class="rounded-xl p-3 text-center" style="background:#27272a;border:1px solid #3f3f46;">
+                <div class="text-2xl font-black text-rose-400">{{ dr.summary.missingState }}</div>
+                <div class="text-xs text-zinc-400 mt-1">Sin estado</div>
+            </div>
+            <div class="rounded-xl p-3 text-center" style="background:#27272a;border:1px solid #3f3f46;">
+                <div class="text-2xl font-black text-emerald-400">{{ (dr.summary.fixableShipment + dr.summary.fixableBilling) }}</div>
+                <div class="text-xs text-zinc-400 mt-1">Reparables (muestra)</div>
+            </div>
+            <div class="rounded-xl p-3 text-center" style="background:#27272a;border:1px solid #3f3f46;">
+                <div class="text-2xl font-black text-amber-400">{{ dr.summary.unfixable }}</div>
+                <div class="text-xs text-zinc-400 mt-1">Sin datos en API</div>
+            </div>
+        </div>
+
+        <!-- Per-order table -->
+        <div class="px-6 pb-6 space-y-3">
+            @for (row of dr.results; track row.docId) {
+            <div class="rounded-xl overflow-hidden" style="border:1px solid #3f3f46;">
+                <!-- Row header -->
+                <div class="flex items-center justify-between px-4 py-2.5"
+                     [style.background]="row.diagnosis === 'FIXABLE_SHIPMENT' || row.diagnosis === 'FIXABLE_BILLING' ? 'rgba(16,185,129,0.15)' :
+                                        row.diagnosis === 'ALREADY_HAS_STATE' ? 'rgba(59,130,246,0.12)' : 'rgba(239,68,68,0.12)'">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-mono text-zinc-400">{{ row.docId }}</span>
+                        <span class="text-xs font-mono text-zinc-500">ship:{{ row.shipId }}</span>
+                    </div>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+                          [style.background]="row.diagnosis === 'FIXABLE_SHIPMENT' || row.diagnosis === 'FIXABLE_BILLING' ? '#065f46' :
+                                             row.diagnosis === 'ALREADY_HAS_STATE' ? '#1e3a5f' : '#7f1d1d'"
+                          [style.color]="row.diagnosis === 'FIXABLE_SHIPMENT' || row.diagnosis === 'FIXABLE_BILLING' ? '#6ee7b7' :
+                                        row.diagnosis === 'ALREADY_HAS_STATE' ? '#93c5fd' : '#fca5a5'">
+                        {{ row.diagnosis }}
+                    </span>
+                </div>
+                <!-- Action line -->
+                <div class="px-4 py-2 text-xs" style="background:#1c1c1f;border-top:1px solid #27272a;">
+                    <span class="text-zinc-300 font-medium">→ </span><span class="text-zinc-200">{{ row.action }}</span>
+                </div>
+                <!-- API detail grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-px" style="background:#27272a;">
+                    <!-- Shipment API -->
+                    <div class="px-4 py-3" style="background:#1c1c1f;">
+                        <div class="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">/shipments API</div>
+                        @if (row.shipmentApi?.skipped) {
+                            <p class="text-xs text-amber-400">⚠️ {{ row.shipmentApi.skipped }}</p>
+                        } @else if (row.shipmentApi?.error) {
+                            <p class="text-xs text-rose-400">❌ {{ row.shipmentApi.error }}</p>
+                        } @else {
+                            <div class="space-y-0.5 text-xs">
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">HTTP Status</span><span class="font-mono" [style.color]="row.shipmentApi.httpStatus===200?'#6ee7b7':'#fca5a5'">{{ row.shipmentApi.httpStatus }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">logisticType</span><span class="font-mono text-zinc-300">{{ row.shipmentApi.logisticType }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">hasRecvAddress</span><span class="font-mono" [style.color]="row.shipmentApi.hasReceiverAddress?'#6ee7b7':'#fca5a5'">{{ row.shipmentApi.hasReceiverAddress }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">state</span><span class="font-mono text-emerald-300">{{ row.shipmentApi.state }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">city</span><span class="font-mono text-zinc-300">{{ row.shipmentApi.city }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">zip</span><span class="font-mono text-zinc-300">{{ row.shipmentApi.zip }}</span></div>
+                                @if (row.shipmentApi.rawSnippet) {
+                                    <details class="mt-2">
+                                        <summary class="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300">raw receiver_address</summary>
+                                        <pre class="mt-1 text-[10px] text-zinc-400 bg-zinc-950 rounded p-2 overflow-x-auto">{{ row.shipmentApi.rawSnippet }}</pre>
+                                    </details>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <!-- Billing Info API -->
+                    <div class="px-4 py-3" style="background:#1c1c1f;">
+                        <div class="text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">/billing_info API</div>
+                        @if (row.billingApi?.skipped) {
+                            <p class="text-xs text-amber-400">⚠️ {{ row.billingApi.skipped }}</p>
+                        } @else if (row.billingApi?.error) {
+                            <p class="text-xs text-rose-400">❌ {{ row.billingApi.error }}</p>
+                        } @else {
+                            <div class="space-y-0.5 text-xs">
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">HTTP Status</span><span class="font-mono" [style.color]="row.billingApi.httpStatus===200?'#6ee7b7':'#fca5a5'">{{ row.billingApi.httpStatus }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">hasAddress</span><span class="font-mono" [style.color]="row.billingApi.hasAddress?'#6ee7b7':'#fca5a5'">{{ row.billingApi.hasAddress }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">state</span><span class="font-mono text-emerald-300">{{ row.billingApi.state }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">city</span><span class="font-mono text-zinc-300">{{ row.billingApi.city }}</span></div>
+                                <div class="flex gap-2"><span class="text-zinc-500 w-28">zip</span><span class="font-mono text-zinc-300">{{ row.billingApi.zip }}</span></div>
+                                @if (row.billingApi.rawSnippet) {
+                                    <details class="mt-2">
+                                        <summary class="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300">raw snippet</summary>
+                                        <pre class="mt-1 text-[10px] text-zinc-400 bg-zinc-950 rounded p-2 overflow-x-auto">{{ row.billingApi.rawSnippet }}</pre>
+                                    </details>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+        }
+    </div>
+</div>
+}
 
 <div class="meli-hub-container p-6 max-w-7xl mx-auto space-y-6">
     <div

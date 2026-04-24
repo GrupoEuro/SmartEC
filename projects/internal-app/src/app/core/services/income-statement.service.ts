@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, combineLatest, map } from 'rxjs';
 import { OrderService } from './order.service';
+import { GlobalOrderCacheService } from './global-order-cache.service';
 import { ProductService } from './product.service';
 import { ExpenseService } from './expense.service';
 import { IncomeStatement, IncomeStatementComparison, getExpenseCategoryName } from '../models/income-statement.model';
@@ -11,6 +12,7 @@ import { Timestamp } from '@angular/fire/firestore';
 })
 export class IncomeStatementService {
     private orderService = inject(OrderService);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private productService = inject(ProductService);
     private expenseService = inject(ExpenseService);
 
@@ -19,7 +21,7 @@ export class IncomeStatementService {
      */
     generateIncomeStatement(startDate: Date, endDate: Date): Observable<IncomeStatement> {
         return combineLatest([
-            this.orderService.getOrdersByDateRange(startDate, endDate),
+            this.globalOrderCache.get(startDate, endDate),
             this.productService.getProducts(),
             this.expenseService.getExpenseSummary(startDate, endDate)
         ]).pipe(
@@ -427,7 +429,7 @@ export class IncomeStatementService {
      * Get daily revenue breakdown for trend chart
      */
     getDailyRevenue(startDate: Date, endDate: Date): Observable<{ labels: string[], data: number[] }> {
-        return this.orderService.getOrders().pipe(
+        return this.globalOrderCache.get(startDate, endDate).pipe(
             map(orders => {
                 // Filter orders in period
                 const periodOrders = orders.filter(o => {

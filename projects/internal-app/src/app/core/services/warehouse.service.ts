@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, query, where, getDocs, collectionData, Timestamp, limit } from '@angular/fire/firestore';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, of, map } from 'rxjs';
 import { Warehouse, WarehouseZone, StorageStructure, StorageLocation } from '../models/warehouse.model';
 
 @Injectable({
@@ -16,6 +16,11 @@ export class WarehouseService {
     private locationsColl = collection(this.firestore, 'warehouse_locations');
     private obstaclesColl = collection(this.firestore, 'warehouse_obstacles');
     private doorsColl = collection(this.firestore, 'warehouse_doors');
+
+    // ── Location Cache (10-min TTL) ───────────────────────────────────────────
+    // warehouse_locations rarely changes — refresh at most every 10 min per warehouse
+    private locCache = new Map<string, { data: StorageLocation[]; ts: number }>();
+    private readonly LOC_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
     // --- Warehouses ---
 
@@ -182,10 +187,18 @@ export class WarehouseService {
     }
 
     getOccupiedLocations(warehouseId: string): Observable<StorageLocation[]> {
-        // Query ALL locations for warehouse (avoid composite index requirement)
+        const cached = this.locCache.get(warehouseId);
+        if (cached && Date.now() - cached.ts < this.LOC_TTL_MS) {
+            return of(cached.data.filter(l => l.status === 'full'));
+        }
+        // One-shot getDocs — no live stream; warehouse layouts change infrequently.
         const q = query(this.locationsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(locs => (locs as StorageLocation[]).filter(l => l.status === 'full'))
+        return from(getDocs(q)).pipe(
+            map(snap => {
+                const locs = snap.docs.map(d => ({ id: d.id, ...d.data() } as StorageLocation));
+                this.locCache.set(warehouseId, { data: locs, ts: Date.now() });
+                return locs.filter(l => l.status === 'full');
+            })
         );
     }
 

@@ -32,7 +32,7 @@ export class OrderFulfillmentComponent implements OnInit {
     private fb = inject(FormBuilder);
     private pdfService = inject(PdfGenerationService);
     private skydropx = inject(SkydropxService);
-    private meliSync = inject(MeliSyncService);
+    meliSync = inject(MeliSyncService);
     private authService = inject(AuthService);
 
     order = signal<Order | undefined>(undefined);
@@ -43,6 +43,104 @@ export class OrderFulfillmentComponent implements OnInit {
     /** Refund action states */
     isApprovingRefund = signal(false);
     isRejectingRefund = signal(false);
+
+    /** Staff cancel flow */
+    showStaffCancelModal = signal(false);
+    staffCancelReason = signal('');
+    isCancellingOrder = signal(false);
+
+    /** MeLi Classic workflow action states */
+    isAcknowledging = signal(false);
+    isDownloadingLabel = signal(false);
+    isConfirmingDropOff = signal(false);
+
+    // ── Channel-aware workflow signals ───────────────────────────────────────
+
+    /** Which guided workflow layout to render */
+    workflowMode = computed<'meli_full' | 'meli_classic' | 'web'>(() => {
+        const o = this.order();
+        if (!o) return 'web';
+        if (o.sourceChannel === 'mercadolibre' && o.fulfillmentType === 'platform') return 'meli_full';
+        if (o.sourceChannel === 'mercadolibre') return 'meli_classic';
+        return 'web';
+    });
+
+    /** Returns milliseconds until nativeSla deadline (negative = past) */
+    slaTimeMs = computed<number>(() => {
+        const o = this.order() as any;
+        if (!o?.nativeSla) return Infinity;
+        const slaDate = o.nativeSla instanceof Date ? o.nativeSla : (o.nativeSla?.toDate?.() ?? new Date(o.nativeSla));
+        return slaDate.getTime() - Date.now();
+    });
+
+    /** Color-coded urgency level for SLA banner */
+    slaUrgency = computed<'ok' | 'warning' | 'critical' | 'overdue'>(() => {
+        const ms = this.slaTimeMs();
+        if (ms === Infinity) return 'ok';
+        if (ms < 0)                       return 'overdue';
+        if (ms < 2 * 60 * 60 * 1000)     return 'critical';  // < 2h
+        if (ms < 6 * 60 * 60 * 1000)     return 'warning';   // < 6h
+        return 'ok';
+    });
+
+    /** Human-readable countdown string */
+    slaLabel = computed<string>(() => {
+        const ms = this.slaTimeMs();
+        if (ms === Infinity) return 'Sin fecha límite';
+        if (ms < 0) return 'FUERA DE TIEMPO';
+        const h = Math.floor(ms / (1000 * 60 * 60));
+        const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+        if (h > 24) return `${Math.floor(h / 24)}d ${h % 24}h restantes`;
+        if (h > 0)  return `${h}h ${m}m restantes`;
+        return `${m}m restantes`;
+    });
+
+    /** SLA deadline formatted date string */
+    slaDeadlineFormatted = computed<string>(() => {
+        const o = this.order() as any;
+        if (!o?.nativeSla) return '';
+        const d = o.nativeSla instanceof Date ? o.nativeSla : (o.nativeSla?.toDate?.() ?? new Date(o.nativeSla));
+        return d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    });
+
+    /** Whether staff has taken ownership of this MeLi Classic order */
+    isAcknowledged = computed(() => !!(this.order() as any)?.acknowledgedAt);
+
+    /** Whether the MeLi label has been downloaded */
+    isLabelDownloaded = computed(() => !!(this.order() as any)?.labelDownloadedAt);
+
+    /**
+     * MeLi Classic 4-step progress:
+     * 1 = Not acknowledged  2 = Acknowledged (ready to print)  3 = Label downloaded  4 = Shipped
+     */
+    meliStep = computed<1 | 2 | 3 | 4>(() => {
+        const o = this.order();
+        if (!o) return 1;
+        if (o.status === 'shipped' || o.status === 'delivered') return 4;
+        if ((o as any).labelDownloadedAt) return 3;
+        if ((o as any).acknowledgedAt) return 2;
+        return 1;
+    });
+
+    /** Whether all picking checkboxes are checked (Web orders) */
+    pickingComplete = computed(() => {
+        const o = this.order();
+        if (!o) return false;
+        return o.items.every(item => this.pickedItems().has(item.productId));
+    });
+
+    /**
+     * Web order step 1-5 progress:
+     * 1=Pago  2=Picking  3=Guía  4=Envío  5=Entrega
+     */
+    webStep = computed<1 | 2 | 3 | 4 | 5>(() => {
+        const o = this.order();
+        if (!o) return 1;
+        if (o.status === 'delivered') return 5;
+        if (o.status === 'shipped') return 4;
+        if (o.shippingLabelUrl || o.trackingNumber) return 3;
+        return 2;
+    });
 
     statusForm: FormGroup;
 
@@ -72,7 +170,7 @@ export class OrderFulfillmentComponent implements OnInit {
     parcelLength = 20;
 
     /** Resolved actor for the current staff member — passed to every updateStatus call */
-    private get currentActor(): OrderActor {
+    get currentActor(): OrderActor {
         const user = this.authService.currentUser();
         return {
             uid:         user?.uid         ?? 'unknown',
@@ -218,6 +316,17 @@ export class OrderFulfillmentComponent implements OnInit {
             return;
         }
 
+        // For cancel on a paid web order → open the staff cancel modal (triggers refund flow)
+        if (newStatus === 'cancelled') {
+            const isPaid = ['approved', 'paid'].includes((order as any).paymentStatus ?? '');
+            const isWebOrder = (order as any).sourceChannel === 'storefront';
+            if (isPaid && isWebOrder) {
+                this.showStaffCancelModal.set(true);
+                return;
+            }
+        }
+
+
         this.isUpdating.set(true);
 
         try {
@@ -236,6 +345,39 @@ export class OrderFulfillmentComponent implements OnInit {
             this.toast.error('Error updating order status');
         } finally {
             this.isUpdating.set(false);
+        }
+    }
+
+    /** Staff cancel a paid web order — sets refund_pending for manual MP refund review */
+    async confirmStaffCancel() {
+        const order = this.order();
+        if (!order?.id) return;
+        this.isCancellingOrder.set(true);
+        try {
+            await this.orderService.updateStatus(
+                order.id,
+                'refund_pending',
+                `Staff cancel — Motivo: ${this.staffCancelReason() || 'No especificado'}`,
+                undefined,
+                { ...this.currentActor, role: 'OPERATIONS' }
+            );
+            // Also stamp cancelledBy + cancelReason on the order doc
+            const { getFirestore, doc, updateDoc, serverTimestamp } = await import('@angular/fire/firestore');
+            const db = getFirestore();
+            await updateDoc(doc(db, 'orders', order.id), {
+                cancelledBy: 'staff',
+                cancelledByUid: this.currentActor.uid,
+                cancelReason: this.staffCancelReason() || 'No especificado',
+                cancelledAt: serverTimestamp(),
+            });
+            this.toast.success('Orden marcada para reembolso. Página de aprobación lista.');
+            this.showStaffCancelModal.set(false);
+            this.staffCancelReason.set('');
+            this.loadOrder(order.id);
+        } catch (err: any) {
+            this.toast.error(err?.message ?? 'Error al cancelar la orden');
+        } finally {
+            this.isCancellingOrder.set(false);
         }
     }
 
@@ -378,6 +520,85 @@ export class OrderFulfillmentComponent implements OnInit {
     getMeliOrderUrl(): string {
         const o = this.order();
         return o?.externalOrderId ? `https://www.mercadolibre.com.mx/ventas/${o.externalOrderId}/detalle` : '';
+    }
+
+    /** MeLi tracking URL using shippingId */
+    getMeliTrackingUrl(): string {
+        const o = this.order();
+        return o?.shippingId ? `https://www.mercadolibre.com.mx/envios/${o.shippingId}` : '';
+    }
+
+    // ── MeLi Classic Workflow Actions ─────────────────────────────────────────
+
+    /** Step 1 — Staff takes ownership of this order (internal stamp, no MeLi API call) */
+    async acknowledgeOrder() {
+        const order = this.order();
+        if (!order?.id) return;
+        this.isAcknowledging.set(true);
+        try {
+            await this.meliSync.acknowledgeOrder(order.id, this.currentActor.displayName);
+            this.toast.success('✅ Orden tomada — puedes descargar la guía ahora');
+            this.loadOrder(order.id);
+        } catch (err: any) {
+            this.toast.error(err?.message ?? 'Error al confirmar la orden');
+        } finally {
+            this.isAcknowledging.set(false);
+        }
+    }
+
+    /** Step 2 — Download MeLi shipping label PDF, then stamp labelDownloadedAt */
+    async downloadMeliLabel() {
+        const order = this.order();
+        if (!order?.shippingId) {
+            this.toast.error('No hay ID de envío disponible aún. Sincroniza la orden.');
+            return;
+        }
+        this.isDownloadingLabel.set(true);
+        this.meliSync.getShippingLabel(order.shippingId).subscribe({
+            next: async (result) => {
+                // Open PDF in new tab
+                const bytes = atob(result.pdfBase64);
+                const arr = new Uint8Array(bytes.length).map((_, i) => bytes.charCodeAt(i));
+                const blob = new Blob([arr], { type: 'application/pdf' });
+                window.open(URL.createObjectURL(blob), '_blank');
+                // Stamp download timestamp
+                try {
+                    await this.meliSync.stampLabelDownloaded(order.id!, this.currentActor.uid);
+                    this.toast.success('📄 Guía descargada — imprime y pega en el paquete');
+                    this.loadOrder(order.id!);
+                } catch { /* stamp failure is non-critical */ }
+            },
+            error: (err) => {
+                console.error('MeLi label error:', err);
+                this.toast.error('Error al descargar la guía de MercadoLibre');
+            },
+            complete: () => this.isDownloadingLabel.set(false),
+        });
+    }
+
+    /** Step 4 — Staff confirms physical drop-off at MeLi carrier point */
+    async confirmMeliDropOff() {
+        const order = this.order();
+        if (!order?.id) return;
+        this.isConfirmingDropOff.set(true);
+        try {
+            await this.orderService.updateStatus(
+                order.id,
+                'shipped',
+                'Entregado al punto de recolecta MercadoLibre',
+                undefined,
+                this.currentActor
+            );
+            // Stamp dropOffAt
+            const { getFirestore, doc, updateDoc, serverTimestamp } = await import('@angular/fire/firestore');
+            await updateDoc(doc(getFirestore(), 'orders', order.id), { dropOffAt: serverTimestamp() });
+            this.toast.success('✅ Orden entregada al transportista — MeLi actualizará el seguimiento');
+            this.loadOrder(order.id);
+        } catch (err: any) {
+            this.toast.error(err?.message ?? 'Error al confirmar entrega');
+        } finally {
+            this.isConfirmingDropOff.set(false);
+        }
     }
 
     printInvoice() {

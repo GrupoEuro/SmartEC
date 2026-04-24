@@ -139,6 +139,11 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./channels/mercadolibre-hub/mercadolibre-hub.component').then(m => m.MercadolibreHubComponent)
             },
             {
+                path: 'channels/amazon',
+                loadComponent: () => import('./channels/amazon-hub/amazon-hub.component').then(m => m.AmazonHubComponent),
+                title: 'Amazon Hub'
+            },
+            {
                 path: 'price-intelligence',
                 loadComponent: () => import('./price-intelligence/price-intelligence.component').then(m => m.PriceIntelligenceComponent),
                 title: 'Price Intelligence'

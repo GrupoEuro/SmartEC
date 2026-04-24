@@ -1,0 +1,304 @@
+<app-admin-page-header iconName="package" title="Amazon Hub"
+    subtitle="Manage Amazon orders, sync history, and SP-API connection status." variant="operations">
+    <div class="flex gap-2">
+        <button (click)="syncNow()" [disabled]="isSyncing()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="background: linear-gradient(135deg, #f97316, #c2410c); border: 1px solid rgba(249,115,22,0.4);">
+            <app-icon name="refresh-cw" [size]="16" [ngClass]="{'animate-spin': isSyncing()}"></app-icon>
+            {{ isSyncing() ? 'Syncing...' : 'Sync Now' }}
+        </button>
+    </div>
+</app-admin-page-header>
+
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+
+    <!-- Tabs -->
+    <div class="bg-zinc-800/80 backdrop-blur-md rounded-xl p-2 border border-zinc-700/50 flex gap-2">
+        <button *ngFor="let tab of [
+            {id:'overview', label:'Overview', icon:'layout-dashboard'},
+            {id:'orders',   label:'Orders',   icon:'list'},
+            {id:'sync_log', label:'Sync Log', icon:'activity'}
+        ]" (click)="setTab($any(tab.id))"
+            class="tab-btn px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            [ngClass]="activeTab() === tab.id ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+            <app-icon [name]="tab.icon" [size]="16"></app-icon>{{ tab.label }}
+            <span *ngIf="tab.id === 'orders' && kpiMtd().pendingFulfill > 0"
+                class="ml-1 bg-orange-500/20 text-orange-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                {{ kpiMtd().pendingFulfill }}
+            </span>
+        </button>
+    </div>
+
+    <!-- ── OVERVIEW TAB ──────────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'overview'" class="space-y-6 animate-fade-in">
+
+        <!-- SP-API Connection Card -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="card p-5 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none"></div>
+                <div class="relative">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-700/50">
+                            <app-icon name="link" [size]="20" class="text-orange-400"></app-icon>
+                        </div>
+                        <span [class]="lastSyncStatus() === 'success' ? 'px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center gap-1' :
+                              lastSyncStatus() === 'error'   ? 'px-2 py-0.5 text-xs font-bold rounded-full bg-red-500/20 text-red-400 border border-red-500/20 flex items-center gap-1' :
+                              'px-2 py-0.5 text-xs font-bold rounded-full bg-zinc-600/30 text-zinc-400 border border-zinc-600/20 flex items-center gap-1'">
+                            <span class="w-1.5 h-1.5 rounded-full"
+                                [ngClass]="lastSyncStatus() === 'success' ? 'bg-emerald-400 animate-pulse' :
+                                           lastSyncStatus() === 'error'   ? 'bg-red-400' : 'bg-zinc-500'"></span>
+                            {{ lastSyncStatus() ?? 'Pending Setup' }}
+                        </span>
+                    </div>
+                    <h3 class="text-sm font-bold text-white mb-1">SP-API Connection</h3>
+                    <p class="text-xs text-zinc-500">amazon.com.mx · MX Marketplace</p>
+                    <div class="mt-3 text-xs text-zinc-500 flex justify-between">
+                        <span>Last sync</span>
+                        <span class="text-zinc-300 font-medium">{{ fmtTimeAgo(lastSyncAt()) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div *ngFor="let kpi of [
+                {label:'Orders MTD',         value: kpiMtd().totalOrders,    color:'from-orange-400 to-amber-400',   icon:'shopping-bag'},
+                {label:'Pending Fulfillment', value: kpiMtd().pendingFulfill, color:'from-yellow-400 to-orange-400',  icon:'clock'},
+                {label:'Revenue MTD',         value: null,                    color:'from-emerald-400 to-teal-400',   icon:'trending-up'}
+            ]"
+                class="card p-5 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl relative overflow-hidden">
+                <div class="relative">
+                    <div class="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-700/50 inline-block mb-3">
+                        <app-icon [name]="kpi.icon" [size]="18" class="text-zinc-400"></app-icon>
+                    </div>
+                    <p class="text-xs text-zinc-500 font-semibold uppercase tracking-wide mb-1">{{ kpi.label }}</p>
+                    <div class="text-3xl font-extrabold text-transparent bg-clip-text" [ngClass]="'bg-gradient-to-r ' + kpi.color">
+                        <ng-container *ngIf="kpi.value !== null">{{ kpi.value }}</ng-container>
+                        <ng-container *ngIf="kpi.value === null">{{ fmtMXN(kpiMtd().revenueMtd) }}</ng-container>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FBA vs MFN split + Urgent alerts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Fulfillment split -->
+            <div class="card p-5 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <app-icon name="truck" [size]="16" class="text-orange-400"></app-icon>
+                    Fulfillment Split
+                </h3>
+                <div class="space-y-3">
+                    <div *ngFor="let row of [
+                        {label:'FBA (Amazon ships)', count: kpiMtd().fbaOrders, color:'bg-orange-500'},
+                        {label:'MFN (You ship)',      count: kpiMtd().mfnOrders, color:'bg-amber-500'}
+                    ]">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-zinc-400">{{ row.label }}</span>
+                            <span class="text-white font-bold">{{ row.count }}</span>
+                        </div>
+                        <div class="w-full bg-zinc-900 rounded-full h-2">
+                            <div [class]="row.color + ' h-2 rounded-full transition-all'"
+                                [style.width.%]="kpiMtd().totalOrders > 0 ? (row.count / kpiMtd().totalOrders) * 100 : 0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Urgent ship-by alerts -->
+            <div class="card p-5 rounded-2xl border border-zinc-700/50 bg-zinc-800/80 backdrop-blur-xl shadow-xl"
+                [ngClass]="{'border-red-500/40': urgentOrders().length > 0}">
+                <h3 class="text-sm font-bold mb-4 flex items-center gap-2"
+                    [ngClass]="urgentOrders().length > 0 ? 'text-red-400' : 'text-white'">
+                    <app-icon name="alert-triangle" [size]="16"></app-icon>
+                    Urgent — Ship Within 24h
+                </h3>
+                <div *ngIf="urgentOrders().length === 0" class="text-center py-6">
+                    <app-icon name="check-circle" [size]="28" class="text-emerald-500/60 mx-auto mb-2"></app-icon>
+                    <p class="text-zinc-500 text-sm">No urgent orders</p>
+                </div>
+                <div *ngFor="let o of urgentOrders().slice(0, 4)"
+                    class="flex justify-between items-center py-2 border-b border-zinc-800/50 last:border-0 text-sm">
+                    <span class="text-white font-mono text-xs">{{ getAmazonOrderId(o) }}</span>
+                    <span class="text-red-400 font-bold text-xs animate-pulse">⚠ URGENT</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Banner (shown when no orders yet) -->
+        <div *ngIf="!isLoadingData() && amazonOrders().length === 0"
+            class="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-6 flex items-start gap-4">
+            <div class="p-3 rounded-xl bg-orange-500/20 shrink-0">
+                <app-icon name="info" [size]="24" class="text-orange-400"></app-icon>
+            </div>
+            <div>
+                <h3 class="text-white font-bold mb-1">SP-API Credentials Required</h3>
+                <p class="text-zinc-400 text-sm mb-3">No Amazon orders found yet. To activate syncing, add your LWA credentials to Firebase Secret Manager and redeploy functions.</p>
+                <div class="font-mono text-xs text-zinc-500 bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-1">
+                    <div>firebase functions:secrets:set AMAZON_LWA_CLIENT_ID</div>
+                    <div>firebase functions:secrets:set AMAZON_LWA_CLIENT_SECRET</div>
+                    <div>firebase functions:secrets:set AMAZON_REFRESH_TOKEN</div>
+                    <div>firebase functions:secrets:set AMAZON_AWS_ACCESS_KEY_ID</div>
+                    <div>firebase functions:secrets:set AMAZON_AWS_SECRET_ACCESS_KEY</div>
+                    <div>firebase functions:secrets:set AMAZON_ROLE_ARN</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ORDERS TAB ───────────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'orders'" class="space-y-4 animate-fade-in">
+        <!-- Search + Filter -->
+        <div class="bg-zinc-800/60 border border-zinc-700/50 rounded-xl p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div class="relative flex-1 w-full sm:max-w-xs">
+                <app-icon name="search" [size]="15" class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"></app-icon>
+                <input type="text" [value]="searchQuery()" (input)="onSearch($any($event.target).value)"
+                    placeholder="Order ID, ASIN, SKU…"
+                    class="w-full pl-9 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500/50 transition-colors">
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <button *ngFor="let f of [
+                    {id:'all',       label:'All'},
+                    {id:'pending',   label:'Pending'},
+                    {id:'shipped',   label:'Shipped'},
+                    {id:'cancelled', label:'Cancelled'}
+                ]" (click)="setFilter($any(f.id))"
+                    class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                    [ngClass]="orderFilter() === f.id
+                        ? 'bg-orange-600 border-orange-500 text-white'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'">
+                    {{ f.label }}
+                </button>
+            </div>
+            <span class="text-xs text-zinc-500 ml-auto shrink-0">
+                <span class="font-bold text-zinc-300">{{ filteredOrders().length }}</span> orders
+            </span>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="isLoadingData()" class="flex justify-center py-16">
+            <app-icon name="loader" [size]="36" class="text-orange-400 animate-spin opacity-70"></app-icon>
+        </div>
+
+        <!-- Orders Table -->
+        <div *ngIf="!isLoadingData()" class="bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl overflow-hidden shadow-xl">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-zinc-900/50 border-b border-zinc-700/50 text-xs text-zinc-400 uppercase tracking-wide">
+                        <th class="p-4 font-semibold">Order</th>
+                        <th class="p-4 font-semibold">Items</th>
+                        <th class="p-4 font-semibold text-center">Fulfillment</th>
+                        <th class="p-4 font-semibold text-right">Total</th>
+                        <th class="p-4 font-semibold text-center">Status</th>
+                        <th class="p-4 font-semibold text-center">Ship-By</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm divide-y divide-zinc-800/50">
+                    <tr *ngFor="let order of filteredOrders()"
+                        class="hover:bg-zinc-700/20 transition-colors"
+                        [ngClass]="{'bg-red-950/10': shipByUrgency(order) === 'urgent', 'bg-yellow-950/10': shipByUrgency(order) === 'warning'}">
+                        <td class="p-4">
+                            <div class="font-bold text-white text-xs font-mono">{{ getAmazonOrderId(order) }}</div>
+                            <div class="text-xs text-zinc-500 mt-0.5">{{ toDate(order.createdAt) | date:'MMM d, h:mm a' }}</div>
+                        </td>
+                        <td class="p-4">
+                            <div *ngFor="let item of (order.items || []).slice(0,2)" class="text-zinc-300 text-xs truncate max-w-[200px]" [title]="item.productName">
+                                {{ item.quantity }}× {{ item.productName }}
+                            </div>
+                            <span *ngIf="(order.items || []).length > 2" class="text-zinc-600 text-xs">+{{ (order.items || []).length - 2 }} more</span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="text-xs px-2 py-0.5 rounded font-bold"
+                                [ngClass]="order.fulfillmentType === 'platform'
+                                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                    : 'bg-zinc-700/50 text-zinc-400 border border-zinc-700'">
+                                {{ order.fulfillmentType === 'platform' ? 'FBA' : 'MFN' }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-right font-bold text-white">{{ fmtMXN(order.total ?? 0) }}</td>
+                        <td class="p-4 text-center">
+                            <span class="text-xs px-2 py-0.5 rounded-full font-semibold border"
+                                [ngClass]="statusBadgeClass(order.status)">
+                                {{ order.status }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <ng-container *ngIf="getShipByDate(order)">
+                                <span class="text-xs font-bold"
+                                    [ngClass]="shipByUrgency(order) === 'urgent'  ? 'text-red-400 animate-pulse' :
+                                               shipByUrgency(order) === 'warning' ? 'text-yellow-400' : 'text-zinc-400'">
+                                    {{ toDate(getShipByDate(order)) | date:'MMM d' }}
+                                </span>
+                            </ng-container>
+                            <span *ngIf="!getShipByDate(order)" class="text-zinc-700 text-xs">—</span>
+                        </td>
+                    </tr>
+                    <tr *ngIf="filteredOrders().length === 0">
+                        <td colspan="6" class="p-16 text-center">
+                            <app-icon name="package" [size]="32" class="text-zinc-700 mx-auto mb-3"></app-icon>
+                            <p class="text-zinc-500 text-sm">No Amazon orders found.</p>
+                            <p class="text-zinc-600 text-xs mt-1">Run "Sync Now" to pull orders from SP-API.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── SYNC LOG TAB ──────────────────────────────────────────────────────── -->
+    <div *ngIf="activeTab() === 'sync_log'" class="animate-fade-in">
+        <div class="bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl overflow-hidden shadow-xl">
+            <div class="px-5 py-4 border-b border-zinc-700/50 flex items-center gap-3">
+                <app-icon name="activity" [size]="18" class="text-orange-400"></app-icon>
+                <div>
+                    <h3 class="text-sm font-bold text-white">Sync History</h3>
+                    <p class="text-xs text-zinc-500">All SP-API sync runs (scheduled + manual)</p>
+                </div>
+            </div>
+            <div *ngIf="isLoadingLogs()" class="flex justify-center py-12">
+                <app-icon name="loader" [size]="28" class="text-orange-400 animate-spin opacity-60"></app-icon>
+            </div>
+            <table *ngIf="!isLoadingLogs()" class="w-full text-left text-sm">
+                <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase tracking-wide">
+                    <tr>
+                        <th class="px-5 py-3 font-semibold">Time</th>
+                        <th class="px-5 py-3 font-semibold">Type</th>
+                        <th class="px-5 py-3 font-semibold text-center">Status</th>
+                        <th class="px-5 py-3 font-semibold text-center">Imported</th>
+                        <th class="px-5 py-3 font-semibold text-center">Updated</th>
+                        <th class="px-5 py-3 font-semibold text-center">Errors</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800/50">
+                    <tr *ngIf="syncLogs().length === 0">
+                        <td colspan="6" class="px-5 py-12 text-center text-zinc-500 text-sm">
+                            No sync history yet. Run "Sync Now" to start.
+                        </td>
+                    </tr>
+                    <tr *ngFor="let log of syncLogs()" class="hover:bg-zinc-700/20 transition-colors">
+                        <td class="px-5 py-3 font-mono text-xs text-zinc-400">
+                            {{ toDate(log.createdAt) | date:'MMM d, h:mm a' }}
+                        </td>
+                        <td class="px-5 py-3">
+                            <span class="text-xs px-2 py-0.5 rounded font-semibold"
+                                [ngClass]="log.type === 'manual' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-zinc-700/50 text-zinc-400'">
+                                {{ log.type ?? 'scheduled' }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-center">
+                            <span class="text-xs px-2 py-0.5 rounded-full font-bold border" [ngClass]="syncStatusClass(log.status)">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-center font-bold text-white">{{ log.imported ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center text-zinc-400">{{ log.updated ?? 0 }}</td>
+                        <td class="px-5 py-3 text-center" [ngClass]="log.errors > 0 ? 'text-red-400 font-bold' : 'text-zinc-600'">
+                            {{ log.errors ?? 0 }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

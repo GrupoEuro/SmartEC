@@ -38,6 +38,13 @@ export const MARKETING_NAVIGATION_CONFIG: NavItem[] = [
         icon: 'bar-chart-2',
         children: [
             {
+                id: 'mh_ai_analytics',
+                title: 'MARKETING.SIDEBAR.AI_ANALYTICS',
+                icon: 'cpu',
+                route: '/marketing/ai-analytics',
+                badge: { text: 'BETA', color: 'bg-indigo-600' }
+            },
+            {
                 id: 'mh_attribution',
                 title: 'MARKETING.SIDEBAR.ATTRIBUTION',
                 icon: 'bar-chart-2',

@@ -1,0 +1,488 @@
+<!-- ══ AI Analytics Page ═══════════════════════════════════════════════════ -->
+
+<!-- Skeleton -->
+<div *ngIf="isLoading()" class="aia-skeleton">
+    <div class="sk-row" style="margin-bottom:1.5rem">
+        <div class="skeleton sk-h-xl sk-w-third"></div>
+        <div class="skeleton sk-h-sm sk-w-half"></div>
+    </div>
+    <div class="sk-kpi-grid">
+        <div class="sk-kpi-card" *ngFor="let i of [1,2,3,4]">
+            <div class="skeleton sk-h-xs sk-w-half"></div>
+            <div class="skeleton sk-h-2xl sk-w-px"></div>
+        </div>
+    </div>
+    <div class="skeleton" style="height:180px;border-radius:12px;margin-top:1.5rem"></div>
+</div>
+
+<!-- Error -->
+<div *ngIf="!isLoading() && hasError()" class="aia-error">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Failed to load AI analytics. Check console for details.
+    <button class="aia-retry" (click)="load()">Retry</button>
+</div>
+
+<!-- Main Content -->
+<div *ngIf="!isLoading()" class="aia-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="aia-header">
+        <div class="aia-header-left">
+            <div class="aia-header-icon">
+                <!-- Brain icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-2.5-2.5v-1H7a2 2 0 0 1-2-2v-1.5A2.5 2.5 0 0 1 2.5 11a2.5 2.5 0 0 1 2.5-2.5V7a2 2 0 0 1 2-2h2V2z"/>
+                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 2.5-2.5v-1H17a2 2 0 0 0 2-2v-1.5A2.5 2.5 0 0 0 21.5 11a2.5 2.5 0 0 0-2.5-2.5V7a2 2 0 0 0-2-2h-2V2z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="aia-title">AI Visibility Analytics</h1>
+                <p class="aia-subtitle">Traffic from ChatGPT, Perplexity, Gemini, Copilot, Claude &amp; more</p>
+            </div>
+            <span class="aia-badge">BETA</span>
+        </div>
+
+        <!-- Timeframe Toggle -->
+        <div class="aia-tf-toggle">
+            <button *ngFor="let tf of timeframes"
+                    class="aia-tf-btn"
+                    [class.active]="timeframe() === tf.value"
+                    (click)="setTimeframe(tf.value)">
+                {{ tf.label }}
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Empty State ─────────────────────────────────────────────────────── -->
+    <div *ngIf="totalSessions() === 0" class="aia-empty">
+        <div class="aia-empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-2.5-2.5v-1H7a2 2 0 0 1-2-2v-1.5A2.5 2.5 0 0 1 2.5 11a2.5 2.5 0 0 1 2.5-2.5V7a2 2 0 0 1 2-2h2V2z"/>
+                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 2.5-2.5v-1H17a2 2 0 0 0 2-2v-1.5A2.5 2.5 0 0 0 21.5 11a2.5 2.5 0 0 0-2.5-2.5V7a2 2 0 0 0-2-2h-2V2z"/>
+            </svg>
+        </div>
+        <p class="aia-empty-title">No AI traffic detected this period</p>
+        <p class="aia-empty-hint">ChatGPT, Perplexity, Gemini, Copilot, and Claude are tracked automatically when visitors arrive from those platforms.</p>
+    </div>
+
+    <!-- ── Content (only when there's data) ──────────────────────────────── -->
+    <ng-container *ngIf="totalSessions() > 0">
+
+        <!-- ── KPI Strip ──────────────────────────────────────────────────── -->
+        <div class="aia-kpi-grid">
+
+            <!-- AI Sessions -->
+            <div class="aia-kpi-card">
+                <div class="aia-kpi-icon" style="--c:#6366f1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-2.5-2.5v-1H7a2 2 0 0 1-2-2v-1.5A2.5 2.5 0 0 1 2.5 11a2.5 2.5 0 0 1 2.5-2.5V7a2 2 0 0 1 2-2h2V2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 2.5-2.5v-1H17a2 2 0 0 0 2-2v-1.5A2.5 2.5 0 0 0 21.5 11a2.5 2.5 0 0 0-2.5-2.5V7a2 2 0 0 0-2-2h-2V2z"/></svg>
+                </div>
+                <div class="aia-kpi-body">
+                    <span class="aia-kpi-val">{{ totalSessions() }}</span>
+                    <span class="aia-kpi-lbl">AI Sessions</span>
+                </div>
+            </div>
+
+            <!-- % of Total -->
+            <div class="aia-kpi-card">
+                <div class="aia-kpi-icon" style="--c:#8b5cf6">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <div class="aia-kpi-body">
+                    <span class="aia-kpi-val accent">{{ aiPct() }}%</span>
+                    <span class="aia-kpi-lbl">of Total Sessions</span>
+                </div>
+            </div>
+
+            <!-- Conversion Rate -->
+            <div class="aia-kpi-card">
+                <div class="aia-kpi-icon" style="--c:#10b981">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                </div>
+                <div class="aia-kpi-body">
+                    <span class="aia-kpi-val green">{{ convRate() }}%</span>
+                    <span class="aia-kpi-lbl">Registered (Conv.)</span>
+                </div>
+            </div>
+
+            <!-- Top Source -->
+            <div class="aia-kpi-card">
+                <div class="aia-kpi-icon" style="--c:#f59e0b">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <div class="aia-kpi-body">
+                    <span class="aia-kpi-val accent" style="font-size:.9rem">{{ srcLabel(topSource()) }}</span>
+                    <span class="aia-kpi-lbl">Top AI Source</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Trend Chart + Source Breakdown ─────────────────────────────── -->
+        <div class="aia-two-col">
+
+            <!-- SVG Line Chart -->
+            <div class="aia-panel glass-panel">
+                <div class="aia-panel-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                    Sessions Over Time
+                </div>
+
+                @if (days().length < 2) {
+                    <div class="aia-chart-hint">Not enough data points for a trend (need ≥ 2 days).</div>
+                } @else {
+                    <div class="aia-chart-wrap">
+                        <svg viewBox="0 0 560 160" preserveAspectRatio="none" class="aia-svg-chart">
+                            <!-- Grid lines -->
+                            <line x1="24" y1="12" x2="24" y2="136" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+                            <line x1="24" y1="136" x2="536" y2="136" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+                            <line x1="24" y1="74" x2="536" y2="74" stroke="rgba(255,255,255,.04)" stroke-width="1" stroke-dasharray="4,4"/>
+
+                            <!-- One polyline per source -->
+                            @for (src of chartSources(); track src) {
+                                <polyline
+                                    [attr.points]="svgPoints(src, 560, 148, 24)"
+                                    fill="none"
+                                    [attr.stroke]="color(src)"
+                                    stroke-width="2"
+                                    stroke-linejoin="round"
+                                    stroke-linecap="round"
+                                    opacity="0.85">
+                                </polyline>
+                            }
+
+                            <!-- X-axis labels -->
+                            @for (lbl of svgXLabels(); track lbl.x) {
+                                <text [attr.x]="lbl.x" y="153" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.4)">
+                                    {{ lbl.label }}
+                                </text>
+                            }
+                        </svg>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="aia-legend">
+                        @for (src of chartSources(); track src) {
+                            <span class="aia-legend-item">
+                                <span class="aia-legend-dot" [style.background]="color(src)"></span>
+                                {{ srcLabel(src) }}
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Source Breakdown -->
+            <div class="aia-panel glass-panel">
+                <div class="aia-panel-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Source Breakdown
+                </div>
+                <div class="aia-src-list">
+                    @for (row of sourceRows(); track row.source) {
+                        <div class="aia-src-row">
+                            <div class="aia-src-left">
+                                <span class="aia-src-dot" [style.background]="color(row.source)"></span>
+                                <span class="aia-src-name">{{ srcLabel(row.source) }}</span>
+                            </div>
+                            <div class="aia-src-bar-wrap">
+                                <div class="aia-src-bar"
+                                     [style.width]="row.pct + '%'"
+                                     [style.background]="color(row.source)">
+                                </div>
+                            </div>
+                            <span class="aia-src-count">{{ row.count }}</span>
+                            <span class="aia-delta" [class]="deltaClass(row.delta)">{{ deltaLabel(row.delta) }}</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Landing Pages + Geo ─────────────────────────────────────────── -->
+        <div class="aia-two-col">
+
+            <!-- Top Landing Pages -->
+            <div class="aia-panel glass-panel">
+                <div class="aia-panel-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                    Top Landing Pages
+                </div>
+                <table class="aia-table">
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th>Sessions</th>
+                            <th>Sources</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (row of landingRows(); track row.path) {
+                            <tr>
+                                <td class="aia-path">{{ fmtPath(row.path) }}</td>
+                                <td>{{ row.count }}</td>
+                                <td>
+                                    <div class="aia-chips">
+                                        @for (src of row.sources; track src) {
+                                            <span class="aia-chip"
+                                                  [style.background]="colorBg(src)"
+                                                  [style.color]="color(src)"
+                                                  [style.border-color]="color(src) + '44'">
+                                                {{ srcLabel(src) }}
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Geography + Device -->
+            <div class="aia-side-stack">
+
+                <!-- Geo -->
+                <div class="aia-panel glass-panel">
+                    <div class="aia-panel-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        Top Locations
+                    </div>
+                    <div class="aia-geo-list">
+                        @for (row of geoRows(); track row.label) {
+                            <div class="aia-geo-row">
+                                <span class="aia-geo-label">{{ row.label }}</span>
+                                <div class="aia-geo-bar-wrap">
+                                    <div class="aia-geo-bar"
+                                         [style.width]="(geoRows()[0].count > 0 ? (row.count / geoRows()[0].count) * 100 : 0) + '%'">
+                                    </div>
+                                </div>
+                                <span class="aia-geo-count">{{ row.count }}</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Device Split -->
+                <div class="aia-panel glass-panel">
+                    <div class="aia-panel-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        Device Split
+                    </div>
+                    <div class="aia-device-row">
+                        <div class="aia-device-item">
+                            <span class="aia-device-val">{{ mobilePct() }}%</span>
+                            <span class="aia-device-lbl">Mobile</span>
+                            <div class="aia-device-bar-wrap">
+                                <div class="aia-device-bar mobile" [style.width]="mobilePct() + '%'"></div>
+                            </div>
+                        </div>
+                        <div class="aia-device-item">
+                            <span class="aia-device-val">{{ desktopPct() }}%</span>
+                            <span class="aia-device-lbl">Desktop</span>
+                            <div class="aia-device-bar-wrap">
+                                <div class="aia-device-bar desktop" [style.width]="desktopPct() + '%'"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (connectionMap().length > 0) {
+                        <div class="aia-conn-list">
+                            @for (c of connectionMap(); track c.label) {
+                                <div class="aia-conn-row">
+                                    <span class="aia-conn-lbl">{{ c.label }}</span>
+                                    <span class="aia-conn-pct">{{ c.pct }}%</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── Session Log ─────────────────────────────────────────────────── -->
+        <div class="aia-panel glass-panel aia-log-panel">
+            <div class="aia-panel-header">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Session Log
+                <span class="aia-log-count">{{ sessions().length }} sessions</span>
+            </div>
+
+            <div class="aia-log-wrap">
+                <table class="aia-table aia-log-table">
+                    <thead>
+                        <tr>
+                            <th style="width:16px"></th>
+                            <th>Time</th>
+                            <th>AI Source</th>
+                            <th>Landing Page</th>
+                            <th>Location</th>
+                            <th>Device</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (s of logSlice(); track s.sessionId) {
+                            <!-- Summary row -->
+                            <tr class="aia-log-row" [class.expanded]="expandedRow() === s.sessionId" (click)="toggleRow(s.sessionId)">
+                                <td class="aia-expand-cell">
+                                    <span class="aia-expand-icon" [class.open]="expandedRow() === s.sessionId">›</span>
+                                </td>
+                                <td class="aia-log-time">{{ fmtDate(s.timestamp) }}</td>
+                                <td>
+                                    <span class="aia-chip"
+                                          [style.background]="colorBg(s.source)"
+                                          [style.color]="color(s.source)"
+                                          [style.border-color]="color(s.source) + '44'">
+                                        {{ srcLabel(s.source) }}
+                                    </span>
+                                </td>
+                                <td class="aia-path">{{ fmtPath(s.landingPath) }}</td>
+                                <td>{{ s.city ? s.city + (s.region ? ', ' + s.region : '') : (s.country || '—') }}</td>
+                                <td>{{ s.mobile ? '📱' : '🖥' }} {{ fmtPlatform(s) }}</td>
+                                <td>
+                                    <span class="aia-conv-badge" [class.converted]="s.converted">
+                                        {{ s.converted ? '✓ Yes' : '—' }}
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <!-- Expanded detail row -->
+                            @if (expandedRow() === s.sessionId) {
+                                <tr class="aia-detail-row">
+                                    <td colspan="7">
+                                        <div class="aia-detail-grid">
+
+                                            <!-- Referrer -->
+                                            <div class="aia-detail-group">
+                                                <span class="aia-detail-label">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                                    Referrer
+                                                </span>
+                                                @if (s.referrer) {
+                                                    <a class="aia-detail-link" [href]="s.referrer" target="_blank" rel="noopener">
+                                                        {{ fmtReferrer(s.referrer) }}
+                                                    </a>
+                                                } @else {
+                                                    <span class="aia-detail-val muted">Direct / Unknown</span>
+                                                }
+                                            </div>
+
+                                            <!-- Location detail -->
+                                            <div class="aia-detail-group">
+                                                <span class="aia-detail-label">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/></svg>
+                                                    Location
+                                                </span>
+                                                <span class="aia-detail-val">
+                                                    {{ fmtFullLocation(s) }}
+                                                </span>
+                                            </div>
+
+                                            <!-- ISP -->
+                                            @if (s.isp) {
+                                                <div class="aia-detail-group">
+                                                    <span class="aia-detail-label">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                                                        ISP / Network
+                                                    </span>
+                                                    <span class="aia-detail-val">{{ s.isp }}</span>
+                                                </div>
+                                            }
+
+                                            <!-- Browser -->
+                                            <div class="aia-detail-group">
+                                                <span class="aia-detail-label">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                                    Browser
+                                                </span>
+                                                <span class="aia-detail-val">{{ fmtBrowser(s.userAgent) }}</span>
+                                            </div>
+
+                                            <!-- Language -->
+                                            @if (s.language) {
+                                                <div class="aia-detail-group">
+                                                    <span class="aia-detail-label">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+                                                        Language
+                                                    </span>
+                                                    <span class="aia-detail-val">{{ fmtLang(s.language) }}</span>
+                                                </div>
+                                            }
+
+                                            <!-- Screen -->
+                                            @if (s.screenWidth) {
+                                                <div class="aia-detail-group">
+                                                    <span class="aia-detail-label">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                                        Screen
+                                                    </span>
+                                                    <span class="aia-detail-val">{{ fmtScreen(s.screenWidth) }}</span>
+                                                </div>
+                                            }
+
+                                            <!-- Connection -->
+                                            @if (s.connection) {
+                                                <div class="aia-detail-group">
+                                                    <span class="aia-detail-label">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                                                        Connection
+                                                    </span>
+                                                    <span class="aia-detail-val">{{ s.connection || '—' }}</span>
+                                                </div>
+                                            }
+
+                                            <!-- Campaign -->
+                                            @if (s.campaignName) {
+                                                <div class="aia-detail-group">
+                                                    <span class="aia-detail-label">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                                        Campaign
+                                                    </span>
+                                                    <span class="aia-detail-val campaign-val">{{ s.campaignName }}</span>
+                                                </div>
+                                            }
+
+                                            <!-- UTM -->
+                                            @if (s.utmSource || s.utmMedium || s.utmCampaign) {
+                                                <div class="aia-detail-group aia-detail-full">
+                                                    <span class="aia-detail-label">UTM</span>
+                                                    <span class="aia-detail-val">
+                                                        @if (s.utmSource)   { <span class="aia-utm-tag">src: {{ s.utmSource }}</span> }
+                                                        @if (s.utmMedium)   { <span class="aia-utm-tag">med: {{ s.utmMedium }}</span> }
+                                                        @if (s.utmCampaign) { <span class="aia-utm-tag">cmp: {{ s.utmCampaign }}</span> }
+                                                    </span>
+                                                </div>
+                                            }
+
+                                            <!-- Session ID -->
+                                            <div class="aia-detail-group aia-detail-full">
+                                                <span class="aia-detail-label">Session ID</span>
+                                                <span class="aia-detail-val session-id">{{ s.sessionId }}</span>
+                                            </div>
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="aia-pagination">
+                <button class="aia-page-btn" (click)="prevPage()" [disabled]="logPage() === 0">
+                    ← Prev
+                </button>
+                <span class="aia-page-info">Page {{ logPage() + 1 }} / {{ logPageCount() }}</span>
+                <button class="aia-page-btn" (click)="nextPage()" [disabled]="logPage() >= logPageCount() - 1">
+                    Next →
+                </button>
+            </div>
+        </div>
+
+    </ng-container>
+
+</div>

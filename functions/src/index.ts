@@ -2567,34 +2567,33 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
         subtotal: mo.total_amount,
         marketplaceFee: (mo.order_items || []).reduce((acc: number, val: any) => acc + (val.sale_fee || 0), 0),
         paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
-        shippingAddress: (() => {
-            const recvAddr = shipData?.receiver_address;
-            if (recvAddr) {
-                return {
-                    street: recvAddr.street_name || 'N/A',
+        // ── shippingAddress: protective conditional spread ─────────────────────
+        // When MeLi API returns no address, we return {} (empty spread) so the key
+        // is ABSENT from the payload. Firestore merge:true then preserves whatever
+        // was previously written — future syncs can NEVER blank out a valid state.
+        ...(() => {
+            const recvAddr = shipData?.receiver_address
+                // Full/FBM orders: receiver_address=null, use destination.shipping_address
+                // CONFIRMED by 2026-04-24 local diagnostic (10/10 orders verified).
+                ?? shipData?.destination?.shipping_address
+                ?? mo?.shipping?.receiver_address
+                ?? null;
+            if (!recvAddr) return {};  // no data → preserve existing Firestore value
+            const state = recvAddr.state?.name || recvAddr.state || '';
+            if (!state)   return {};  // have addr object but no state → preserve
+            return {
+                shippingAddress: {
+                    street:         recvAddr.street_name || recvAddr.address_line || 'MercadoEnvíos',
                     exteriorNumber: recvAddr.street_number || '',
                     interiorNumber: '',
-                    // 'comment' field = delivery references (NOT interior number)
-                    references: recvAddr.comment || '',
-                    colonia: recvAddr.neighborhood?.name || '',
-                    city: recvAddr.city?.name || recvAddr.municipality?.name || '',
-                    state: recvAddr.state?.name || '',
-                    zipCode: recvAddr.zip_code || '',
-                    country: recvAddr.country?.id || 'MX',
-                    // Recipient name ("Recibe:") from the shipment receiver
-                    recipientName: recvAddr.receiver_name || ''
-                };
-            }
-            return {
-                street: 'MercadoEnvíos',
-                exteriorNumber: '',
-                interiorNumber: '',
-                references: '',
-                city: '',
-                state: '',
-                zipCode: '',
-                country: 'MX',
-                recipientName: ''
+                    references:     recvAddr.comment || '',
+                    colonia:        recvAddr.neighborhood?.name || '',
+                    city:           recvAddr.city?.name || recvAddr.municipality?.name || '',
+                    state,
+                    zipCode:        recvAddr.zip_code || '',
+                    country:        recvAddr.country?.id || 'MX',
+                    recipientName:  recvAddr.receiver_name || shipData?.destination?.receiver_name || ''
+                }
             };
         })(),
         createdAt: mo.date_created ? new Date(mo.date_created) : admin.firestore.FieldValue.serverTimestamp(),

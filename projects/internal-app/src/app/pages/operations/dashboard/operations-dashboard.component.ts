@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, AfterViewInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, AfterViewInit, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +13,7 @@ import { AdminPageHeaderComponent } from '../../admin/shared/admin-page-header/a
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { ToastService } from '../../../core/services/toast.service';
 import { GoogleMapsModule, MapMarker, MapInfoWindow } from '@angular/google-maps';
-import { ViewChild } from '@angular/core';
+import { ViewChild, ElementRef } from '@angular/core';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -25,6 +25,10 @@ export interface StateMetric {
     orders: number;
     pieces: number;
     sales: number;
+    /** Pre-computed SVG data-URL — used as MapMarker icon. Never rebuilt on CD cycles. */
+    markerIcon?: string;
+    /** Pre-computed pixel size of the SVG so the anchor can be centered. */
+    markerSize?: number;
 }
 
 export interface CityGeographicDetail {
@@ -98,7 +102,7 @@ const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
     'JALISCO': { lat: 20.6595, lng: -103.3490 },
     'ESTADO DE MEXICO': { lat: 19.3268, lng: -99.7042 },
     'MEXICO': { lat: 19.3268, lng: -99.7042 },
-    'MICHOCAN': { lat: 19.2274, lng: -101.8311 },
+    'MICHOACAN': { lat: 19.2274, lng: -101.8311 },
     'MICHOACAN DE OCAMPO': { lat: 19.2274, lng: -101.8311 },
     'MORELOS': { lat: 18.9186, lng: -99.2342 },
     'NAYARIT': { lat: 21.5037, lng: -104.8947 },
@@ -121,9 +125,10 @@ const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
 @Component({
     selector: 'app-operations-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule, ActiveCampaignsWidgetComponent, ActiveCouponsWidgetComponent, AiReferrerWidgetComponent],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule, MapMarker, MapInfoWindow, ActiveCampaignsWidgetComponent, ActiveCouponsWidgetComponent, AiReferrerWidgetComponent],
     templateUrl: './operations-dashboard.component.html',
-    styleUrls: ['./operations-dashboard.component.css']
+    styleUrls: ['./operations-dashboard.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     private orderService      = inject(OrderService);
@@ -265,29 +270,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     }
 
     // Geographic Map Properties
-    heatmapOptions: any = {
-        radius: 35,
-        opacity: 0.9,
-        gradient: [
-            'rgba(0, 0, 0, 0)',
-            'rgba(30, 215, 96, 1)',   // Spotify Green / Emerald
-            'rgba(16, 185, 129, 1)',  // Emerald 500
-            'rgba(5, 150, 105, 1)',   // Emerald 600
-            'rgba(59, 130, 246, 1)',  // Blue 500
-            'rgba(37, 99, 235, 1)',   // Blue 600
-            'rgba(147, 51, 234, 1)',  // Purple 600
-            'rgba(219, 39, 119, 1)',  // Pink 600
-            'rgba(225, 29, 72, 1)',   // Rose 600
-            'rgba(244, 63, 94, 1)'    // Rose 500 (Heat apex)
-        ]
-    };
-    rawHeatmapData = signal<{lat: number, lng: number, weight: number}[]>([]);
-    
-    // Data specifically for interactive tooltips
     stateMetricsSignal = signal<StateMetric[]>([]);
-    @ViewChild(MapInfoWindow) infoWindow?: MapInfoWindow;
+    @ViewChild('infoWindow') infoWindow?: MapInfoWindow;
     activeStateMetric: StateMetric | null = null;
-    
+    private _maxOrders = 1; // updated in generateHeatmapData
+
     // Geographic Details Table
     showGeographicTable = signal(false);
     stateGeographicDetailsSignal = signal<StateGeographicDetail[]>([]);
@@ -297,6 +284,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     mapOptions: any = {
         center: { lat: 23.6345, lng: -102.5528 }, // Center of Mexico
         zoom: 4.8,
+        // NO mapId — when mapId is present Google Maps ignores styles[].
+        // We use MapMarker (not AdvancedMarker) so no mapId is needed.
         disableDefaultUI: true,
         backgroundColor: '#27272a', // zinc-800
         styles: [
@@ -321,15 +310,66 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         ]
     };
 
-    heatmapDataSignal = signal<any[]>([]);
-    
-    updateHeatmapSignal() {
-        if (typeof google === 'undefined' || !google.maps || !google.maps.LatLng) return;
-        const mapped = this.rawHeatmapData().map(raw => ({
-            location: new google.maps.LatLng(raw.lat, raw.lng),
-            weight: raw.weight
-        }));
-        this.heatmapDataSignal.set(mapped);
+    /** Builds an SVG data-URL icon for MapMarker sized proportionally to order count. */
+    buildMarkerIcon(metric: StateMetric): { url: string; size: number } {
+        const MIN_R = 18;
+        const MAX_R = 52;
+        // Sqrt scale gives good visual spread — small states still visible, big ones dominant
+        const ratio = this._maxOrders > 1 ? metric.orders / this._maxOrders : 1;
+        const r     = MIN_R + (MAX_R - MIN_R) * Math.sqrt(ratio);
+        const size  = Math.round(r * 2 + 10);
+        const cx    = size / 2;
+        const cy    = size / 2;
+
+        // Color: deep teal (low) → lime green (mid) → amber/orange (high)
+        // HSL: 185° (teal) → 120° (green) → 45° (amber)
+        const hue  = Math.round(185 - ratio * 140);
+        const sat  = 80 + ratio * 10;   // 80→90%
+        const lit  = 44 + ratio * 4;    // 44→48%
+        const fill = `hsl(${hue},${sat}%,${lit}%)`;
+
+        // Text size — readable even at small radius
+        const fontSize = Math.max(10, Math.round(r * 0.58));
+        const label    = String(metric.orders);
+
+        const svg = [
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`,
+            `<defs>`,
+            // Glow filter
+            `<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">`,
+            `<feGaussianBlur stdDeviation="3" result="blur"/>`,
+            `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>`,
+            `</filter>`,
+            // Drop shadow for text
+            `<filter id="ts" x="-20%" y="-20%" width="140%" height="140%">`,
+            `<feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(0,0,0,0.75)"/>`,
+            `</filter>`,
+            `</defs>`,
+            // Outer dark ring for contrast against map
+            `<circle cx="${cx}" cy="${cy}" r="${r + 3}" fill="rgba(0,0,0,0.35)" />`,
+            // Main bubble
+            `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" filter="url(#glow)"`,
+            ` stroke="rgba(255,255,255,0.7)" stroke-width="1.8"/>`,
+            // Inner highlight arc (top-left shine)
+            `<circle cx="${cx - r * 0.18}" cy="${cy - r * 0.2}" r="${r * 0.42}"`,
+            ` fill="rgba(255,255,255,0.12)"/>`,
+            // Count label with text shadow
+            `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"`,
+            ` font-size="${fontSize}" font-weight="900" fill="white"`,
+            ` font-family="Inter,system-ui,sans-serif" letter-spacing="-0.5"`,
+            ` filter="url(#ts)">${label}</text>`,
+            `</svg>`
+        ].join('');
+
+        return { url: `data:image/svg+xml,${encodeURIComponent(svg)}`, size };
+    }
+
+    /** Opens the info window near the clicked MapMarker. */
+    openInfoWindowAtMarker(marker: MapMarker, metric: StateMetric) {
+        this.activeStateMetric = metric;
+        if (this.infoWindow) {
+            this.infoWindow.open(marker);
+        }
     }
 
     // Chart instances
@@ -431,6 +471,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             this.loadLyDailyForMTD();
         }
 
+        // Live stream — automatically reflects new orders from MercadoLibre
+        // and storefront webhooks without requiring a page refresh.
         this.orderService.getOrdersByDateRange(startDate, endDate).subscribe({
             next: (orders) => {
                 this.allFetchedOrders = orders;
@@ -664,12 +706,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }, 150);
     }
 
-    openInfoWindow(marker: MapMarker, metric: StateMetric) {
-        if (this.infoWindow) {
-            this.activeStateMetric = metric;
-            this.infoWindow.open(marker);
-        }
-    }
+
 
     /**
      * Build per-channel stats from ALL fetched orders.
@@ -778,18 +815,50 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const stateCounts: Record<string, { pieces: number, orders: number, sales: number }> = {};
         const stateHierarchies: Record<string, StateGeographicDetail> = {};
 
+        // MeLi returns many variant spellings for state names.
+        // This alias map normalizes them all to the keys used in MEXICO_STATES_COORDS.
+        const STATE_ALIASES: Record<string, string> = {
+            'CIUDAD DE MEXICO': 'CIUDAD DE MEXICO',
+            'CDMX': 'CIUDAD DE MEXICO',
+            'DISTRITO FEDERAL': 'CIUDAD DE MEXICO',
+            'DF': 'CIUDAD DE MEXICO',
+            'ESTADO DE MEXICO': 'ESTADO DE MEXICO',
+            'MEX': 'ESTADO DE MEXICO',
+            'MEXICO': 'ESTADO DE MEXICO',
+            'MICHOACAN DE OCAMPO': 'MICHOACAN',
+            'MICHOACAN': 'MICHOACAN',
+            'MICHOCAN': 'MICHOACAN',
+            'COAHUILA DE ZARAGOZA': 'COAHUILA',
+            'VERACRUZ DE IGNACIO DE LA LLAVE': 'VERACRUZ',
+            'NUEVO LEON': 'NUEVO LEON',
+            'NL': 'NUEVO LEON',
+            'QUERETARO DE ARTEAGA': 'QUERETARO',
+            'BAJA CALIFORNIA NORTE': 'BAJA CALIFORNIA',
+            'BC': 'BAJA CALIFORNIA',
+            'BCS': 'BAJA CALIFORNIA SUR',
+            'SAN LUIS POTOSI': 'SAN LUIS POTOSI',
+            'SLP': 'SAN LUIS POTOSI',
+        };
+
+        let geoSkipped = 0;
+        let geoMapped  = 0;
+
         orders.forEach(o => {
             // Skip ghost orders: payment_failed (card rejected) and pending_payment (checkout abandoned)
             if (['cancelled', 'returned', 'refunded', 'payment_failed', 'pending_payment'].includes(o.status as string)) return;
             
             const state = o.shippingAddress?.state;
-            if (!state) return;
+            if (!state) { geoSkipped++; return; }
             
-            // Normalize state name
-            const normalizedState = state.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            const coords = MEXICO_STATES_COORDS[normalizedState] || MEXICO_STATES_COORDS[normalizedState.replace(' DE OCAMPO', '').replace(' DE ZARAGOZA', '')];
+            // Normalize: strip accents, uppercase, trim
+            const raw = state.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            // Resolve alias first, then try the coord map directly
+            const normalizedState = STATE_ALIASES[raw] ?? raw;
+            const coords = MEXICO_STATES_COORDS[normalizedState]
+                        ?? MEXICO_STATES_COORDS[normalizedState.replace(' DE OCAMPO', '').replace(' DE ZARAGOZA', '')];
             
             if (coords) {
+                geoMapped++;
                 const totalPieces = (o.items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
                 const salesValue = o.total || 0;
                 
@@ -841,20 +910,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             }
         });
 
-        const rawData: any[] = [];
+        console.log(`[GeoMap] Orders mapped: ${geoMapped} | Skipped (no state): ${geoSkipped}`);
+
+        // Build state metrics for AdvancedMarker bubbles
         const stateMetrics: StateMetric[] = [];
-        
         Object.keys(stateCounts).forEach(state => {
             const coords = MEXICO_STATES_COORDS[state] || MEXICO_STATES_COORDS[state.replace(' DE OCAMPO', '').replace(' DE ZARAGOZA', '')];
-            
-            // For the visual heatmap layer
-            rawData.push({
-                lat: coords.lat,
-                lng: coords.lng,
-                weight: stateCounts[state].pieces // Heatmap intensity based on pieces sold
-            });
-            
-            // For the interactive tooltips layer
             stateMetrics.push({
                 name: state,
                 lat: coords.lat,
@@ -865,7 +926,18 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             });
         });
 
-        this.rawHeatmapData.set(rawData);
+        // Track max for proportional bubble sizing
+        this._maxOrders = stateMetrics.reduce((m, s) => Math.max(m, s.orders), 1);
+
+        // Pre-build ALL marker SVG data URLs exactly once here.
+        // CRITICAL: do NOT call buildMarkerIcon() from the template — Angular CD would
+        // regenerate URLs on every cycle, causing redundant DOM updates.
+        stateMetrics.forEach(m => {
+            const icon = this.buildMarkerIcon(m);
+            m.markerIcon = icon.url;
+            m.markerSize = icon.size;
+        });
+
         this.stateMetricsSignal.set(stateMetrics);
         
         // Convert to array and sort nested cities inside each state
@@ -878,10 +950,6 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.stateGeographicDetailsSignal.set(stateArray);
         this.applySorting(); // Apply initial sorting
 
-        // Update the actual LatLng objects if Google Maps API is ready
-        if (typeof google !== 'undefined' && google.maps && google.maps.LatLng) {
-            this.updateHeatmapSignal();
-        }
     }
 
     calculateStats(orders: Order[]) {
@@ -988,9 +1056,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             let startDate = new Date();
             let endDate = new Date();
             if (orders.length > 0) {
-                const dates = orders.map(o => this.getTimestampMillis(o.createdAt || o.updatedAt));
-                startDate = new Date(Math.min(...dates));
-                endDate = new Date(Math.max(...dates));
+                // Use reduce instead of Math.min/max(...spread) to avoid
+                // call-stack overflow when there are hundreds of orders
+                const timestamps = orders.map(o => this.getTimestampMillis(o.createdAt || o.updatedAt));
+                const minMs = timestamps.reduce((a, b) => a < b ? a : b, timestamps[0]);
+                const maxMs = timestamps.reduce((a, b) => a > b ? a : b, timestamps[0]);
+                startDate = new Date(minMs);
+                endDate   = new Date(maxMs);
             } else {
                 startDate = this.timeframe() === 'MTD'
                     ? new Date(startDate.getFullYear(), startDate.getMonth(), 1)
@@ -1001,7 +1073,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             try {
                 priorityOverridesMap = await this.priorityService.getSLAOverridesMap(startDate, endDate);
             } catch (overridesError: any) {
-                console.warn('[SLA] Could not load priority overrides.', overridesError?.message ?? overridesError);
+                // Non-critical — SLA overrides are optional enrichment data.
+                // Log once quietly; don't re-throw so the rest of the SLA calc proceeds.
+                console.warn('[SLA] Could not load priority overrides — continuing without them.', overridesError?.message ?? overridesError);
             }
 
             const now = Date.now();
@@ -1149,8 +1223,10 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             }
 
         } catch (error) {
-            console.error('Error calculating SLA stats:', error);
-            this.toast.error('Error calculating SLA validation');
+            // Log to console for devtools visibility but do NOT toast:
+            // this function runs on every Firestore real-time update, so a toast here
+            // would spam the UI every time any order document changes.
+            console.error('[SLA] Error calculating SLA stats (non-fatal):', error);
         }
     }
 
@@ -1686,6 +1762,51 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 }
             }
         };
+
+        // ── Best-day star annotation (inline plugin — must be in top-level plugins at creation) ─
+        const bestDayIdx = safeSalesData.reduce(
+            (best, v, i) => v > safeSalesData[best] ? i : best, 0
+        );
+        const bestDayPlugin = {
+            id: 'bestDayStar',
+            afterDatasetsDraw(chart: any) {
+                const { ctx, scales } = chart;
+                const xScale  = scales['x'];
+                const y1Scale = scales['y1'];
+                if (!xScale || !y1Scale) return;
+
+                const bv = safeSalesData[bestDayIdx];
+                if (!bv) return;
+
+                const x = xScale.getPixelForValue(bestDayIdx);
+                const y = y1Scale.getPixelForValue(bv);
+
+                ctx.save();
+
+                // Glow halo behind star
+                ctx.shadowColor  = 'rgba(253, 224, 71, 0.8)';
+                ctx.shadowBlur   = 14;
+                ctx.font         = '18px serif';
+                ctx.textAlign    = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('⭐', x, y - 6);
+
+                // Revenue label
+                ctx.shadowBlur = 0;
+                ctx.font       = 'bold 9px system-ui, sans-serif';
+                ctx.fillStyle  = '#fde047';
+                const fmtBv = bv >= 1_000
+                    ? '$' + (bv / 1_000).toFixed(0) + 'K'
+                    : '$' + Math.round(bv);
+                ctx.fillText(fmtBv, x, y - 26);
+
+                ctx.restore();
+            }
+        };
+
+        // Inline plugins must live in the top-level `plugins` array of the config,
+        // NOT in options.plugins — this is the only way Chart.js fires the hooks.
+        (config as any).plugins = [bestDayPlugin];
 
         this.trendChart = new Chart(canvas, config);
 

@@ -375,3 +375,21 @@
     border: 1px solid rgba(255,255,255,.07);
     backdrop-filter: blur(8px);
 }
+
+/* AI panel — "View full report" link */
+.mhd-ai-view-link {
+    margin-left: auto;
+    font-size: .7rem;
+    font-weight: 600;
+    color: rgba(167,139,250,.7);
+    text-decoration: none;
+    padding: .2rem .55rem;
+    border-radius: 5px;
+    border: 1px solid rgba(167,139,250,.2);
+    transition: all .18s;
+}
+.mhd-ai-view-link:hover {
+    color: #c4b5fd;
+    border-color: rgba(167,139,250,.4);
+    background: rgba(167,139,250,.08);
+}

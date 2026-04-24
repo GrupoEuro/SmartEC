@@ -3,7 +3,7 @@ import {
     Firestore,
     collection, collectionGroup,
     query, where, orderBy, limit,
-    getDocs,
+    getDocs, Timestamp,
 } from '@angular/fire/firestore';
 
 // ── Data models ──────────────────────────────────────────────────────────────
@@ -200,10 +200,14 @@ export class CustomerTimelineService {
 
     // ── QR Scans (collectionGroup) ────────────────────────────────────────────
     private async loadQrScans(uid: string, out: TimelineEvent[]) {
+        // Cap at 90 days — avoids scanning all historical scan sub-documents
+        // across all coupons for long-tenured customers.
+        const cutoff = Timestamp.fromDate(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
         const snap = await getDocs(
             query(
                 collectionGroup(this.fs, 'scans'),
                 where('userId', '==', uid),
+                where('scannedAt', '>=', cutoff),
                 limit(50)
             )
         ).catch(() => null);

@@ -414,6 +414,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // MeLi Full operations config: demand events, lead time, etc.
+    // Staff can read; managers can create/update/delete events.
+    match /config_demand_events/{document} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
 
     // ── Notifications ─────────────────────────────────────────────────────────
 

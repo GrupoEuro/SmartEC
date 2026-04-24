@@ -21,6 +21,12 @@ export const MARKETING_ROUTES: Routes = [
 
             // ── Analytics ─────────────────────────────────────────────────────
             {
+                path: 'ai-analytics',
+                loadComponent: () => import('./ai-analytics/ai-analytics.component')
+                    .then(m => m.AiAnalyticsComponent),
+                title: 'Marketing Hub | AI Visibility Analytics'
+            },
+            {
                 path: 'attribution',
                 loadComponent: () => import('./attribution/attribution-report.component')
                     .then(m => m.AttributionReportComponent),

@@ -65,7 +65,9 @@ export class OrderService {
     }
 
     /**
-     * Get orders by date range (optimized for dashboard)
+     * Get orders by date range (optimized for dashboard — one-shot fetch, not real-time).
+     * Using getDocs instead of collectionData prevents the SLA/stats functions from
+     * re-running on every background order document write.
      */
     getOrdersByDateRange(startDate: Date, endDate: Date): Observable<Order[]> {
         const q = query(
@@ -74,10 +76,11 @@ export class OrderService {
             where('createdAt', '<=', Timestamp.fromDate(endDate)),
             orderBy('createdAt', 'desc')
         );
-        return collectionData(q, { idField: 'id' }).pipe(
-            map((orders: any[]) => {
+        return from(getDocs(q)).pipe(
+            map((snapshot) => {
+                const orders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 console.log(`[OrderService] Fetched ${orders.length} orders for date range ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
-                return orders.map(order => this.convertTimestamps(order));
+                return orders.map((order: any) => this.convertTimestamps(order));
             })
         );
     }

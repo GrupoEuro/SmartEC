@@ -34,10 +34,14 @@ export class IntegrationManagerComponent implements OnInit {
     meliSecret = '';
     meliRedirect = 'https://us-central1-tiendapraxis.cloudfunctions.net/meliCallback';
 
-    amazonClientId = '';
-    amazonClientSecret = '';
-    amazonRefreshToken = '';
-    amazonRegion = 'na';
+    amazonClientId     = '';
+    amazonClientSecret  = '';
+    amazonRefreshToken  = '';
+    amazonSellerId      = '';
+    amazonSpAppId       = ''; // amzn1.sp.solution.* — used in OAuth consent URL
+    amazonMarketplaceId = 'A1AM78C64UM0Y8'; // Mexico — fixed
+    amazonRegion        = 'na';
+
 
     mpAccessToken = '';
     mpPublicKey = '';
@@ -117,11 +121,14 @@ export class IntegrationManagerComponent implements OnInit {
             this.meliRedirect = 'https://us-central1-tiendapraxis.cloudfunctions.net/meliCallback';
         }
         if (conf.amazon) {
-            this.amazonClientId = conf.amazon.clientId || '';
-            this.amazonClientSecret = conf.amazon.clientSecret || '';
-            this.amazonRefreshToken = conf.amazon.refreshToken || '';
-            this.amazonRegion = conf.amazon.region || 'na';
+            this.amazonClientId     = conf.amazon.clientId       || '';
+            this.amazonClientSecret = conf.amazon.clientSecret   || '';
+            this.amazonRefreshToken = conf.amazon.refreshToken   || '';
+            this.amazonSellerId     = conf.amazon.sellerId       || '';
+            this.amazonSpAppId      = conf.amazon.spAppId        || '';
+            this.amazonRegion       = conf.amazon.region         || 'na';
         }
+
         if (conf.mercadopago) {
             this.mpAccessToken = conf.mercadopago.accessToken || '';
             this.mpPublicKey = conf.mercadopago.publicKey || '';
@@ -339,13 +346,17 @@ export class IntegrationManagerComponent implements OnInit {
             await this.secrets.saveConfig({
                 ...current,
                 amazon: {
-                    clientId: this.amazonClientId,
-                    clientSecret: this.amazonClientSecret,
-                    refreshToken: this.amazonRefreshToken,
-                    region: this.amazonRegion,
-                    connected: !!(this.amazonClientId && this.amazonRefreshToken)
+                    clientId:      this.amazonClientId,
+                    clientSecret:  this.amazonClientSecret,
+                    refreshToken:  this.amazonRefreshToken,
+                    sellerId:      this.amazonSellerId,
+                    spAppId:       this.amazonSpAppId,
+                    marketplaceId: this.amazonMarketplaceId,
+                    region:        this.amazonRegion,
+                    connected: !!(this.amazonClientId && this.amazonClientSecret && this.amazonRefreshToken),
                 }
             });
+            await this.loadConfig();
             alert('Amazon SP-API Keys Saved.');
         } catch (e) {
             console.error('Failed to save Amazon keys', e);

@@ -101,7 +101,7 @@
              <div class="flex items-center gap-3 mb-4">
                  <div class="w-3 h-3 rounded-full" [class.bg-yellow-500]="config()?.amazon?.connected" [class.bg-red-500]="!config()?.amazon?.connected"></div>
                  <h2 class="text-xl font-bold text-white">Amazon SP-API</h2>
-                 <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Phase 2</span>
+                 <span class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">MX</span>
              </div>
 
              <div class="grid grid-cols-2 gap-4">
@@ -115,27 +115,51 @@
                      <input type="password" [(ngModel)]="amazonClientSecret" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200">
                  </div>
 
-                 <div class="form-group mb-6 col-span-2 md:col-span-1">
-                     <label class="block text-xs uppercase text-slate-500 mb-1">Refresh Token</label>
-                     <input type="password" [(ngModel)]="amazonRefreshToken" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200">
+                 <div class="form-group mb-2 col-span-2 md:col-span-1">
+                     <label class="block text-xs uppercase text-slate-500 mb-1">Seller ID</label>
+                     <input type="text" [(ngModel)]="amazonSellerId" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200" placeholder="AYIVREVB9HQHB">
                  </div>
 
-                 <div class="form-group mb-6 col-span-2 md:col-span-1">
-                     <label class="block text-xs uppercase text-slate-500 mb-1">API Region</label>
-                     <select [(ngModel)]="amazonRegion" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200">
-                         <option value="na">North America (US/MX/CA)</option>
-                         <option value="eu">Europe</option>
-                         <option value="fe">Far East</option>
-                     </select>
+                 <div class="form-group mb-2 col-span-2 md:col-span-1">
+                     <label class="block text-xs uppercase text-slate-500 mb-1">SP App ID <span class="text-slate-600">(amzn1.sp.solution.*)</span></label>
+                     <input type="text" [(ngModel)]="amazonSpAppId" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200" placeholder="amzn1.sp.solution.xxxxxxxx">
+                     <p class="text-[10px] text-slate-500 mt-1">Developer Console → tu app → "ID de la aplicación"</p>
+                 </div>
+
+                 <div class="form-group mb-2 col-span-2 md:col-span-1">
+                     <label class="block text-xs uppercase text-slate-500 mb-1">Refresh Token (auto via OAuth)</label>
+                     <input type="password" [(ngModel)]="amazonRefreshToken" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200" placeholder="Atzr|...">
+                 </div>
+
+                 <div class="form-group mb-2 col-span-2">
+                     <label class="block text-xs uppercase text-slate-500 mb-1">OAuth Callback URL — registrar en Amazon Developer Console</label>
+                     <div class="w-full bg-slate-900/50 border border-slate-700/50 rounded px-3 py-2 text-slate-400 font-mono text-xs select-all break-all">
+                         https://us-central1-tiendapraxis.cloudfunctions.net/amazonOAuthCallback
+                     </div>
+                     <p class="text-[10px] text-slate-500 mt-1">Developer Console → tu app → Edit → OAuth Login URI → pega esta URL → guarda → luego haz clic en "Autorizar".</p>
                  </div>
              </div>
 
-             <div class="flex justify-between items-center">
+             <div *ngIf="config()?.amazon?.connected" class="mb-4 p-3 bg-emerald-900/30 border border-emerald-700/40 rounded-lg flex items-center gap-2">
+                 <span class="text-emerald-400 text-sm font-bold">✅ Conectado</span>
+                 <span class="text-slate-400 text-xs">· Seller: {{ config()?.amazon?.sellerId || amazonSellerId }}</span>
+             </div>
+
+             <div class="flex justify-between items-center flex-wrap gap-2">
                  <button (click)="saveAmazon()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition font-bold shadow-lg shadow-slate-900/20">
-                    Save Keys
+                    Guardar Claves
                  </button>
+                 <a *ngIf="amazonSpAppId || amazonClientId"
+                    [href]="'https://sellercentral.amazon.com.mx/apps/authorize/consent?application_id=' + (amazonSpAppId || amazonClientId) + '&state=eurollantas_amazon_auth&redirect_uri=https://us-central1-tiendapraxis.cloudfunctions.net/amazonOAuthCallback&version=beta'"
+                    target="_blank"
+                    class="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded text-sm font-bold transition flex items-center gap-2 no-underline shadow-lg shadow-amber-500/20">
+                    <i class="fab fa-amazon"></i>
+                    {{ config()?.amazon?.connected ? 'Re-autorizar' : 'Autorizar con Amazon' }}
+                    <i class="fas fa-external-link-alt text-xs opacity-70"></i>
+                 </a>
              </div>
          </div>
+
 
     <!-- STRIPE CARD -->
         <div class="card p-6 bg-slate-800 rounded-lg border border-slate-700 shadow-lg relative overflow-hidden">

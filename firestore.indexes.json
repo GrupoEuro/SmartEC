@@ -4,6 +4,20 @@
             "collectionGroup": "orders",
             "queryScope": "COLLECTION",
             "fields": [
+                {
+                    "fieldPath": "sourceChannel",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
                 { "fieldPath": "sourceChannel", "order": "ASCENDING" },
                 { "fieldPath": "createdAt",     "order": "ASCENDING" }
             ]

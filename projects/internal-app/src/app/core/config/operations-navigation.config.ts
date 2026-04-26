@@ -17,6 +17,16 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'OPERATIONS.SIDEBAR.ORDER_QUEUE',
                 icon: 'list',
                 route: '/operations/orders'
+            },
+            {
+                id: 'invoicing',
+                title: 'Facturación / Invoicing',
+                icon: 'file-text',
+                route: '/operations/invoicing',
+                badge: {
+                    text: 'CFDI',
+                    color: 'bg-emerald-600'
+                }
             }
         ]
     },

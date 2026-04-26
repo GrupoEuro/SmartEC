@@ -110,9 +110,11 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
     readonly dateRanges    = DATE_RANGES;
     readonly selectedRange = this.tf.selected;
 
-    isLoading      = signal(true);
-    isBackfilling  = signal(false);
-    backfillResult = signal<{ daysProcessed: number; writeCount: number } | null>(null);
+    isLoading        = signal(true);
+    isBackfilling    = signal(false);
+    isSyncingRecent  = signal(false);
+    syncRecentResult = signal<{ daysProcessed: number; writeCount: number } | null>(null);
+    backfillResult   = signal<{ daysProcessed: number; writeCount: number } | null>(null);
     dailyDocs      = signal<AnalyticsDailyDoc[]>([]);
     priorDocs      = signal<AnalyticsDailyDoc[]>([]);
 
@@ -798,6 +800,30 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
     }
 
     // ── Backfill ──────────────────────────────────────────────────────────────
+
+    /** Fills only the last 5 days — targets missing analytics_daily docs without
+     *  touching historical data. Safe to run at any time. */
+    async runSyncRecent() {
+        if (this.isSyncingRecent()) return;
+        this.isSyncingRecent.set(true);
+        this.syncRecentResult.set(null);
+        try {
+            const fn = httpsCallable<
+                { fromDate?: string; toDate?: string },
+                { daysProcessed: number; writeCount: number }
+            >(this.fns, 'backfillAnalytics');
+            const from = new Date();
+            from.setDate(from.getDate() - 5);
+            const fromDate = from.toISOString().slice(0, 10);  // YYYY-MM-DD
+            const res = await fn({ fromDate });
+            this.syncRecentResult.set(res.data);
+            await this.load();
+        } catch (e) {
+            console.error('[MetricsHub] Sync recent failed:', e);
+        } finally {
+            this.isSyncingRecent.set(false);
+        }
+    }
 
     async runBackfill() {
         if (this.isBackfilling()) return;

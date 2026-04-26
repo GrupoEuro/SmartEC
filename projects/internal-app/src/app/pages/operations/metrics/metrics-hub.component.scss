@@ -68,6 +68,22 @@
 .cmp-toggle-btn:hover { background: rgba(99,102,241,.18); border-color: rgba(99,102,241,.5); }
 .cmp-toggle-btn.active { background: rgba(99,102,241,.3); color: #c7d2fe; border-color: rgba(99,102,241,.5); }
 
+/* Sync recent button — always visible in header */
+.sync-recent-btn {
+    display: inline-flex; align-items: center; gap: .375rem;
+    padding: .375rem .875rem; border-radius: .5rem;
+    font-size: .75rem; font-weight: 600; cursor: pointer;
+    border: 1px solid rgba(16,185,129,.3);
+    background: rgba(16,185,129,.08); color: #34d399;
+    transition: all .2s; white-space: nowrap;
+}
+.sync-recent-btn:hover:not(:disabled) {
+    background: rgba(16,185,129,.18);
+    border-color: rgba(16,185,129,.5);
+    color: #6ee7b7;
+}
+.sync-recent-btn:disabled { opacity: .55; cursor: wait; }
+
 /* Loading */
 .mhub-loading {
     display: flex;

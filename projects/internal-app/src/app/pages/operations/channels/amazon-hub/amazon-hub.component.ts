@@ -5,9 +5,8 @@ import { AdminPageHeaderComponent } from '../../../admin/shared/admin-page-heade
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { Functions, httpsCallable } from '@angular/fire/functions';
-import { Firestore, collection, collectionData, query, orderBy, limit, where, getDocs, Timestamp } from '@angular/fire/firestore';
+import { Firestore, collection, collectionData, query, orderBy, limit, where } from '@angular/fire/firestore';
 import { ToastService } from '../../../../core/services/toast.service';
-import { OrderService } from '../../../../core/services/order.service';
 import { Order } from '../../../../core/models/order.model';
 
 export type AmazonTab = 'overview' | 'orders' | 'sync_log';
@@ -34,7 +33,6 @@ export class AmazonHubComponent implements OnInit {
     private functions = inject(Functions);
     private firestore = inject(Firestore);
     private toast     = inject(ToastService);
-    private orderSvc  = inject(OrderService);
 
     // ── Tab & Filter State ─────────────────────────────────────────────────────
     activeTab     = signal<AmazonTab>('overview');
@@ -129,12 +127,24 @@ export class AmazonHubComponent implements OnInit {
 
     private loadOrders() {
         this.isLoadingData.set(true);
-        // Use 90-day window — Amazon orders are always sourced via sync, no live webhook
-        const start = new Date();
-        start.setDate(start.getDate() - 90);
-        this.orderSvc.getOrdersByDateRange(start, new Date()).subscribe({
-            next: (orders) => {
-                this.allOrders.set(orders);
+        // Query directly for Amazon orders only — no full table scan
+        const since = new Date();
+        since.setDate(since.getDate() - 90);
+        const q = query(
+            collection(this.firestore, 'orders'),
+            where('sourceChannel', '==', 'amazon'),
+            orderBy('createdAt', 'desc'),
+            limit(200)
+        );
+        collectionData(q, { idField: 'id' }).subscribe({
+            next: (docs: any[]) => {
+                const orders = docs.map(d => ({
+                    ...d,
+                    createdAt:  d.createdAt?.toDate  ? d.createdAt.toDate()  : (d.createdAt  ? new Date(d.createdAt)  : new Date()),
+                    updatedAt:  d.updatedAt?.toDate  ? d.updatedAt.toDate()  : (d.updatedAt  ? new Date(d.updatedAt)  : new Date()),
+                    shipByDate: d.shipByDate?.toDate ? d.shipByDate.toDate() : (d.shipByDate ? new Date(d.shipByDate) : null),
+                }));
+                this.allOrders.set(orders as any);
                 this.isLoadingData.set(false);
             },
             error: (err) => {
@@ -147,14 +157,13 @@ export class AmazonHubComponent implements OnInit {
     private loadSyncLogs() {
         this.isLoadingLogs.set(true);
         const q = query(
-            collection(this.firestore, 'amazon_webhook_logs'),
+            collection(this.firestore, 'amazon_sync_logs'),
             orderBy('createdAt', 'desc'),
             limit(25)
         );
         collectionData(q, { idField: 'id' }).subscribe({
             next: (docs: any[]) => {
                 this.syncLogs.set(docs as SyncLogEntry[]);
-                // Derive last sync timestamp from the most recent successful log
                 const latest = docs[0];
                 if (latest?.createdAt) {
                     this.lastSyncAt.set(this.toDate(latest.createdAt));

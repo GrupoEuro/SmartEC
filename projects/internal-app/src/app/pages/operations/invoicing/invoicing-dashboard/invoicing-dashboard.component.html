@@ -1,0 +1,270 @@
+<app-admin-page-header iconName="file-text" title="Facturación"
+    subtitle="Gestión de solicitudes de factura (CFDI) para ventas de MercadoLibre y otros canales." variant="operations">
+</app-admin-page-header>
+
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+
+    <!-- Search & Tabs -->
+    <div class="flex flex-col-reverse md:flex-row gap-4 items-center justify-between">
+        
+        <!-- Search Box (Left, expands) -->
+        <div class="relative w-full flex-1">
+            <app-icon name="search" [size]="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"></app-icon>
+            <input type="text" [value]="searchQuery()" (input)="onSearch($event)" placeholder="Buscar por orden, RFC o cliente..."
+                class="w-full bg-zinc-900/50 border border-zinc-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all">
+        </div>
+
+        <!-- Tabs / Filters (Right) -->
+        <div class="bg-zinc-800/80 backdrop-blur-md rounded-xl p-2 border border-zinc-700/50 flex gap-2 w-full md:w-auto overflow-x-auto shrink-0">
+            <button *ngFor="let tab of [
+                {id:'pending', label:'Pendientes', icon:'clock'},
+                {id:'issued',  label:'Emitidas',   icon:'check-circle'},
+                {id:'failed',  label:'Con Errores',icon:'alert-triangle'}
+            ]" (click)="setTab($any(tab.id))"
+                class="tab-btn px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 whitespace-nowrap"
+                [ngClass]="activeTab() === tab.id ? 'bg-zinc-700 text-white shadow' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50'">
+                <app-icon [name]="tab.icon" [size]="16"
+                    [ngClass]="{'text-amber-400': tab.id === 'pending' && activeTab() === tab.id, 
+                                'text-emerald-400': tab.id === 'issued' && activeTab() === tab.id, 
+                                'text-red-400': tab.id === 'failed' && activeTab() === tab.id}">
+                </app-icon>
+                {{ tab.label }}
+                <span *ngIf="tab.id === 'pending' && pendingOrders().length > 0"
+                    class="ml-1 bg-amber-500/20 text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">
+                    {{ pendingOrders().length }}
+                </span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Alert / Banner -->
+    <div *ngIf="activeTab() === 'pending' && pendingOrders().length > 0"
+        class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-4 animate-fade-in">
+        <div class="p-2.5 rounded-xl bg-amber-500/20 shrink-0 mt-0.5">
+            <app-icon name="alert-circle" [size]="20" class="text-amber-400"></app-icon>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-amber-400 font-bold mb-1">Facturas Pendientes</h3>
+            <p class="text-zinc-400 text-sm">
+                Facturas por realizar listas para timbrar: 
+                <strong class="text-amber-400">{{ validPendingCount() }} de {{ pendingOrders().length }}</strong>.
+                Revise los datos incompletos antes de intentar emitir.
+            </p>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isLoading()" class="flex justify-center py-16">
+        <app-icon name="loader" [size]="36" class="text-emerald-400 animate-spin opacity-70"></app-icon>
+    </div>
+
+    <!-- Data Table -->
+    <div *ngIf="!isLoading()" class="bg-zinc-800/80 backdrop-blur-xl border border-zinc-700/50 rounded-2xl overflow-hidden shadow-xl animate-fade-in">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-zinc-900/50 border-b border-zinc-700/50 text-xs text-zinc-400 uppercase tracking-wide">
+                    <th class="p-4 font-semibold">Orden / Fecha</th>
+                    <th class="p-4 font-semibold">Datos Fiscales (Receptor)</th>
+                    <th class="p-4 font-semibold text-center">Estatus de Datos</th>
+                    <th class="p-4 font-semibold text-right">Monto</th>
+                    <th class="p-4 font-semibold text-center">CFDI</th>
+                    <th class="p-4 font-semibold text-right">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm divide-y divide-zinc-800/50">
+                <ng-container *ngFor="let order of displayedOrders()">
+                    <!-- Main Row -->
+                    <tr class="hover:bg-zinc-700/20 transition-colors group cursor-pointer"
+                        [class.bg-zinc-700.10]="expandedOrderId() === order.id"
+                        (click)="toggleRow(order.id)">
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <app-icon name="shopping-bag" [size]="14" class="text-amber-500"></app-icon>
+                                <a [routerLink]="['/operations/orders', order.id]" (click)="$event.stopPropagation()" class="font-bold text-white text-xs font-mono hover:text-emerald-400 transition-colors">
+                                    {{ order.orderNumber || order.amazonOrderId || order.id }}
+                                </a>
+                            </div>
+                            <div class="text-xs text-zinc-500 mt-1 pl-6">{{ order.createdAt | date:'MMM d, h:mm a' }}</div>
+                        </td>
+                        <td class="p-4">
+                            <div class="font-bold text-zinc-200 text-xs mb-0.5">{{ order.meliInvoice?.name || order.customer?.name || '—' }}</div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-emerald-400 font-mono">{{ order.meliInvoice?.rfc || '—' }}</span>
+                                <span class="text-zinc-600">·</span>
+                                <span class="text-zinc-400 truncate max-w-[150px]" title="Régimen">{{ order.meliInvoice?.taxpayerType || '—' }}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <div *ngIf="isInvoiceDataComplete(order).valid" class="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">
+                                <app-icon name="check-circle" [size]="12"></app-icon> Listo
+                            </div>
+                            <div *ngIf="!isInvoiceDataComplete(order).valid" class="inline-flex items-center gap-1 text-red-400 bg-red-500/10 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-red-500/20">
+                                <app-icon name="alert-triangle" [size]="12"></app-icon> Incompleto
+                            </div>
+                        </td>
+                        <td class="p-4 text-right font-bold text-white">{{ fmtMXN(order.total) }}</td>
+                        <td class="p-4 text-center">
+                            <span *ngIf="activeTab() === 'pending'" class="text-xs px-2 py-0.5 rounded-full font-semibold border bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                Pendiente
+                            </span>
+                            <span *ngIf="activeTab() === 'issued'" class="text-xs px-2 py-0.5 rounded-full font-semibold border bg-emerald-500/20 text-emerald-400 border-emerald-500/30 flex items-center gap-1 w-max mx-auto">
+                                <app-icon name="check" [size]="12"></app-icon> Emitida
+                            </span>
+                            <span *ngIf="activeTab() === 'failed'" class="text-xs px-2 py-0.5 rounded-full font-semibold border bg-red-500/20 text-red-400 border-red-500/30 flex items-center gap-1 w-max mx-auto">
+                                <app-icon name="x" [size]="12"></app-icon> Error SAT
+                            </span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <div class="flex items-center justify-end gap-3">
+                                <button *ngIf="activeTab() === 'pending' || activeTab() === 'failed'"
+                                    (click)="markAsInvoiced(order, $event)"
+                                    [disabled]="processingIds()[order.id] || !isInvoiceDataComplete(order).valid"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <app-icon *ngIf="!processingIds()[order.id]" name="file-text" [size]="14"></app-icon>
+                                    <app-icon *ngIf="processingIds()[order.id]" name="loader" [size]="14" class="animate-spin"></app-icon>
+                                    Facturar
+                                </button>
+                                
+                                <a *ngIf="activeTab() === 'issued' && order.invoiceData?.downloadXml"
+                                    [href]="order.invoiceData.downloadXml" target="_blank"
+                                    (click)="$event.stopPropagation()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-700 text-white hover:bg-zinc-600 transition-colors border border-zinc-600">
+                                    <app-icon name="download" [size]="14"></app-icon>
+                                    XML
+                                </a>
+
+                                <a *ngIf="activeTab() === 'issued' && order.invoiceData?.downloadPdf"
+                                    [href]="order.invoiceData.downloadPdf" target="_blank"
+                                    (click)="$event.stopPropagation()"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors border border-red-500/30">
+                                    <app-icon name="file-text" [size]="14"></app-icon>
+                                    PDF
+                                </a>
+                                <app-icon [name]="expandedOrderId() === order.id ? 'chevron-up' : 'chevron-down'" [size]="16" class="text-zinc-500"></app-icon>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Expanded Detail Row -->
+                    <tr *ngIf="expandedOrderId() === order.id" class="bg-zinc-800/40 border-b border-zinc-700/50">
+                        <td colspan="6" class="p-0">
+                            <div class="px-6 py-4 animate-fade-in grid grid-cols-2 gap-8">
+                                
+                                <!-- Fiscal Data Column -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Datos para Facturar (Receptor)</h4>
+                                        <div *ngIf="!isInvoiceDataComplete(order).valid" class="text-xs text-red-400 font-bold flex items-center gap-1">
+                                            <app-icon name="x-circle" [size]="14"></app-icon> No apto para timbrado
+                                        </div>
+                                    </div>
+                                    
+                                    <div *ngIf="!isInvoiceDataComplete(order).valid" class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 space-y-1.5">
+                                        <div class="text-[10px] font-bold text-red-400 uppercase">Problemas Detectados:</div>
+                                        <ul class="text-xs text-red-300 list-disc list-inside">
+                                            <li *ngFor="let err of isInvoiceDataComplete(order).missing">{{ err }}</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-x-4 gap-y-3" [class.opacity-50]="!isInvoiceDataComplete(order).valid">
+                                        <div class="col-span-2">
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">Razón Social Exacta (SAT)</div>
+                                            <div class="text-sm font-mono text-white bg-zinc-900/50 p-1.5 rounded border border-zinc-700/50 mt-1 select-all">{{ order.meliInvoice?.name }}</div>
+                                        </div>
+                                        
+                                        <div>
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">RFC</div>
+                                            <div class="text-sm font-mono text-zinc-300 mt-0.5 select-all">{{ order.meliInvoice?.rfc }}</div>
+                                        </div>
+                                        
+                                        <div>
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">Código Postal</div>
+                                            <div class="text-sm font-mono text-zinc-300 mt-0.5 select-all">{{ order.meliInvoice?.billingAddress?.zipCode || 'No Provisto' }}</div>
+                                        </div>
+
+                                        <div>
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">Uso CFDI</div>
+                                            <div class="text-sm text-zinc-300 mt-0.5">{{ order.meliInvoice?.cfdiUse || 'G03 (Por Defecto)' }}</div>
+                                        </div>
+
+                                        <div>
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">Régimen Fiscal</div>
+                                            <div class="text-sm text-zinc-300 mt-0.5">{{ order.meliInvoice?.taxpayerType || 'Persona Física' }}</div>
+                                        </div>
+
+                                        <div class="col-span-2">
+                                            <div class="text-[10px] text-zinc-500 uppercase font-semibold">Dirección Completa</div>
+                                            <div class="text-xs text-zinc-400 mt-0.5">
+                                                {{ order.meliInvoice?.billingAddress?.street }} {{ order.meliInvoice?.billingAddress?.exteriorNumber }}, 
+                                                {{ order.meliInvoice?.billingAddress?.city }}, {{ order.meliInvoice?.billingAddress?.state }}, {{ order.meliInvoice?.billingAddress?.country }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Items Column -->
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-400 uppercase tracking-widest mb-4">Conceptos (Items)</h4>
+                                    
+                                    <div class="space-y-3">
+                                        <div *ngFor="let item of order.items" class="bg-zinc-900/30 p-3 rounded-lg border border-zinc-800 flex justify-between gap-4">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-[11px] font-mono text-zinc-500 mb-0.5">{{ item.sku }}</div>
+                                                <div class="text-xs text-zinc-200 font-medium truncate" [title]="item.name || item.productName">{{ item.name || item.productName }}</div>
+                                            </div>
+                                            <div class="text-right shrink-0">
+                                                <div class="text-xs text-zinc-400">{{ item.quantity }}x {{ fmtMXN(item.unitPrice) }}</div>
+                                                <div class="text-sm font-bold text-white mt-0.5">{{ fmtMXN((item.unitPrice || 0) * (item.quantity || 1)) }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-between items-center px-2 pt-2 border-t border-zinc-800">
+                                            <div class="text-xs text-zinc-400">Total a Facturar (IVA Incluido)</div>
+                                            <div class="text-lg font-bold text-emerald-400">{{ fmtMXN(order.total) }}</div>
+                                        </div>
+                                        
+                                        <div *ngIf="!isInvoiceDataComplete(order).valid" class="mt-4 p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/50 text-xs text-zinc-400 text-center">
+                                            El cliente ingresó datos incompletos en MercadoLibre. Contacte al cliente por mensajería para solicitar su Constancia de Situación Fiscal.
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </td>
+                    </tr>
+                </ng-container>
+                <tr *ngIf="displayedOrders().length === 0">
+                    <td colspan="6" class="p-16 text-center">
+                        <app-icon *ngIf="activeTab() === 'pending'" name="check-circle" [size]="32" class="text-emerald-500/50 mx-auto mb-3"></app-icon>
+                        <app-icon *ngIf="activeTab() !== 'pending'" name="file-text" [size]="32" class="text-zinc-700 mx-auto mb-3"></app-icon>
+                        
+                        <p *ngIf="activeTab() === 'pending'" class="text-emerald-400 font-medium text-sm">¡Al día! No hay facturas pendientes.</p>
+                        <p *ngIf="activeTab() !== 'pending'" class="text-zinc-500 text-sm">No hay facturas en esta categoría.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination Footer -->
+        <div *ngIf="filteredOrders().length > 0" class="flex items-center justify-between px-6 py-4 bg-zinc-900/50 border-t border-zinc-700/50">
+            <div class="text-xs text-zinc-500 font-medium">
+                {{ paginationText }}
+            </div>
+            <div class="flex items-center gap-2">
+                <button (click)="prevPage()" [disabled]="currentPage() === 1"
+                    class="p-2 rounded-lg border border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <app-icon name="chevron-left" [size]="16"></app-icon>
+                </button>
+                <div class="text-xs font-semibold text-zinc-300 px-2">
+                    Página {{ currentPage() }} de {{ totalPages() }}
+                </div>
+                <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+                    class="p-2 rounded-lg border border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <app-icon name="chevron-right" [size]="16"></app-icon>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>

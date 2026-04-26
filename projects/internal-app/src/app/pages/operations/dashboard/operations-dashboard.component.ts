@@ -140,7 +140,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
 
     timeframe = signal<'MTD' | 'YTD'>('MTD');
-    channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos'>('ALL');
+    channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon'>('ALL');
     allFetchedOrders: Order[] = [];
 
     // Channel breakdown — always computed on ALL orders regardless of active filter
@@ -312,51 +312,62 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     /** Builds an SVG data-URL icon for MapMarker sized proportionally to order count. */
     buildMarkerIcon(metric: StateMetric): { url: string; size: number } {
-        const MIN_R = 18;
-        const MAX_R = 52;
-        // Sqrt scale gives good visual spread — small states still visible, big ones dominant
+        // ── Sizing ─────────────────────────────────────────────────────────────
+        // Small enough that the map stays readable even with 32 states plotted.
+        // Using sqrt(ratio) keeps proportional feel without ballooning big states.
+        const MIN_R = 7;
+        const MAX_R = 19;
         const ratio = this._maxOrders > 1 ? metric.orders / this._maxOrders : 1;
         const r     = MIN_R + (MAX_R - MIN_R) * Math.sqrt(ratio);
-        const size  = Math.round(r * 2 + 10);
+        // Canvas size adds 4px padding on each side for the glow halo
+        const pad   = 4;
+        const size  = Math.round(r * 2 + pad * 2);
         const cx    = size / 2;
         const cy    = size / 2;
 
-        // Color: deep teal (low) → lime green (mid) → amber/orange (high)
-        // HSL: 185° (teal) → 120° (green) → 45° (amber)
-        const hue  = Math.round(185 - ratio * 140);
-        const sat  = 80 + ratio * 10;   // 80→90%
-        const lit  = 44 + ratio * 4;    // 44→48%
-        const fill = `hsl(${hue},${sat}%,${lit}%)`;
+        // ── Color ──────────────────────────────────────────────────────────────
+        // Low → cool teal (180°), mid → green (120°), high → amber (50°)
+        // Saturation/lightness bump slightly at high end for visual pop.
+        const hue  = Math.round(180 - ratio * 130);
+        const sat  = 75 + ratio * 15;   // 75 → 90%
+        const lit  = 42 + ratio * 6;    // 42 → 48%
 
-        // Text size — readable even at small radius
-        const fontSize = Math.max(10, Math.round(r * 0.58));
+        // ── Opacity strategy ───────────────────────────────────────────────────
+        // Semi-transparent fills let the map show through when bubbles overlap.
+        // Border stays opaque so each bubble stays individually distinct.
+        const fillOpacity = 0.74;
+
+        const fontSize = Math.max(7, Math.round(r * 0.64));
         const label    = String(metric.orders);
 
         const svg = [
             `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`,
             `<defs>`,
-            // Glow filter
-            `<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">`,
-            `<feGaussianBlur stdDeviation="3" result="blur"/>`,
-            `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>`,
+            // Soft outer glow — gives depth without taking space
+            `<filter id="gl" x="-50%" y="-50%" width="200%" height="200%">`,
+            `<feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="b"/>`,
+            `<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>`,
             `</filter>`,
-            // Drop shadow for text
-            `<filter id="ts" x="-20%" y="-20%" width="140%" height="140%">`,
-            `<feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(0,0,0,0.75)"/>`,
+            // Text drop shadow for legibility on any background
+            `<filter id="ts" x="-30%" y="-30%" width="160%" height="160%">`,
+            `<feDropShadow dx="0" dy="0.5" stdDeviation="1.2" flood-color="rgba(0,0,0,0.9)"/>`,
             `</filter>`,
             `</defs>`,
-            // Outer dark ring for contrast against map
-            `<circle cx="${cx}" cy="${cy}" r="${r + 3}" fill="rgba(0,0,0,0.35)" />`,
-            // Main bubble
-            `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" filter="url(#glow)"`,
-            ` stroke="rgba(255,255,255,0.7)" stroke-width="1.8"/>`,
-            // Inner highlight arc (top-left shine)
-            `<circle cx="${cx - r * 0.18}" cy="${cy - r * 0.2}" r="${r * 0.42}"`,
-            ` fill="rgba(255,255,255,0.12)"/>`,
-            // Count label with text shadow
-            `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"`,
+            // Very subtle dark halo — separates bubble from map without a heavy ring
+            `<circle cx="${cx}" cy="${cy}" r="${r + 1.5}"`,
+            ` fill="rgba(0,0,0,0.22)"/>`,
+            // Main fill — semi-transparent
+            `<circle cx="${cx}" cy="${cy}" r="${r}"`,
+            ` fill="hsl(${hue},${sat}%,${lit}%)"`,
+            ` fill-opacity="${fillOpacity}"`,
+            ` stroke="rgba(255,255,255,0.85)"`,
+            ` stroke-width="1.4"`,
+            ` filter="url(#gl)"/>`,
+            // Count — bold, shadowed, always white
+            `<text x="${cx}" y="${cy}"`,
+            ` text-anchor="middle" dominant-baseline="central"`,
             ` font-size="${fontSize}" font-weight="900" fill="white"`,
-            ` font-family="Inter,system-ui,sans-serif" letter-spacing="-0.5"`,
+            ` font-family="Inter,system-ui,sans-serif"`,
             ` filter="url(#ts)">${label}</text>`,
             `</svg>`
         ].join('');
@@ -440,7 +451,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }
     }
 
-    setChannelFilter(filter: 'ALL' | 'mercadolibre' | 'web' | 'pos') {
+    setChannelFilter(filter: 'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon') {
         if (this.channelFilter() !== filter) {
             this.channelFilter.set(filter);
             this.applyFilters();
@@ -679,7 +690,10 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         let filteredOrders = this.allFetchedOrders;
         
         if (filter !== 'ALL') {
-            filteredOrders = this.allFetchedOrders.filter(o => o.sourceChannel === filter);
+            const targetChannel = filter === 'web' ? 'storefront' : filter;
+            filteredOrders = this.allFetchedOrders.filter(o => 
+                o.sourceChannel === targetChannel || (!o.sourceChannel && targetChannel === 'storefront')
+            );
         }
 
         this.calculateStats(filteredOrders);

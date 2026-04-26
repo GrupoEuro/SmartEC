@@ -15,12 +15,17 @@ export interface IntegrationConfig {
         userId?: number;
     };
     amazon?: {
-        clientId: string;
-        clientSecret: string;
+        clientId:      string;
+        clientSecret:  string;
         refreshToken?: string;
-        region?: string;
-        connected: boolean;
+        sellerId?:     string;
+        spAppId?:      string;   // amzn1.sp.solution.* — used in Seller Central OAuth URL
+        marketplaceId?: string;
+        region?:       string;
+        connected:     boolean;
+        connectedAt?:  any;
     };
+
     stripe?: {
         publishableKey: string;
         secretKey: string;

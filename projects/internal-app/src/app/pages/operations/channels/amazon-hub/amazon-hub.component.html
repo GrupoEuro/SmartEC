@@ -41,13 +41,13 @@
                         <div class="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-700/50">
                             <app-icon name="link" [size]="20" class="text-orange-400"></app-icon>
                         </div>
-                        <span [class]="lastSyncStatus() === 'success' ? 'px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center gap-1' :
-                              lastSyncStatus() === 'error'   ? 'px-2 py-0.5 text-xs font-bold rounded-full bg-red-500/20 text-red-400 border border-red-500/20 flex items-center gap-1' :
-                              'px-2 py-0.5 text-xs font-bold rounded-full bg-zinc-600/30 text-zinc-400 border border-zinc-600/20 flex items-center gap-1'">
+                        <span class="px-2 py-0.5 text-xs font-bold rounded-full flex items-center gap-1"
+                            [ngClass]="amazonOrders().length > 0
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-zinc-600/30 text-zinc-400 border border-zinc-600/20'">
                             <span class="w-1.5 h-1.5 rounded-full"
-                                [ngClass]="lastSyncStatus() === 'success' ? 'bg-emerald-400 animate-pulse' :
-                                           lastSyncStatus() === 'error'   ? 'bg-red-400' : 'bg-zinc-500'"></span>
-                            {{ lastSyncStatus() ?? 'Pending Setup' }}
+                                [ngClass]="amazonOrders().length > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'"></span>
+                            {{ amazonOrders().length > 0 ? 'Live' : 'No data yet' }}
                         </span>
                     </div>
                     <h3 class="text-sm font-bold text-white mb-1">SP-API Connection</h3>
@@ -125,26 +125,35 @@
             </div>
         </div>
 
-        <!-- Setup Banner (shown when no orders yet) -->
+        <!-- Live status bar (when orders exist) -->
+        <div *ngIf="!isLoadingData() && amazonOrders().length > 0"
+            class="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-4">
+            <div class="p-2.5 rounded-xl bg-emerald-500/20 shrink-0">
+                <app-icon name="check-circle" [size]="20" class="text-emerald-400"></app-icon>
+            </div>
+            <div class="flex-1">
+                <p class="text-emerald-400 font-bold text-sm">SP-API Activo — {{ amazonOrders().length }} órdenes sincronizadas</p>
+                <p class="text-zinc-500 text-xs mt-0.5">Sincronización automática cada 30 min · Seller: AYIVREVB9HQHB · MX Marketplace</p>
+            </div>
+            <button (click)="syncNow()" [disabled]="isSyncing()" class="text-xs text-zinc-400 hover:text-white transition-colors shrink-0">
+                {{ isSyncing() ? 'Syncing...' : 'Sync ahora →' }}
+            </button>
+        </div>
+
+        <!-- Setup banner (only if zero orders) -->
         <div *ngIf="!isLoadingData() && amazonOrders().length === 0"
             class="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-6 flex items-start gap-4">
             <div class="p-3 rounded-xl bg-orange-500/20 shrink-0">
                 <app-icon name="info" [size]="24" class="text-orange-400"></app-icon>
             </div>
             <div>
-                <h3 class="text-white font-bold mb-1">SP-API Credentials Required</h3>
-                <p class="text-zinc-400 text-sm mb-3">No Amazon orders found yet. To activate syncing, add your LWA credentials to Firebase Secret Manager and redeploy functions.</p>
-                <div class="font-mono text-xs text-zinc-500 bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-1">
-                    <div>firebase functions:secrets:set AMAZON_LWA_CLIENT_ID</div>
-                    <div>firebase functions:secrets:set AMAZON_LWA_CLIENT_SECRET</div>
-                    <div>firebase functions:secrets:set AMAZON_REFRESH_TOKEN</div>
-                    <div>firebase functions:secrets:set AMAZON_AWS_ACCESS_KEY_ID</div>
-                    <div>firebase functions:secrets:set AMAZON_AWS_SECRET_ACCESS_KEY</div>
-                    <div>firebase functions:secrets:set AMAZON_ROLE_ARN</div>
-                </div>
+                <h3 class="text-white font-bold mb-1">Sin órdenes aún</h3>
+                <p class="text-zinc-400 text-sm mb-2">Haz clic en "Sync Now" para importar órdenes desde Amazon SP-API, o espera el ciclo automático (cada 30 min).</p>
+                <p class="text-zinc-600 text-xs">Si persiste, verifica las credenciales en Admin → Integraciones → Amazon.</p>
             </div>
         </div>
     </div>
+
 
     <!-- ── ORDERS TAB ───────────────────────────────────────────────────────── -->
     <div *ngIf="activeTab() === 'orders'" class="space-y-4 animate-fade-in">
@@ -202,8 +211,8 @@
                             <div class="text-xs text-zinc-500 mt-0.5">{{ toDate(order.createdAt) | date:'MMM d, h:mm a' }}</div>
                         </td>
                         <td class="p-4">
-                            <div *ngFor="let item of (order.items || []).slice(0,2)" class="text-zinc-300 text-xs truncate max-w-[200px]" [title]="item.productName">
-                                {{ item.quantity }}× {{ item.productName }}
+                            <div *ngFor="let item of (order.items || []).slice(0,2)" class="text-zinc-300 text-xs truncate max-w-[200px]">
+                                {{ item.quantity }}× {{ item.productName || $any(item).name || item.sku || '—' }}
                             </div>
                             <span *ngIf="(order.items || []).length > 2" class="text-zinc-600 text-xs">+{{ (order.items || []).length - 2 }} more</span>
                         </td>

@@ -414,6 +414,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Amazon SP-API sync run logs — written by Cloud Functions (Admin SDK), read by staff.
+    match /amazon_sync_logs/{document} {
+      allow read: if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
     // MeLi Full operations config: demand events, lead time, etc.
     // Staff can read; managers can create/update/delete events.
     match /config_demand_events/{document} {

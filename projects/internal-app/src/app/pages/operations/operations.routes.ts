@@ -31,6 +31,11 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./orders/order-fulfillment.component').then(m => m.OrderFulfillmentComponent)
             },
             {
+                path: 'invoicing',
+                loadComponent: () => import('./invoicing/invoicing-dashboard/invoicing-dashboard.component').then(m => m.InvoicingDashboardComponent),
+                title: 'Invoicing'
+            },
+            {
                 path: 'customers',
                 loadComponent: () => import('./customers/customer-lookup.component').then(m => m.CustomerLookupComponent)
             },

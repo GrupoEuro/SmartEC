@@ -15,6 +15,7 @@
   },
   "main": "lib/index.js",
   "dependencies": {
+    "facturapi": "^4.15.0",
     "firebase-admin": "^11.8.0",
     "firebase-functions": "4.9.0",
     "mercadopago": "^2.0.1",

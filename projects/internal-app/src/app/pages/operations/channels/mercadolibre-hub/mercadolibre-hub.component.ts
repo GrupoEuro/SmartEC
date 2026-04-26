@@ -23,7 +23,7 @@ export class MercadolibreHubComponent implements OnInit {
     private toast = inject(ToastService);
     private orderService = inject(OrderService);
 
-    activeTab = signal<'overview' | 'classic' | 'full' | 'listings'>('overview');
+    activeTab = signal<'overview' | 'classic' | 'full' | 'listings' | 'communications'>('overview');
 
     // Sync states
     isAnalyzing = signal(false);
@@ -53,6 +53,10 @@ export class MercadolibreHubComponent implements OnInit {
 
     // Webhook Logs
     webhookLogs = signal<any[]>([]);
+
+    // Communications
+    meliCommunications = signal<any[]>([]);
+    isLoadingComms = signal(true);
 
     // ── Orders Computed ───────────────────────────────────────────────────────
 
@@ -260,6 +264,7 @@ export class MercadolibreHubComponent implements OnInit {
         this.loadFbmInventory();
         this.loadListings();
         this.loadWebhookLogs();
+        this.loadCommunications();
     }
 
     private loadOrders() {
@@ -295,9 +300,18 @@ export class MercadolibreHubComponent implements OnInit {
         });
     }
 
+    private loadCommunications() {
+        this.isLoadingComms.set(true);
+        const q = query(collection(this.firestore, 'meli_communications'), orderBy('createdAt', 'desc'), limit(50));
+        collectionData(q, { idField: 'id' }).subscribe({
+            next: (data) => { this.meliCommunications.set(data as any[]); this.isLoadingComms.set(false); },
+            error: (err) => { console.error('Failed to load communications', err); this.isLoadingComms.set(false); }
+        });
+    }
+
     // ── Tab & Sort Controls ───────────────────────────────────────────────────
 
-    setTab(tab: 'overview' | 'classic' | 'full' | 'listings') { this.activeTab.set(tab); }
+    setTab(tab: 'overview' | 'classic' | 'full' | 'listings' | 'communications') { this.activeTab.set(tab); }
 
     setFbmSort(column: 'sku' | 'title' | 'qty' | 'reserved' | 'price' | 'sales' | 'days') {
         if (this.fbmSortColumn() === column) {

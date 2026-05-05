@@ -238,6 +238,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 icon: 'search',
                 route: '/operations/metrics/busquedas',
                 badge: { text: 'NEW', color: 'bg-violet-600' }
+            },
+            {
+                id: 'metrics_ai_insights',
+                title: 'AI Insights Engine',
+                icon: 'sparkles',
+                route: '/operations/metrics/ai-insights',
+                badge: { text: 'Beta', color: 'bg-indigo-500' }
             }
         ]
     },

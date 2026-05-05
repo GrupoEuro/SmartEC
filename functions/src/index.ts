@@ -8,7 +8,7 @@ const db = admin.firestore();
 const bigquery = new BigQuery({ projectId: 'tiendapraxis' });
 
 // ── IA Agents (EuroMind) ──────────────────────────────────────────────────────
-export { inboxMessageRouter, agentOrchestrator, agentHandoff } from './ai-agents';
+export { inboxMessageRouter, agentOrchestrator, agentHandoff, analyzeMeliInsights, testAnalyzeMeliInsights } from './ai-agents';
 
 // ── Analytics & Projections ───────────────────────────────────────────────────
 export { snapshotProjections } from './analytics';

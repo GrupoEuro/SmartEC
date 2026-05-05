@@ -419,6 +419,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /meli_insights/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     // Amazon SP-API sync run logs — written by Cloud Functions (Admin SDK), read by staff.
     match /amazon_sync_logs/{document} {
       allow read: if isStaff();

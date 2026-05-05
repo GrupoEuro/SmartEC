@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
+exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
 /**
  * EuroMind IA Agents — Cloud Functions
  * inboxMessageRouter, agentOrchestrator, agentHandoff
@@ -80,30 +80,51 @@ async function evaluateConditions(conditions, convId, convData, businessHours) {
     return false;
 }
 // ── Gemini Caller ─────────────────────────────────────────────────────────────
-async function callGemini(systemPrompt, history, model = 'gemini-1.5-pro', temperature = 0.7, maxTokens = 512) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
-    const projectId = 'tiendapraxis';
-    const location = 'us-central1';
-    const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
-    const { GoogleAuth } = await Promise.resolve().then(() => require('google-auth-library'));
-    const token = await (new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] })).getAccessToken();
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: history,
-            generationConfig: { temperature, maxOutputTokens: maxTokens, topP: 0.95 },
-        }),
+async function callGemini(systemPrompt, history, modelName = 'gemini-2.5-pro', temperature = 0.2, maxTokens = 8192) {
+    var _a, _b, _c, _d, _e;
+    const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = await Promise.resolve().then(() => require('@google/generative-ai'));
+    const apiKey = (_a = functions.config().gemini) === null || _a === void 0 ? void 0 : _a.apikey;
+    if (!apiKey) {
+        throw new Error('Gemini API key is not configured in Firebase environment (gemini.apikey)');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemPrompt,
+        generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+            responseMimeType: "application/json"
+        },
+        safetySettings: [
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+        ]
     });
-    if (!res.ok)
-        throw new Error(`Gemini ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    return {
-        text: (_f = (_e = (_d = (_c = (_b = (_a = data.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text) !== null && _f !== void 0 ? _f : '',
-        inputTokens: (_h = (_g = data.usageMetadata) === null || _g === void 0 ? void 0 : _g.promptTokenCount) !== null && _h !== void 0 ? _h : 0,
-        outputTokens: (_k = (_j = data.usageMetadata) === null || _j === void 0 ? void 0 : _j.candidatesTokenCount) !== null && _k !== void 0 ? _k : 0,
-    };
+    const formattedHistory = history.map(msg => ({
+        role: msg.role === 'model' ? 'model' : 'user',
+        parts: msg.parts.map(p => ({ text: p.text }))
+    }));
+    try {
+        const chat = model.startChat({ history: formattedHistory });
+        // The last message should be sent using sendMessage, so we extract it if there is one.
+        // Wait, if it's a stateless completion call, we can just use generateContent with the history as contents!
+        // Actually, generateContent accepts the full array of contents directly.
+        const contents = formattedHistory;
+        const result = await model.generateContent({ contents });
+        const response = await result.response;
+        return {
+            text: response.text(),
+            inputTokens: (_c = (_b = response.usageMetadata) === null || _b === void 0 ? void 0 : _b.promptTokenCount) !== null && _c !== void 0 ? _c : 0,
+            outputTokens: (_e = (_d = response.usageMetadata) === null || _d === void 0 ? void 0 : _d.candidatesTokenCount) !== null && _e !== void 0 ? _e : 0
+        };
+    }
+    catch (err) {
+        console.error('[callGemini] Google Generative AI SDK Error:', err.message);
+        throw err;
+    }
 }
 // ── Handoff Parser ────────────────────────────────────────────────────────────
 function parseHandoff(text) {
@@ -286,4 +307,106 @@ exports.agentHandoff = functions.https.onCall(async (data, context) => {
     });
     return { ok: true };
 });
+// ── MercadoLibre AI Insights Engine ──────────────────────────────────────────
+exports.analyzeMeliInsights = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .pubsub.schedule('0 2 * * *')
+    .timeZone('America/Mexico_City')
+    .onRun(async (context) => {
+    await runAnalyzeMeliInsightsLogic();
+});
+exports.testAnalyzeMeliInsights = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onRequest(async (req, res) => {
+    try {
+        await runAnalyzeMeliInsightsLogic();
+        res.status(200).send("Success");
+    }
+    catch (e) {
+        res.status(500).send(e.toString());
+    }
+});
+async function runAnalyzeMeliInsightsLogic() {
+    var _a;
+    const start = Date.now();
+    console.log('[analyzeMeliInsights] Starting daily insights generation...');
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const convSnap = await db.collection('customer_conversations')
+        .where('channel', '==', 'mercadolibre')
+        .where('updatedAt', '>=', admin.firestore.Timestamp.fromDate(yesterday))
+        .get();
+    if (convSnap.empty) {
+        console.log('[analyzeMeliInsights] No recent MercadoLibre conversations found.');
+        return;
+    }
+    const itemQuestions = {};
+    for (const doc of convSnap.docs) {
+        const data = doc.data();
+        if (!((_a = data.tags) === null || _a === void 0 ? void 0 : _a.includes('Pre-Venta')))
+            continue;
+        const match = doc.id.match(/^meli_q_(.+)_([^_]+)$/);
+        if (!match)
+            continue;
+        const itemId = match[1];
+        const msgSnap = await db.collection(`customer_conversations/${doc.id}/messages`)
+            .where('direction', '==', 'inbound')
+            .get();
+        if (!itemQuestions[itemId]) {
+            itemQuestions[itemId] = [];
+        }
+        msgSnap.docs.forEach(m => {
+            const text = m.data().content;
+            if (text && text.trim()) {
+                itemQuestions[itemId].push(text.trim());
+            }
+        });
+    }
+    const itemsToAnalyze = Object.keys(itemQuestions);
+    console.log(`[analyzeMeliInsights] Found ${itemsToAnalyze.length} items with recent questions.`);
+    for (const itemId of itemsToAnalyze) {
+        const questions = itemQuestions[itemId];
+        if (questions.length === 0)
+            continue;
+        console.log(`[analyzeMeliInsights] Analyzing ${itemId} (${questions.length} questions)...`);
+        const systemPrompt = `Eres un experto en optimización de e-commerce automotriz y refacciones.
+Tu objetivo es analizar preguntas reales de clientes sobre una publicación de MercadoLibre y extraer recomendaciones accionables para mejorar la descripción del producto, reducir fricción, y aumentar ventas.
+
+Analiza este grupo de preguntas para el Item ID: ${itemId} y devuelve un objeto JSON estructurado con el siguiente formato estricto:
+{
+  "summary": "Resumen de las dudas principales de los clientes",
+  "missingInformation": ["Falta 1", "Falta 2"],
+  "actionableRecommendations": ["Agrega X a la descripción", "Aclara Y en las fotos"]
+}
+No devuelvas ningún texto fuera del JSON. Devuelve el JSON puro sin bloques markdown de codigo.`;
+        const history = [{
+                role: 'user',
+                parts: [{ text: `Preguntas de los clientes:\n\n${questions.map(q => '- ' + q).join('\n')}` }]
+            }];
+        try {
+            const { text } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.2, 8192);
+            let parsedInsights;
+            try {
+                const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                parsedInsights = JSON.parse(cleanText);
+            }
+            catch (e) {
+                console.error(`[analyzeMeliInsights] Failed to parse JSON for ${itemId}:`, text);
+                continue;
+            }
+            await db.collection('meli_insights').doc(itemId).set({
+                itemId,
+                lastAnalyzedAt: admin.firestore.FieldValue.serverTimestamp(),
+                questionCount: questions.length,
+                summary: parsedInsights.summary || '',
+                missingInformation: parsedInsights.missingInformation || [],
+                actionableRecommendations: parsedInsights.actionableRecommendations || [],
+                recentQuestions: questions.slice(0, 5) // Store top 5 as sample
+            }, { merge: true });
+        }
+        catch (err) {
+            console.error(`[analyzeMeliInsights] Gemini API error for ${itemId}:`, err.message);
+        }
+    }
+    console.log(`[analyzeMeliInsights] Completed in ${Date.now() - start}ms. Analyzed ${itemsToAnalyze.length} items.`);
+}
 //# sourceMappingURL=ai-agents.js.map

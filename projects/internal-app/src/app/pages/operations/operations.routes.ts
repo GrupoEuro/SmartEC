@@ -134,6 +134,11 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./metrics/meli-full/meli-full-report.component').then(m => m.MeliFullReportComponent)
             },
             {
+                path: 'metrics/ai-insights',
+                loadComponent: () => import('./metrics/ai-insights/ai-insights.component').then(m => m.AiInsightsComponent),
+                title: 'AI Insights Engine'
+            },
+            {
                 path: 'metrics/products',
                 loadComponent: () => import('./metrics/product-analytics/product-analytics.component').then(m => m.ProductAnalyticsComponent),
                 title: 'Análisis de Productos'

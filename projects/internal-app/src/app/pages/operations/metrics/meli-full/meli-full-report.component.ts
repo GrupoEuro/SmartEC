@@ -147,8 +147,6 @@ interface ClassicChampion {
     fullListing?: MeliListing;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 @Component({
     selector: 'app-meli-full-report',
     standalone: true,

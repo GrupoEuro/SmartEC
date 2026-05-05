@@ -700,6 +700,13 @@
       "HOME": "Casa",
       "ADDRESS": "Dirección",
       "ADD_FIRST": "Agregar Nueva Dirección",
+      "CONFIRM_DELETE": "¿Estás seguro de que deseas eliminar esta dirección?",
+      "SUCCESS_ADD": "Dirección agregada exitosamente",
+      "SUCCESS_UPDATE": "Dirección actualizada exitosamente",
+      "SUCCESS_DELETE": "Dirección eliminada exitosamente",
+      "ERROR_ADD": "Error al agregar la dirección",
+      "ERROR_UPDATE": "Error al actualizar la dirección",
+      "ERROR_DELETE": "Error al eliminar la dirección",
       "MODAL": {
         "ADD_TITLE": "Agregar Dirección",
         "EDIT_TITLE": "Editar Dirección",

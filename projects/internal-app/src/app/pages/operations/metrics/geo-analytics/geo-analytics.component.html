@@ -1,0 +1,138 @@
+<div class="geo-layout">
+
+  <!-- Header -->
+  <header class="geo-header">
+    <div class="geo-header-left">
+      <a class="geo-back" routerLink="/operations/metrics">← Métricas</a>
+      <h1 class="geo-title">🗺️ Análisis Geográfico</h1>
+      <span class="geo-subtitle">Ingresos y pedidos por estado de México</span>
+    </div>
+    <div class="geo-header-right">
+      <select class="geo-ch-filter" (change)="setChannel($any($event.target).value)">
+        <option value="">Todos los canales</option>
+        @for (ch of channelOptions; track ch.id) {
+          <option [value]="ch.id">{{ ch.label }}</option>
+        }
+      </select>
+
+      <div class="geo-range-pills">
+        @for (r of dateRanges; track r.type) {
+          <button class="geo-range-pill"
+                  [class.active]="selectedRange().type === r.type"
+                  (click)="selectRange(r)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  @if (isLoading()) {
+    <div class="geo-loading">
+      <div class="geo-spinner"></div>
+      <p>Consultando BigQuery…</p>
+    </div>
+  }
+
+  @if (!isLoading()) {
+
+    <!-- KPI strip -->
+    <div class="geo-kpi-strip">
+      <div class="geo-kpi-card">
+        <span class="geo-kpi-icon">🏆</span>
+        <div>
+          <div class="geo-kpi-value">{{ top3()[0]?.state || '—' }}</div>
+          <div class="geo-kpi-label">Estado #1</div>
+        </div>
+      </div>
+      <div class="geo-kpi-card">
+        <span class="geo-kpi-icon">📦</span>
+        <div>
+          <div class="geo-kpi-value">{{ geoRows().length }}</div>
+          <div class="geo-kpi-label">Estados con ventas</div>
+        </div>
+      </div>
+      <div class="geo-kpi-card">
+        <span class="geo-kpi-icon">💰</span>
+        <div>
+          <div class="geo-kpi-value">{{ fmtMoney(totalRevenue()) }}</div>
+          <div class="geo-kpi-label">Ingresos totales</div>
+        </div>
+      </div>
+      <div class="geo-kpi-card">
+        <span class="geo-kpi-icon">🛒</span>
+        <div>
+          <div class="geo-kpi-value">{{ totalOrders() | number }}</div>
+          <div class="geo-kpi-label">Órdenes totales</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top 3 podium -->
+    @if (top3().length >= 3) {
+      <section class="geo-card geo-podium-card">
+        <h2 class="geo-card-title">Top 3 Estados</h2>
+        <div class="geo-podium">
+          @for (row of top3(); track row.state; let i = $index) {
+            <div class="geo-podium-item" [class.geo-podium-first]="i === 0">
+              <div class="geo-podium-emoji">{{ stateEmoji(row.state) }}</div>
+              <div class="geo-podium-rank">{{ i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉' }}</div>
+              <div class="geo-podium-state">{{ row.state }}</div>
+              <div class="geo-podium-rev">{{ fmtMoney(row.total_revenue) }}</div>
+              <div class="geo-podium-share">{{ revenueShare(row.total_revenue) | number:'1.1-1' }}% del total</div>
+              <div class="geo-podium-orders">{{ row.total_orders | number }} órdenes</div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- State breakdown bars -->
+    <section class="geo-card geo-table-card">
+      <h2 class="geo-card-title">Desglose por Estado</h2>
+
+      <div class="geo-bars">
+        @for (row of knownStateRows(); track row.state; let i = $index) {
+          <div class="geo-bar-row">
+            <div class="geo-bar-label">
+              <span class="geo-rank-pill">{{ i + 1 }}</span>
+              <span class="geo-state-emoji">{{ stateEmoji(row.state) }}</span>
+              <span class="geo-state-name">{{ row.state }}</span>
+            </div>
+            <div class="geo-bar-track">
+              <div class="geo-bar-fill" [style.width.%]="barWidth(row.total_revenue)"></div>
+            </div>
+            <div class="geo-bar-stats">
+              <span class="geo-bar-rev">{{ fmtMoney(row.total_revenue) }}</span>
+              <span class="geo-bar-orders">{{ row.total_orders | number }} órd</span>
+              <span class="geo-bar-ticket" title="Ticket promedio">ø {{ fmtMoney(row.avg_ticket) }}</span>
+              <span class="geo-bar-share">{{ revenueShare(row.total_revenue) | number:'1.1-1' }}%</span>
+            </div>
+          </div>
+        }
+
+        @if (knownStateRows().length === 0) {
+          <div class="geo-empty">Sin datos con estado conocido. Ejecuta el backfill de BigQuery primero.</div>
+        }
+
+        <!-- Note: orders without state (MeLi Full — logistics handled by platform) -->
+        @if (noStateRow()) {
+          <div class="geo-no-state-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>
+              {{ noStateRow()!.total_orders | number }} órdenes ({{ fmtMoney(noStateRow()!.total_revenue) }})
+              sin estado de envío — típicamente
+              <strong>MeLi Full</strong> o Amazon FBA donde el destino no es expuesto por la API del canal.
+            </span>
+          </div>
+        }
+      </div>
+    </section>
+
+  }
+
+</div>

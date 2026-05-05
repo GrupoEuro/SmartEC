@@ -10,6 +10,7 @@ import {
     MetricsAnalyticsService, DATE_RANGES, DateRange, ChannelSnapshotDoc
 } from '../services/metrics-analytics.service';
 import { MetricsTimeframeService } from '../services/metrics-timeframe.service';
+import { MetricsBigqueryService, SummaryKpisRow } from '../services/metrics-bigquery.service';
 
 Chart.register(...registerables);
 
@@ -161,10 +162,11 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
     @ViewChild('burnCanvas')    burnCanvas?:    ElementRef<HTMLCanvasElement>;
     @ViewChild('matrixCanvas')  matrixCanvas?:  ElementRef<HTMLCanvasElement>;
 
-    private fs   = inject(Firestore);
-    private fns  = inject(Functions);
-    private svc  = inject(MetricsAnalyticsService);
-    private tf   = inject(MetricsTimeframeService);
+    private fs    = inject(Firestore);
+    private fns   = inject(Functions);
+    private svc   = inject(MetricsAnalyticsService);  // kept for getChannelSnapshots (visits/conversion from MeLi API)
+    private bqSvc = inject(MetricsBigqueryService);
+    private tf    = inject(MetricsTimeframeService);
 
     // ── State ─────────────────────────────────────────────────────────────────
     activeTab     = signal<TabId>('performance');
@@ -236,22 +238,28 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
         return 'low';
     });
 
-    // ── KPIs from snapshots ───────────────────────────────────────────────────
+    // ── KPIs: revenue/orders/units from BigQuery; visits/conversion from Firestore snapshots ────
     readonly perfKpis = computed(() => {
-        const snaps = this.snapshots();
-        const revenue        = snaps.reduce((s, d) => s + (d.revenue ?? 0), 0);
-        const orders         = snaps.reduce((s, d) => s + (d.orders  ?? 0), 0);
-        const units          = snaps.reduce((s, d) => s + (d.units   ?? 0), 0);
-        const avgTicket      = orders > 0 ? revenue / orders : 0;
-        const totalVisits    = snaps.reduce((s, d) => s + (d.visits  ?? 0), 0);
-        const avgConversion  = totalVisits > 0 ? (orders / totalVisits) * 100 : 0;
-        const ls             = this.listings();
-        const avgHealth      = ls.length > 0
+        const bq     = this.bqChannelKpis();
+        const snaps  = this.snapshots();
+        // Revenue, orders, units: prefer BQ (accurate, from raw orders)
+        const revenue   = bq?.revenue ?? snaps.reduce((s, d) => s + (d.revenue ?? 0), 0);
+        const orders    = bq?.orders  ?? snaps.reduce((s, d) => s + (d.orders  ?? 0), 0);
+        const units     = bq?.units   ?? snaps.reduce((s, d) => s + (d.units   ?? 0), 0);
+        const avgTicket = orders > 0 ? revenue / orders : 0;
+        // Visits & conversion: only available from Firestore channel snapshots (MeLi API)
+        const totalVisits   = snaps.reduce((s, d) => s + (d.visits ?? 0), 0);
+        const avgConversion = totalVisits > 0 ? (orders / totalVisits) * 100 : 0;
+        const ls            = this.listings();
+        const avgHealth     = ls.length > 0
             ? ls.filter(l => l.health != null).reduce((s, l) => s + (l.health ?? 0), 0)
               / ls.filter(l => l.health != null).length
             : null;
         return { revenue, orders, units, avgTicket, totalVisits, avgConversion, avgHealth };
     });
+
+    // BQ-sourced channel KPIs for the selected period (MELI_FULL only)
+    bqChannelKpis = signal<SummaryKpisRow | null>(null);
 
     // ── Inventory alert counts ────────────────────────────────────────────────
     readonly invAlerts = computed(() => {
@@ -734,8 +742,19 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
     }
 
     private async loadSnapshots() {
+        // Keep Firestore snapshots for visits/conversion rate data (MeLi API source)
         const snaps = await this.svc.getChannelSnapshots('MELI_FULL', this.tf.selected());
         this.snapshots.set(snaps);
+        // Replace revenue/orders/units with BigQuery for accuracy
+        try {
+            const { fromDate, toDate } = this.bqSvc.getDateStrings(this.tf.selected());
+            const rows = await this.bqSvc.querySummaryKpisBetween(fromDate, toDate);
+            const meliFullRow = rows.find(r => r.source_channel === 'MELI_FULL') ?? null;
+            this.bqChannelKpis.set(meliFullRow);
+        } catch (e) {
+            console.warn('[MeliFullReport] BQ KPI load failed, falling back to snapshots:', e);
+            this.bqChannelKpis.set(null);
+        }
     }
 
     private async loadListings() {
@@ -1141,9 +1160,14 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
     async loadMay2025Analysis() {
         this.isLoadingMay2025.set(true);
         try {
-            const from = new Date('2025-05-01T00:00:00Z');
-            const to   = new Date('2025-05-31T23:59:59Z');
-            const docs = await this.svc.getDailyDocsBetween(from, to);
+            // Use BigQuery instead of Firestore analytics_daily
+            // dailyTrend filtered to MELI_FULL gives per-day revenue/orders/units directly
+            const trend = await this.bqSvc.queryDailyTrendBetween('2025-05-01', '2025-05-31', 'MELI_FULL');
+
+            // Also fetch Classic channel for combined market framing
+            const kpis       = await this.bqSvc.querySummaryKpisBetween('2025-05-01', '2025-05-31');
+            const classicRow = kpis.find(r => r.source_channel === 'MELI_CLASSIC');
+            const fullRow    = kpis.find(r => r.source_channel === 'MELI_FULL');
 
             const dailyLabels:  string[] = [];
             const dailyRevenue: number[] = [];
@@ -1157,12 +1181,11 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
             const hotDaysUnits:    number[] = [];
             const normalDaysUnits: number[] = [];
 
-            for (const d of docs) {
-                const ch  = (d as any)['byChannel']?.['MELI_FULL'] ?? {};
-                const rev = ch.revenue ?? 0;
-                const ord = ch.orders  ?? 0;
-                const u   = ch.units   ?? 0;
-                const dt  = new Date((d as any).date + 'T12:00:00');
+            for (const d of trend) {
+                const rev = d.revenue ?? 0;
+                const ord = d.orders  ?? 0;
+                const u   = d.units   ?? 0;
+                const dt  = new Date(d.order_date + 'T12:00:00');
                 const lbl = dt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 
                 dailyLabels.push(lbl);
@@ -1172,18 +1195,18 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
                 totalOrders  += ord;
                 totalUnits   += u;
 
-                if (rev > peakRevenue) { peakRevenue = rev; peakDate = (d as any).date; }
+                if (rev > peakRevenue) { peakRevenue = rev; peakDate = d.order_date; }
                 if (u  > peakUnits)    { peakUnits = u; }
 
-                if ((d as any).date >= HOT_SALE_START) {
+                if (d.order_date >= HOT_SALE_START) {
                     hotDaysUnits.push(u);
                 } else {
                     normalDaysUnits.push(u);
                 }
             }
 
-            const avgDailyRevenue = docs.length > 0 ? totalRevenue / docs.length : 0;
-            const avgDailyUnits   = docs.length > 0 ? totalUnits   / docs.length : 0;
+            const avgDailyRevenue = trend.length > 0 ? totalRevenue / trend.length : 0;
+            const avgDailyUnits   = trend.length > 0 ? totalUnits   / trend.length : 0;
 
             const hotSaleAvgUnits  = hotDaysUnits.length   > 0
                 ? hotDaysUnits.reduce((a, b) => a + b, 0)   / hotDaysUnits.length   : 0;
@@ -1194,29 +1217,19 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
             // Warning: if Hot Sale avg is LOWER than normal, likely had stockout during the event
             const hasStockoutWarning = hotSaleAvgUnits < normalAvgUnits * 0.7;
 
-            let classicRevenue = 0, classicOrders = 0, classicUnits = 0;
-            const hotDaysClassicUnits: number[] = [], normalDaysClassicUnits: number[] = [];
-
-            // Re-read docs for Classic channel (same docs, second pass)
-            for (const d of docs) {
-                const cl  = (d as any)['byChannel']?.['MELI_CLASSIC'] ?? {};
-                const cu  = cl.units   ?? 0;
-                classicRevenue += cl.revenue ?? 0;
-                classicOrders  += cl.orders  ?? 0;
-                classicUnits   += cu;
-                if ((d as any).date >= HOT_SALE_START) { hotDaysClassicUnits.push(cu); }
-                else                                    { normalDaysClassicUnits.push(cu); }
-            }
-
-            const classicHotAvg  = hotDaysClassicUnits.length  > 0 ? hotDaysClassicUnits.reduce((a,b)=>a+b,0)/hotDaysClassicUnits.length   : 0;
-            const classicNormAvg = normalDaysClassicUnits.length > 0 ? normalDaysClassicUnits.reduce((a,b)=>a+b,0)/normalDaysClassicUnits.length : 0;
-            const classicHotSaleMultiplier = classicNormAvg > 0 ? classicHotAvg / classicNormAvg : 2.69;
+            // Classic channel totals: use BQ summaryKpis (period totals)
+            // Per-day hot-sale breakdown not available for Classic via BQ dailyTrend (filtered),
+            // so fall back to hardcoded ×2.69 multiplier from May 2025 actual data.
+            const classicRevenue = classicRow?.revenue ?? 0;
+            const classicOrders  = classicRow?.orders  ?? 0;
+            const classicUnits   = classicRow?.units   ?? 0;
+            const classicHotSaleMultiplier = 2.69;  // historical May 2025 actual — ×2.69 during Hot Sale
 
             const combinedRevenue = totalRevenue + classicRevenue;
             const fullSharePct    = combinedRevenue > 0 ? totalRevenue / combinedRevenue : 0.345;
 
             this.may2025.set({
-                loaded: docs.length > 0,
+                loaded: trend.length > 0,
                 totalRevenue, totalOrders, totalUnits,
                 avgDailyRevenue, avgDailyUnits,
                 peakDate, peakRevenue, peakUnits,

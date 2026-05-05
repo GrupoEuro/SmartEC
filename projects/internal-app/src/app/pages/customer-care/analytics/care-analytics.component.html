@@ -1,0 +1,170 @@
+<div class="analytics-shell">
+
+    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
+    <div class="page-header">
+        <div class="header-icon">
+            <app-icon name="bar-chart-2" [size]="22"></app-icon>
+        </div>
+        <div class="header-text">
+            <h1 class="page-title">Analíticas · Atención al Cliente</h1>
+            <p class="page-sub">Métricas de conversaciones, volumen por canal y tasas de resolución.</p>
+        </div>
+        <!-- Period selector -->
+        <div class="period-selector">
+            <button class="period-btn" [class.active]="period()==='7d'"  (click)="setPeriod('7d')">7 días</button>
+            <button class="period-btn" [class.active]="period()==='30d'" (click)="setPeriod('30d')">30 días</button>
+            <button class="period-btn" [class.active]="period()==='90d'" (click)="setPeriod('90d')">90 días</button>
+        </div>
+    </div>
+
+    @if(loading()){
+        <div class="state-center"><div class="spinner"></div></div>
+    } @else {
+
+    <!-- ── KPI Row ───────────────────────────────────────────────────────────── -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon kpi-blue"><app-icon name="message-square" [size]="20"></app-icon></div>
+            <div class="kpi-body">
+                <span class="kpi-value">{{ stats().open }}</span>
+                <span class="kpi-label">Conversaciones abiertas</span>
+            </div>
+            <div class="kpi-trend neutral">en este momento</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon kpi-emerald"><app-icon name="zap" [size]="20"></app-icon></div>
+            <div class="kpi-body">
+                <span class="kpi-value">{{ stats().today }}</span>
+                <span class="kpi-label">Nuevas hoy</span>
+            </div>
+            <div class="kpi-trend neutral">conversaciones</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon kpi-amber"><app-icon name="bell" [size]="20"></app-icon></div>
+            <div class="kpi-body">
+                <span class="kpi-value">{{ stats().unread }}</span>
+                <span class="kpi-label">Sin leer</span>
+            </div>
+            <div class="kpi-trend warn">requieren atención</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon kpi-violet"><app-icon name="check-circle" [size]="20"></app-icon></div>
+            <div class="kpi-body">
+                <span class="kpi-value">{{ stats().resolved }}</span>
+                <span class="kpi-label">Resueltas ({{ period() }})</span>
+            </div>
+            <div class="kpi-trend good">{{ resolutionRate() }}% tasa resolución</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon kpi-slate"><app-icon name="layers" [size]="20"></app-icon></div>
+            <div class="kpi-body">
+                <span class="kpi-value">{{ stats().total }}</span>
+                <span class="kpi-label">Total ({{ period() }})</span>
+            </div>
+            <div class="kpi-trend neutral">conversaciones</div>
+        </div>
+    </div>
+
+    <!-- ── Two-column section ─────────────────────────────────────────────────── -->
+    <div class="charts-row">
+
+        <!-- Channel Breakdown -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <app-icon name="layers" [size]="15"></app-icon>
+                Conversaciones por canal
+            </div>
+            <div class="breakdown-body">
+                @for(ch of channelStats(); track ch.id){
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <span class="ch-dot" [style.background]="ch.color"></span>
+                        <span>{{ ch.label }}</span>
+                    </div>
+                    <div class="breakdown-bar-wrap">
+                        <div class="breakdown-bar"
+                             [style.width]="ch.pct + '%'"
+                             [style.background]="ch.color"
+                             [style.box-shadow]="'0 0 8px ' + ch.color + '55'">
+                        </div>
+                    </div>
+                    <span class="breakdown-pct">{{ ch.pct }}%</span>
+                    <span class="breakdown-count">{{ ch.count }}</span>
+                </div>
+                }
+                @if(channelStats().length === 0){
+                    <div class="empty-state">
+                        <app-icon name="inbox" [size]="28"></app-icon>
+                        <p>Sin datos aún — los canales activos generarán registros aquí.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Volume Trend (last 7 days) -->
+        <div class="section-card">
+            <div class="section-card-header">
+                <app-icon name="trending-up" [size]="15"></app-icon>
+                Volumen últimos 7 días
+            </div>
+            <div class="trend-body">
+                @for(day of volumeTrend(); track day.label){
+                <div class="trend-row">
+                    <span class="trend-label">{{ day.label }}</span>
+                    <div class="trend-bar-wrap">
+                        <div class="trend-bar"
+                             [style.width]="(day.pct || 0) + '%'">
+                        </div>
+                    </div>
+                    <span class="trend-count">{{ day.count }}</span>
+                </div>
+                }
+                @if(volumeTrend().length === 0){
+                    <div class="empty-state">
+                        <app-icon name="trending-up" [size]="28"></app-icon>
+                        <p>Sin datos de tendencia disponibles.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Status Breakdown ───────────────────────────────────────────────────── -->
+    <div class="section-card status-card">
+        <div class="section-card-header">
+            <app-icon name="pie-chart" [size]="15"></app-icon>
+            Distribución de estados
+        </div>
+        <div class="status-body">
+            @for(s of statusBreakdown(); track s.label){
+            <div class="status-row">
+                <div class="status-label-wrap">
+                    <span class="status-dot" [style.background]="s.color"></span>
+                    <span class="status-label">{{ s.label }}</span>
+                    <span class="status-count">{{ s.count }}</span>
+                </div>
+                <div class="status-bar-wrap">
+                    <div class="status-bar"
+                         [style.width]="s.pct + '%'"
+                         [style.background]="s.color">
+                    </div>
+                </div>
+                <span class="status-pct">{{ s.pct }}%</span>
+            </div>
+            }
+        </div>
+    </div>
+
+    <!-- ── Quick Links ────────────────────────────────────────────────────────── -->
+    <div class="quick-links">
+        <a routerLink="/customer-care/inbox" class="quick-link-btn">
+            <app-icon name="inbox" [size]="15"></app-icon> Ir al Inbox
+        </a>
+        <a routerLink="/admin/customer-care" class="quick-link-btn secondary">
+            <app-icon name="settings" [size]="15"></app-icon> Configurar Canales
+        </a>
+    </div>
+
+    }
+</div>

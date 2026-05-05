@@ -46,19 +46,20 @@
             <div class="info-row">
                 <span class="label">Name:</span>
                 <span class="value">
-                    <a *ngIf="order.customer.id" [routerLink]="['/admin/customers', order.customer.id]" class="link">
-                        {{ order.customer.name }} ↗
+                    <a *ngIf="order.customer?.id" [routerLink]="['/admin/customers', order.customer!.id]" class="link">
+                        {{ order.customer!.name }} ↗
                     </a>
-                    <span *ngIf="!order.customer.id">{{ order.customer.name }}</span>
+                    <span *ngIf="!order.customer?.id">{{ order.customer?.name || 'Cliente ' + (order.sourceChannel | titlecase) }}</span>
                 </span>
             </div>
             <div class="info-row">
                 <span class="label">Email:</span>
-                <a [href]="'mailto:' + order.customer.email" class="value link">{{ order.customer.email }}</a>
+                <a *ngIf="order.customer?.email" [href]="'mailto:' + order.customer!.email" class="value link">{{ order.customer!.email }}</a>
+                <span *ngIf="!order.customer?.email" class="value text-muted">—</span>
             </div>
             <div class="info-row">
                 <span class="label">Phone:</span>
-                <span class="value">{{ order.customer.phone }}</span>
+                <span class="value">{{ order.customer?.phone || '—' }}</span>
             </div>
         </div>
 

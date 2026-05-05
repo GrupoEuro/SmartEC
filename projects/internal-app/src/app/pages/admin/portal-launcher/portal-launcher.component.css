@@ -60,3 +60,24 @@
     background: #6e61f2;
     color: white;
 }
+
+/* ── Customer Care card — emerald accent ───────────────────────────────────── */
+.cc-card {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.cc-card:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15), 0 8px 32px rgba(16, 185, 129, 0.08);
+}
+
+.cc-icon-bg {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #10b981;
+}
+
+.cc-card:hover .cc-icon-bg {
+    background: #10b981;
+    color: white;
+}

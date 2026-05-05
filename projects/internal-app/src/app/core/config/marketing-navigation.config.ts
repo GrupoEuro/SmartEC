@@ -63,6 +63,13 @@ export const MARKETING_NAVIGATION_CONFIG: NavItem[] = [
                 icon: 'shopping-cart',
                 route: '/marketing/abandoned-carts',
             },
+            {
+                id: 'mh_busquedas',
+                title: 'Búsquedas',
+                icon: 'search',
+                route: '/marketing/busquedas',
+                badge: { text: 'NUEVO', color: 'bg-violet-600' }
+            },
         ]
     },
 

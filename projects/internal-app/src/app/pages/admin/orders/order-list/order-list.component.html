@@ -74,9 +74,9 @@
                         <td>
                             <div class="product-identity">
                                 <span class="product-name" [routerLink]="['/admin/orders', order.id]">
-                                    {{ order.customer.name }}
+                                    {{ order.customer?.name || 'Cliente ' + (order.sourceChannel | titlecase) }}
                                 </span>
-                                <span class="product-sku">{{ order.customer.email }}</span>
+                                <span class="product-sku">{{ order.customer?.email }}</span>
                             </div>
                         </td>
                         <td class="text-right">

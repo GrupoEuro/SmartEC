@@ -2,24 +2,46 @@ import { Timestamp } from 'firebase/firestore';
 
 /**
  * Unified search event document written to `search_events`.
- * type = 'query'  → replaces search_logs
- * type = 'click'  → replaces search_clicks
+ *
+ * 5-step search funnel:
+ *  type = 'query'       → user typed ≥2 chars and results loaded
+ *  type = 'click'       → user clicked a result in the dropdown
+ *  type = 'exit'        → dropdown closed with no click (frustration / browse)
+ *  type = 'add_to_cart' → a clicked product was added to cart in the same session
+ *  type = 'purchase'    → order completed containing a previously clicked product
  */
 export interface SearchEvent {
-    type:           'query' | 'click';
-    term:           string;
+    type:          'query' | 'click' | 'exit' | 'add_to_cart' | 'purchase';
+    term:          string;
     normalizedTerm: string;
-    timestamp:      Timestamp;
-    sessionId?:     string;
-    userId?:        string | null;
+    timestamp:     Timestamp;
+    sessionId?:    string;
+    userId?:       string | null;
 
-    // type = 'query' only
-    resultCount?:   number;
+    // ── Context ─────────────────────────────────────────────────────────────
+    source?:   'navbar' | 'catalog_page' | 'mobile';
+    channel?:  'WEB' | 'POS';
 
-    // type = 'click' only
-    productId?:     string;
-    productName?:   string;
-    position?:      number;
+    // ── type = 'query' ───────────────────────────────────────────────────────
+    resultCount?:  number;
+    hasResults?:   boolean;
+
+    // ── type = 'click' ───────────────────────────────────────────────────────
+    productId?:    string;
+    productName?:  string;
+    position?:     number;
+
+    // ── type = 'exit' ────────────────────────────────────────────────────────
+    exitReason?:   'blur' | 'clear' | 'navigate_away';
+    dwellMs?:      number;
+
+    // ── type = 'add_to_cart' ─────────────────────────────────────────────────
+    cartValue?:    number;
+    quantity?:     number;
+
+    // ── type = 'purchase' ────────────────────────────────────────────────────
+    orderId?:      string;
+    revenue?:      number;
 }
 
 /** @deprecated Use SearchEvent with type='query' */

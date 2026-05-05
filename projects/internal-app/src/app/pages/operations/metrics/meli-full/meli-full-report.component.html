@@ -82,7 +82,8 @@
         @if (perfKpis().avgHealth !== null) {
           <div class="melf-kpi" [class.red]="(perfKpis().avgHealth ?? 0) < 60"
                [class.yellow]="(perfKpis().avgHealth ?? 0) >= 60 && (perfKpis().avgHealth ?? 0) < 80"
-               [class.green]="(perfKpis().avgHealth ?? 0) >= 80">
+               [class.green]="(perfKpis().avgHealth ?? 0) >= 80"
+               title="Calidad promedio de las publicaciones (0-100) asignada por MercadoLibre. Depende de fotos, descripción, envíos y MSI.">
             <span class="mkpi-label">Salud Promedio</span>
             <span class="mkpi-value">{{ perfKpis().avgHealth | number:'1.0-0' }}/100</span>
           </div>
@@ -117,7 +118,7 @@
                 <th>Publicación</th>
                 <th class="text-right">Precio</th>
                 <th class="text-right">Vendidos</th>
-                <th class="text-right">Salud</th>
+                <th class="text-right" title="Calidad de la publicación (0-100) asignada por MercadoLibre. Depende de fotos, descripción, envíos y MSI.">Salud</th>
                 <th class="text-right">Neto</th>
                 <th class="text-right">vs Precio Ganador</th>
                 <th class="text-right">Stock</th>

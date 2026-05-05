@@ -268,3 +268,72 @@
         font-size: 0.8rem;
     }
 }
+
+/* ── Loading State ───────────────────────────────────────────── */
+.blog-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 2rem;
+    gap: 1.5rem;
+    color: #777;
+    font-size: 1rem;
+}
+
+.blog-spinner {
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(255, 255, 255, 0.08);
+    border-top-color: #00acd8;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Empty State ─────────────────────────────────────────────── */
+.blog-empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.blog-empty-state .empty-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1.2rem;
+}
+
+.blog-empty-state h3 {
+    font-size: 1.8rem;
+    color: #fff;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+}
+
+.blog-empty-state p {
+    color: #888;
+    line-height: 1.7;
+    margin-bottom: 1.8rem;
+    font-size: 1rem;
+}
+
+.btn-catalog {
+    display: inline-block;
+    background: linear-gradient(135deg, #00acd8, #005a9e);
+    color: #fff;
+    padding: 0.75rem 1.6rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-catalog:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 172, 216, 0.35);
+}

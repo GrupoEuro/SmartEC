@@ -263,8 +263,8 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
             if (searchTerm) {
                 const matchesSearch =
                     order.orderNumber.toLowerCase().includes(searchTerm) ||
-                    order.customer.name.toLowerCase().includes(searchTerm) ||
-                    order.customer.email.toLowerCase().includes(searchTerm);
+                    (order.customer?.name || '').toLowerCase().includes(searchTerm) ||
+                    (order.customer?.email || '').toLowerCase().includes(searchTerm);
                 if (!matchesSearch) return false;
             }
 
@@ -523,8 +523,8 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
                 escapeCSVField(o.orderNumber),
                 escapeCSVField(this.getLegacyChannel(o)),
                 escapeCSVField(date.toLocaleDateString('es-MX')),
-                escapeCSVField(o.customer.name),
-                escapeCSVField(o.customer.email),
+                escapeCSVField(o.customer?.name || ''),
+                escapeCSVField(o.customer?.email || ''),
                 escapeCSVField(o.total.toString()),
                 escapeCSVField(o.status)
             ];

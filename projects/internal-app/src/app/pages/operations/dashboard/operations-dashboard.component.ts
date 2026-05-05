@@ -139,8 +139,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private translate         = inject(TranslateService);
 
 
-    timeframe = signal<'MTD' | 'YTD'>('MTD');
-    channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon'>('ALL');
+    timeframe = signal<'MTD' | 'PM' | 'YTD'>('MTD');
+    channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf'>('ALL');
+    showProjection = signal<boolean>(true);
     allFetchedOrders: Order[] = [];
 
     // Channel breakdown — always computed on ALL orders regardless of active filter
@@ -184,6 +185,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             const ly = new Date(lyYear, now.getMonth(), 1);
             const monthName = ly.toLocaleDateString('es-MX', { month: 'short' });
             return `${approx}${monthName} 1–${now.getDate()}, ${lyYear}`;
+        } else if (this.timeframe() === 'PM') {
+            // Last month of last year
+            const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+            const prevYear  = now.getMonth() === 0 ? lyYear - 1 : lyYear;
+            const lastDay   = new Date(prevYear, prevMonth + 1, 0).getDate();
+            const monthName = new Date(prevYear, prevMonth, 1).toLocaleDateString('es-MX', { month: 'short' });
+            return `${approx}${monthName} 1–${lastDay}, ${prevYear}`;
         } else {
             const start = new Date(lyYear, 0, 1).toLocaleDateString('es-MX', { month: 'short' });
             const curMonthName = new Date(lyYear, now.getMonth(), 1).toLocaleDateString('es-MX', { month: 'short' });
@@ -221,29 +229,85 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         monthlyPiecesSold: 0
     });
 
-    /** End-of-month projection: (MTD sales / days elapsed) × total days in month.
-     *  Only shown when timeframe is MTD and we are mid-month (day > 1). */
+    /** End-of-month projection: only shown for MTD mid-month (not PM/YTD — those are complete periods). */
     mtdProjection = computed<number | null>(() => {
         if (this.timeframe() !== 'MTD') return null;
-        const now = new Date();
-        const dayOfMonth = now.getDate();
-        if (dayOfMonth <= 1) return null;
-        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         const mtdSales = this.stats().monthlySales;
         if (mtdSales <= 0) return null;
-        return (mtdSales / dayOfMonth) * totalDays;
+
+        const now = new Date();
+        const todayDay = now.getDate();
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+        // If we have LY daily data, use Velocity Multiplier pattern
+        const lyData = this.lyDailyData();
+        if (lyData && lyData.length === totalDays) {
+            let lySalesMTD = 0;
+            for (let i = 0; i < todayDay - 1; i++) lySalesMTD += lyData[i];
+            
+            const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
+            lySalesMTD += lyData[todayDay - 1] * fractionalDayPart;
+
+            if (lySalesMTD > 0) {
+                const velocityMultiplier = mtdSales / lySalesMTD;
+                let futureLySales = 0;
+                futureLySales += lyData[todayDay - 1] * (1 - fractionalDayPart);
+                for (let i = todayDay; i < totalDays; i++) futureLySales += lyData[i];
+
+                return mtdSales + (futureLySales * velocityMultiplier);
+            }
+        }
+
+        // Fallback to straight-line
+        const fractionalDay = todayDay - 1 + (now.getHours() / 24) + (now.getMinutes() / 1440);
+        if (fractionalDay <= 0.1) return null;
+        return (mtdSales / fractionalDay) * totalDays;
     });
 
     mtdPiecesProjection = computed<number | null>(() => {
         if (this.timeframe() !== 'MTD') return null;
-        const now = new Date();
-        const dayOfMonth = now.getDate();
-        if (dayOfMonth <= 1) return null;
-        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         const mtdPieces = this.stats().monthlyPiecesSold;
         if (mtdPieces <= 0) return null;
-        return Math.round((mtdPieces / dayOfMonth) * totalDays);
+
+        const mtdSales = this.stats().monthlySales;
+        const projSales = this.mtdProjection();
+        if (projSales && mtdSales > 0) {
+            const ratio = projSales / mtdSales;
+            return Math.round(mtdPieces * ratio);
+        }
+
+        const now = new Date();
+        const fractionalDay = now.getDate() - 1 + (now.getHours() / 24) + (now.getMinutes() / 1440);
+        if (fractionalDay <= 0.1) return null;
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        return Math.round((mtdPieces / fractionalDay) * totalDays);
     });
+
+    mtdOrdersProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const mtdOrders = this.stats().totalOrders;
+        if (mtdOrders <= 0) return null;
+
+        const mtdSales = this.stats().monthlySales;
+        const projSales = this.mtdProjection();
+        if (projSales && mtdSales > 0) {
+            const ratio = projSales / mtdSales;
+            return Math.round(mtdOrders * ratio);
+        }
+
+        const now = new Date();
+        const fractionalDay = now.getDate() - 1 + (now.getHours() / 24) + (now.getMinutes() / 1440);
+        if (fractionalDay <= 0.1) return null;
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        return Math.round((mtdOrders / fractionalDay) * totalDays);
+    });
+
+    toggleProjection() {
+        this.showProjection.set(!this.showProjection());
+        if (this.timeframe() === 'MTD' && this.trendChart) {
+            this.applyFilters();
+        }
+    }
 
     slaStats = signal<SLAStats>({
         total: 0,
@@ -444,14 +508,14 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         return isNaN(parsed) ? Date.now() : parsed;
     }
 
-    setTimeframe(tf: 'MTD' | 'YTD') {
+    setTimeframe(tf: 'MTD' | 'PM' | 'YTD') {
         if (this.timeframe() !== tf) {
             this.timeframe.set(tf);
             this.loadDashboardData();
         }
     }
 
-    setChannelFilter(filter: 'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon') {
+    setChannelFilter(filter: 'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf') {
         if (this.channelFilter() !== filter) {
             this.channelFilter.set(filter);
             this.applyFilters();
@@ -462,12 +526,18 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.isLoading.set(true);
 
         const today = new Date();
-        const endDate = new Date(today);
+        let endDate = new Date(today);
         endDate.setHours(23, 59, 59, 999);
 
         let startDate: Date;
         if (this.timeframe() === 'MTD') {
             startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        } else if (this.timeframe() === 'PM') {
+            // Full previous calendar month
+            const prevMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+            const prevYear  = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+            startDate = new Date(prevYear, prevMonth, 1);
+            endDate = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
         } else {
             startDate = new Date(today.getFullYear(), 0, 1);
         }
@@ -560,6 +630,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                     this.lyPeriodStats.set(agg);
                     this.lyUsingApprox.set(agg !== null);
                 }
+            } else if (this.timeframe() === 'PM') {
+                const prevMonth = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
+                const prevYearLY = currentMonthIndex === 0 ? lyYear - 1 : lyYear;
+                const pmMon = String(prevMonth + 1).padStart(2, '0');
+                const agg = await readMonthAggregate(`${prevYearLY}-${pmMon}`);
+                this.lyPeriodStats.set(agg);
+                this.lyUsingApprox.set(false);
             } else {
                 // YTD: full months Jan → (currentMonth-1) + exact partial current month
                 const totals = { sales: 0, orders: 0, pieces: 0 };
@@ -622,13 +699,13 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             const now    = new Date();
             const lyYear = now.getFullYear() - 1;
             const lyMon  = String(now.getMonth() + 1).padStart(2, '0');
-            const todayDay = now.getDate();
+            const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-            const dayIds  = Array.from({ length: todayDay }, (_, i) => String(i + 1).padStart(2, '0'));
+            const dayIds  = Array.from({ length: totalDaysInMonth }, (_, i) => String(i + 1).padStart(2, '0'));
             const dayRefs = dayIds.map(d => doc(this.firestore, `monthly_stats/${lyYear}-${lyMon}/days/${d}`));
             const snaps   = await Promise.all(dayRefs.map(r => getDoc(r)));
 
-            const dailySales: number[] = new Array(todayDay).fill(0);
+            const dailySales: number[] = new Array(totalDaysInMonth).fill(0);
             let hasAny = false;
             snaps.forEach((snap, i) => {
                 if (snap.exists()) {
@@ -732,6 +809,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             { channel: 'storefront',   label: 'Tienda Web',    icon: 'globe',         color: '#6366f1' },
             { channel: 'pos',          label: 'POS / Mostrador', icon: 'credit-card', color: '#10b981' },
             { channel: 'amazon',       label: 'Amazon',        icon: 'package',       color: '#f59e0b' },
+            { channel: 'on_behalf',    label: 'Venta Asistida',icon: 'briefcase',     color: '#ec4899' },
         ];
 
         const breakdown = CHANNELS.map(ch => {
@@ -1078,9 +1156,15 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 startDate = new Date(minMs);
                 endDate   = new Date(maxMs);
             } else {
-                startDate = this.timeframe() === 'MTD'
-                    ? new Date(startDate.getFullYear(), startDate.getMonth(), 1)
-                    : new Date(startDate.getFullYear(), 0, 1);
+                if (this.timeframe() === 'MTD') {
+                    startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                } else if (this.timeframe() === 'PM') {
+                    const pmMonth = startDate.getMonth() === 0 ? 11 : startDate.getMonth() - 1;
+                    const pmYear = startDate.getMonth() === 0 ? startDate.getFullYear() - 1 : startDate.getFullYear();
+                    startDate = new Date(pmYear, pmMonth, 1);
+                } else {
+                    startDate = new Date(startDate.getFullYear(), 0, 1);
+                }
             }
 
             let priorityOverridesMap = new Map<string, number>();
@@ -1359,7 +1443,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             (order.items || []).forEach((item: any) => {
                 const key = item.productName || item.name || item.sku || 'Producto sin nombre';
                 const units = item.quantity || 1;
-                const revenue = (item.price || 0) * units;
+                const revenue = (item.price || item.unitPrice || 0) * units;
                 const existing = productMap.get(key);
                 if (existing) {
                     existing.units += units;
@@ -1567,15 +1651,31 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         if (this.timeframe() === 'MTD') {
             const currentMonth = today.getMonth();
-            const daysInMonth = today.getDate(); // 1 to today's date
-            dataLength = daysInMonth;
+            const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            dataLength = totalDaysInMonth; // Lock X-axis to full month
 
-            for (let i = 1; i <= daysInMonth; i++) {
+            for (let i = 1; i <= totalDaysInMonth; i++) {
                 const date = new Date(currentYear, currentMonth, i);
                 labels.push(date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }));
             }
             getIndexFn = (d: Date) => {
                 if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+                    return d.getDate() - 1;
+                }
+                return -1; // Out of bounds
+            };
+        } else if (this.timeframe() === 'PM') {
+            const pmMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
+            const pmYear = today.getMonth() === 0 ? currentYear - 1 : currentYear;
+            const daysInMonth = new Date(pmYear, pmMonth + 1, 0).getDate();
+            dataLength = daysInMonth;
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(pmYear, pmMonth, i);
+                labels.push(date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }));
+            }
+            getIndexFn = (d: Date) => {
+                if (d.getFullYear() === pmYear && d.getMonth() === pmMonth) {
                     return d.getDate() - 1;
                 }
                 return -1; // Out of bounds
@@ -1638,8 +1738,122 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             }
         });
 
-        // Ensure no NaN values sneak in
         const safeSalesData = salesData.map(val => Number.isNaN(val) ? 0 : val);
+
+        const datasets: any[] = [
+            {
+                type: 'line',
+                label: 'Net Sales ($)',
+                data: safeSalesData,
+                borderColor: '#2dd4bf', // teal-400
+                backgroundColor: '#2dd4bf',
+                tension: 0.4,
+                spanGaps: true,
+                yAxisID: 'y1',
+                borderWidth: 3,
+                pointBackgroundColor: '#2dd4bf',
+                pointBorderColor: '#fff',
+                pointRadius: 4,
+                order: 0
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PENDING'),
+                data: pendingData,
+                backgroundColor: '#ffc107',
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PROCESSING'),
+                data: processingData,
+                backgroundColor: '#17a2b8',
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.SHIPPED'),
+                data: shippedData,
+                backgroundColor: '#8b5cf6', // Purple/Violet to distinguish from Delivered
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.DELIVERED'),
+                data: deliveredData,
+                backgroundColor: '#10b981', // Emerald Green
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.CANCELLED_RETURNED'),
+                data: cancelledData,
+                backgroundColor: '#dc3545', // Danger Red
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            }
+        ];
+
+        if (this.timeframe() === 'MTD' && this.showProjection()) {
+            const now = new Date();
+            const todayIdx = now.getDate() - 1;
+            const projData = new Array(dataLength).fill(null);
+            
+            // Start the projection line from yesterday's actual sales to make it continuous
+            if (todayIdx > 0 && (todayIdx - 1) < dataLength) {
+                projData[todayIdx - 1] = safeSalesData[todayIdx - 1];
+            }
+
+            const lyData = this.lyDailyData();
+            if (lyData && lyData.length === dataLength) {
+                let lySalesMTD = 0;
+                for (let i = 0; i < todayIdx; i++) lySalesMTD += lyData[i];
+                const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
+                lySalesMTD += lyData[todayIdx] * fractionalDayPart;
+
+                const mtdSales = this.stats().monthlySales;
+                let velocityMultiplier = 1;
+                if (lySalesMTD > 0 && mtdSales > 0) {
+                    velocityMultiplier = mtdSales / lySalesMTD;
+                }
+
+                for (let i = todayIdx; i < dataLength; i++) {
+                    projData[i] = lyData[i] * velocityMultiplier;
+                }
+            } else {
+                const mtdSales = this.stats().monthlySales;
+                const fractionalDay = todayIdx + (now.getHours() / 24) + (now.getMinutes() / 1440);
+                const averageDaily = mtdSales / Math.max(fractionalDay, 0.1);
+                for (let i = todayIdx; i < dataLength; i++) {
+                    projData[i] = averageDaily;
+                }
+            }
+
+            datasets.push({
+                type: 'line',
+                label: 'Proyección Diaria ($)',
+                data: projData,
+                borderColor: '#f59e0b', // amber-500
+                backgroundColor: 'transparent',
+                borderDash: [5, 5],
+                tension: 0.4,
+                spanGaps: true,
+                yAxisID: 'y1',
+                borderWidth: 2,
+                pointBackgroundColor: '#f59e0b',
+                pointRadius: 0,
+                order: 0
+            });
+        }
 
         console.log(`Debug YTD Final Payload [Length: ${dataLength}]:`, {
             labels,
@@ -1653,68 +1867,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             type: 'bar',
             data: {
                 labels,
-                datasets: [
-                    {
-                        type: 'line',
-                        label: 'Net Sales ($)',
-                        data: safeSalesData,
-                        borderColor: '#2dd4bf', // teal-400
-                        backgroundColor: '#2dd4bf',
-                        tension: 0.4,
-                        spanGaps: true,
-                        yAxisID: 'y1',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#2dd4bf',
-                        pointBorderColor: '#fff',
-                        pointRadius: 4,
-                        order: 0
-                    },
-                    {
-                        type: 'bar',
-                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PENDING'),
-                        data: pendingData,
-                        backgroundColor: '#ffc107',
-                        borderWidth: 0,
-                        order: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        type: 'bar',
-                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.PROCESSING'),
-                        data: processingData,
-                        backgroundColor: '#17a2b8',
-                        borderWidth: 0,
-                        order: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        type: 'bar',
-                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.SHIPPED'),
-                        data: shippedData,
-                        backgroundColor: '#8b5cf6', // Purple/Violet to distinguish from Delivered
-                        borderWidth: 0,
-                        order: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        type: 'bar',
-                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.DELIVERED'),
-                        data: deliveredData,
-                        backgroundColor: '#10b981', // Emerald Green
-                        borderWidth: 0,
-                        order: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        type: 'bar',
-                        label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.CANCELLED_RETURNED'),
-                        data: cancelledData,
-                        backgroundColor: '#dc3545', // Danger Red
-                        borderWidth: 0,
-                        order: 1,
-                        yAxisID: 'y'
-                    }
-                ]
+                datasets
             },
             options: {
                 responsive: true,

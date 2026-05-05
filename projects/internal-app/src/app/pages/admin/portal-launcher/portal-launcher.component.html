@@ -46,11 +46,20 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @for (portal of availablePortals(); track portal.id) {
             <button (click)="navigateTo(portal.route)"
-                class="group relative text-left portal-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+                class="group relative text-left portal-card rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+                [class.cc-card]="portal.id === 'customer-care'">
+
+                <!-- Unread badge (customer-care only) -->
+                @if (portal.id === 'customer-care' && inboxUnread() > 0) {
+                <span class="absolute top-4 left-4 flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/40 animate-pulse z-10">
+                    {{ inboxUnread() > 99 ? '99+' : inboxUnread() }}
+                </span>
+                }
 
                 <!-- Icon -->
                 <div
-                    class="w-12 h-12 rounded-lg portal-icon-bg border flex items-center justify-center mb-4 transition-colors">
+                    class="w-12 h-12 rounded-lg portal-icon-bg border flex items-center justify-center mb-4 transition-colors"
+                    [class.cc-icon-bg]="portal.id === 'customer-care'">
                     <app-icon [name]="portal.icon" [size]="24"
                         class="text-current transition-colors"></app-icon>
                 </div>
@@ -61,8 +70,10 @@
                         <h3 class="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">{{
                             portal.title | translate }}</h3>
                         @if (portal.badge) {
-                        <span
-                            class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 uppercase tracking-wider">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                              [style.background]="portal.badge === 'LIVE' ? 'rgba(16,185,129,.15)' : 'rgba(110,97,242,.15)'"
+                              [style.color]="portal.badge === 'LIVE' ? '#34d399' : '#a78bfa'"
+                              [style.border-color]="portal.badge === 'LIVE' ? 'rgba(16,185,129,.3)' : 'rgba(110,97,242,.3)'">
                             {{ portal.badge }}
                         </span>
                         }

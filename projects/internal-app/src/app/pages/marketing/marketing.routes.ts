@@ -85,6 +85,14 @@ export const MARKETING_ROUTES: Routes = [
                 title: 'Marketing Hub | Detalle de Escaneo'
             },
 
+            // ── Search Analytics ───────────────────────────────────────────────
+            {
+                path: 'busquedas',
+                loadComponent: () => import('./busquedas/search-analytics-hub.component')
+                    .then(m => m.SearchAnalyticsHubComponent),
+                title: 'Marketing Hub | Búsquedas'
+            },
+
             // ── Segments ──────────────────────────────────────────────────────
             {
                 path: 'segments',

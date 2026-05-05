@@ -1023,6 +1023,131 @@ export class DataSeederService {
         this.log('[Seeder] ========================================', onLog);
     }
 
+    // --- 3.5 CUSTOMER CARE CONVERSATIONS ---
+    async populateCustomerCare(onLog?: (message: string) => void): Promise<void> {
+        this.log('[Seeder] Seeding Customer Care Conversations...', onLog);
+        
+        // 1. Wipe existing customer_conversations to start fresh
+        const deleted = await this.deleteCollection('customer_conversations', 100);
+        this.log(`[Seeder] Cleared ${deleted} existing conversations.`, onLog);
+
+        const customersSnapshot = await getDocs(collection(this.firestore, 'customers'));
+        if (customersSnapshot.empty) {
+            this.log('[Seeder] No customers found! Seed customers first.', onLog);
+            return;
+        }
+
+        const customers = customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        const agents = ['ops_user_1', 'ops_user_2', 'support_1', 'manager_1'];
+        const channels = ['whatsapp', 'instagram', 'facebook', 'email', 'telegram', 'website'];
+        const statuses = ['open', 'pending', 'resolved'];
+
+        let batch = writeBatch(this.firestore);
+        let opsCount = 0;
+        const totalConversations = 25;
+
+        for (let i = 0; i < totalConversations; i++) {
+            // Select random customer
+            const cust = customers[Math.floor(Math.random() * customers.length)];
+            const channel = channels[Math.floor(Math.random() * channels.length)];
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            const isAssigned = Math.random() > 0.4;
+            const assignedAgent = isAssigned ? agents[Math.floor(Math.random() * agents.length)] : null;
+            
+            // Random time within the last 15 days
+            const daysAgo = Math.random() * 15;
+            const date = new Date();
+            date.setDate(date.getDate() - daysAgo);
+            
+            const convId = `conv_${Date.now()}_${i}`;
+            const convRef = doc(this.firestore, `customer_conversations/${convId}`);
+
+            // Pre-defined dummy message bodies
+            const userMessages = [
+                'Hola, ¿tienen disponibilidad de la llanta Praxis PR-300?',
+                'Tengo una duda con mi pedido, no ha llegado y la guía dice entregado.',
+                'Me interesa comprar por mayoreo, ¿a dónde me comunico?',
+                '¿Las llantas tienen garantía contra baches?',
+                'Quiero hacer una devolución, las llantas que llegaron no son la medida correcta.'
+            ];
+            
+            const agentMessages = [
+                '¡Hola! Claro que sí, tenemos disponibles en el almacén principal.',
+                'Lamentamos el inconveniente, voy a revisar el estatus con la paquetería inmediatamente.',
+                'Para ventas de mayoreo, por favor envíanos un correo a ventas@importadoraeuro.com.',
+                'Todas nuestras llantas Praxis cuentan con 5 años de garantía contra defectos de fábrica, pero no cubren golpes o baches.',
+                'Para procesar la devolución, por favor compártenos el número de pedido.'
+            ];
+
+            const initialMsg = userMessages[Math.floor(Math.random() * userMessages.length)];
+            const agentReply = agentMessages[Math.floor(Math.random() * agentMessages.length)];
+
+            // Create Conversation Doc
+            batch.set(convRef, {
+                id: convId,
+                customerId: cust.id,
+                customerName: cust.displayName || 'Unknown',
+                channel: channel,
+                status: status,
+                assignedTo: assignedAgent,
+                lastMessagePreview: agentReply,
+                unreadCount: status === 'open' ? 1 : 0,
+                createdAt: Timestamp.fromDate(new Date(date.getTime() - 86400000)), // started 1 day before
+                updatedAt: Timestamp.fromDate(date)
+            });
+            opsCount++;
+
+            // Create Subcollection Messages
+            const messagesRef = collection(this.firestore, `customer_conversations/${convId}/messages`);
+            
+            // Message 1: Inbound from customer
+            batch.set(doc(messagesRef), {
+                text: initialMsg,
+                isOutbound: false,
+                isInternalNote: false,
+                timestamp: Timestamp.fromDate(new Date(date.getTime() - 86400000))
+            });
+            opsCount++;
+
+            // Message 2: Agent Reply
+            batch.set(doc(messagesRef), {
+                text: agentReply,
+                isOutbound: true,
+                isInternalNote: false,
+                agentUid: assignedAgent || 'system',
+                agentName: 'Soporte Euro',
+                timestamp: Timestamp.fromDate(new Date(date.getTime() - 40000000))
+            });
+            opsCount++;
+
+            // Optional Internal Note (30% chance)
+            if (Math.random() > 0.7) {
+                batch.set(doc(messagesRef), {
+                    text: 'Revisé el historial del cliente, es usuario VIP. Dar prioridad alta.',
+                    isOutbound: true,
+                    isInternalNote: true,
+                    agentUid: 'manager_1',
+                    agentName: 'Manager',
+                    timestamp: Timestamp.fromDate(date)
+                });
+                opsCount++;
+            }
+
+            // Commit batch if it gets too large
+            if (opsCount > 400) {
+                await batch.commit();
+                batch = writeBatch(this.firestore);
+                opsCount = 0;
+            }
+        }
+
+        if (opsCount > 0) {
+            await batch.commit();
+        }
+
+        this.log(`[Seeder] Seeded ${totalConversations} customer care conversations.`, onLog);
+    }
+
     // --- 4. EXPENSES (Operational Costs for P&L) ---
     async populateExpenses(config: SeederConfig = DEFAULT_CONFIG, onLog?: (message: string) => void): Promise<void> {
         this.log('[Seeder] Seeding Operational Expenses...', onLog);

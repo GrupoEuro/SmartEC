@@ -13,6 +13,35 @@ export const ADMIN_ROUTES: Routes = [
         canActivate: [adminGuard],
         children: [
             { path: 'dashboard', component: DashboardComponent },
+            // ── IA Agents (EuroMind) ───────────────────────────────────────────────
+            {
+                path: 'ai-agents',
+                loadComponent: () => import('./ai-agents/ai-agents-list.component').then(m => m.AiAgentsListComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'EuroMind — Agentes IA'
+            },
+            {
+                path: 'ai-agents/new',
+                loadComponent: () => import('./ai-agents/ai-agent-form.component').then(m => m.AiAgentFormComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'Nuevo Agente IA'
+            },
+            {
+                path: 'ai-agents/:id/edit',
+                loadComponent: () => import('./ai-agents/ai-agent-form.component').then(m => m.AiAgentFormComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'Configurar Agente IA'
+            },
+            {
+                path: 'ai-agents/settings',
+                loadComponent: () => import('./ai-agents/ai-agents-settings.component').then(m => m.AiAgentsSettingsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'Configuración EuroMind IA'
+            },
             {
                 path: 'catalog-overview',
                 loadComponent: () => import('./catalog-overview/catalog-overview.component').then(m => m.CatalogOverviewComponent)
@@ -230,6 +259,14 @@ export const ADMIN_ROUTES: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
             },
+            // ── Inbox Channels config ─────────────────────────────────────────────
+            {
+                path: 'integrations/inbox',
+                loadComponent: () => import('./settings/integrations/inbox-channels/inbox-channels.component').then(m => m.InboxChannelsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Inbox — Configuración de Canales'
+            },
             // ── Base integrations route — must be LAST among integrations/* paths ──
             {
                 path: 'integrations',
@@ -237,6 +274,15 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
                 canActivate: [roleGuard],
                 data: { roles: ['SUPER_ADMIN'] }
+            },
+
+            // ── Customer Care / Universal Inbox settings ──────────────────────────
+            {
+                path: 'customer-care',
+                loadComponent: () => import('./settings/integrations/inbox-channels/inbox-channels.component').then(m => m.InboxChannelsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'Atención al Cliente — Configuración'
             },
 
             {

@@ -181,6 +181,25 @@ export class AttributionService {
             this._attribution = stored;
             this.attribution.set(stored);
             this.saveToStorage(stored);
+
+            // ── AI Visit: detect THIS page load's AI source (returning visitors) ──
+            // Referrer is read fresh every page load. UTM fallback catches ChatGPT
+            // which strips referrer headers on outbound links.
+            const freshReferrer = this.captureReferrer();
+            const freshAiSource = freshReferrer.aiSource
+                ?? this.detectAiFromUtm(hasFreshUtm ? freshUtm : stored.utm);
+            if (freshAiSource) {
+                console.log('[Attribution] AI source detected on returning visit:', freshAiSource);
+                this.writeAiVisit({
+                    ...stored,
+                    aiSource:       freshAiSource,
+                    referrer:       freshReferrer.full || stored.referrer,
+                    referrerDomain: freshReferrer.domain || stored.referrerDomain,
+                    landingPath:    window.location.pathname,
+                    landingUrl:     window.location.href,
+                }).catch(e => console.warn('[Attribution] ai_visit write failed:', e));
+            }
+
             console.log('[Attribution] ✅ Resolved from storage:', stored);
             return;
         }
@@ -197,11 +216,16 @@ export class AttributionService {
         const geo         = await this.resolveGeo();
         console.log('[Attribution] Geo resolved:', geo);
 
+        // Detect AI source: referrer takes priority, UTM is the fallback.
+        // ChatGPT strips referrer headers (Referrer-Policy: same-origin), so
+        // utm_source=chatgpt is the only reliable signal for that platform.
+        const aiSource = referrer.aiSource ?? this.detectAiFromUtm(utm);
+
         const attr: Attribution = {
             utm,
             referrer:       referrer.full,
             referrerDomain: referrer.domain,
-            ...(referrer.aiSource ? { aiSource: referrer.aiSource } : {}),
+            ...(aiSource ? { aiSource } : {}),
             landingUrl,
             landingPath,
             device,
@@ -218,6 +242,13 @@ export class AttributionService {
         if (this.sessionSvc.isNewSession) {
             this.writeSessionStart(attr).catch(e =>
                 console.warn('[Attribution] session_start write failed:', e)
+            );
+        }
+
+        // Write ai_visit on every first-visit that is AI-sourced
+        if (attr.aiSource) {
+            this.writeAiVisit(attr).catch(e =>
+                console.warn('[Attribution] ai_visit write failed:', e)
             );
         }
     }
@@ -356,6 +387,62 @@ export class AttributionService {
             };
         } catch {
             return {};
+        }
+    }
+
+    // ─── AI Source from UTM params (fallback for platforms that strip referrer) ──
+    /**
+     * ChatGPT and some other AI platforms set Referrer-Policy: same-origin,
+     * stripping the referrer on outbound links. When utm_source matches a known
+     * AI platform name (e.g. 'chatgpt', 'perplexity'), classify it as AI traffic.
+     */
+    private detectAiFromUtm(utm: UtmParams): string | undefined {
+        const src = utm?.utm_source?.toLowerCase();
+        if (!src) return undefined;
+        // Domain-format: ChatGPT automatically appends ?utm_source=chatgpt.com
+        // Check against AI_REFERRER_MAP which already maps these domains
+        if (AI_REFERRER_MAP[src]) return AI_REFERRER_MAP[src];
+        // Canonical name (e.g. 'chatgpt', 'perplexity')
+        const knownSources = [
+            'chatgpt', 'perplexity', 'claude', 'gemini', 'copilot',
+            'meta-ai', 'you', 'poe', 'kagi', 'phind', 'mistral',
+        ];
+        if (knownSources.includes(src)) return src;
+        // utm_medium = 'ai' or 'llm' is also a reliable signal
+        const med = utm?.utm_medium?.toLowerCase();
+        if (med === 'ai' || med === 'llm') return src;
+        return undefined;
+    }
+
+    // ─── AI Visit event (fires on EVERY page load from an AI source) ────────────
+    /**
+     * Unlike session_start (written once per 30-day session), this fires every
+     * time a visitor arrives from an AI platform — including returning visitors.
+     * This is the primary signal for the AI analytics dashboard.
+     */
+    private async writeAiVisit(attr: Attribution): Promise<void> {
+        if (!isPlatformBrowser(this.platformId)) return;
+        if (!attr.aiSource) return;
+        try {
+            const eventsRef = collection(this.fs, 'sessionEvents');
+            await addDoc(eventsRef, stripUndefined({
+                event:          'ai_visit',
+                sessionId:      this.sessionSvc.sessionId,
+                aiSource:       attr.aiSource,
+                landingPath:    attr.landingPath,
+                landingUrl:     attr.landingUrl,
+                referrer:       attr.referrer,
+                referrerDomain: attr.referrerDomain,
+                utm:            Object.keys(attr.utm ?? {}).length > 0 ? attr.utm : undefined,
+                geo:            attr.geo,
+                device:         attr.device,
+                campaignId:     attr.campaignId,
+                campaignName:   attr.campaignName,
+                timestamp:      Timestamp.now(),
+            }));
+            console.log('[Attribution] ✅ ai_visit written — source:', attr.aiSource);
+        } catch (e) {
+            console.warn('[Attribution] ai_visit write failed:', e);
         }
     }
 

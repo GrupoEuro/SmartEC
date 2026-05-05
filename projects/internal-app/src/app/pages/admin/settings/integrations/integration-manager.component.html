@@ -490,7 +490,7 @@
              </div>
 
              <div class="flex gap-3 flex-wrap items-center">
-                 <button (click)="saveGoogleAds()" [disabled]="isSavingGoogle"
+                                  <button (click)="saveGoogleAds()" [disabled]="isSavingGoogle"
                     class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded text-sm transition flex items-center gap-2">
                     <i class="fas fa-save"></i>
                     {{ isSavingGoogle ? 'Guardando...' : 'Guardar Credenciales' }}
@@ -498,5 +498,90 @@
              </div>
         </div>
 
-      </div>
+        <!-- GEMINI / EUROMIND AI CARD -->
+        <div class="card p-6 bg-slate-800 rounded-lg border border-slate-700 shadow-lg relative overflow-hidden"
+             style="border-color: rgba(139,92,246,0.35); box-shadow: 0 0 24px rgba(139,92,246,0.08);">
+             <div class="absolute top-0 right-0 p-3 opacity-8" style="opacity:.07">
+                <span style="font-size:5rem;line-height:1">🤖</span>
+             </div>
+
+             <!-- Header -->
+             <div class="flex items-center gap-3 mb-1">
+                 <div class="w-3 h-3 rounded-full"
+                      [style.background]="geminiConnected ? '#8b5cf6' : '#ef4444'"></div>
+                 <h2 class="text-xl font-bold text-white">EuroMind AI</h2>
+                 <span class="text-xs px-2 py-1 rounded"
+                       style="background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)">
+                     Gemini API
+                 </span>
+                 @if(geminiConnected){
+                     <span class="text-xs px-2 py-1 rounded"
+                           style="background:rgba(16,185,129,.1);color:#6ee7b7;border:1px solid rgba(16,185,129,.25)">
+                         ✓ Configurado
+                     </span>
+                 }
+             </div>
+             <p class="text-xs text-slate-400 mb-5 max-w-[90%]">
+                 Conecta tu API Key de Google Gemini para activar los agentes de IA de EuroMind.
+                 La clave se almacena de forma segura en Firestore y la usan las Cloud Functions del orquestador.
+             </p>
+
+             <!-- API Key field -->
+             <div class="form-group mb-4">
+                 <label class="block text-xs uppercase text-slate-500 mb-1">Gemini API Key</label>
+                 <input type="password"
+                        [(ngModel)]="geminiApiKey"
+                        (focus)="geminiApiKey=''"
+                        class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 font-mono text-sm"
+                        placeholder="AIza..."
+                        autocomplete="new-password">
+                 <p class="text-[10px] text-slate-500 mt-1">
+                     Google AI Studio → API Keys → Create API Key · Haz clic en el campo para reemplazar la clave existente.
+                 </p>
+             </div>
+
+             <!-- Model info pills -->
+             <div class="flex flex-wrap gap-2 mb-5">
+                 <span class="text-[10px] px-2 py-1 rounded"
+                       style="background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)">
+                     Gemini 1.5 Flash
+                 </span>
+                 <span class="text-[10px] px-2 py-1 rounded"
+                       style="background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)">
+                     Gemini 1.5 Pro
+                 </span>
+                 <span class="text-[10px] px-2 py-1 rounded"
+                       style="background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)">
+                     Gemini 2.0 Flash
+                 </span>
+             </div>
+
+             <!-- Actions -->
+             <div class="flex gap-3 flex-wrap items-center">
+                 <button (click)="saveGeminiKey()"
+                         [disabled]="isSavingGemini || !geminiApiKey || geminiApiKey.includes('•')"
+                         class="px-4 py-2 text-white rounded text-sm font-bold transition flex items-center gap-2 disabled:opacity-40"
+                         style="background:rgba(139,92,246,.7)">
+                     <i class="fas" [class.fa-save]="!isSavingGemini" [class.fa-spinner]="isSavingGemini" [class.fa-spin]="isSavingGemini"></i>
+                     {{ isSavingGemini ? 'Guardando...' : 'Guardar API Key' }}
+                 </button>
+
+                 <a routerLink="/admin/ai-agents/settings"
+                    class="px-4 py-2 rounded text-sm font-bold transition flex items-center gap-2 no-underline"
+                    style="background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)">
+                     <i class="fas fa-sliders-h"></i>
+                     Configurar modelos y parámetros
+                     <i class="fas fa-arrow-right text-xs opacity-70"></i>
+                 </a>
+
+                 <a routerLink="/admin/ai-agents"
+                    class="ml-auto px-4 py-2 rounded text-sm font-bold transition flex items-center gap-2 no-underline"
+                    style="background:linear-gradient(135deg,rgba(139,92,246,.6),rgba(109,40,217,.8));color:#fff;box-shadow:0 2px 12px rgba(139,92,246,.25)">
+                     <i class="fas fa-robot"></i>
+                     Gestionar Agentes
+                     <i class="fas fa-arrow-right text-xs opacity-70"></i>
+                 </a>
+             </div>
+        </div>
+
     </div>

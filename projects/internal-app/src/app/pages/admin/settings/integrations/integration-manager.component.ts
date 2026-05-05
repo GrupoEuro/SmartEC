@@ -1,8 +1,9 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterModule } from '@angular/router';
 import { Functions, httpsCallable } from '@angular/fire/functions';
+import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 import { SecretsService, IntegrationConfig } from '../../../../core/services/config/secrets.service';
 import { MeliService } from '../../../../core/services/meli.service';
 import { MeliSyncService } from '../../../../core/services/meli-sync.service';
@@ -13,7 +14,7 @@ import { PaidMediaService } from '../../../../core/services/paid-media.service';
 @Component({
     selector: 'app-integration-manager',
     standalone: true,
-    imports: [CommonModule, JsonPipe, FormsModule, RouterLink],
+    imports: [CommonModule, JsonPipe, FormsModule, RouterLink, RouterModule],
     templateUrl: './integration-manager.component.html',
     styleUrls: ['./integration-manager.component.css']
 })
@@ -26,6 +27,7 @@ export class IntegrationManagerComponent implements OnInit {
     private settingsService = inject(SettingsService);
     private functions = inject(Functions);
     private paidMediaSvc = inject(PaidMediaService);
+    private firestore = inject(Firestore);
 
     config = signal<IntegrationConfig | null>(null);
 
@@ -88,6 +90,20 @@ export class IntegrationManagerComponent implements OnInit {
     isSyncingPaidMedia   = false;
     paidMediaSyncResult: { ok: boolean; metaCampaigns: number; googleCampaigns: number; errors: string[] } | null = null;
 
+    // ── Inbox Channels status overview (read from config/inbox_channels) ────
+    inboxChannels = [
+        { name: 'WhatsApp',  emoji: '💬', status: 'pending' },
+        { name: 'Instagram', emoji: '📸', status: 'pending' },
+        { name: 'Facebook',  emoji: '👤', status: 'pending' },
+        { name: 'Telegram',  emoji: '✈️', status: 'pending' },
+        { name: 'Email',     emoji: '📧', status: 'pending' },
+    ] as Array<{ name: string; emoji: string; status: 'live' | 'pending' }>;
+
+    // ── EuroMind AI / Gemini ─────────────────────────────────────────────────
+    geminiApiKey     = '';
+    geminiConnected  = false;
+    isSavingGemini   = false;
+
     async ngOnInit() {
         this.settingsService.settings$.subscribe(settings => {
             if (settings?.shipping?.origin) {
@@ -96,6 +112,47 @@ export class IntegrationManagerComponent implements OnInit {
         });
         await this.loadConfig();
         this.checkZippopotam();
+        this.loadInboxStatus();
+        this.loadGeminiStatus();
+    }
+
+    async loadInboxStatus() {
+        try {
+            const snap = await getDoc(doc(this.firestore, 'config/inbox_channels'));
+            if (!snap.exists()) return;
+            const data = snap.data() as Record<string, { connected?: boolean }>;
+            const ids  = ['whatsapp', 'instagram', 'facebook', 'telegram', 'email'];
+            ids.forEach((id, i) => {
+                if (data[id]?.connected) this.inboxChannels[i].status = 'live';
+            });
+        } catch { /* noop */ }
+    }
+
+    async loadGeminiStatus() {
+        try {
+            const snap = await getDoc(doc(this.firestore, 'config/gemini'));
+            if (!snap.exists()) return;
+            const data = snap.data() as any;
+            this.geminiApiKey    = data.apiKey ? '••••••••••••••••' : '';
+            this.geminiConnected = !!(data.apiKey);
+        } catch { /* noop */ }
+    }
+
+    async saveGeminiKey() {
+        if (!this.geminiApiKey.trim() || this.geminiApiKey.includes('•')) return;
+        this.isSavingGemini = true;
+        try {
+            await setDoc(doc(this.firestore, 'config/gemini'), {
+                apiKey:     this.geminiApiKey.trim(),
+                updatedAt:  new Date(),
+            }, { merge: true });
+            this.geminiConnected = true;
+            this.geminiApiKey    = '••••••••••••••••';
+        } catch (e) {
+            console.error('Failed to save Gemini key', e);
+        } finally {
+            this.isSavingGemini = false;
+        }
     }
 
     async checkZippopotam() {

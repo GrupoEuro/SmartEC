@@ -1,0 +1,118 @@
+<div class="conv-hist-container">
+    <div class="conv-hist-header">
+        <div class="header-titles">
+            <h2>Todas las Conversaciones</h2>
+            <p>Historial completo de conversaciones y tickets</p>
+        </div>
+        
+        <div class="header-actions">
+            <!-- Filter: Status -->
+            <div class="filter-group">
+                <app-icon name="filter" [size]="14" class="filter-icon"></app-icon>
+                <select [(ngModel)]="filterStatus" (change)="onFilterChange()" class="filter-select">
+                    @for (opt of statusOptions; track opt.value) {
+                        <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                </select>
+            </div>
+            
+            <!-- Filter: Channel -->
+            <div class="filter-group">
+                <app-icon name="layers" [size]="14" class="filter-icon"></app-icon>
+                <select [(ngModel)]="filterChannel" (change)="onFilterChange()" class="filter-select">
+                    @for (opt of channelOptions; track opt.value) {
+                        <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                </select>
+            </div>
+
+            <button class="refresh-btn" (click)="loadData()" [disabled]="loading()">
+                <app-icon name="refresh-cw" [size]="14" [class.spin]="loading()"></app-icon>
+            </button>
+        </div>
+    </div>
+
+    <div class="table-card">
+        @if (loading()) {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Cargando historial...</p>
+            </div>
+        } @else if (conversations().length === 0) {
+            <div class="empty-state">
+                <app-icon name="inbox" [size]="48"></app-icon>
+                <h3>No se encontraron conversaciones</h3>
+                <p>No hay registros que coincidan con los filtros seleccionados.</p>
+            </div>
+        } @else {
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Canal</th>
+                            <th>Estado</th>
+                            <th>Asignado A</th>
+                            <th>Última Actividad</th>
+                            <th>Creado</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (conv of conversations(); track conv.id) {
+                            <tr>
+                                <td>
+                                    <div class="customer-cell">
+                                        <div class="avatar" [style.border-color]="channelColor(conv.channel)">
+                                            @if (conv.customerAvatar) {
+                                                <img [src]="conv.customerAvatar" alt="">
+                                            } @else {
+                                                <span>{{ initials(conv.customerName) }}</span>
+                                            }
+                                        </div>
+                                        <div class="customer-info">
+                                            <span class="c-name">{{ conv.customerName }}</span>
+                                            <span class="c-handle">{{ conv.customerHandle || '-' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="channel-badge" [style.--c-color]="channelColor(conv.channel)">
+                                        {{ channelLabel(conv.channel) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-pill" [class]="'status-' + conv.status">
+                                        {{ statusLabel(conv.status) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="agent-cell">
+                                        @if (conv.assignedTo) {
+                                            <span class="agent-name">Agente Asignado</span>
+                                        } @else {
+                                            <span class="unassigned">Sin asignar</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="date-cell">{{ formatDate(conv.updatedAt) }}</span>
+                                </td>
+                                <td>
+                                    <span class="date-cell">{{ formatDate(conv.createdAt) }}</span>
+                                </td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <a [routerLink]="['/customer-care/inbox']" [queryParams]="{ channel: conv.channel }" class="action-btn" title="Ver en Inbox">
+                                            <app-icon name="external-link" [size]="16"></app-icon>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

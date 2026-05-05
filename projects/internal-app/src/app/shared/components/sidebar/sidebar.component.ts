@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { NavItem } from '../../../core/config/admin-navigation.config';
 import { AppIconComponent } from '../app-icon/app-icon.component';
@@ -15,6 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
         CommonModule,
         FormsModule,
         RouterLink,
+        RouterLinkActive,
         TranslateModule,
         AppIconComponent,
         SidebarItemComponent
@@ -285,6 +286,8 @@ export class SidebarComponent {
     profile = this.authService.currentProfile;
 
     filteredItems = computed(() => this.items);
+
+    constructor() {}
 
     toggleCollapse() {
         this.isCollapsed.update(v => !v);

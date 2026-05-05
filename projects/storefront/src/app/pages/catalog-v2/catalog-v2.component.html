@@ -1,5 +1,8 @@
 <div class="catalog-wrapper">
 
+    <!-- SEO Page Heading -->
+    <h1 class="catalog-page-title">Llantas Praxis para Motocicleta</h1>
+
     <!-- Mobile Header (Hidden on Desktop via CSS) -->
     <div class="mobile-header">
         <button class="filter-toggle-btn" (click)="toggleSidebar()">
@@ -207,7 +210,8 @@
 
                         <div class="product-image">
                             <img [src]="product.images.main || 'assets/images/euro-logo-new.png'"
-                                [alt]="product.name.en || 'Product Image'" loading="lazy"
+                                [alt]="(product.name.es || product.name.en) + ' — ' + product.brand"
+                                width="400" height="400" loading="lazy"
                                 (error)="product.images.main = 'assets/images/euro-logo-new.png'">
 
                             <!-- Wishlist heart button -->
@@ -305,7 +309,7 @@
                             <!-- Image -->
                             <div class="product-image">
                                 <img [src]="kit.image || 'assets/images/euro-logo-new.png'"
-                                    [alt]="kit.name.es" loading="lazy"
+                                    [alt]="kit.name.es" width="400" height="400" loading="lazy"
                                     (error)="$any($event.target).src='assets/images/euro-logo-new.png'">
                             </div>
 

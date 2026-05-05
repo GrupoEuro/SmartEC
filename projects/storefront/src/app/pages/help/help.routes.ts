@@ -12,5 +12,9 @@ export const helpRoutes: Routes = [
     {
         path: 'glossary',
         loadComponent: () => import('./components/help-glossary/help-glossary.component').then(m => m.HelpGlossaryComponent)
+    },
+    {
+        path: 'faq',
+        loadComponent: () => import('./faq/faq.component').then(m => m.FaqComponent)
     }
 ];

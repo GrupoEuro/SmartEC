@@ -134,6 +134,26 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./metrics/meli-full/meli-full-report.component').then(m => m.MeliFullReportComponent)
             },
             {
+                path: 'metrics/products',
+                loadComponent: () => import('./metrics/product-analytics/product-analytics.component').then(m => m.ProductAnalyticsComponent),
+                title: 'Análisis de Productos'
+            },
+            {
+                path: 'metrics/geo',
+                loadComponent: () => import('./metrics/geo-analytics/geo-analytics.component').then(m => m.GeoAnalyticsComponent),
+                title: 'Análisis Geográfico'
+            },
+            {
+                path: 'metrics/cohorts',
+                loadComponent: () => import('./metrics/customer-cohorts/customer-cohorts.component').then(m => m.CustomerCohortsComponent),
+                title: 'Cohortes de Clientes'
+            },
+            {
+                path: 'metrics/busquedas',
+                loadComponent: () => import('./metrics/search-metrics-summary/search-metrics-summary.component').then(m => m.SearchMetricsSummaryComponent),
+                title: 'Análisis de Búsquedas'
+            },
+            {
                 path: 'metrics/channel/:channel',
                 loadComponent: () => import('./metrics/channel-report/channel-report.component').then(m => m.ChannelReportComponent),
                 title: 'Reporte de Canal'

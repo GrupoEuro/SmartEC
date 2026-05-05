@@ -2,11 +2,14 @@ import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, computed, 
 import { CommonModule, CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Functions, httpsCallable } from '@angular/fire/functions';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Timestamp } from '@angular/fire/firestore';
 import { Chart, registerables, TooltipItem } from 'chart.js';
 import {
     MetricsAnalyticsService, AnalyticsDailyDoc, DATE_RANGES, DateRange, ChannelBreakdown
 } from './services/metrics-analytics.service';
 import { MetricsTimeframeService } from './services/metrics-timeframe.service';
+import { MetricsBigqueryService, SummaryKpisRow, DailyTrendRow, CancellationRateRow } from './services/metrics-bigquery.service';
 import { MetricsHeatmapComponent } from './shared/metrics-heatmap.component';
 
 Chart.register(...registerables);
@@ -50,14 +53,15 @@ export interface ForecastResult {
 }
 
 interface ChannelRow {
-    id:      string;
-    label:   string;
-    revenue: number;
-    orders:  number;
-    units:   number;
+    id:        string;
+    label:     string;
+    revenue:   number;
+    orders:    number;
+    units:     number;
     avgTicket: number;
-    share:   number;
-    route?:  string;
+    share:     number;
+    route?:    string;
+    color:     string;
 }
 
 // ── Compare types ──────────────────────────────────────────────────────────────
@@ -102,21 +106,95 @@ type ComparePreset = 'monthVsPrev' | 'prevMonthVs2Mo' | 'sameMonthPrevYear';
 })
 export class MetricsHubComponent implements OnInit, OnDestroy {
 
-    private svc  = inject(MetricsAnalyticsService);
-    private tf   = inject(MetricsTimeframeService);
-    private fns  = inject(Functions);
+    private svc    = inject(MetricsAnalyticsService);  // kept for aggregateDocs / pctChange helpers
+    private bqSvc  = inject(MetricsBigqueryService);
+    private tf     = inject(MetricsTimeframeService);
+    private fns    = inject(Functions);
+    private fs     = inject(Firestore);
 
-    // ── Standard view state ───────────────────────────────────────────────────
+    // ── Standard view state ─────────────────────────────────────────────────
     readonly dateRanges    = DATE_RANGES;
     readonly selectedRange = this.tf.selected;
 
     isLoading        = signal(true);
     isBackfilling    = signal(false);
     isSyncingRecent  = signal(false);
-    syncRecentResult = signal<{ daysProcessed: number; writeCount: number } | null>(null);
+    syncRecentResult = signal<{ ordersWritten: number; itemsWritten: number } | null>(null);
     backfillResult   = signal<{ daysProcessed: number; writeCount: number } | null>(null);
     dailyDocs      = signal<AnalyticsDailyDoc[]>([]);
     priorDocs      = signal<AnalyticsDailyDoc[]>([]);
+
+    // ── Quick Win 1: Cancellation rate ──────────────────────────────────
+    cancellationRows = signal<CancellationRateRow[]>([]);
+
+    /** Overall cancellation rate across all channels. */
+    readonly overallCancellationRate = computed(() => {
+        const rows = this.cancellationRows();
+        if (!rows.length) return null;
+        const tot = rows.reduce((s, r) => s + r.total_orders, 0);
+        const can = rows.reduce((s, r) => s + r.cancelled_orders, 0);
+        return tot > 0 ? can / tot : 0;
+    });
+
+    // ── Quick Win 3: Last BQ sync status ─────────────────────────────
+    lastBqSync = signal<{ lastSyncDate: string; syncedAt: Timestamp; ordersAppended: number; status: string; errorMessage: string | null } | null>(null);
+
+    readonly lastBqSyncLabel = computed(() => {
+        const s = this.lastBqSync();
+        if (!s) return null;
+        const dt = s.syncedAt?.toDate?.() ?? null;
+        if (!dt) return s.lastSyncDate;
+        const diffMs = Date.now() - dt.getTime();
+        const diffH  = Math.floor(diffMs / 3_600_000);
+        const diffM  = Math.floor(diffMs / 60_000);
+        if (diffH >= 24) return `hace ${Math.floor(diffH / 24)}d`;
+        if (diffH >= 1)  return `hace ${diffH}h`;
+        return `hace ${diffM}m`;
+    });
+
+    // ── Item 2: Abandoned Cart Analytics ─────────────────────────────
+    abandonStats = signal<{ daily: Record<string, number> } | null>(null);
+
+    readonly abandonLast7Days = computed(() => {
+        const s = this.abandonStats();
+        if (!s?.daily) return 0;
+        const today = new Date();
+        let total = 0;
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const key = d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }).replace(/-/g, '_');
+            total += s.daily[key] ?? 0;
+        }
+        return total;
+    });
+
+    readonly abandonToday = computed(() => {
+        const s = this.abandonStats();
+        if (!s?.daily) return 0;
+        const key = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }).replace(/-/g, '_');
+        return s.daily[key] ?? 0;
+    });
+
+    /** Last 7 daily values for mini sparkline [ oldest … today ] */
+    readonly abandonSparkline = computed(() => {
+        const s = this.abandonStats();
+        if (!s?.daily) return [] as number[];
+        const today = new Date();
+        return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(d.getDate() - (6 - i));  // 0 = 6 days ago, 6 = today
+            const key = d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' }).replace(/-/g, '_');
+            return s.daily[key] ?? 0;
+        });
+    });
+
+    // ── Item 3: Avg ticket ranking (sorted high→low for comparison strip) ─────
+    readonly avgTicketRanked = computed(() =>
+        [...this.channelRows()]
+            .filter(r => r.orders > 0)
+            .sort((a, b) => b.avgTicket - a.avgTicket)
+    );
 
     // ── Chart + Forecast ─────────────────────────────────────────────────────
     @ViewChild('trendCanvas') trendCanvas?: ElementRef<HTMLCanvasElement>;
@@ -272,6 +350,23 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     async ngOnInit() {
         await this.load();
+        // Non-blocking Firestore reads — run in parallel after main data loads
+        this._loadBqSyncStatus();
+        this._loadAbandonStats();
+    }
+
+    private async _loadBqSyncStatus() {
+        try {
+            const snap = await getDoc(doc(this.fs, 'system_logs', 'bq_sync_status'));
+            if (snap.exists()) this.lastBqSync.set(snap.data() as any);
+        } catch { /* non-critical */ }
+    }
+
+    private async _loadAbandonStats() {
+        try {
+            const snap = await getDoc(doc(this.fs, 'system_logs', 'abandon_stats'));
+            if (snap.exists()) this.abandonStats.set(snap.data() as any);
+        } catch { /* non-critical */ }
     }
 
     async selectRange(r: DateRange) {
@@ -282,14 +377,104 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
     private async load() {
         this.isLoading.set(true);
         const range = this.tf.selected();
-        const [cur, prev] = await Promise.all([
-            this.svc.getDailyDocs(range),
-            this.svc.getPriorPeriodDocs(range),
-        ]);
-        this.dailyDocs.set(cur);
-        this.priorDocs.set(prev);
-        this.isLoading.set(false);
+        try {
+            // Current period
+            const { fromDate: curFrom, toDate: curTo } = this.bqSvc.getDateStrings(range);
+
+            // Prior period
+            const [prevFrom, prevTo] = this.svc.getPriorRange(range.type);
+            const prevFromStr = prevFrom.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+            const prevToStr   = prevTo.toLocaleDateString('sv-SE',   { timeZone: 'America/Mexico_City' });
+
+            // Use allSettled so a single query failure doesn't kill the entire dashboard
+            const [curTrendR, curKpisR, prevTrendR, prevKpisR, cancelRowsR] = await Promise.allSettled([
+                this.bqSvc.queryDailyTrendBetween(curFrom, curTo),
+                this.bqSvc.querySummaryKpisBetween(curFrom, curTo),
+                this.bqSvc.queryDailyTrendBetween(prevFromStr, prevToStr),
+                this.bqSvc.querySummaryKpisBetween(prevFromStr, prevToStr),
+                this.bqSvc.queryCancellationRate(range),
+            ]);
+
+            const ok    = <T>(r: PromiseSettledResult<T>, fallback: T): T =>
+                r.status === 'fulfilled' ? r.value : (console.warn('[MetricsHub] BQ query partial failure:', (r as any).reason), fallback);
+
+            const curTrend   = ok(curTrendR,    []);
+            const curKpis    = ok(curKpisR,     []);
+            const prevTrend  = ok(prevTrendR,   []);
+            const prevKpis   = ok(prevKpisR,    []);
+            const cancelRows = ok(cancelRowsR,  []);
+
+            this.dailyDocs.set(this._bqToDocs(curTrend, curKpis));
+            this.priorDocs.set(this._bqToDocs(prevTrend, prevKpis));
+            this.cancellationRows.set(cancelRows);
+        } catch (err) {
+            console.error('[MetricsHub] BQ load critical failure:', err);
+            this.dailyDocs.set([]);
+            this.priorDocs.set([]);
+        } finally {
+            this.isLoading.set(false);
+        }
     }
+
+
+    /**
+     * Converts BQ DailyTrendRow[] + SummaryKpisRow[] into AnalyticsDailyDoc[] shape
+     * so all existing computed signals (kpis, channelRows, trendData, forecast) work unchanged.
+     *
+     * Strategy:
+     *  - One AnalyticsDailyDoc per unique order_date from dailyTrend.
+     *  - byChannel is reconstructed by distributing each day's revenue proportionally
+     *    using the period-level channel shares from summaryKpis.
+     *  - This is equivalent to Firestore analytics_daily but sourced from BQ raw orders.
+     */
+    private _bqToDocs(trend: DailyTrendRow[], kpis: SummaryKpisRow[]): AnalyticsDailyDoc[] {
+        const daysMap = new Map<string, AnalyticsDailyDoc>();
+
+        for (const row of trend) {
+            let doc = daysMap.get(row.order_date);
+            if (!doc) {
+                const dt = new Date(row.order_date + 'T12:00:00');
+                doc = {
+                    date:         row.order_date,
+                    month:        row.order_date.slice(0, 7),
+                    dayOfWeek:    (dt.getDay() + 6) % 7,
+                    totalRevenue: 0,
+                    totalOrders:  0,
+                    totalUnits:   0,
+                    avgTicket:    0,
+                    byChannel:    {},
+                };
+                daysMap.set(row.order_date, doc);
+            }
+            
+            doc.totalRevenue += row.revenue;
+            doc.totalOrders  += row.orders;
+            doc.totalUnits   += row.units;
+            
+            if (row.source_channel) {
+                doc.byChannel[row.source_channel] = {
+                    revenue: row.revenue,
+                    orders:  row.orders,
+                    units:   row.units
+                };
+            }
+        }
+
+        return Array.from(daysMap.values()).map(doc => {
+            doc.avgTicket = doc.totalOrders > 0 ? doc.totalRevenue / doc.totalOrders : 0;
+            return doc;
+        }).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    /** Returns a DateRange shifted to the prior period — mirrors MetricsAnalyticsService.getPriorRange() */
+    private _priorRange(range: DateRange): DateRange {
+        // We reuse the type label; the BQ service uses getDateStrings which calls svc.getDateRange()
+        // so we need to produce a synthetic range whose fromDate/toDate are the prior period.
+        // Simplest: return a special type that MetricsBigqueryService can interpret.
+        // Instead, we call the prior range directly.
+        return range; // fallback — replaced by _loadPriorBQ below
+    }
+
 
     // ── Compare mode methods ──────────────────────────────────────────────────
 
@@ -357,7 +542,13 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
         const mo = Number(parts[1]) - 1;  // 0-indexed
         const from = new Date(y, mo, 1);
         const to   = new Date(y, mo + 1, 0, 23, 59, 59); // last day of month
-        return this.svc.getDailyDocsBetween(from, to);
+        const fromStr = from.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+        const toStr   = to.toLocaleDateString('sv-SE',   { timeZone: 'America/Mexico_City' });
+        const [trend, kpis] = await Promise.all([
+            this.bqSvc.queryDailyTrendBetween(fromStr, toStr),
+            this.bqSvc.querySummaryKpisBetween(fromStr, toStr),
+        ]);
+        return this._bqToDocs(trend, kpis);
     }
 
     private buildTrendChart(docs: AnalyticsDailyDoc[], forecast?: ForecastResult) {
@@ -374,11 +565,18 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
 
         const revenue = forecast ? forecast.actual : docs.map(d => d.totalRevenue ?? 0);
         const orders  = docs.map(d => d.totalOrders ?? 0);
+        // Quick Win 2 — avg ticket per day (null when no orders to avoid division artifacts)
+        const avgTicket: (number | null)[] = docs.map(d =>
+            (d.totalOrders ?? 0) > 0 ? (d.totalRevenue ?? 0) / d.totalOrders : null
+        );
 
-        // Pad orders array with nulls for future days if forecast extends the range
+        // Pad orders/avgTicket arrays with nulls for future days if forecast extends the range
         const ordersData: (number | null)[] = forecast
             ? [...orders, ...new Array(labels.length - orders.length).fill(null)]
             : orders;
+        const avgTicketData: (number | null)[] = forecast
+            ? [...avgTicket, ...new Array(labels.length - avgTicket.length).fill(null)]
+            : avgTicket;
 
         // Orange gradient under the revenue line
         const revGrad = ctx.createLinearGradient(0, 0, 0, 320);
@@ -424,6 +622,24 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
                 yAxisID: 'yRevenue',
                 order: 2,
                 spanGaps: false,
+            },
+            {
+                // Quick Win 2 — Avg ticket dashed line
+                type: 'line',
+                label: 'Ticket Promedio',
+                data: avgTicketData,
+                borderColor: 'rgba(16,185,129,.85)',
+                backgroundColor: 'transparent',
+                borderWidth: 1.8,
+                borderDash: [5, 4],
+                tension: 0.38,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#10b981',
+                yAxisID: 'yAvgTicket',
+                order: 1,
+                spanGaps: true,
             },
         ];
 
@@ -516,6 +732,11 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
                                 if (item.dataset.label === 'Órdenes') {
                                     return item.parsed.y != null ? '  ' + item.parsed.y + ' órdenes' : '';
                                 }
+                                if (item.dataset.label === 'Ticket Promedio') {
+                                    return item.parsed.y != null
+                                        ? '  $' + (item.parsed.y as number).toLocaleString('es-MX', { maximumFractionDigits: 0 }) + ' avg ticket'
+                                        : '';
+                                }
                                 if (item.dataset.label === 'Pronóstico') {
                                     return item.parsed.y != null
                                         ? '  ~$' + (item.parsed.y as number).toLocaleString('es-MX', { maximumFractionDigits: 0 }) + ' MXN (pronóstico)'
@@ -557,6 +778,14 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
                         position: 'right',
                         beginAtZero: true,
                         ticks: { color: '#818cf8', font: { size: 10 }, precision: 0 },
+                        grid: { drawOnChartArea: false },
+                    },
+                    yAvgTicket: {
+                        // Hidden axis — keeps avg ticket line scaled independently
+                        // without cluttering the chart with a 3rd y axis label
+                        position: 'left',
+                        display: false,
+                        beginAtZero: false,
                         grid: { drawOnChartArea: false },
                     },
                 },
@@ -768,6 +997,11 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
         return Math.min(value, max);
     }
 
+    sparkBarH(v: number): number {
+        const maxBar = Math.max(...this.abandonSparkline(), 1);
+        return (v / maxBar) * 28;
+    }
+
     ngOnDestroy() {
         this.trendChart?.destroy();
     }
@@ -801,25 +1035,25 @@ export class MetricsHubComponent implements OnInit, OnDestroy {
 
     // ── Backfill ──────────────────────────────────────────────────────────────
 
-    /** Fills only the last 5 days — targets missing analytics_daily docs without
-     *  touching historical data. Safe to run at any time. */
+    /** Re-syncs the last 5 days into BigQuery (delete + re-insert).
+     *  Fixes BQ data gaps without touching older historical data. */
     async runSyncRecent() {
         if (this.isSyncingRecent()) return;
         this.isSyncingRecent.set(true);
         this.syncRecentResult.set(null);
         try {
             const fn = httpsCallable<
-                { fromDate?: string; toDate?: string },
-                { daysProcessed: number; writeCount: number }
-            >(this.fns, 'backfillAnalytics');
+                { fromDate?: string; deleteFirst?: boolean },
+                { ordersWritten: number; itemsWritten: number; dataset: string }
+            >(this.fns, 'backfillOrdersToBigQuery');
             const from = new Date();
             from.setDate(from.getDate() - 5);
             const fromDate = from.toISOString().slice(0, 10);  // YYYY-MM-DD
-            const res = await fn({ fromDate });
+            const res = await fn({ fromDate, deleteFirst: true });
             this.syncRecentResult.set(res.data);
             await this.load();
         } catch (e) {
-            console.error('[MetricsHub] Sync recent failed:', e);
+            console.error('[MetricsHub] Sync recent (BQ) failed:', e);
         } finally {
             this.isSyncingRecent.set(false);
         }

@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
+import { Firestore, collection, query, where, onSnapshot } from '@angular/fire/firestore';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { UserProfile } from '../../../core/models/user.model';
@@ -25,14 +26,19 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     templateUrl: './portal-launcher.component.html',
     styleUrl: './portal-launcher.component.css'
 })
-export class PortalLauncherComponent implements OnInit {
-    private auth = inject(AuthService);
-    private router = inject(Router);
-    public translate = inject(TranslateService);
+export class PortalLauncherComponent implements OnInit, OnDestroy {
+    private auth      = inject(AuthService);
+    private router    = inject(Router);
+    private firestore = inject(Firestore);
+    public translate  = inject(TranslateService);
 
-    currentUser = signal<UserProfile | null>(null);
+    currentUser      = signal<UserProfile | null>(null);
     availablePortals = signal<Portal[]>([]);
-    loading = signal(true);
+    loading          = signal(true);
+
+    /** Live count of conversations with unread messages */
+    inboxUnread = signal(0);
+    private unreadUnsub: (() => void) | null = null;
 
     // Portal Configuration
     // This defines the ecosystem of the application
@@ -69,6 +75,15 @@ export class PortalLauncherComponent implements OnInit {
             icon: 'megaphone',
             description: 'PORTAL.MARKETING.DESC',
             badge: 'NEW'
+        },
+        {
+            id: 'customer-care',
+            title: 'Atención al Cliente',
+            route: '/customer-care/inbox',
+            roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'],
+            icon: 'support_agent',
+            description: 'Inbox unificado: WhatsApp, Instagram, Facebook, Telegram y Email.',
+            badge: 'LIVE'
         },
 
         {
@@ -123,6 +138,26 @@ export class PortalLauncherComponent implements OnInit {
 
         if (allowedPortals.length === 0) {
         }
+
+        // 4. Live inbox unread counter (only if customer-care portal is available)
+        if (allowedPortals.some(p => p.id === 'customer-care')) {
+            this.listenInboxUnread();
+        }
+    }
+
+    ngOnDestroy() {
+        this.unreadUnsub?.();
+    }
+
+    private listenInboxUnread() {
+        const q = query(
+            collection(this.firestore, 'customer_conversations'),
+            where('unreadCount', '>', 0)
+        );
+        this.unreadUnsub = onSnapshot(q,
+            snap => this.inboxUnread.set(snap.size),
+            ()   => this.inboxUnread.set(0)
+        );
     }
 
     navigateTo(route: string) {

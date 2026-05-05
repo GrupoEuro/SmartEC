@@ -42,6 +42,8 @@ export const routes: Routes = [
         path: 'praxis',
         loadComponent: () => import('./pages/praxis/praxis.component').then(m => m.PraxisComponent)
     },
+    // /michelin has no dedicated page — redirect to filtered catalog
+    { path: 'michelin', redirectTo: '/catalogo?brand=Michelin', pathMatch: 'full' },
     {
         path: 'biblioteca',
         loadComponent: () => import('./pages/pdf-library/pdf-library.component').then(m => m.PdfLibraryComponent)
@@ -59,7 +61,7 @@ export const routes: Routes = [
     {
         path: 'catalogo',
         loadComponent: () => import('./pages/catalog-v2/catalog-v2.component').then(m => m.CatalogV2Component),
-        title: 'Catálogo de Llantas para Moto | Importadora Euro'
+        title: 'Llantas para Moto Michelin y Praxis | Eurollantas'
     },
     {
         path: 'product/:slug',

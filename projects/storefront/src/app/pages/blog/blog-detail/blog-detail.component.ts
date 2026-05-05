@@ -67,11 +67,15 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     }
 
     private updateSEO(post: BlogPost): void {
+        const domain = 'https://importadoraeuro.com';
+        // Use dedicated OG image if available, else fall back to coverImage
+        const ogImage = (post as any).ogImage || post.coverImage;
+
         // Update meta tags
         this.metaService.updateTags({
             title: post.title,
             description: post.excerpt,
-            image: post.coverImage,
+            image: ogImage,
             type: 'article',
             author: post.author.name,
             publishedTime: post.date?.toISOString(),
@@ -84,24 +88,29 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
             '@type': 'Article',
             'headline': post.title,
             'description': post.excerpt,
-            'image': post.coverImage,
+            'image': ogImage?.startsWith('http') ? ogImage : `${domain}${ogImage}`,
             'datePublished': post.date?.toISOString(),
             'dateModified': post.date?.toISOString(),
+            'inLanguage': 'es-MX',
+            'articleSection': post.category,
+            'keywords': Array.isArray((post as any).tags) ? (post as any).tags.join(', ') : '',
             'author': {
-                '@type': 'Person',
-                'name': post.author.name
+                '@type': 'Organization',
+                'name': 'Importadora Eurollantas',
+                'url': domain
             },
             'publisher': {
                 '@type': 'Organization',
                 'name': 'Importadora Eurollantas',
+                'url': domain,
                 'logo': {
                     '@type': 'ImageObject',
-                    'url': 'https://tiendapraxis.web.app/assets/images/logo.png'
+                    'url': `${domain}/assets/images/euro-logo-new.png`
                 }
             },
             'mainEntityOfPage': {
                 '@type': 'WebPage',
-                '@id': window.location.href
+                '@id': `${domain}/blog/${(post as any).slug || ''}`
             }
         });
     }

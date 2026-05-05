@@ -39,6 +39,10 @@
                     "function": "sitemapXml"
                 },
                 {
+                    "source": "/google-shopping-feed.xml",
+                    "function": "googleShoppingFeed"
+                },
+                {
                     "source": "**",
                     "destination": "/index.html"
                 }

@@ -8,8 +8,8 @@
         </h2>
 
         <!-- Full Width Brand Card (Dark Mode) -->
-        <div
-            class="bg-zinc-900 rounded-3xl shadow-2xl p-8 md:p-12 border border-zinc-800 relative overflow-hidden group">
+        <a [routerLink]="['/praxis']"
+            class="block bg-zinc-900 rounded-3xl shadow-2xl p-8 md:p-12 border border-zinc-800 relative overflow-hidden group hover:border-orange-500/50 transition-colors cursor-pointer">
 
             <!-- Subtle Hover Glow Effect -->
             <div
@@ -42,15 +42,21 @@
                         <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
                             'BRANDS.PRAXIS_HERO.STAT_2_LABEL' | translate }}</span>
                     </div>
-                    <div class="flex flex-col">
-                        <span class="text-3xl font-black text-white">{{ 'BRANDS.PRAXIS_HERO.STAT_3_VAL' | translate
-                            }}</span>
-                        <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
-                            'BRANDS.PRAXIS_HERO.STAT_3_LABEL' | translate }}</span>
+                    <div class="flex flex-col justify-between md:justify-start">
+                        <div class="flex flex-col">
+                            <span class="text-3xl font-black text-white">{{ 'BRANDS.PRAXIS_HERO.STAT_3_VAL' | translate
+                                }}</span>
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{
+                                'BRANDS.PRAXIS_HERO.STAT_3_LABEL' | translate }}</span>
+                        </div>
+                        <!-- CTA Arrow for better UX -->
+                        <div class="mt-4 text-orange-500 flex items-center gap-2 font-bold group-hover:translate-x-2 transition-transform">
+                            Ver Landing Page <span>&rarr;</span>
+                        </div>
                     </div>
                 </div>
 
             </div>
-        </div>
+        </a>
     </div>
 </section>

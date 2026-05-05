@@ -10,16 +10,21 @@ export class SearchAnalyticsService {
     private firestore   = inject(Firestore);
     private authService = inject(AuthService);
 
-    // Single unified collection (replaces search_logs + search_clicks)
     private readonly EVENTS_COLLECTION = 'search_events';
 
-    /**
-     * Logs a search query to search_events (type = 'query').
-     * Replaces the old search_logs write.
-     */
-    async logSearch(term: string, resultCount: number): Promise<void> {
+    /** Tracks the most-recently searched term in this session (in-memory only). */
+    private _lastSearchTerm = '';
+
+    // ── type = 'query' ───────────────────────────────────────────────────────
+
+    async logSearch(
+        term:        string,
+        resultCount: number,
+        source:      'navbar' | 'catalog_page' | 'mobile' = 'navbar'
+    ): Promise<void> {
         if (!term || term.trim().length < 2) return;
 
+        this._lastSearchTerm = term.trim();
         const user = this.authService.currentUser();
 
         const event: SearchEvent = {
@@ -28,8 +33,10 @@ export class SearchAnalyticsService {
             normalizedTerm: term.trim().toLowerCase(),
             timestamp:     Timestamp.now(),
             resultCount,
+            hasResults:    resultCount > 0,
             userId:        user?.uid ?? null,
-            sessionId:     this.getSessionId()
+            sessionId:     this.getSessionId(),
+            source,
         };
 
         try {
@@ -39,11 +46,14 @@ export class SearchAnalyticsService {
         }
     }
 
-    /**
-     * Logs a search result click to search_events (type = 'click').
-     * Replaces the old search_clicks write.
-     */
-    async logClick(term: string, productId: string, productName: string, position: number): Promise<void> {
+    // ── type = 'click' ───────────────────────────────────────────────────────
+
+    async logClick(
+        term:        string,
+        productId:   string,
+        productName: string,
+        position:    number
+    ): Promise<void> {
         const user = this.authService.currentUser();
 
         const event: SearchEvent = {
@@ -55,7 +65,7 @@ export class SearchAnalyticsService {
             productName,
             position,
             userId:        user?.uid ?? null,
-            sessionId:     this.getSessionId()
+            sessionId:     this.getSessionId(),
         };
 
         try {
@@ -64,6 +74,103 @@ export class SearchAnalyticsService {
             console.error('[SearchAnalytics] Error logging search click:', error);
         }
     }
+
+    // ── type = 'exit' ────────────────────────────────────────────────────────
+
+    async logExit(
+        term:       string,
+        exitReason: 'blur' | 'clear' | 'navigate_away',
+        dwellMs:    number
+    ): Promise<void> {
+        if (!term || term.trim().length < 2) return;
+
+        const user = this.authService.currentUser();
+
+        const event: SearchEvent = {
+            type:          'exit',
+            term:          term.trim(),
+            normalizedTerm: term.trim().toLowerCase(),
+            timestamp:     Timestamp.now(),
+            exitReason,
+            dwellMs:       Math.round(dwellMs),
+            userId:        user?.uid ?? null,
+            sessionId:     this.getSessionId(),
+        };
+
+        try {
+            await addDoc(collection(this.firestore, this.EVENTS_COLLECTION), event);
+        } catch (error) {
+            console.error('[SearchAnalytics] Error logging search exit:', error);
+        }
+    }
+
+    // ── type = 'add_to_cart' ─────────────────────────────────────────────────
+
+    async logAddToCart(
+        productId:   string,
+        productName: string,
+        cartValue:   number,
+        quantity:    number,
+        term?:       string
+    ): Promise<void> {
+        const resolvedTerm = (term ?? this._lastSearchTerm).trim();
+        if (!resolvedTerm) return;
+
+        const user = this.authService.currentUser();
+
+        const event: SearchEvent = {
+            type:          'add_to_cart',
+            term:          resolvedTerm,
+            normalizedTerm: resolvedTerm.toLowerCase(),
+            timestamp:     Timestamp.now(),
+            productId,
+            productName,
+            cartValue,
+            quantity,
+            userId:        user?.uid ?? null,
+            sessionId:     this.getSessionId(),
+        };
+
+        try {
+            await addDoc(collection(this.firestore, this.EVENTS_COLLECTION), event);
+        } catch (error) {
+            console.error('[SearchAnalytics] Error logging add_to_cart:', error);
+        }
+    }
+
+    // ── type = 'purchase' ────────────────────────────────────────────────────
+
+    async logPurchase(
+        orderId:   string,
+        revenue:   number,
+        productId?: string,
+        term?:      string
+    ): Promise<void> {
+        const resolvedTerm = (term ?? this._lastSearchTerm).trim();
+        if (!resolvedTerm) return;
+
+        const user = this.authService.currentUser();
+
+        const event: SearchEvent = {
+            type:          'purchase',
+            term:          resolvedTerm,
+            normalizedTerm: resolvedTerm.toLowerCase(),
+            timestamp:     Timestamp.now(),
+            orderId,
+            revenue,
+            productId,
+            userId:        user?.uid ?? null,
+            sessionId:     this.getSessionId(),
+        };
+
+        try {
+            await addDoc(collection(this.firestore, this.EVENTS_COLLECTION), event);
+        } catch (error) {
+            console.error('[SearchAnalytics] Error logging purchase:', error);
+        }
+    }
+
+    // ── Session ID ───────────────────────────────────────────────────────────
 
     private getSessionId(): string {
         let sessionId = localStorage.getItem('praxis_session_id');

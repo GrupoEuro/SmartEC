@@ -96,6 +96,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/marketing/marketing.routes').then(m => m.MARKETING_ROUTES)
     },
     {
+        path: 'customer-care',
+        loadChildren: () => import('./pages/customer-care/customer-care.routes').then(m => m.CUSTOMER_CARE_ROUTES)
+    },
+    {
         path: 'dev-tools',
         canActivate: [devModeGuard],
         loadChildren: () => import('./pages/dev-tools/dev-tools.routes').then(m => m.devToolsRoutes)

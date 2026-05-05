@@ -4,7 +4,18 @@
   <div class="mhub-header">
     <div class="mhub-header-text">
       <h1 class="mhub-title">Métricas de Canales</h1>
-      <p class="mhub-subtitle">Vista general de todos los canales de venta · datos pre-agregados</p>
+      <p class="mhub-subtitle">
+        Vista general de todos los canales de venta · datos pre-agregados
+        @if (lastBqSync()) {
+          <span class="mhub-sync-badge"
+                [class.mhub-sync-ok]="lastBqSync()!.status === 'success'"
+                [class.mhub-sync-err]="lastBqSync()!.status === 'error'"
+                [title]="lastBqSync()!.status === 'error' ? ('Error: ' + lastBqSync()!.errorMessage) : (lastBqSync()!.ordersAppended + ' órdenes escritas en BQ')">
+            {{ lastBqSync()!.status === 'success' ? '✅' : '⚠️' }}
+            BQ sync · {{ lastBqSyncLabel() }}
+          </span>
+        }
+      </p>
     </div>
 
     <div class="mhub-header-actions">
@@ -35,9 +46,9 @@
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
           @if (syncRecentResult()) {
-            ✅ {{ syncRecentResult()!.daysProcessed }} días
+            ✅ {{ syncRecentResult()!.ordersWritten }} órdenes BQ
           } @else {
-            Sincronizar
+            Sincronizar BQ
           }
         }
       </button>
@@ -315,6 +326,36 @@
           </div>
         </div>
 
+        <!-- ── Quick Win 1: Cancellation Rate KPI card ──────────────────── -->
+        @if (overallCancellationRate() !== null) {
+          <div class="kpi-card kpi-rose">
+            <div class="kpi-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">Tasa Cancelación</span>
+              <span class="kpi-value">{{ overallCancellationRate()! | percent:'1.1-1' }}</span>
+              <div class="kpi-cancel-channels">
+                @for (row of cancellationRows(); track row.source_channel) {
+                  @if (row.cancelled_orders > 0) {
+                    <span class="kpi-cancel-ch">
+                      {{ row.source_channel === 'MELI_FULL' ? 'Full' :
+                         row.source_channel === 'MELI_CLASSIC' ? 'Clás' :
+                         row.source_channel === 'WEB' ? 'Web' :
+                         row.source_channel === 'AMAZON_FBA' ? 'FBA' :
+                         row.source_channel === 'AMAZON_MFN' ? 'MFN' :
+                         row.source_channel }}
+                      {{ row.cancellation_rate | percent:'1.0-0' }}
+                    </span>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        }
+
       </div>
 
       <!-- ── Channel Breakdown Table ─────────────────────────────────────── -->
@@ -391,6 +432,100 @@
           </table>
         </div>
       </div>
+
+      <!-- ── Item 3: Avg Ticket por Canal ────────────────────────────────── -->
+      @if (avgTicketRanked().length > 1) {
+        <div class="mhub-section mhub-avgticket-section">
+          <h2 class="mhub-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Ticket Promedio por Canal
+            <span class="mhub-section-badge">ordenado de mayor a menor</span>
+          </h2>
+
+          <div class="avgticket-strip">
+            @for (row of avgTicketRanked(); track row.id; let first = $first) {
+              <div class="avgticket-ch" [class.avgticket-ch--best]="first">
+                <div class="avgticket-ch-header">
+                  <span class="avgticket-dot" [style.background]="row.color"></span>
+                  <span class="avgticket-name">{{ row.label }}</span>
+                  @if (first) { <span class="avgticket-crown">👑</span> }
+                </div>
+                <div class="avgticket-val">
+                  {{ row.avgTicket | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                </div>
+                <div class="avgticket-bar-track">
+                  <div class="avgticket-bar-fill"
+                       [style.width.%]="(row.avgTicket / avgTicketRanked()[0].avgTicket) * 100"
+                       [style.background]="row.color">
+                  </div>
+                </div>
+                <div class="avgticket-orders">
+                  {{ row.orders | number }} órdenes
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ── Item 2: Checkouts Abandonados ───────────────────────────────── -->
+      @if (abandonLast7Days() > 0) {
+        <div class="mhub-section mhub-abandon-section">
+          <div class="abandon-header">
+            <div class="abandon-header-left">
+              <h2 class="mhub-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                  <line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Checkouts Abandonados
+              </h2>
+              <p class="mhub-section-sub" style="margin:0">
+                Sesiones que iniciaron pago pero no completaron
+              </p>
+            </div>
+            <div class="abandon-kpis">
+              <div class="abandon-kpi">
+                <span class="abandon-kpi-val">{{ abandonLast7Days() }}</span>
+                <span class="abandon-kpi-lbl">en 7 días</span>
+              </div>
+              @if (abandonToday() > 0) {
+                <div class="abandon-kpi abandon-kpi--today">
+                  <span class="abandon-kpi-val">+{{ abandonToday() }}</span>
+                  <span class="abandon-kpi-lbl">hoy</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Mini sparkline (7 bars, pure SVG) -->
+          @if (abandonSparkline().length === 7) {
+            <div class="abandon-sparkline-wrap">
+              <svg class="abandon-sparkline" viewBox="0 0 140 36" preserveAspectRatio="none">
+                @for (v of abandonSparkline(); track $index) {
+                  <rect
+                    [attr.x]="$index * 20 + 2"
+                    [attr.y]="34 - sparkBarH(v)"
+                    width="16"
+                    [attr.height]="sparkBarH(v)"
+                    [attr.fill]="$index === 6 ? '#f43f5e' : 'rgba(244,63,94,.4)'"
+                    rx="2"
+                  />
+                }
+              </svg>
+              <div class="abandon-sparkline-labels">
+                <span>hace 6d</span>
+                <span>hoy</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       <!-- ── Ingresos + Órdenes — Tendencia Diaria ─────────────────────────── -->
       <div class="mhub-section">
@@ -580,6 +715,62 @@
         </h2>
         <p class="mhub-section-sub">Comparación de actividad de ventas · escala relativa por canal</p>
         <app-metrics-heatmap [docs]="dailyDocs()"></app-metrics-heatmap>
+      </div>
+
+      <!-- ── BigQuery Advanced Analytics ───────────────────────────────────── -->
+      <div class="mhub-section mhub-bq-section">
+        <h2 class="mhub-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          </svg>
+          Análisis Avanzado (BigQuery)
+        </h2>
+        <p class="mhub-section-sub">Consultas analíticas profundas — item level, geográfico y más</p>
+
+        <div class="mhub-bq-cards">
+          <a routerLink="/operations/metrics/products" class="mhub-bq-card">
+            <div class="mhub-bq-icon">📦</div>
+            <div class="mhub-bq-body">
+              <div class="mhub-bq-title">Análisis de Productos</div>
+              <div class="mhub-bq-desc">Top SKUs por ingresos, velocidad y canal. Desglose a nivel ítem.</div>
+            </div>
+            <svg class="mhub-bq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+
+          <a routerLink="/operations/metrics/geo" class="mhub-bq-card">
+            <div class="mhub-bq-icon">🗺️</div>
+            <div class="mhub-bq-body">
+              <div class="mhub-bq-title">Análisis Geográfico</div>
+              <div class="mhub-bq-desc">Ingresos y pedidos por estado de México. Ranking de mercados clave.</div>
+            </div>
+            <svg class="mhub-bq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+
+          <a routerLink="/operations/metrics/cohorts" class="mhub-bq-card">
+            <div class="mhub-bq-icon">👥</div>
+            <div class="mhub-bq-body">
+              <div class="mhub-bq-title">Cohortes de Clientes</div>
+              <div class="mhub-bq-desc">Retención, LTV y órdenes por cohorte mensual de adquisición.</div>
+            </div>
+            <svg class="mhub-bq-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+        </div>
+
+        <p class="mhub-bq-note">
+          ⚡ Powered by Google BigQuery — los datos reflejan el último backfill + el cron nocturno.
+          Ejecuta "Backfill BigQuery" en Análisis de Productos si es tu primera vez.
+        </p>
       </div>
 
       <!-- ── Daily Trend note ────────────────────────────────────────────── -->

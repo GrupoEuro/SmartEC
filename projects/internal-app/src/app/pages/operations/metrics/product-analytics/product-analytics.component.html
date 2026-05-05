@@ -1,0 +1,295 @@
+<div class="pa-layout">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="pa-header">
+    <div class="pa-header-left">
+      <a class="pa-back" routerLink="/operations/metrics">← Métricas</a>
+      <h1 class="pa-title">📦 Análisis de Productos</h1>
+      <span class="pa-subtitle">Ingresos y velocidad por SKU en todos los canales</span>
+    </div>
+    <div class="pa-header-right">
+      <!-- Timeframe selector -->
+      <div class="pa-range-pills">
+        @for (r of dateRanges; track r.type) {
+          <button class="pa-range-pill"
+                  [class.active]="selectedRange().type === r.type"
+                  (click)="selectRange(r)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Loading state ───────────────────────────────────────────────────── -->
+  @if (isLoading()) {
+    <div class="pa-loading">
+      <div class="pa-spinner"></div>
+      <p>Consultando BigQuery…</p>
+    </div>
+  }
+
+  @if (!isLoading()) {
+
+    <!-- ── KPI strip ───────────────────────────────────────────────────────── -->
+    <div class="pa-kpi-strip">
+      <div class="pa-kpi-card">
+        <span class="pa-kpi-icon">📦</span>
+        <div>
+          <div class="pa-kpi-value">{{ filteredRows().length }}</div>
+          <div class="pa-kpi-label">SKUs con ventas</div>
+        </div>
+      </div>
+      <div class="pa-kpi-card">
+        <span class="pa-kpi-icon">💰</span>
+        <div>
+          <div class="pa-kpi-value">{{ fmtMoney(totalRevenue()) }}</div>
+          <div class="pa-kpi-label">Ingresos totales</div>
+        </div>
+      </div>
+      <div class="pa-kpi-card">
+        <span class="pa-kpi-icon">🔢</span>
+        <div>
+          <div class="pa-kpi-value">{{ totalUnits() | number }}</div>
+          <div class="pa-kpi-label">Unidades vendidas</div>
+        </div>
+      </div>
+      <div class="pa-kpi-card">
+        <span class="pa-kpi-icon">🏆</span>
+        <div>
+          <div class="pa-kpi-value">{{ pagedRows()[0]?.sku || '—' }}</div>
+          <div class="pa-kpi-label">Top SKU</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Top 10 chart ─────────────────────────────────────────────────────── -->
+    <section class="pa-card pa-chart-card">
+      <h2 class="pa-card-title">Top 10 SKUs por Ingresos</h2>
+      <div class="pa-chart-wrap">
+        <canvas #topChart></canvas>
+      </div>
+    </section>
+
+    <!-- ── Tabs ────────────────────────────────────────────────────────────── -->
+    <div class="pa-tabs">
+      <button class="pa-tab" [class.active]="activeTab() === 'products'" (click)="activeTab.set('products')">
+        📋 Tabla de Productos
+      </button>
+      <button class="pa-tab" [class.active]="activeTab() === 'channels'" (click)="activeTab.set('channels')">
+        📊 Desglose por Canal
+      </button>
+    </div>
+
+    <!-- ── Products table ─────────────────────────────────────────────────── -->
+    @if (activeTab() === 'products') {
+
+      <!-- Toolbar -->
+      <div class="pa-toolbar">
+        <div class="pa-search-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Buscar SKU o producto…"
+                 [value]="searchTerm()"
+                 (input)="setSearch($any($event.target).value)">
+        </div>
+
+        <div class="pa-channel-filter">
+          <label>Canal</label>
+          <select (change)="setChannel($any($event.target).value)" [value]="selectedChannel()">
+            <option value="">Todos los canales</option>
+            @for (ch of channels(); track ch) {
+              <option [value]="ch">{{ channelLabel(ch) }}</option>
+            }
+          </select>
+        </div>
+
+        @if (searchTerm() || selectedChannel()) {
+          <button class="pa-clear-btn" (click)="setSearch(''); setChannel('')">✕ Limpiar</button>
+        }
+
+        <span class="pa-row-count">{{ filteredRows().length }} SKUs</span>
+      </div>
+
+      <section class="pa-card pa-table-card">
+        <div class="pa-table-scroll">
+          <table class="pa-table">
+            <thead>
+              <tr>
+                <th class="pa-th-rank">#</th>
+                <th>SKU</th>
+                <th>Producto</th>
+                <th class="pa-th-sortable" (click)="sort('total_revenue')">
+                  Ingresos {{ sortIcon('total_revenue') }}
+                </th>
+                <th class="pa-th-sortable" (click)="sort('total_units')">
+                  Unidades {{ sortIcon('total_units') }}
+                </th>
+                <th class="pa-th-sortable" (click)="sort('total_orders')">
+                  Órdenes {{ sortIcon('total_orders') }}
+                </th>
+                <th class="pa-th-sortable" (click)="sort('avg_unit_price')">
+                  P.U. Prom {{ sortIcon('avg_unit_price') }}
+                </th>
+                <th>% Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of pagedRows(); track row.sku; let i = $index) {
+                <tr class="pa-row">
+                  <td class="pa-td-rank">
+                    <span class="pa-rank" [class.pa-rank-gold]="i === 0"
+                          [class.pa-rank-silver]="i === 1"
+                          [class.pa-rank-bronze]="i === 2">
+                      {{ (page() - 1) * pageSize + i + 1 }}
+                    </span>
+                  </td>
+                  <td>
+                    <code class="pa-sku">{{ row.sku || '—' }}</code>
+                  </td>
+                  <td>
+                    <div class="pa-product-name">{{ row.product_name || '—' }}</div>
+                    @if (row.brand) {
+                      <div class="pa-brand">{{ row.brand }}</div>
+                    }
+                  </td>
+                  <td class="pa-td-num">
+                    <span class="pa-revenue">{{ row.total_revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                    <div class="pa-rev-bar-wrap">
+                      <div class="pa-rev-bar" [style.width.%]="revenueShare(row.total_revenue)"></div>
+                    </div>
+                  </td>
+                  <td class="pa-td-num">{{ row.total_units | number }}</td>
+                  <td class="pa-td-num">{{ row.total_orders | number }}</td>
+                  <td class="pa-td-num">{{ row.avg_unit_price | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="pa-td-num">
+                    <span class="pa-share-pill">{{ revenueShare(row.total_revenue) | number:'1.1-1' }}%</span>
+                  </td>
+                </tr>
+              }
+
+              @if (filteredRows().length === 0) {
+                <tr>
+                  <td colspan="8" class="pa-empty">
+                    Sin resultados. Asegúrate de haber ejecutado el backfill de BigQuery.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages() > 1) {
+          <div class="pa-pagination">
+            <button class="pa-page-btn" [disabled]="page() === 1" (click)="setPage(page() - 1)">‹</button>
+            @for (p of pageNumbers; track p) {
+              <button class="pa-page-btn" [class.active]="p === page()" (click)="setPage(p)">{{ p }}</button>
+            }
+            <button class="pa-page-btn" [disabled]="page() === totalPages()" (click)="setPage(page() + 1)">›</button>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- ── Channel pivot ─────────────────────────────────────────────────── -->
+    @if (activeTab() === 'channels') {
+      <section class="pa-card pa-pivot-card">
+        <h2 class="pa-card-title">Ingresos por SKU y Canal</h2>
+        <p class="pa-card-subtitle">Cada barra muestra qué canales generan los ingresos de ese SKU</p>
+
+        <div class="pa-pivot-list">
+          @for (pivot of channelPivot(); track pivot.sku; let i = $index) {
+            <div class="pa-pivot-row">
+              <div class="pa-pivot-meta">
+                <span class="pa-rank-sm">{{ i + 1 }}</span>
+                <div>
+                  <code class="pa-sku-sm">{{ pivot.sku }}</code>
+                  <div class="pa-product-name-sm">{{ pivot.product_name }}</div>
+                </div>
+              </div>
+
+              <div class="pa-pivot-bars">
+                @for (ch of channels(); track ch) {
+                  @if (pivot.channels[ch]) {
+                    <div class="pa-pivot-segment"
+                         [style.width.%]="pivotBarWidth(pivot.channels[ch].revenue, pivot.total_revenue)"
+                         [style.background-color]="channelColor(ch)"
+                         [title]="channelLabel(ch) + ': ' + fmtMoney(pivot.channels[ch].revenue)">
+                    </div>
+                  }
+                }
+              </div>
+
+              <div class="pa-pivot-totals">
+                <span class="pa-pivot-rev">{{ fmtMoney(pivot.total_revenue) }}</span>
+                <span class="pa-pivot-units">{{ pivot.total_units | number }} u</span>
+              </div>
+            </div>
+          }
+
+          @if (channelPivot().length === 0) {
+            <div class="pa-empty">Sin datos de canal. Ejecuta el backfill de BigQuery primero.</div>
+          }
+        </div>
+
+        <!-- Channel legend -->
+        <div class="pa-legend">
+          @for (ch of channels(); track ch) {
+            <div class="pa-legend-item">
+              <span class="pa-legend-dot" [style.background-color]="channelColor(ch)"></span>
+              <span>{{ channelLabel(ch) }}</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+
+    <!-- ── BigQuery Backfill panel ─────────────────────────────────────────── -->
+    <section class="pa-card pa-backfill-card">
+      <div class="pa-backfill-header">
+        <div class="pa-backfill-icon">⚡</div>
+        <div>
+          <div class="pa-backfill-title">Sincronizar datos históricos a BigQuery</div>
+          <div class="pa-backfill-desc">
+            Carga todas las órdenes desde 2023 en las tablas de BigQuery.
+            Ejecútalo una sola vez. Después el cron nocturno mantiene los datos al día.
+          </div>
+        </div>
+      </div>
+
+      <div class="pa-backfill-actions">
+        <button class="pa-backfill-btn"
+                (click)="runBackfill()"
+                [disabled]="isBackfilling()">
+          @if (isBackfilling()) {
+            <span class="pa-bf-spinner"></span>
+            Ejecutando… (puede tardar 2-5 min)
+          } @else {
+            🔄 Ejecutar Backfill
+          }
+        </button>
+
+        <button class="pa-backfill-btn pa-backfill-btn--fresh"
+                (click)="runBackfill(true)"
+                [disabled]="isBackfilling()"
+                title="Borra datos existentes y recarga todo desde cero">
+          @if (isBackfilling()) { … } @else { 🗑️ Backfill Limpio }
+        </button>
+      </div>
+
+      @if (backfillResult()) {
+        <div class="pa-backfill-result">
+          ✅ Completado — {{ backfillResult()!.ordersWritten | number }} órdenes · {{ backfillResult()!.itemsWritten | number }} ítems escritos en <strong>{{ backfillResult()!.dataset }}</strong>.
+          <button class="pa-reload-btn" (click)="reload()">Recargar datos →</button>
+        </div>
+      }
+
+      @if (backfillError()) {
+        <div class="pa-backfill-error">❌ {{ backfillError() }}</div>
+      }
+    </section>
+
+  } <!-- end !isLoading -->
+
+</div>

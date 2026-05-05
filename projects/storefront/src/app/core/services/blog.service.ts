@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { BlogPost } from '../models/blog.model';
 import {
@@ -56,7 +56,7 @@ export class BlogService {
             })),
             catchError(error => {
                 console.error('Firestore error in getPosts:', error);
-                throw error; // Re-throw to let component handle it
+                return of([]); // Return empty array so template shows empty state, not infinite spinner
             })
         );
     }
@@ -74,6 +74,10 @@ export class BlogService {
                     ...data,
                     date: data['date']?.toDate ? data['date'].toDate() : data['date']
                 } as BlogPost;
+            }),
+            catchError(error => {
+                console.error('Firestore error in getPostBySlug:', error);
+                return of(undefined);
             })
         );
     }

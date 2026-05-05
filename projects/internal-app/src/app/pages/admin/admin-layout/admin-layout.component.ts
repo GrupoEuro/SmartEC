@@ -40,20 +40,14 @@ export class AdminLayoutComponent {
   }
 
   private initSidebarState() {
-    // Restore sidebar collapse state
     this.isSidebarCollapsed = localStorage.getItem('admin-sidebar-collapsed') === 'true';
-
-    // Restore expanded sections
     try {
       const savedSections = localStorage.getItem('admin-expanded-sections');
       if (savedSections) {
         this.expandedSections = new Set(JSON.parse(savedSections));
       } else {
-        // Default: Expand all sections initially for better discoverability
         this.navigationItems.forEach(item => {
-          if (item.children) {
-            this.expandedSections.add(item.id);
-          }
+          if (item.children) this.expandedSections.add(item.id);
         });
       }
     } catch (e) {

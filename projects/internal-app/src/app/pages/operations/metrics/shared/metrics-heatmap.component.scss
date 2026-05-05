@@ -4,6 +4,9 @@
     display: flex;
     flex-direction: column;
     gap: .75rem;
+    /* Sticky column widths — shared between TH and TD for alignment */
+    --ch-col-w: 120px;
+    --tot-col-w: 64px;
 }
 
 /* ── Toggle bar ── */
@@ -83,8 +86,16 @@
     color: #52525b;
     font-weight: 600;
     border-bottom: 1px solid rgba(255,255,255,.07);
+    min-width: var(--ch-col-w);
+    width: var(--ch-col-w);
+    max-width: var(--ch-col-w);
 }
-.mhm-tot-th { left: 120px; }
+.mhm-tot-th {
+    left: var(--ch-col-w);
+    min-width: var(--tot-col-w);
+    width: var(--tot-col-w);
+    max-width: var(--tot-col-w);
+}
 
 .mhm-day-th,
 .mhm-week-th,
@@ -111,30 +122,39 @@
     z-index: 1;
     background: rgba(24,24,27,.98);
     padding: .35rem .5rem;
-    min-width: 120px;
+    min-width: var(--ch-col-w);
+    width: var(--ch-col-w);
+    max-width: var(--ch-col-w);
+    white-space: nowrap;
+}
+/* Inner flex wrapper — keeps display:flex off the <td> to avoid
+   sticky-position layout inconsistencies in some browsers. */
+.mhm-ch-inner {
     display: flex;
     align-items: center;
     gap: .4rem;
 }
 .mhm-tot-td {
     position: sticky;
-    left: 120px;
+    left: var(--ch-col-w);
     z-index: 1;
     background: rgba(24,24,27,.98);
     padding: .35rem .4rem;
     text-align: right;
-    min-width: 60px;
+    min-width: var(--tot-col-w);
+    width: var(--tot-col-w);
+    max-width: var(--tot-col-w);
 }
-.mhm-cell-td { padding: 2px; }
+.mhm-cell-td { padding: 2px; overflow: hidden; }
 
 .mhm-dot     { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.mhm-ch-name { font-size: .75rem; color: #d4d4d8; font-weight: 600; }
-.mhm-badge   { font-size: .75rem; font-weight: 700; }
+.mhm-ch-name { font-size: .75rem; color: #d4d4d8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 104px; }
+.mhm-badge   { font-size: .75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
 
 /* ── Heat cells ── */
 .mhm-cell {
     width: 22px;
-    height: 26px;          /* slightly taller to fit orders badge */
+    height: 30px;          /* taller to stack revenue + orders badge */
     border-radius: 3px;
     display: flex;
     flex-direction: column;
@@ -143,6 +163,7 @@
     cursor: default;
     transition: opacity .15s;
     gap: 1px;
+    overflow: hidden;      /* prevent float text from bleeding */
 }
 .mhm-cell:hover { opacity: .8; }
 .mhm-cell-wide  { width: 52px; }
@@ -157,6 +178,15 @@
     line-height: 1;
 }
 .mhm-month-val { font-size: .7rem; }
+
+/* Revenue abbreviation in daily cells (tiny, stacked above orders badge) */
+.mhm-cell-rev {
+    font-size: .52rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.01em;
+    white-space: nowrap;
+}
 
 /* Always-visible orders badge */
 .mhm-cell-ord {

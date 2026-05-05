@@ -231,6 +231,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'Amazon',
                 icon: 'package',
                 route: '/operations/metrics/channel/AMAZON_MFN'
+            },
+            {
+                id: 'metrics_busquedas',
+                title: 'Búsquedas',
+                icon: 'search',
+                route: '/operations/metrics/busquedas',
+                badge: { text: 'NEW', color: 'bg-violet-600' }
             }
         ]
     },

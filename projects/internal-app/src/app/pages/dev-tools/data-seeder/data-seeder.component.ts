@@ -115,6 +115,19 @@ type Tab = 'DATABASE' | 'DOCUMENTS';
                   </div>
               </div>
 
+              <!-- GROUP 4: CUSTOMER CARE -->
+              <div class="glass-panel p-5">
+                  <h3 class="text-slate-400 text-xs font-bold uppercase mb-4 flex items-center gap-2">
+                       <app-icon name="message-circle" [size]="14"></app-icon> Customer Care
+                  </h3>
+                  <div class="flex flex-col gap-3">
+                      <button class="btn btn-secondary justify-between group" (click)="seedCustomerCare()" [disabled]="isSeeding()">
+                          <span class="flex items-center gap-2 text-emerald-400"><app-icon name="message-square" [size]="16"></app-icon> Conversations</span>
+                          <span class="text-xs text-slate-500 group-hover:text-white transition">25 Threads</span>
+                      </button>
+                  </div>
+              </div>
+
           </div>
     
           <!-- Bootstrap Analytics Rollups -->
@@ -376,6 +389,8 @@ export class DataSeederComponent {
     seedPricingRules() { this.runAction('Seed Pricing Rules', () => this.seeder.populatePricingRules((l: string) => this.addLog(l))); }
     seedCoupons() { this.runAction('Seed Coupons', () => this.seeder.populateCoupons((l: string) => this.addLog(l))); }
     seedPraxisHistory() { this.runAction('Backfill History', () => this.seeder.seedPraxisHistory((l: string) => this.addLog(l))); }
+    
+    seedCustomerCare() { this.runAction('Seed Customer Care', () => this.seeder.populateCustomerCare((l: string) => this.addLog(l)), 'Generate 25 simulated customer conversations?'); }
 
     seedProductTypeTemplates() {
         this.runAction(

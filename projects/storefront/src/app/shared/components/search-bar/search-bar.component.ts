@@ -242,6 +242,11 @@ export class SearchBarComponent {
     isLoading = signal(false);
     showResults = signal(false);
 
+    /** Timestamp (ms) when the last live search result returned — used for dwellMs calculation. */
+    private _queryStartTime = 0;
+    /** True if the user clicked a product in the current search session. */
+    private _clickedInSession = false;
+
     constructor() {
         this.searchControl.valueChanges.pipe(
             debounceTime(500),
@@ -257,6 +262,8 @@ export class SearchBarComponent {
             tap(() => {
                 this.isLoading.set(true);
                 this.showResults.set(true);
+                // Reset click flag on every new search
+                this._clickedInSession = false;
             }),
             switchMap(term => this.productService.searchProducts(term || '').pipe(
                 catchError(() => of([]))
@@ -264,6 +271,9 @@ export class SearchBarComponent {
         ).subscribe(results => {
             this.isLoading.set(false);
             this.products.set(results);
+
+            // Mark when results became live (start of potential dwell time)
+            this._queryStartTime = Date.now();
 
             // ANALYTICS HOOK
             const term = this.searchControl.value || '';
@@ -278,11 +288,27 @@ export class SearchBarComponent {
     }
 
     closeResults() {
-        // Delayed to allow click event on result item to fire
-        setTimeout(() => this.showResults.set(false), 200);
+        // Delayed to allow click event on result item to fire first
+        setTimeout(() => {
+            this.showResults.set(false);
+            // Log exit only if user had live search results and didn't click
+            const term = (this.searchControl.value || '').trim();
+            if (term.length >= 2 && this._queryStartTime > 0 && !this._clickedInSession) {
+                const dwellMs = Date.now() - this._queryStartTime;
+                this.analyticsService.logExit(term, 'blur', dwellMs);
+                this._queryStartTime = 0;
+            }
+        }, 200);
     }
 
     clearSearch() {
+        const term = (this.searchControl.value || '').trim();
+        const dwellMs = this._queryStartTime > 0 ? Date.now() - this._queryStartTime : 0;
+        if (term.length >= 2 && !this._clickedInSession) {
+            this.analyticsService.logExit(term, 'clear', dwellMs);
+        }
+        this._queryStartTime = 0;
+        this._clickedInSession = false;
         this.searchControl.setValue('');
         this.products.set([]);
         this.showResults.set(false);
@@ -300,6 +326,10 @@ export class SearchBarComponent {
     }
 
     selectProduct(product: Product, index: number) {
+        // Mark that a click happened so closeResults does not log an 'exit'
+        this._clickedInSession = true;
+        this._queryStartTime = 0;
+
         // ANALYTICS HOOK
         const term = this.searchControl.value || '';
         if (product.id) {
@@ -307,10 +337,9 @@ export class SearchBarComponent {
         }
 
         this.showResults.set(false);
-        this.searchControl.setValue(''); // Optional: clear or keep term
+        this.searchControl.setValue('');
 
         // Navigate to product detail
-        // Assuming route /product/:slug or /product/:id
         this.router.navigate(['/product', product.slug || product.id]);
     }
 

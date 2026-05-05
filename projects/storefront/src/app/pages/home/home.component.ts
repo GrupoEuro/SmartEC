@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { HeroComponent } from '../../components/hero/hero.component';
 import { StatsComponent } from '../../components/stats/stats.component';
 import { AboutComponent } from '../../components/about/about.component';
@@ -20,6 +21,7 @@ import { MetaService } from '../../core/services/meta.service';
   imports: [
     CommonModule,
     NgOptimizedImage,
+    RouterModule,
     HeroComponent,
     StatsComponent,
     AboutComponent,
@@ -53,19 +55,26 @@ export class HomeComponent implements OnInit, OnDestroy {
       '@context': 'https://schema.org',
       '@type': 'Organization',
       'name': 'Importadora Eurollantas',
-      'url': 'https://tiendapraxis.web.app',
-      'logo': 'https://tiendapraxis.web.app/assets/images/logo.png',
-      'description': 'Distribuidor líder de llantas premium en México',
+      'url': 'https://importadoraeuro.com',
+      'logo': 'https://importadoraeuro.com/assets/images/euro-logo-new.png',
+      'description': 'Distribuidor líder de llantas Praxis para motocicleta en México. Envíos nacionales en 1-3 días hábiles.',
       'address': {
         '@type': 'PostalAddress',
-        'addressCountry': 'MX',
-        'addressRegion': 'CDMX'
+        'addressLocality': 'San Luis Potosí',
+        'addressRegion': 'SLP',
+        'addressCountry': 'MX'
       },
       'contactPoint': {
         '@type': 'ContactPoint',
-        'contactType': 'Customer Service',
-        'availableLanguage': ['Spanish', 'English']
-      }
+        'telephone': '+52-444-194-6502',
+        'contactType': 'customer service',
+        'areaServed': 'MX',
+        'availableLanguage': 'Spanish'
+      },
+      'sameAs': [
+        'https://www.facebook.com/importadoraeuro',
+        'https://www.instagram.com/importadoraeuromx'
+      ]
     });
   }
 

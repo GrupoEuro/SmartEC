@@ -1,12 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.sitemapXml = exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = void 0;
-exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = void 0;
+exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.sitemapXml = exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.snapshotProjections = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
+exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.appendOrdersToBQForDate = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.queryMetrics = exports.backfillOrdersToBigQuery = exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
+const bigquery_1 = require("@google-cloud/bigquery");
 admin.initializeApp();
 const db = admin.firestore();
+const bigquery = new bigquery_1.BigQuery({ projectId: 'tiendapraxis' });
+// ── IA Agents (EuroMind) ──────────────────────────────────────────────────────
+var ai_agents_1 = require("./ai-agents");
+Object.defineProperty(exports, "inboxMessageRouter", { enumerable: true, get: function () { return ai_agents_1.inboxMessageRouter; } });
+Object.defineProperty(exports, "agentOrchestrator", { enumerable: true, get: function () { return ai_agents_1.agentOrchestrator; } });
+Object.defineProperty(exports, "agentHandoff", { enumerable: true, get: function () { return ai_agents_1.agentHandoff; } });
+// ── Analytics & Projections ───────────────────────────────────────────────────
+var analytics_1 = require("./analytics");
+Object.defineProperty(exports, "snapshotProjections", { enumerable: true, get: function () { return analytics_1.snapshotProjections; } });
 // ─── MercadoPago Payment Processing ─────────────────────────────────────────
 exports.processPayment = functions.https.onCall(async (data, context) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10;
@@ -4132,9 +4142,6 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
 // 13. Automated Sync: Webhook (Real-Time push)
 exports.meliWebhook = functions.https.onRequest(async (req, res) => {
     var _a, _b, _c, _d, _e;
-    // MercadoLibre heavily monitors Webhook response times.
-    // Spec requires HTTP 200/201 ACK immediately.
-    res.status(200).send('OK');
     try {
         const payload = req.body;
         // --- 1) Temporary Webhook Activity Log ---
@@ -4155,7 +4162,7 @@ exports.meliWebhook = functions.https.onRequest(async (req, res) => {
             const configDoc = await db.collection('config').doc('integrations').get();
             const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
             if (!meliConfig || !meliConfig.accessToken)
-                return;
+                throw new Error('No access token');
             const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
             // Fetch the resource — may be a pack or a single order
             const resourceUrl = `https://api.mercadolibre.com${payload.resource}`;
@@ -4179,7 +4186,6 @@ exports.meliWebhook = functions.https.onRequest(async (req, res) => {
                     const orderId = String(packOrder.id || packOrder.order_id);
                     await processAndSaveMeliOrderById(orderId, meliConfig.accessToken, headers);
                 }
-                return;
             }
             else if (payload.resource.includes('/orders/')) {
                 // Unknown shape — extract the ID from the URL and try fetching directly
@@ -4201,7 +4207,7 @@ exports.meliWebhook = functions.https.onRequest(async (req, res) => {
             const configDoc = await db.collection('config').doc('integrations').get();
             const meliConfig = (_b = configDoc.data()) === null || _b === void 0 ? void 0 : _b.meli;
             if (!meliConfig || !meliConfig.accessToken)
-                return;
+                throw new Error('No access token');
             const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
             const resourceUrl = `https://api.mercadolibre.com${payload.resource}`;
             try {
@@ -4234,6 +4240,9 @@ exports.meliWebhook = functions.https.onRequest(async (req, res) => {
     }
     catch (err) {
         console.error('[Meli Webhook] Error processing payload:', err);
+    }
+    finally {
+        res.status(200).send('OK');
     }
 });
 // ── Webhook helpers ─────────────────────────────────────────────────────────
@@ -4610,16 +4619,9 @@ exports.aggregateDailyStats = functions.pubsub
     .schedule('58 23 * * *')
     .timeZone('America/Mexico_City')
     .onRun(async (_context) => {
-    var _a, _b;
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth(); // 0-based
-    const day = now.getDate(); // 1-based
-    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const dayStr = String(day).padStart(2, '0');
-    const dateStr = `${monthStr}-${dayStr}`; // YYYY-MM-DD
-    const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+    var _a, _b, _c;
+    const today = new Date();
+    const DAYS_TO_SYNC = 5;
     // ── Canonical non-revenue statuses (mirrors order.model.ts) ──────────
     const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
     // ── Canonical channel resolution (mirrors ops queue getLegacyChannel) ─
@@ -4638,124 +4640,175 @@ exports.aggregateDailyStats = functions.pubsub
             return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
         return 'WEB';
     };
-    // ── Read today's orders ───────────────────────────────────────────────
-    const ordersSnap = await db.collection('orders')
-        .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
-        .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
-        .get();
-    // ── Aggregate: totals + per-channel breakdowns ────────────────────────
-    let totalSales = 0, totalOrders = 0, totalPieces = 0;
-    const byChannel = {};
-    ordersSnap.docs.forEach(docSnap => {
-        var _a, _b;
-        const order = docSnap.data();
-        if (NON_REVENUE.includes(order['status']))
-            return; // skip ghost & void orders
-        const revenue = Number((_a = order['total']) !== null && _a !== void 0 ? _a : 0);
-        const units = ((_b = order['items']) !== null && _b !== void 0 ? _b : [])
-            .reduce((s, item) => s + (Number(item.quantity) || 1), 0);
-        const channel = resolveChannel(order);
-        totalSales += revenue;
-        totalOrders += 1;
-        totalPieces += units;
-        if (!byChannel[channel])
-            byChannel[channel] = { revenue: 0, orders: 0, units: 0 };
-        byChannel[channel].revenue += revenue;
-        byChannel[channel].orders += 1;
-        byChannel[channel].units += units;
-    });
-    const avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
-    const ts = admin.firestore.FieldValue.serverTimestamp();
-    // ── 1. Legacy monthly_stats (backward compat) ─────────────────────────
-    const monthRef = db.collection('monthly_stats').doc(monthStr);
-    const dayRef = monthRef.collection('days').doc(dayStr);
-    await dayRef.set({
-        day: dayStr, month: monthStr,
-        sales: totalSales, orders: totalOrders, pieces: totalPieces,
-        updatedAt: ts,
-    });
-    const allDaysSnap = await monthRef.collection('days').get();
-    let mSales = 0, mOrders = 0, mPieces = 0;
-    allDaysSnap.docs.forEach(d => {
-        var _a, _b, _c;
-        mSales += Number((_a = d.data()['sales']) !== null && _a !== void 0 ? _a : 0);
-        mOrders += Number((_b = d.data()['orders']) !== null && _b !== void 0 ? _b : 0);
-        mPieces += Number((_c = d.data()['pieces']) !== null && _c !== void 0 ? _c : 0);
-    });
-    await monthRef.set({ month: monthStr, sales: mSales, orders: mOrders, pieces: mPieces, updatedAt: ts }, { merge: true });
-    // ── 2. analytics_daily/{YYYY-MM-DD} ──────────────────────────────────
-    const dt = new Date(`${dateStr}T12:00:00`);
-    await db.collection('analytics_daily').doc(dateStr).set({
-        date: dateStr,
-        month: monthStr,
-        dayOfWeek: (dt.getDay() + 6) % 7,
-        totalRevenue: totalSales,
-        totalOrders,
-        totalUnits: totalPieces,
-        avgTicket,
-        byChannel,
-        updatedAt: ts,
-    }, { merge: true });
-    // ── 3. analytics_monthly/{YYYY-MM} ────────────────────────────────────
-    await db.collection('analytics_monthly').doc(monthStr).set({
-        month: monthStr,
-        totalRevenue: admin.firestore.FieldValue.increment(totalSales),
-        totalOrders: admin.firestore.FieldValue.increment(totalOrders),
-        totalUnits: admin.firestore.FieldValue.increment(totalPieces),
-        updatedAt: ts,
-    }, { merge: true });
-    // ── 4. analytics_channel_snapshots/{channel}/{YYYY-MM-DD} ─────────────
-    const batch = db.batch();
-    for (const [channel, data] of Object.entries(byChannel)) {
-        const snapRef = db
-            .collection('analytics_channel_snapshots')
-            .doc(channel)
-            .collection('days')
-            .doc(dateStr);
-        batch.set(snapRef, {
-            channel, date: dateStr, month: monthStr,
-            revenue: data.revenue,
-            orders: data.orders,
-            units: data.units,
-            avgPrice: data.orders > 0 ? data.revenue / data.orders : 0,
-            // visits & conversionRate filled in by meliEnrichDailySnapshot below
+    let totalBqOrdersAppended = 0;
+    let lastSyncDateStr = '';
+    for (let i = DAYS_TO_SYNC - 1; i >= 0; i--) {
+        const now = new Date(today);
+        now.setDate(now.getDate() - i);
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-based
+        const day = now.getDate(); // 1-based
+        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const dayStr = String(day).padStart(2, '0');
+        const dateStr = `${monthStr}-${dayStr}`; // YYYY-MM-DD
+        lastSyncDateStr = dateStr;
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+        // ── Read target day's orders ───────────────────────────────────────────────
+        const ordersSnap = await db.collection('orders')
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startOfDay))
+            .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(endOfDay))
+            .get();
+        // ── Aggregate: totals + per-channel breakdowns ────────────────────────
+        let totalSales = 0, totalOrders = 0, totalPieces = 0;
+        const byChannel = {};
+        ordersSnap.docs.forEach(docSnap => {
+            var _a, _b;
+            const order = docSnap.data();
+            if (NON_REVENUE.includes(order['status']))
+                return; // skip ghost & void orders
+            const revenue = Number((_a = order['total']) !== null && _a !== void 0 ? _a : 0);
+            const units = ((_b = order['items']) !== null && _b !== void 0 ? _b : [])
+                .reduce((s, item) => s + (Number(item.quantity) || 1), 0);
+            const channel = resolveChannel(order);
+            totalSales += revenue;
+            totalOrders += 1;
+            totalPieces += units;
+            if (!byChannel[channel])
+                byChannel[channel] = { revenue: 0, orders: 0, units: 0 };
+            byChannel[channel].revenue += revenue;
+            byChannel[channel].orders += 1;
+            byChannel[channel].units += units;
+        });
+        const avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
+        const ts = admin.firestore.FieldValue.serverTimestamp();
+        // ── 1. Legacy monthly_stats (backward compat) ─────────────────────────
+        const monthRef = db.collection('monthly_stats').doc(monthStr);
+        const dayRef = monthRef.collection('days').doc(dayStr);
+        await dayRef.set({
+            day: dayStr, month: monthStr,
+            sales: totalSales, orders: totalOrders, pieces: totalPieces,
+            updatedAt: ts,
+        });
+        // ── 2. analytics_daily/{YYYY-MM-DD} ──────────────────────────────────
+        const dt = new Date(`${dateStr}T12:00:00`);
+        await db.collection('analytics_daily').doc(dateStr).set({
+            date: dateStr,
+            month: monthStr,
+            dayOfWeek: (dt.getDay() + 6) % 7,
+            totalRevenue: totalSales,
+            totalOrders,
+            totalUnits: totalPieces,
+            avgTicket,
+            byChannel,
             updatedAt: ts,
         }, { merge: true });
-    }
-    await batch.commit();
-    // ── 5. Enrich MELI_FULL snapshot with visit data from MeLi Metrics API ─
-    try {
-        const meliConfig = await getMeliConfig();
-        if ((meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.accessToken) && (meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.userId) && byChannel['MELI_FULL']) {
-            const token = await getValidMeliToken();
-            const visitsRes = await fetch(`https://api.mercadolibre.com/users/${meliConfig.userId}/items_visits/time_window?last=1&unit=day`, { headers: { Authorization: `Bearer ${token}` } });
-            if (visitsRes.ok) {
-                const visitsJson = await visitsRes.json();
-                const totalVisits = (_a = visitsJson === null || visitsJson === void 0 ? void 0 : visitsJson.total_visits) !== null && _a !== void 0 ? _a : 0;
-                const meliFullOrders = (_b = byChannel['MELI_FULL'].orders) !== null && _b !== void 0 ? _b : 0;
-                const conversionRate = totalVisits > 0
-                    ? parseFloat(((meliFullOrders / totalVisits) * 100).toFixed(2))
-                    : 0;
-                const meliSnapRef = db
-                    .collection('analytics_channel_snapshots')
-                    .doc('MELI_FULL')
-                    .collection('days')
-                    .doc(dateStr);
-                await meliSnapRef.set({
-                    visits: totalVisits,
-                    conversionRate,
-                    updatedAt: ts,
-                }, { merge: true });
-                console.log(`[DailyStats] MELI_FULL visits=${totalVisits}, conv=${conversionRate}%`);
+        // ── 3. analytics_channel_snapshots/{channel}/{YYYY-MM-DD} ─────────────
+        const batch = db.batch();
+        for (const [channel, data] of Object.entries(byChannel)) {
+            const snapRef = db
+                .collection('analytics_channel_snapshots')
+                .doc(channel)
+                .collection('days')
+                .doc(dateStr);
+            batch.set(snapRef, {
+                channel, date: dateStr, month: monthStr,
+                revenue: data.revenue,
+                orders: data.orders,
+                units: data.units,
+                avgPrice: data.orders > 0 ? data.revenue / data.orders : 0,
+                updatedAt: ts,
+            }, { merge: true });
+        }
+        await batch.commit();
+        // ── 4. Enrich MELI_FULL snapshot with visit data from MeLi Metrics API ─
+        try {
+            const meliConfig = await getMeliConfig();
+            if ((meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.accessToken) && (meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.userId) && byChannel['MELI_FULL']) {
+                const token = await getValidMeliToken();
+                const visitsRes = await fetch(`https://api.mercadolibre.com/users/${meliConfig.userId}/items_visits/time_window?last=1&unit=day`, { headers: { Authorization: `Bearer ${token}` } });
+                if (visitsRes.ok) {
+                    const visitsJson = await visitsRes.json();
+                    const totalVisits = (_a = visitsJson === null || visitsJson === void 0 ? void 0 : visitsJson.total_visits) !== null && _a !== void 0 ? _a : 0;
+                    const meliFullOrders = (_b = byChannel['MELI_FULL'].orders) !== null && _b !== void 0 ? _b : 0;
+                    const conversionRate = totalVisits > 0
+                        ? parseFloat(((meliFullOrders / totalVisits) * 100).toFixed(2))
+                        : 0;
+                    const meliSnapRef = db
+                        .collection('analytics_channel_snapshots')
+                        .doc('MELI_FULL')
+                        .collection('days')
+                        .doc(dateStr);
+                    await meliSnapRef.set({
+                        visits: totalVisits,
+                        conversionRate,
+                        updatedAt: ts,
+                    }, { merge: true });
+                }
             }
         }
+        catch (meliErr) {
+            console.warn(`[DailyStats] MeLi visits enrichment failed for ${dateStr}:`, meliErr);
+        }
+        console.log(`[DailyStats] ${dateStr}: orders=${totalOrders}, revenue=$${totalSales.toFixed(0)}, pieces=${totalPieces}`);
+        // ── 5. Append this day's orders into BigQuery (Rolling Buffer) ─────────
+        try {
+            const bqPayload = ordersSnap.docs
+                .filter(docSnap => !NON_REVENUE.includes(docSnap.data()['status']))
+                .map(docSnap => ({
+                orderId: docSnap.id,
+                order: docSnap.data(),
+                channel: resolveChannel(docSnap.data()),
+            }));
+            await appendOrdersToBQForDate(dateStr, bqPayload);
+            totalBqOrdersAppended += bqPayload.length;
+        }
+        catch (bqErr) {
+            console.warn(`[DailyStats] BigQuery append failed for ${dateStr} (non-critical):`, bqErr);
+        }
     }
-    catch (meliErr) {
-        // Non-critical: metrics API enrichment failed, snapshot still has order data
-        console.warn('[DailyStats] MeLi visits enrichment failed (non-critical):', meliErr);
+    // ── 6. Re-sum current month aggregate ──────────────────────────────────
+    // Instead of incrementing, we recalculate the whole month to ensure it perfectly
+    // matches the days we just overwrote, maintaining absolute consistency.
+    try {
+        const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const ts = admin.firestore.FieldValue.serverTimestamp();
+        const monthRef = db.collection('monthly_stats').doc(currentMonthStr);
+        const allDaysSnap = await monthRef.collection('days').get();
+        let mSales = 0, mOrders = 0, mPieces = 0;
+        allDaysSnap.docs.forEach(d => {
+            var _a, _b, _c;
+            mSales += Number((_a = d.data()['sales']) !== null && _a !== void 0 ? _a : 0);
+            mOrders += Number((_b = d.data()['orders']) !== null && _b !== void 0 ? _b : 0);
+            mPieces += Number((_c = d.data()['pieces']) !== null && _c !== void 0 ? _c : 0);
+        });
+        await monthRef.set({ month: currentMonthStr, sales: mSales, orders: mOrders, pieces: mPieces, updatedAt: ts }, { merge: true });
+        await db.collection('analytics_monthly').doc(currentMonthStr).set({
+            month: currentMonthStr,
+            totalRevenue: mSales,
+            totalOrders: mOrders,
+            totalUnits: mPieces,
+            updatedAt: ts,
+        }, { merge: true });
+        // ── 7. Write BQ sync status ───────────────────────────────────────────────
+        await db.collection('system_logs').doc('bq_sync_status').set({
+            lastSyncDate: lastSyncDateStr,
+            syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+            ordersAppended: totalBqOrdersAppended,
+            status: 'success',
+            errorMessage: null,
+        }, { merge: true });
     }
-    console.log(`[DailyStats] ${dateStr}: orders=${totalOrders}, revenue=$${totalSales.toFixed(0)}, pieces=${totalPieces}`);
-    console.log(`[DailyStats] Channels:`, JSON.stringify(Object.fromEntries(Object.entries(byChannel).map(([ch, d]) => [ch, `$${d.revenue.toFixed(0)} / ${d.orders}o`]))));
+    catch (err) {
+        console.warn('[DailyStats] Aggregate monthly/status write failed:', err);
+        await db.collection('system_logs').doc('bq_sync_status').set({
+            lastSyncDate: lastSyncDateStr,
+            syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+            ordersAppended: 0,
+            status: 'error',
+            errorMessage: (_c = err === null || err === void 0 ? void 0 : err.message) !== null && _c !== void 0 ? _c : 'unknown',
+        }, { merge: true });
+    }
 });
 // ─── cleanupAbandonedCheckouts — scheduled every 30 min ──────────────────────
 //
@@ -4800,6 +4853,20 @@ exports.cleanupAbandonedCheckouts = functions.pubsub
     }
     await batch.commit();
     console.log(`[CleanupCheckouts] Done. ${snap.size} order(s) cancelled.`);
+    // ── Log daily abandon count for the Metrics Hub ────────────────────────
+    // Writes to system_logs/abandon_stats as a map: { daily: { "2026_04_28": 5, ... } }
+    // Using underscores in the key so Firestore field paths don't require quoting.
+    try {
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' })
+            .replace(/-/g, '_'); // → "2026_04_28"
+        await db.collection('system_logs').doc('abandon_stats').set({
+            [`daily.${today}`]: admin.firestore.FieldValue.increment(snap.size),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+    catch (logErr) {
+        console.warn('[CleanupCheckouts] Failed to write abandon stats (non-critical):', logErr);
+    }
 });
 // ─── meliEnrichInventoryVelocity ─────────────────────────────────────────────
 //
@@ -6119,7 +6186,7 @@ async function runAmazonSync(daysBack) {
                             name: i.Title || '',
                             productName: i.Title || '',
                             quantity: (_a = i.QuantityOrdered) !== null && _a !== void 0 ? _a : 1,
-                            unitPrice: parseFloat((_c = (_b = i.ItemPrice) === null || _b === void 0 ? void 0 : _b.Amount) !== null && _c !== void 0 ? _c : '0'),
+                            price: parseFloat((_c = (_b = i.ItemPrice) === null || _b === void 0 ? void 0 : _b.Amount) !== null && _c !== void 0 ? _c : '0'),
                             asin: i.ASIN || '',
                         });
                     });
@@ -6354,6 +6421,1773 @@ exports.testMeliBilling = functions.https.onRequest(async (req, res) => {
     catch (err) {
         console.error('Debug endpoint error:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+// ─── backfillOrdersToBigQuery — callable ──────────────────────────────────────
+//
+// Loads ALL historical orders + order_items into BigQuery tables.
+// Tables: euro_analytics.orders  /  euro_analytics.order_items
+// Both are DATE-partitioned (order_date) and clustered by source_channel.
+//
+// BigQuery is created on the fly if it doesn't exist.
+// Run once after deploy; the dailyStats cron keeps it up to date thereafter.
+//
+// Returns: { ordersWritten, itemsWritten, dataset }
+// ─────────────────────────────────────────────────────────────────────────────
+const BQ_DATASET = 'euro_analytics';
+const BQ_LOCATION = 'us-central1';
+const BQ_ORDERS_SCHEMA = [
+    { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'order_date', type: 'DATE', mode: 'REQUIRED' },
+    { name: 'created_at', type: 'TIMESTAMP', mode: 'NULLABLE' },
+    { name: 'source_channel', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'status', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'total', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'state', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'city', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'customer_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'customer_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'item_count', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'fulfillment_type', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'payment_method', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'external_order_id', type: 'STRING', mode: 'NULLABLE' },
+];
+const BQ_ITEMS_SCHEMA = [
+    { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'order_date', type: 'DATE', mode: 'REQUIRED' },
+    { name: 'source_channel', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'status', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'sku', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'quantity', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'unit_price', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'subtotal', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'brand', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'asin', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'ml_item_id', type: 'STRING', mode: 'NULLABLE' },
+];
+/** Resolves sourceChannel+fulfillmentType into the canonical BQ channel key. */
+function resolveChannelBQ(order) {
+    const sc = order.sourceChannel;
+    const ft = order.fulfillmentType;
+    if (!sc || sc === 'storefront')
+        return 'WEB';
+    if (sc === 'pos')
+        return 'POS';
+    if (sc === 'on_behalf')
+        return 'ON_BEHALF';
+    if (sc === 'amazon')
+        return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+    if (sc === 'mercadolibre')
+        return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+    return 'WEB';
+}
+/** Ensures the euro_analytics dataset and both tables exist (idempotent). */
+async function ensureBQSchema() {
+    const dataset = bigquery.dataset(BQ_DATASET, { location: BQ_LOCATION });
+    const [dsExists] = await dataset.exists();
+    if (!dsExists) {
+        await dataset.create({ location: BQ_LOCATION });
+        console.log(`[BQ] Created dataset ${BQ_DATASET}`);
+    }
+    const ordersTable = dataset.table('orders');
+    const [ordExists] = await ordersTable.exists();
+    if (!ordExists) {
+        await ordersTable.create({
+            schema: BQ_ORDERS_SCHEMA,
+            timePartitioning: { type: 'DAY', field: 'order_date' },
+            clustering: { fields: ['source_channel', 'status'] },
+        });
+        console.log('[BQ] Created table orders');
+    }
+    const itemsTable = dataset.table('order_items');
+    const [itmExists] = await itemsTable.exists();
+    if (!itmExists) {
+        await itemsTable.create({
+            schema: BQ_ITEMS_SCHEMA,
+            timePartitioning: { type: 'DAY', field: 'order_date' },
+            clustering: { fields: ['source_channel', 'sku'] },
+        });
+        console.log('[BQ] Created table order_items');
+    }
+}
+exports.backfillOrdersToBigQuery = functions
+    .runWith({ timeoutSeconds: 540, memory: '2GB' })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const NON_REVENUE = ['pending_payment', 'payment_failed'];
+    const toMxDate = (d) => d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    const fromDate = (data === null || data === void 0 ? void 0 : data.fromDate)
+        ? new Date(data.fromDate + 'T06:00:00')
+        : new Date('2023-01-01T06:00:00'); // default: start of 2023
+    const toDate = new Date();
+    // Ensure BQ dataset + tables exist
+    await ensureBQSchema();
+    // Optionally clear existing data for a clean backfill
+    if (data === null || data === void 0 ? void 0 : data.deleteFirst) {
+        const dataset = bigquery.dataset(BQ_DATASET);
+        const fromStr = fromDate.toLocaleDateString('sv-SE');
+        await bigquery.query({
+            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.orders\` WHERE order_date >= @fromDate`,
+            params: { fromDate: fromStr }, location: BQ_LOCATION,
+        });
+        await bigquery.query({
+            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.order_items\` WHERE order_date >= @fromDate`,
+            params: { fromDate: fromStr }, location: BQ_LOCATION,
+        });
+        console.log(`[BQ Backfill] Cleared existing data from ${fromStr}`);
+    }
+    // Load all orders in range
+    const snap = await db.collection('orders')
+        .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(fromDate))
+        .where('createdAt', '<=', admin.firestore.Timestamp.fromDate(toDate))
+        .get();
+    console.log(`[BQ Backfill] Loaded ${snap.size} orders from Firestore`);
+    const orderRows = [];
+    const itemRows = [];
+    for (const docSnap of snap.docs) {
+        const o = docSnap.data();
+        const orderId = docSnap.id;
+        // Skip truly ghost orders — but keep cancelled/refunded so analytics
+        // can answer "what % of orders were cancelled?"
+        if (NON_REVENUE.includes(o['status']))
+            continue;
+        const createdAt = (_a = o['createdAt']) === null || _a === void 0 ? void 0 : _a.toDate();
+        const orderDate = toMxDate(createdAt !== null && createdAt !== void 0 ? createdAt : new Date());
+        const channel = resolveChannelBQ(o);
+        const items = (_b = o['items']) !== null && _b !== void 0 ? _b : [];
+        orderRows.push({
+            order_id: orderId,
+            order_date: orderDate,
+            created_at: (_c = createdAt === null || createdAt === void 0 ? void 0 : createdAt.toISOString()) !== null && _c !== void 0 ? _c : null,
+            source_channel: channel,
+            status: (_d = o['status']) !== null && _d !== void 0 ? _d : null,
+            total: Number((_e = o['total']) !== null && _e !== void 0 ? _e : 0),
+            state: (_g = (_f = o['shippingAddress']) === null || _f === void 0 ? void 0 : _f.state) !== null && _g !== void 0 ? _g : null,
+            city: (_j = (_h = o['shippingAddress']) === null || _h === void 0 ? void 0 : _h.city) !== null && _j !== void 0 ? _j : null,
+            customer_id: (_l = (_k = o['customer']) === null || _k === void 0 ? void 0 : _k.id) !== null && _l !== void 0 ? _l : null,
+            customer_name: (_o = (_m = o['customer']) === null || _m === void 0 ? void 0 : _m.name) !== null && _o !== void 0 ? _o : null,
+            item_count: items.length,
+            fulfillment_type: (_p = o['fulfillmentType']) !== null && _p !== void 0 ? _p : null,
+            payment_method: (_q = o['paymentMethod']) !== null && _q !== void 0 ? _q : null,
+            external_order_id: (_r = o['externalOrderId']) !== null && _r !== void 0 ? _r : null,
+        });
+        for (const item of items) {
+            const unitPrice = Number((_t = (_s = item.price) !== null && _s !== void 0 ? _s : item.unitPrice) !== null && _t !== void 0 ? _t : 0);
+            const qty = Number((_u = item.quantity) !== null && _u !== void 0 ? _u : 1);
+            itemRows.push({
+                order_id: orderId,
+                order_date: orderDate,
+                source_channel: channel,
+                status: (_v = o['status']) !== null && _v !== void 0 ? _v : null,
+                sku: (_w = item.sku) !== null && _w !== void 0 ? _w : null,
+                product_name: (_y = (_x = item.productName) !== null && _x !== void 0 ? _x : item.name) !== null && _y !== void 0 ? _y : null,
+                quantity: qty,
+                unit_price: unitPrice,
+                subtotal: Number((_z = item.subtotal) !== null && _z !== void 0 ? _z : (unitPrice * qty)),
+                brand: (_0 = item.brand) !== null && _0 !== void 0 ? _0 : null,
+                product_id: (_1 = item.productId) !== null && _1 !== void 0 ? _1 : null,
+                asin: (_2 = item.asin) !== null && _2 !== void 0 ? _2 : null,
+                ml_item_id: (_3 = item.mlItemId) !== null && _3 !== void 0 ? _3 : null,
+            });
+        }
+    }
+    // Insert in batches of 500 (BQ streaming insert limit)
+    const BATCH = 500;
+    const ordersTable = bigquery.dataset(BQ_DATASET).table('orders');
+    const itemsTable = bigquery.dataset(BQ_DATASET).table('order_items');
+    for (let i = 0; i < orderRows.length; i += BATCH) {
+        await ordersTable.insert(orderRows.slice(i, i + BATCH), { skipInvalidRows: true });
+    }
+    for (let i = 0; i < itemRows.length; i += BATCH) {
+        await itemsTable.insert(itemRows.slice(i, i + BATCH), { skipInvalidRows: true });
+    }
+    console.log(`[BQ Backfill] Done. orders=${orderRows.length}, items=${itemRows.length}`);
+    return { ordersWritten: orderRows.length, itemsWritten: itemRows.length, dataset: BQ_DATASET };
+});
+// ─── queryMetrics — callable ──────────────────────────────────────────────────
+//
+// General-purpose BigQuery analytics callable.
+// Accepts { queryType, params } and returns typed result rows.
+//
+// Query types:
+//   'productRevenue'  → top SKUs ranked by revenue
+//   'geoBreakdown'    → revenue + orders grouped by state
+//   'channelSku'      → SKU velocity per channel
+//   'customerCohorts' → monthly cohort revenue (placeholder)
+//
+// All queries use date partitioning — only scans relevant slices.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.queryMetrics = functions
+    .runWith({ timeoutSeconds: 60, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const { queryType, fromDate, toDate, channel, limit = 50 } = data;
+    const PROJECT = 'tiendapraxis';
+    const DS = BQ_DATASET;
+    // Revenue-positive statuses only — 'paid' = web/MP orders confirmed by webhook
+    const REVENUE_STATUSES = `('pending','processing','shipped','delivered','completed','in_transit','picked_up','paid','refund_pending')`;
+    let sql = '';
+    let params = { fromDate, toDate, limit };
+    switch (queryType) {
+        // ── Top products by revenue in the period ─────────────────────────────
+        case 'productRevenue':
+            sql = `
+                    SELECT
+                        i.sku,
+                        i.product_name,
+                        i.brand,
+                        SUM(i.quantity)  AS total_units,
+                        SUM(i.subtotal)  AS total_revenue,
+                        COUNT(DISTINCT i.order_id) AS total_orders,
+                        SUM(i.subtotal) / NULLIF(SUM(i.quantity), 0) AS avg_unit_price
+                    FROM \`${PROJECT}.${DS}.order_items\` i
+                    JOIN \`${PROJECT}.${DS}.orders\` o ON i.order_id = o.order_id
+                    WHERE i.order_date BETWEEN @fromDate AND @toDate
+                      AND o.status IN ${REVENUE_STATUSES}
+                      ${channel ? 'AND i.source_channel = @channel' : ''}
+                    GROUP BY i.sku, i.product_name, i.brand
+                    HAVING i.sku IS NOT NULL
+                    ORDER BY total_revenue DESC
+                    LIMIT @limit
+                `;
+            if (channel)
+                params.channel = channel;
+            break;
+        // ── Revenue + orders grouped by shipping state ────────────────────────
+        case 'geoBreakdown':
+            sql = `
+                    SELECT
+                        COALESCE(o.state, '(Sin estado)') AS state,
+                        COUNT(*)                                                       AS total_orders,
+                        SUM(o.total)                                                   AS total_revenue,
+                        AVG(o.total)                                                   AS avg_ticket,
+                        SUM(o.item_count)                                              AS total_units,
+                        COUNT(DISTINCT IF(o.customer_id IS NOT NULL, o.customer_id, NULL)) AS unique_customers
+                    FROM \`${PROJECT}.${DS}.orders\` o
+                    WHERE o.order_date BETWEEN @fromDate AND @toDate
+                      AND o.status IN ${REVENUE_STATUSES}
+                      ${channel ? 'AND o.source_channel = @channel' : ''}
+                    GROUP BY state
+                    ORDER BY total_revenue DESC
+                    LIMIT @limit
+                `;
+            if (channel)
+                params.channel = channel;
+            break;
+        // ── SKU revenue broken down by channel ────────────────────────────────
+        case 'channelSku':
+            sql = `
+                    SELECT
+                        i.source_channel,
+                        i.sku,
+                        i.product_name,
+                        SUM(i.quantity)  AS total_units,
+                        SUM(i.subtotal)  AS total_revenue
+                    FROM \`${PROJECT}.${DS}.order_items\` i
+                    JOIN \`${PROJECT}.${DS}.orders\` o ON i.order_id = o.order_id
+                    WHERE i.order_date BETWEEN @fromDate AND @toDate
+                      AND o.status IN ${REVENUE_STATUSES}
+                      ${channel ? 'AND i.source_channel = @channel' : ''}
+                    GROUP BY i.source_channel, i.sku, i.product_name
+                    HAVING i.sku IS NOT NULL
+                    ORDER BY i.source_channel, total_revenue DESC
+                    LIMIT @limit
+                `;
+            if (channel)
+                params.channel = channel;
+            break;
+        // ── Monthly revenue by first-purchase cohort month ────────────────────
+        case 'customerCohorts':
+            sql = `
+                    WITH first_orders AS (
+                        SELECT
+                            customer_id,
+                            MIN(order_date) AS first_order_date,
+                            FORMAT_DATE('%Y-%m', MIN(order_date)) AS cohort_month
+                        FROM \`${PROJECT}.${DS}.orders\`
+                        WHERE customer_id IS NOT NULL
+                          AND order_date BETWEEN @fromDate AND @toDate
+                          AND status IN ${REVENUE_STATUSES}
+                        GROUP BY customer_id
+                    )
+                    SELECT
+                        fo.cohort_month,
+                        FORMAT_DATE('%Y-%m', o.order_date) AS activity_month,
+                        COUNT(DISTINCT o.customer_id)  AS customers,
+                        SUM(o.total)                   AS revenue,
+                        COUNT(DISTINCT o.order_id)     AS orders
+                    FROM \`${PROJECT}.${DS}.orders\` o
+                    JOIN first_orders fo ON o.customer_id = fo.customer_id
+                    WHERE o.order_date BETWEEN @fromDate AND @toDate
+                      AND o.status IN ${REVENUE_STATUSES}
+                    GROUP BY fo.cohort_month, activity_month
+                    ORDER BY fo.cohort_month, activity_month
+                    LIMIT @limit
+                `;
+            break;
+        // ── KPI summary by channel — replaces MetricsHub Firestore reads ────────
+        case 'summaryKpis':
+            sql = `
+                    SELECT
+                        source_channel,
+                        SUM(total)                    AS revenue,
+                        COUNT(DISTINCT order_id)      AS orders,
+                        SUM(item_count)               AS units,
+                        SAFE_DIVIDE(SUM(total), COUNT(DISTINCT order_id)) AS avg_ticket
+                    FROM \`${PROJECT}.${DS}.orders\`
+                    WHERE order_date BETWEEN @fromDate AND @toDate
+                      AND status IN ${REVENUE_STATUSES}
+                    GROUP BY source_channel
+                    ORDER BY revenue DESC
+                `;
+            break;
+        // ── Cancellation + return rate by channel ─────────────────────────────
+        case 'cancellationRate':
+            sql = `
+                    SELECT
+                        source_channel,
+                        COUNT(DISTINCT order_id)                                                          AS total_orders,
+                        COUNT(DISTINCT CASE WHEN status IN ${REVENUE_STATUSES} THEN order_id END)         AS completed_orders,
+                        COUNT(DISTINCT CASE WHEN status IN ('cancelled','refunded','returned') THEN order_id END) AS cancelled_orders,
+                        SAFE_DIVIDE(
+                            COUNT(DISTINCT CASE WHEN status IN ('cancelled','refunded','returned') THEN order_id END),
+                            NULLIF(COUNT(DISTINCT order_id), 0)
+                        ) AS cancellation_rate
+                    FROM \`${PROJECT}.${DS}.orders\`
+                    WHERE order_date BETWEEN @fromDate AND @toDate
+                    GROUP BY source_channel
+                    ORDER BY completed_orders DESC
+                `;
+            break;
+        case 'dailyTrend':
+            sql = `
+                    SELECT
+                        order_date,
+                        source_channel,
+                        SUM(total)               AS revenue,
+                        COUNT(DISTINCT order_id) AS orders,
+                        SUM(item_count)          AS units
+                    FROM \`${PROJECT}.${DS}.orders\`
+                    WHERE order_date BETWEEN @fromDate AND @toDate
+                      AND status IN ${REVENUE_STATUSES}
+                      ${channel ? 'AND source_channel = @channel' : ''}
+                    GROUP BY order_date, source_channel
+                    ORDER BY order_date
+                `;
+            if (channel)
+                params['channel'] = channel;
+            break;
+        default:
+            throw new functions.https.HttpsError('invalid-argument', `Unknown queryType: ${queryType}`);
+    }
+    const [rows] = await bigquery.query({
+        query: sql,
+        params,
+        location: BQ_LOCATION,
+    });
+    // Serialize BigQuery row values to plain JSON-safe JS primitives.
+    // BigQuery INT64/FLOAT64 → { value: '123' }  → parse as number
+    // BigQuery DATE/STRING   → { value: '2024-01-15' } → keep as string
+    // NaN / Infinity are not JSON-serializable — replace with null.
+    const serialize = (v) => {
+        var _a;
+        if (v == null)
+            return null;
+        if (typeof v === 'object' && 'value' in v) {
+            // Try numeric; if NaN it's a DATE/STRING — return raw string
+            const n = Number(v.value);
+            return isFinite(n) ? n : ((_a = v.value) !== null && _a !== void 0 ? _a : null);
+        }
+        if (typeof v === 'number')
+            return isFinite(v) ? v : null;
+        return v;
+    };
+    const result = rows.map((row) => {
+        const out = {};
+        for (const [k, v] of Object.entries(row))
+            out[k] = serialize(v);
+        return out;
+    });
+    return { queryType, fromDate, toDate, rowCount: result.length, rows: result };
+});
+/**
+ * Upsert a conversation keyed by (channel + channelConversationId).
+ * Returns the Firestore document ID.
+ */
+async function upsertConversation(data) {
+    const snap = await db.collection('customer_conversations')
+        .where('channel', '==', data.channel)
+        .where('channelConversationId', '==', data.channelConversationId)
+        .limit(1)
+        .get();
+    if (!snap.empty) {
+        const ref = snap.docs[0].ref;
+        // Refresh name/avatar in case they changed
+        await ref.update({
+            customerName: data.customerName,
+            customerHandle: data.customerHandle,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return ref.id;
+    }
+    const ref = await db.collection('customer_conversations').add(Object.assign(Object.assign({}, data), { status: 'open', priority: 'normal', tags: [], unreadCount: 0, lastMessage: { text: '', direction: 'inbound', timestamp: admin.firestore.Timestamp.now() }, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    return ref.id;
+}
+/** Add a message to a conversation's subcollection and update the parent's lastMessage preview. */
+async function addMessage(conversationId, msg) {
+    var _a;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const msgRef = db.collection(`customer_conversations/${conversationId}/messages`).doc();
+    await msgRef.set(Object.assign(Object.assign({}, msg), { timestamp: now }));
+    const preview = msg.content.length > 80 ? msg.content.slice(0, 80) + '…' : msg.content;
+    await db.collection('customer_conversations').doc(conversationId).update({
+        lastMessage: {
+            text: preview || (msg.type !== 'text' ? `[${msg.type}]` : ''),
+            direction: msg.direction,
+            timestamp: admin.firestore.Timestamp.now(),
+            agentName: (_a = msg.sentByName) !== null && _a !== void 0 ? _a : null,
+        },
+        unreadCount: msg.direction === 'inbound'
+            ? admin.firestore.FieldValue.increment(1)
+            : 0,
+        updatedAt: now,
+    });
+}
+/** Resolve a Meta media URL to a public download link. */
+async function resolveMetaMedia(mediaId, accessToken) {
+    try {
+        const r = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const data = await r.json();
+        return data === null || data === void 0 ? void 0 : data.url;
+    }
+    catch (_a) {
+        return undefined;
+    }
+}
+// ── Meta Webhook (WhatsApp + Instagram + Facebook Messenger) ─────────────────
+// Single endpoint for all Meta platforms. Meta distinguishes them via `object` field.
+// Webhook URL: https://us-central1-tiendapraxis.cloudfunctions.net/metaInboxWebhook
+// Verify token: set in firebase functions:config:set meta.verify_token="..."
+exports.metaInboxWebhook = functions.https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26;
+    // ── Verification handshake (GET) ──────────────────────────────────────────
+    if (req.method === 'GET') {
+        const verifyToken = (_b = (_a = functions.config().meta) === null || _a === void 0 ? void 0 : _a.verify_token) !== null && _b !== void 0 ? _b : process.env.META_VERIFY_TOKEN;
+        if (req.query['hub.verify_token'] === verifyToken) {
+            res.send(req.query['hub.challenge']);
+        }
+        else {
+            res.sendStatus(403);
+        }
+        return;
+    }
+    // ── ACK immediately — Meta requires response < 5 s ───────────────────────
+    res.sendStatus(200);
+    const body = req.body;
+    if (!(body === null || body === void 0 ? void 0 : body.object))
+        return;
+    const waToken = (_e = (_d = (_c = functions.config().meta) === null || _c === void 0 ? void 0 : _c.wa_token) !== null && _d !== void 0 ? _d : process.env.WA_TOKEN) !== null && _e !== void 0 ? _e : '';
+    try {
+        if (body.object === 'whatsapp_business_account') {
+            for (const entry of (_f = body.entry) !== null && _f !== void 0 ? _f : []) {
+                for (const change of (_g = entry.changes) !== null && _g !== void 0 ? _g : []) {
+                    const value = change.value;
+                    for (const msg of (_h = value === null || value === void 0 ? void 0 : value.messages) !== null && _h !== void 0 ? _h : []) {
+                        const phone = msg.from;
+                        const contactName = (_m = (_l = (_k = (_j = value.contacts) === null || _j === void 0 ? void 0 : _j[0]) === null || _k === void 0 ? void 0 : _k.profile) === null || _l === void 0 ? void 0 : _l.name) !== null && _m !== void 0 ? _m : phone;
+                        const convId = await upsertConversation({
+                            channel: 'whatsapp',
+                            channelConversationId: phone,
+                            customerHandle: phone,
+                            customerName: contactName,
+                        });
+                        let mediaUrl;
+                        if ((_o = msg.image) === null || _o === void 0 ? void 0 : _o.id)
+                            mediaUrl = await resolveMetaMedia(msg.image.id, waToken);
+                        if ((_p = msg.document) === null || _p === void 0 ? void 0 : _p.id)
+                            mediaUrl = await resolveMetaMedia(msg.document.id, waToken);
+                        if ((_q = msg.audio) === null || _q === void 0 ? void 0 : _q.id)
+                            mediaUrl = await resolveMetaMedia(msg.audio.id, waToken);
+                        if ((_r = msg.video) === null || _r === void 0 ? void 0 : _r.id)
+                            mediaUrl = await resolveMetaMedia(msg.video.id, waToken);
+                        await addMessage(convId, {
+                            direction: 'inbound',
+                            type: msg.image ? 'image' : msg.document ? 'document' : msg.audio ? 'audio' : msg.video ? 'video' : 'text',
+                            content: (_u = (_t = (_s = msg.text) === null || _s === void 0 ? void 0 : _s.body) !== null && _t !== void 0 ? _t : msg.caption) !== null && _u !== void 0 ? _u : '',
+                            mediaUrl,
+                            platformMessageId: msg.id,
+                            status: 'received',
+                        });
+                    }
+                }
+            }
+        }
+        else if (body.object === 'instagram') {
+            for (const entry of (_v = body.entry) !== null && _v !== void 0 ? _v : []) {
+                for (const msgEvent of (_w = entry.messaging) !== null && _w !== void 0 ? _w : []) {
+                    const senderId = String((_y = (_x = msgEvent.sender) === null || _x === void 0 ? void 0 : _x.id) !== null && _y !== void 0 ? _y : '');
+                    const senderName = (_0 = (_z = msgEvent.sender) === null || _z === void 0 ? void 0 : _z.name) !== null && _0 !== void 0 ? _0 : `IG ${senderId}`;
+                    if (!senderId)
+                        continue;
+                    const convId = await upsertConversation({
+                        channel: 'instagram',
+                        channelConversationId: senderId,
+                        customerHandle: senderId,
+                        customerName: senderName,
+                    });
+                    await addMessage(convId, {
+                        direction: 'inbound',
+                        type: ((_3 = (_2 = (_1 = msgEvent.message) === null || _1 === void 0 ? void 0 : _1.attachments) === null || _2 === void 0 ? void 0 : _2[0]) === null || _3 === void 0 ? void 0 : _3.type) === 'image' ? 'image' : 'text',
+                        content: (_5 = (_4 = msgEvent.message) === null || _4 === void 0 ? void 0 : _4.text) !== null && _5 !== void 0 ? _5 : '',
+                        mediaUrl: (_9 = (_8 = (_7 = (_6 = msgEvent.message) === null || _6 === void 0 ? void 0 : _6.attachments) === null || _7 === void 0 ? void 0 : _7[0]) === null || _8 === void 0 ? void 0 : _8.payload) === null || _9 === void 0 ? void 0 : _9.url,
+                        platformMessageId: (_11 = (_10 = msgEvent.message) === null || _10 === void 0 ? void 0 : _10.mid) !== null && _11 !== void 0 ? _11 : `ig_${Date.now()}`,
+                        status: 'received',
+                    });
+                }
+            }
+        }
+        else if (body.object === 'page') {
+            for (const entry of (_12 = body.entry) !== null && _12 !== void 0 ? _12 : []) {
+                for (const msgEvent of (_13 = entry.messaging) !== null && _13 !== void 0 ? _13 : []) {
+                    const senderId = String((_15 = (_14 = msgEvent.sender) === null || _14 === void 0 ? void 0 : _14.id) !== null && _15 !== void 0 ? _15 : '');
+                    if (!senderId)
+                        continue;
+                    const convId = await upsertConversation({
+                        channel: 'facebook',
+                        channelConversationId: senderId,
+                        customerHandle: senderId,
+                        customerName: `FB ${senderId}`,
+                    });
+                    await addMessage(convId, {
+                        direction: 'inbound',
+                        type: ((_18 = (_17 = (_16 = msgEvent.message) === null || _16 === void 0 ? void 0 : _16.attachments) === null || _17 === void 0 ? void 0 : _17[0]) === null || _18 === void 0 ? void 0 : _18.type) === 'image' ? 'image' : 'text',
+                        content: (_20 = (_19 = msgEvent.message) === null || _19 === void 0 ? void 0 : _19.text) !== null && _20 !== void 0 ? _20 : '',
+                        mediaUrl: (_24 = (_23 = (_22 = (_21 = msgEvent.message) === null || _21 === void 0 ? void 0 : _21.attachments) === null || _22 === void 0 ? void 0 : _22[0]) === null || _23 === void 0 ? void 0 : _23.payload) === null || _24 === void 0 ? void 0 : _24.url,
+                        platformMessageId: (_26 = (_25 = msgEvent.message) === null || _25 === void 0 ? void 0 : _25.mid) !== null && _26 !== void 0 ? _26 : `fb_${Date.now()}`,
+                        status: 'received',
+                    });
+                }
+            }
+        }
+    }
+    catch (err) {
+        console.error('[metaInboxWebhook] Error processing payload:', err);
+    }
+});
+// ── Telegram Webhook ─────────────────────────────────────────────────────────
+// Telegram Bot API — set webhook via:
+// curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://us-central1-tiendapraxis.cloudfunctions.net/telegramInboxWebhook"
+// No approval needed — create bot instantly with @BotFather.
+exports.telegramInboxWebhook = functions.https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    res.sendStatus(200);
+    const update = req.body;
+    const msg = update.message || update.channel_post;
+    if (!msg)
+        return;
+    const chatId = String(msg.chat.id);
+    const firstName = (_b = (_a = msg.from) === null || _a === void 0 ? void 0 : _a.first_name) !== null && _b !== void 0 ? _b : '';
+    const lastName = (_d = (_c = msg.from) === null || _c === void 0 ? void 0 : _c.last_name) !== null && _d !== void 0 ? _d : '';
+    const senderName = `${firstName} ${lastName}`.trim() || `Telegram ${chatId}`;
+    const username = ((_e = msg.from) === null || _e === void 0 ? void 0 : _e.username) ? `@${msg.from.username}` : chatId;
+    try {
+        const convId = await upsertConversation({
+            channel: 'telegram',
+            channelConversationId: chatId,
+            customerHandle: username,
+            customerName: senderName,
+        });
+        await addMessage(convId, {
+            direction: 'inbound',
+            type: msg.photo ? 'image' : msg.document ? 'document' : msg.voice ? 'audio' : 'text',
+            content: (_g = (_f = msg.text) !== null && _f !== void 0 ? _f : msg.caption) !== null && _g !== void 0 ? _g : '',
+            platformMessageId: String(msg.message_id),
+            status: 'received',
+        });
+    }
+    catch (err) {
+        console.error('[telegramInboxWebhook] Error:', err);
+    }
+});
+// ── SendGrid Inbound Parse Webhook (Email) ────────────────────────────────────
+// Configure SendGrid: Settings → Inbound Parse → Add Host & URL
+// URL: https://us-central1-tiendapraxis.cloudfunctions.net/emailInboxWebhook
+// Threads emails by sender address.
+exports.emailInboxWebhook = functions.https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f;
+    res.sendStatus(200);
+    try {
+        const from = String((_a = req.body.from) !== null && _a !== void 0 ? _a : '');
+        const subject = String((_b = req.body.subject) !== null && _b !== void 0 ? _b : '(Sin asunto)');
+        const text = String((_d = (_c = req.body.text) !== null && _c !== void 0 ? _c : req.body.html) !== null && _d !== void 0 ? _d : '');
+        const envelope = JSON.parse(req.body.envelope || '{}');
+        const fromEmail = String((_e = envelope.from) !== null && _e !== void 0 ? _e : from);
+        // Extract display name: "Juan García <juan@example.com>" → "Juan García"
+        const nameMatch = from.match(/^([^<]+)</);
+        const displayName = nameMatch ? nameMatch[1].trim() : fromEmail;
+        const convId = await upsertConversation({
+            channel: 'email',
+            channelConversationId: fromEmail,
+            customerHandle: fromEmail,
+            customerName: displayName || fromEmail,
+        });
+        await addMessage(convId, {
+            direction: 'inbound',
+            type: 'text',
+            content: `**${subject}**\n\n${text.slice(0, 2000)}`,
+            platformMessageId: String((_f = req.body['message-id']) !== null && _f !== void 0 ? _f : `email_${Date.now()}`),
+            status: 'received',
+        });
+    }
+    catch (err) {
+        console.error('[emailInboxWebhook] Error:', err);
+    }
+});
+// ── Apply Inbox Channel Config ────────────────────────────────────────────────
+// Callable: receives channel credentials from the admin UI and stores them
+// securely in Firestore (admin-only collection) so the webhook functions can
+// read them at runtime. This removes the need for CLI-based config:set.
+exports.applyInboxChannelConfig = functions.https.onCall(async (data, context) => {
+    var _a, _b;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    // Only SUPER_ADMIN / ADMIN can apply channel configs
+    const profileSnap = await db.collection('users').doc(context.auth.uid).get();
+    const role = (_b = (_a = profileSnap.data()) === null || _a === void 0 ? void 0 : _a.role) !== null && _b !== void 0 ? _b : '';
+    if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) {
+        throw new functions.https.HttpsError('permission-denied', 'Admin role required.');
+    }
+    const { channel, creds } = data !== null && data !== void 0 ? data : {};
+    if (!channel || typeof creds !== 'object') {
+        throw new functions.https.HttpsError('invalid-argument', 'channel and creds required.');
+    }
+    // Store credentials in a secure admin-only Firestore document
+    // (protected by Firestore rules — only service account can read)
+    await db.collection('config').doc('inbox_credentials').set({ [channel]: creds, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    // For Telegram: auto-register the webhook immediately using the provided bot token
+    if (channel === 'telegram' && creds.botToken) {
+        const webhookUrl = `https://us-central1-tiendapraxis.cloudfunctions.net/telegramInboxWebhook`;
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${creds.botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+            const json = await res.json();
+            if (!json.ok) {
+                console.warn('[applyInboxChannelConfig] Telegram setWebhook warning:', json.description);
+            }
+            else {
+                console.log('[applyInboxChannelConfig] Telegram webhook registered successfully.');
+            }
+        }
+        catch (err) {
+            console.error('[applyInboxChannelConfig] Telegram setWebhook error:', err);
+            // Don't throw — creds are saved even if webhook registration fails
+        }
+    }
+    return { success: true, channel };
+});
+// ── Send Inbox Reply ─────────────────────────────────────────────────────────
+// Callable from internal app. Routes the reply to the correct platform API.
+exports.sendInboxReply = functions.https.onCall(async (data, context) => {
+    var _a, _b, _c;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const { conversationId, message } = data !== null && data !== void 0 ? data : {};
+    if (!conversationId || !(message === null || message === void 0 ? void 0 : message.trim()))
+        throw new functions.https.HttpsError('invalid-argument', 'conversationId and message required.');
+    const convSnap = await db.collection('customer_conversations').doc(conversationId).get();
+    if (!convSnap.exists)
+        throw new functions.https.HttpsError('not-found', 'Conversation not found.');
+    const conv = convSnap.data();
+    const channel = conv.channel;
+    const handle = conv.customerHandle;
+    const agentName = (_b = (_a = context.auth.token.name) !== null && _a !== void 0 ? _a : context.auth.token.email) !== null && _b !== void 0 ? _b : 'Soporte';
+    const agentUid = context.auth.uid;
+    // ── Send via platform ──────────────────────────────────────────────────────
+    let sent = false;
+    // ── Website channel: direct Firestore write ──────────────────────────────
+    // The storefront chat widget listens in real time — no external API needed.
+    if (channel === 'website') {
+        await addMessage(conversationId, {
+            direction: 'outbound',
+            type: 'text',
+            content: message,
+            sentBy: agentUid,
+            sentByName: agentName,
+            platformMessageId: `web_reply_${Date.now()}`,
+            status: 'sent',
+        });
+        // Keep conversation open (visitor may reply further)
+        await db.collection('customer_conversations').doc(conversationId).update({
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { ok: true };
+    }
+    // ── Load credentials from Firestore (saved via applyInboxChannelConfig) ──────
+    let firestoreCreds = {};
+    try {
+        const credsSnap = await db.collection('config').doc('inbox_credentials').get();
+        if (credsSnap.exists)
+            firestoreCreds = ((_c = credsSnap.data()) !== null && _c !== void 0 ? _c : {});
+    }
+    catch ( /* continue with functions.config() fallback */_d) { /* continue with functions.config() fallback */ }
+    const getCred = (channel, key, envFallback) => { var _a, _b, _c, _d, _e; return (_e = (_d = (_b = (_a = firestoreCreds[channel]) === null || _a === void 0 ? void 0 : _a[key]) !== null && _b !== void 0 ? _b : (_c = functions.config()[channel]) === null || _c === void 0 ? void 0 : _c[key]) !== null && _d !== void 0 ? _d : process.env[envFallback]) !== null && _e !== void 0 ? _e : ''; };
+    if (channel === 'whatsapp') {
+        const waToken = getCred('whatsapp', 'waToken', 'WA_TOKEN') || getCred('meta', 'wa_token', 'WA_TOKEN');
+        const waPhoneId = getCred('whatsapp', 'waPhoneId', 'WA_PHONE_ID') || getCred('meta', 'wa_phone_id', 'WA_PHONE_ID');
+        const r = await fetch(`https://graph.facebook.com/v19.0/${waPhoneId}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${waToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: handle,
+                type: 'text',
+                text: { body: message }
+            })
+        });
+        sent = r.ok;
+    }
+    else if (channel === 'telegram') {
+        const botToken = getCred('telegram', 'botToken', 'TELEGRAM_BOT_TOKEN') || getCred('telegram', 'bot_token', 'TELEGRAM_BOT_TOKEN');
+        const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: handle, text: message })
+        });
+        sent = r.ok;
+    }
+    else if (channel === 'email') {
+        const sgKey = getCred('email', 'sendgridKey', 'SENDGRID_API_KEY') || getCred('sendgrid', 'api_key', 'SENDGRID_API_KEY');
+        const replyFrom = getCred('email', 'replyFrom', 'SENDGRID_REPLY_FROM') || getCred('sendgrid', 'reply_from', 'SENDGRID_REPLY_FROM') || 'soporte@importadoraeuro.com';
+        const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${sgKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                personalizations: [{ to: [{ email: handle }] }],
+                from: { email: replyFrom, name: 'Importadora Euro' },
+                subject: 'Re: Tu consulta',
+                content: [{ type: 'text/plain', value: message }]
+            })
+        });
+        sent = r.ok;
+    }
+    else if (channel === 'instagram' || channel === 'facebook') {
+        const pageToken = channel === 'instagram'
+            ? (getCred('instagram', 'igToken', 'IG_TOKEN') || getCred('meta', 'ig_token', 'IG_TOKEN'))
+            : (getCred('facebook', 'fbPageToken', 'FB_PAGE_TOKEN') || getCred('meta', 'fb_page_token', 'FB_PAGE_TOKEN'));
+        const r = await fetch(`https://graph.facebook.com/v19.0/me/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${pageToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                recipient: { id: handle },
+                message: { text: message }
+            })
+        });
+        sent = r.ok;
+    }
+    // ── Log outbound message ───────────────────────────────────────────────────
+    await addMessage(conversationId, {
+        direction: 'outbound',
+        type: 'text',
+        content: message,
+        sentBy: agentUid,
+        sentByName: agentName,
+        platformMessageId: `out_${Date.now()}`,
+        status: sent ? 'sent' : 'failed',
+        errorReason: sent ? undefined : 'Platform API error',
+    });
+    // Move conversation to pending (awaiting customer reply)
+    await db.collection('customer_conversations').doc(conversationId).update({
+        status: 'pending',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: sent };
+});
+// ─── appendOrderToBigQuery — internal helper ──────────────────────────────────
+//
+// Called from the dailyStats cron after its Firestore writes.
+// Streams today's newly created orders into BigQuery.
+// This keeps BQ current without requiring manual backfills.
+// ─────────────────────────────────────────────────────────────────────────────
+async function appendOrdersToBQForDate(dateStr, ordersData) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3;
+    try {
+        await ensureBQSchema();
+        // DELETION FIRST TO ENSURE IDEMPOTENCY (ROLLING WINDOW SYNC)
+        await bigquery.query({
+            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.orders\` WHERE order_date = @fromDate`,
+            params: { fromDate: dateStr }, location: BQ_LOCATION,
+        });
+        await bigquery.query({
+            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.order_items\` WHERE order_date = @fromDate`,
+            params: { fromDate: dateStr }, location: BQ_LOCATION,
+        });
+        if (ordersData.length === 0) {
+            console.log(`[BQ Append] ${dateStr}: orders=0, items=0 (Cleared previous data)`);
+            return;
+        }
+        const orderRows = [];
+        const itemRows = [];
+        for (const { orderId, order, channel } of ordersData) {
+            const createdAt = (_a = order['createdAt']) === null || _a === void 0 ? void 0 : _a.toDate();
+            const items = (_b = order['items']) !== null && _b !== void 0 ? _b : [];
+            orderRows.push({
+                order_id: orderId,
+                order_date: dateStr,
+                created_at: (_c = createdAt === null || createdAt === void 0 ? void 0 : createdAt.toISOString()) !== null && _c !== void 0 ? _c : null,
+                source_channel: channel,
+                status: (_d = order['status']) !== null && _d !== void 0 ? _d : null,
+                total: Number((_e = order['total']) !== null && _e !== void 0 ? _e : 0),
+                state: (_g = (_f = order['shippingAddress']) === null || _f === void 0 ? void 0 : _f.state) !== null && _g !== void 0 ? _g : null,
+                city: (_j = (_h = order['shippingAddress']) === null || _h === void 0 ? void 0 : _h.city) !== null && _j !== void 0 ? _j : null,
+                customer_id: (_l = (_k = order['customer']) === null || _k === void 0 ? void 0 : _k.id) !== null && _l !== void 0 ? _l : null,
+                customer_name: (_o = (_m = order['customer']) === null || _m === void 0 ? void 0 : _m.name) !== null && _o !== void 0 ? _o : null,
+                item_count: items.length,
+                fulfillment_type: (_p = order['fulfillmentType']) !== null && _p !== void 0 ? _p : null,
+                payment_method: (_q = order['paymentMethod']) !== null && _q !== void 0 ? _q : null,
+                external_order_id: (_r = order['externalOrderId']) !== null && _r !== void 0 ? _r : null,
+            });
+            for (const item of items) {
+                const unitPrice = Number((_t = (_s = item.price) !== null && _s !== void 0 ? _s : item.unitPrice) !== null && _t !== void 0 ? _t : 0);
+                const qty = Number((_u = item.quantity) !== null && _u !== void 0 ? _u : 1);
+                itemRows.push({
+                    order_id: orderId,
+                    order_date: dateStr,
+                    source_channel: channel,
+                    status: (_v = order['status']) !== null && _v !== void 0 ? _v : null,
+                    sku: (_w = item.sku) !== null && _w !== void 0 ? _w : null,
+                    product_name: (_y = (_x = item.productName) !== null && _x !== void 0 ? _x : item.name) !== null && _y !== void 0 ? _y : null,
+                    quantity: qty,
+                    unit_price: unitPrice,
+                    subtotal: Number((_z = item.subtotal) !== null && _z !== void 0 ? _z : (unitPrice * qty)),
+                    brand: (_0 = item.brand) !== null && _0 !== void 0 ? _0 : null,
+                    product_id: (_1 = item.productId) !== null && _1 !== void 0 ? _1 : null,
+                    asin: (_2 = item.asin) !== null && _2 !== void 0 ? _2 : null,
+                    ml_item_id: (_3 = item.mlItemId) !== null && _3 !== void 0 ? _3 : null,
+                });
+            }
+        }
+        if (orderRows.length === 0)
+            return;
+        const BATCH = 500;
+        const ordTable = bigquery.dataset(BQ_DATASET).table('orders');
+        const itmTable = bigquery.dataset(BQ_DATASET).table('order_items');
+        for (let i = 0; i < orderRows.length; i += BATCH) {
+            await ordTable.insert(orderRows.slice(i, i + BATCH), { skipInvalidRows: true });
+        }
+        for (let i = 0; i < itemRows.length; i += BATCH) {
+            await itmTable.insert(itemRows.slice(i, i + BATCH), { skipInvalidRows: true });
+        }
+        console.log(`[BQ Append] ${dateStr}: orders=${orderRows.length}, items=${itemRows.length}`);
+    }
+    catch (bqErr) {
+        // Non-critical: BQ is analytics layer — don't let it fail the Firestore cron
+        console.error('[BQ Append] Failed (non-critical):', bqErr);
+    }
+}
+exports.appendOrdersToBQForDate = appendOrdersToBQForDate;
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── SEARCH ANALYTICS — BigQuery Infrastructure ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Table: euro_analytics.search_events
+// Partitioned by event_date (DATE), clustered by event_type then normalized_term.
+//
+// Real-time ingestion: onSearchEventCreated (Firestore trigger) → BQ insert
+// Backfill:           backfillSearchEventsToBigQuery (callable, one-time)
+// Reporting:          querySearchAnalytics (callable, 6 query types)
+// ─────────────────────────────────────────────────────────────────────────────
+const BQ_SEARCH_TABLE = 'search_events';
+const BQ_SEARCH_SCHEMA = [
+    { name: 'event_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'event_date', type: 'DATE', mode: 'REQUIRED' },
+    { name: 'event_timestamp', type: 'TIMESTAMP', mode: 'REQUIRED' },
+    { name: 'event_type', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'term', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'normalized_term', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'session_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'user_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'source', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'channel', type: 'STRING', mode: 'NULLABLE' },
+    // query fields
+    { name: 'result_count', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'has_results', type: 'BOOL', mode: 'NULLABLE' },
+    // click fields
+    { name: 'product_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'click_position', type: 'INT64', mode: 'NULLABLE' },
+    // exit fields
+    { name: 'exit_reason', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'dwell_ms', type: 'INT64', mode: 'NULLABLE' },
+    // add_to_cart fields
+    { name: 'cart_value', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'quantity', type: 'INT64', mode: 'NULLABLE' },
+    // purchase fields
+    { name: 'order_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'revenue', type: 'FLOAT64', mode: 'NULLABLE' },
+];
+/** Ensures the euro_analytics.search_events table exists with the full schema (idempotent). */
+async function ensureSearchBQSchema() {
+    const dataset = bigquery.dataset(BQ_DATASET, { location: BQ_LOCATION });
+    const [dsExists] = await dataset.exists();
+    if (!dsExists) {
+        await dataset.create({ location: BQ_LOCATION });
+        console.log(`[SearchBQ] Created dataset ${BQ_DATASET}`);
+    }
+    const table = dataset.table(BQ_SEARCH_TABLE);
+    const [tblExists] = await table.exists();
+    if (!tblExists) {
+        await table.create({
+            schema: BQ_SEARCH_SCHEMA,
+            timePartitioning: { type: 'DAY', field: 'event_date' },
+            clustering: { fields: ['event_type', 'normalized_term'] },
+            location: BQ_LOCATION,
+        });
+        console.log(`[SearchBQ] Created table ${BQ_DATASET}.${BQ_SEARCH_TABLE}`);
+    }
+}
+/** Converts a Firestore search_events document into a flat BQ row. */
+function searchEventToBQRow(docId, data) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+    // Resolve event_date from Firestore Timestamp
+    const ts = (_a = data.timestamp) !== null && _a !== void 0 ? _a : null;
+    const date = ts ? ts.toDate() : new Date();
+    const eventDate = date.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    return {
+        event_id: docId,
+        event_date: eventDate,
+        event_timestamp: date.toISOString(),
+        event_type: (_b = data.type) !== null && _b !== void 0 ? _b : null,
+        term: (_c = data.term) !== null && _c !== void 0 ? _c : null,
+        normalized_term: (_d = data.normalizedTerm) !== null && _d !== void 0 ? _d : null,
+        session_id: (_e = data.sessionId) !== null && _e !== void 0 ? _e : null,
+        user_id: (_f = data.userId) !== null && _f !== void 0 ? _f : null,
+        source: (_g = data.source) !== null && _g !== void 0 ? _g : null,
+        channel: (_h = data.channel) !== null && _h !== void 0 ? _h : null,
+        // query
+        result_count: data.resultCount != null ? Number(data.resultCount) : null,
+        has_results: data.hasResults != null ? Boolean(data.hasResults) : null,
+        // click
+        product_id: (_j = data.productId) !== null && _j !== void 0 ? _j : null,
+        product_name: (_k = data.productName) !== null && _k !== void 0 ? _k : null,
+        click_position: data.position != null ? Number(data.position) : null,
+        // exit
+        exit_reason: (_l = data.exitReason) !== null && _l !== void 0 ? _l : null,
+        dwell_ms: data.dwellMs != null ? Number(data.dwellMs) : null,
+        // add_to_cart
+        cart_value: data.cartValue != null ? Number(data.cartValue) : null,
+        quantity: data.quantity != null ? Number(data.quantity) : null,
+        // purchase
+        order_id: (_m = data.orderId) !== null && _m !== void 0 ? _m : null,
+        revenue: data.revenue != null ? Number(data.revenue) : null,
+    };
+}
+// ─── onSearchEventCreated — Firestore trigger (real-time BQ streaming) ─────────
+//
+// Fires on every new doc in search_events and inserts it into BQ.
+// This keeps the analytics table current without any manual steps.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.onSearchEventCreated = functions
+    .runWith({ timeoutSeconds: 30 })
+    .firestore
+    .document('search_events/{eventId}')
+    .onCreate(async (snap, context) => {
+    const data = snap.data();
+    const docId = context.params.eventId;
+    try {
+        await ensureSearchBQSchema();
+        const row = searchEventToBQRow(docId, data);
+        await bigquery.dataset(BQ_DATASET).table(BQ_SEARCH_TABLE).insert([row], { skipInvalidRows: true });
+        console.log(`[SearchBQ] Streamed event ${docId} (type=${data.type})`);
+    }
+    catch (err) {
+        // Non-critical — BQ is analytics layer; don't block the write
+        console.error('[SearchBQ] Failed to stream event to BQ:', err);
+    }
+});
+// ─── backfillSearchEventsToBigQuery — callable ────────────────────────────────
+//
+// One-time (or re-runnable) callable to seed ALL historical search_events
+// into BigQuery. Uses pagination to handle large collections.
+//
+// Returns: { inserted, skipped, errors }
+// ─────────────────────────────────────────────────────────────────────────────
+exports.backfillSearchEventsToBigQuery = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onCall(async (_data, context) => {
+    var _a, _b;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    console.log('[SearchBQ Backfill] Starting...');
+    await ensureSearchBQSchema();
+    const table = bigquery.dataset(BQ_DATASET).table(BQ_SEARCH_TABLE);
+    const BATCH_SIZE = 500;
+    let inserted = 0;
+    let skipped = 0;
+    let errors = 0;
+    // Paginate through all search_events docs
+    let query = db.collection('search_events').orderBy('timestamp').limit(BATCH_SIZE);
+    let lastDoc = null;
+    while (true) {
+        const snap = lastDoc
+            ? await query.startAfter(lastDoc).get()
+            : await query.get();
+        if (snap.empty)
+            break;
+        const rows = snap.docs.map((d) => searchEventToBQRow(d.id, d.data()));
+        try {
+            await table.insert(rows, { skipInvalidRows: true, raw: false });
+            inserted += rows.length;
+        }
+        catch (err) {
+            // BigQuery insert errors are per-row — count them but continue
+            const rowErrors = (_b = (_a = err === null || err === void 0 ? void 0 : err.errors) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : rows.length;
+            errors += rowErrors;
+            inserted += rows.length - rowErrors;
+            console.error(`[SearchBQ Backfill] Batch error:`, err === null || err === void 0 ? void 0 : err.message);
+        }
+        lastDoc = snap.docs[snap.docs.length - 1];
+        if (snap.docs.length < BATCH_SIZE)
+            break;
+    }
+    console.log(`[SearchBQ Backfill] Done — inserted=${inserted}, skipped=${skipped}, errors=${errors}`);
+    return { inserted, skipped, errors };
+});
+// ─── querySearchAnalytics — callable ─────────────────────────────────────────
+//
+// General-purpose search analytics callable. Accepts { queryType, params }
+// and returns typed result rows from BigQuery.
+//
+// Query types:
+//   'funnel'            → 5-step conversion funnel (query→click→exit→cart→purchase)
+//   'topTerms'          → top search terms ranked by volume + CTR + null-result %
+//   'zeroResults'       → terms that returned 0 results (catalog gap analysis)
+//   'heatmap'           → search volume by hour-of-day × day-of-week
+//   'trendingTerms'     → rising terms: 7-day vs 30-day baseline velocity
+//   'revenueAttribution'→ search-attributed revenue by term (via sessionId joins)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.querySearchAnalytics = functions
+    .runWith({ timeoutSeconds: 60, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const { queryType, fromDate, toDate, limit = 50 } = data;
+    const PROJECT = 'tiendapraxis';
+    const DS = BQ_DATASET;
+    const TBL = `\`${PROJECT}.${DS}.${BQ_SEARCH_TABLE}\``;
+    let sql = '';
+    const params = { fromDate, toDate, limit };
+    switch (queryType) {
+        // ── 1. Conversion Funnel ─────────────────────────────────────────────────
+        // Shows total events per step + conversion rates between consecutive steps.
+        case 'funnel':
+            sql = `
+                    SELECT
+                        event_type,
+                        COUNT(*)                          AS event_count,
+                        COUNT(DISTINCT session_id)        AS unique_sessions,
+                        COUNT(DISTINCT user_id)           AS unique_users
+                    FROM ${TBL}
+                    WHERE event_date BETWEEN @fromDate AND @toDate
+                    GROUP BY event_type
+                    ORDER BY
+                        CASE event_type
+                            WHEN 'query'       THEN 1
+                            WHEN 'click'       THEN 2
+                            WHEN 'exit'        THEN 3
+                            WHEN 'add_to_cart' THEN 4
+                            WHEN 'purchase'    THEN 5
+                            ELSE 6
+                        END
+                `;
+            break;
+        // ── 2. Top Search Terms ──────────────────────────────────────────────────
+        // Ranked by search volume. Includes CTR, zero-result %, avg position.
+        case 'topTerms':
+            sql = `
+                    WITH
+                    -- Apply same normalization as the storefront normalizeTerm():
+                    -- strip trailing special chars, collapse spaces.
+                    -- This merges historical variants like '130/90\' and '130/90?' into '130/90'.
+                    cleaned AS (
+                        SELECT
+                            *,
+                            TRIM(REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    REGEXP_REPLACE(LOWER(TRIM(normalized_term)), r'[\\\\?!.,;:*+]+$', ''),
+                                r"['\'\`]+$", ''),
+                            r'\\s+', ' ')) AS clean_term
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN @fromDate AND @toDate
+                          AND normalized_term IS NOT NULL
+                    ),
+                    queries AS (
+                        SELECT
+                            clean_term                                                        AS normalized_term,
+                            COUNT(*)                                                          AS searches,
+                            COUNT(DISTINCT session_id)                                        AS unique_sessions,
+                            COUNTIF(has_results = FALSE)                                      AS zero_result_searches,
+                            SAFE_DIVIDE(COUNTIF(has_results = FALSE), COUNT(*))               AS zero_result_rate,
+                            AVG(CAST(result_count AS FLOAT64))                                AS avg_result_count,
+                            COUNT(DISTINCT normalized_term)                                   AS variants
+                        FROM cleaned
+                        WHERE event_type = 'query'
+                        GROUP BY clean_term
+                    ),
+                    clicks AS (
+                        SELECT clean_term AS normalized_term, COUNT(*) AS clicks, AVG(click_position) AS avg_position
+                        FROM cleaned
+                        WHERE event_type = 'click'
+                        GROUP BY clean_term
+                    ),
+                    carts AS (
+                        SELECT clean_term AS normalized_term, COUNT(*) AS cart_adds
+                        FROM cleaned
+                        WHERE event_type = 'add_to_cart'
+                        GROUP BY clean_term
+                    ),
+                    purchases AS (
+                        SELECT clean_term AS normalized_term, COUNT(*) AS conversions, SUM(revenue) AS attributed_revenue
+                        FROM cleaned
+                        WHERE event_type = 'purchase'
+                        GROUP BY clean_term
+                    )
+                    SELECT
+                        q.normalized_term                                          AS term,
+                        q.searches,
+                        q.unique_sessions,
+                        COALESCE(c.clicks, 0)                                      AS clicks,
+                        SAFE_DIVIDE(COALESCE(c.clicks, 0), q.searches)            AS ctr,
+                        q.zero_result_searches,
+                        q.zero_result_rate,
+                        q.avg_result_count,
+                        COALESCE(ca.cart_adds, 0)                                 AS cart_adds,
+                        COALESCE(p.conversions, 0)                                AS conversions,
+                        COALESCE(p.attributed_revenue, 0)                         AS attributed_revenue,
+                        COALESCE(c.avg_position, 0)                               AS avg_click_position,
+                        q.variants
+                    FROM queries q
+                    LEFT JOIN clicks    c  ON q.normalized_term = c.normalized_term
+                    LEFT JOIN carts     ca ON q.normalized_term = ca.normalized_term
+                    LEFT JOIN purchases p  ON q.normalized_term = p.normalized_term
+                    -- Suppress 1-count terms: mostly partial mid-type queries (user was still typing)
+                    HAVING q.searches >= 2
+                    ORDER BY q.searches DESC
+                    LIMIT @limit
+                `;
+            break;
+        // ── 3. Zero-Result Terms (Catalog Gap Analysis) ──────────────────────────
+        // Pure list of terms where has_results = false. Sorted by frequency.
+        case 'zeroResults':
+            sql = `
+                    WITH cleaned AS (
+                        SELECT
+                            *,
+                            TRIM(REGEXP_REPLACE(
+                            TRIM(REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    REGEXP_REPLACE(LOWER(TRIM(normalized_term)), r'[\\\\?!.,;:*+]+$', ''),
+                                r"['\'\`]+$", ''),
+                            r'\\s+', ' ')) AS clean_term
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN @fromDate AND @toDate
+                          AND normalized_term IS NOT NULL
+                    )
+                    SELECT
+                        clean_term                       AS term,
+                        COUNT(*)                         AS searches,
+                        COUNT(DISTINCT session_id)       AS unique_sessions,
+                        COUNT(DISTINCT user_id)          AS unique_users,
+                        MIN(event_date)                  AS first_seen,
+                        MAX(event_date)                  AS last_seen
+                    FROM cleaned
+                    WHERE event_type = 'query'
+                      AND has_results = FALSE
+                    GROUP BY clean_term
+                    HAVING searches >= 2
+                    ORDER BY searches DESC
+                    LIMIT @limit
+                `;
+            break;
+        // ── 4. Search Heatmap (hour-of-day × day-of-week) ───────────────────────
+        // Returns 7×24 = 168 cells, each with search count. Used for a heatmap widget.
+        // Mexico City time (UTC-6).
+        case 'heatmap':
+            sql = `
+                    SELECT
+                        EXTRACT(DAYOFWEEK FROM DATETIME(event_timestamp, 'America/Mexico_City')) AS day_of_week,
+                        EXTRACT(HOUR     FROM DATETIME(event_timestamp, 'America/Mexico_City')) AS hour_of_day,
+                        COUNT(*)                         AS searches,
+                        COUNT(DISTINCT session_id)       AS unique_sessions
+                    FROM ${TBL}
+                    WHERE event_date BETWEEN @fromDate AND @toDate
+                      AND event_type = 'query'
+                    GROUP BY day_of_week, hour_of_day
+                    ORDER BY day_of_week, hour_of_day
+                `;
+            break;
+        // ── 4b. Daily Volume (calendar heatmap for 30d / MTD) ────────────────────
+        // Returns one row per calendar date with total search volume.
+        // Used to render a month-calendar heatmap on 30d/MTD ranges.
+        case 'dailyVolume':
+            sql = `
+                    SELECT
+                        event_date                       AS event_date,
+                        EXTRACT(DAYOFWEEK FROM PARSE_DATE('%Y-%m-%d', CAST(event_date AS STRING))) AS day_of_week,
+                        COUNT(*)                         AS searches,
+                        COUNT(DISTINCT session_id)       AS unique_sessions
+                    FROM ${TBL}
+                    WHERE event_date BETWEEN @fromDate AND @toDate
+                      AND event_type = 'query'
+                    GROUP BY event_date
+                    ORDER BY event_date
+                `;
+            break;
+        // ── 5. Trending Terms (7-day vs 30-day baseline velocity) ────────────────
+        // Identifies terms whose recent volume is significantly above their baseline.
+        // velocity_ratio > 1.5 = trending up; < 0.5 = declining.
+        case 'trendingTerms':
+            sql = `
+                    WITH baseline AS (
+                        SELECT
+                            normalized_term,
+                            COUNT(*) / 30.0   AS daily_avg_30d
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN
+                                DATE_SUB(CURRENT_DATE('America/Mexico_City'), INTERVAL 30 DAY)
+                              AND CURRENT_DATE('America/Mexico_City')
+                          AND event_type = 'query'
+                          AND normalized_term IS NOT NULL
+                        GROUP BY normalized_term
+                    ),
+                    recent AS (
+                        SELECT
+                            normalized_term,
+                            COUNT(*) / 7.0   AS daily_avg_7d
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN
+                                DATE_SUB(CURRENT_DATE('America/Mexico_City'), INTERVAL 7 DAY)
+                              AND CURRENT_DATE('America/Mexico_City')
+                          AND event_type = 'query'
+                          AND normalized_term IS NOT NULL
+                        GROUP BY normalized_term
+                    )
+                    SELECT
+                        r.normalized_term                                        AS term,
+                        r.daily_avg_7d,
+                        b.daily_avg_30d,
+                        SAFE_DIVIDE(r.daily_avg_7d, NULLIF(b.daily_avg_30d, 0)) AS velocity_ratio,
+                        ROUND(r.daily_avg_7d * 7)                               AS searches_7d,
+                        ROUND(b.daily_avg_30d * 30)                             AS searches_30d
+                    FROM recent r
+                    JOIN baseline b ON r.normalized_term = b.normalized_term
+                    WHERE r.daily_avg_7d >= 1.0  -- filter noise (at least 1/day recently)
+                    ORDER BY velocity_ratio DESC
+                    LIMIT @limit
+                `;
+            break;
+        // ── 6. Search-Attributed Revenue ─────────────────────────────────────────
+        // Revenue attributed to searches via the purchase event's session.
+        // This is the most direct "search drove this sale" metric.
+        case 'revenueAttribution':
+            sql = `
+                    WITH purchase_events AS (
+                        SELECT
+                            normalized_term,
+                            session_id,
+                            order_id,
+                            revenue,
+                            event_date
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN @fromDate AND @toDate
+                          AND event_type = 'purchase'
+                          AND normalized_term IS NOT NULL
+                    ),
+                    term_stats AS (
+                        SELECT
+                            normalized_term                  AS term,
+                            COUNT(DISTINCT order_id)         AS attributed_orders,
+                            SUM(revenue)                     AS attributed_revenue,
+                            AVG(revenue)                     AS avg_order_value,
+                            COUNT(DISTINCT session_id)       AS converting_sessions
+                        FROM purchase_events
+                        GROUP BY normalized_term
+                    ),
+                    search_volume AS (
+                        SELECT normalized_term, COUNT(*) AS searches
+                        FROM ${TBL}
+                        WHERE event_date BETWEEN @fromDate AND @toDate
+                          AND event_type = 'query'
+                          AND normalized_term IS NOT NULL
+                        GROUP BY normalized_term
+                    )
+                    SELECT
+                        t.term,
+                        t.attributed_orders,
+                        t.attributed_revenue,
+                        t.avg_order_value,
+                        t.converting_sessions,
+                        sv.searches,
+                        SAFE_DIVIDE(t.attributed_orders, sv.searches) AS purchase_rate
+                    FROM term_stats t
+                    LEFT JOIN search_volume sv ON t.term = sv.normalized_term
+                    ORDER BY t.attributed_revenue DESC
+                    LIMIT @limit
+                `;
+            break;
+        default:
+            throw new functions.https.HttpsError('invalid-argument', `Unknown queryType: ${queryType}`);
+    }
+    const [rows] = await bigquery.query({
+        query: sql,
+        params,
+        location: BQ_LOCATION,
+    });
+    // Serialize BigQuery row values — same pattern as queryMetrics
+    const serialize = (v) => {
+        var _a;
+        if (v == null)
+            return null;
+        if (typeof v === 'object' && 'value' in v) {
+            const n = Number(v.value);
+            return isFinite(n) ? n : ((_a = v.value) !== null && _a !== void 0 ? _a : null);
+        }
+        if (typeof v === 'number')
+            return isFinite(v) ? v : null;
+        if (typeof v === 'boolean')
+            return v;
+        return v;
+    };
+    const result = rows.map((row) => {
+        const out = {};
+        for (const [k, v] of Object.entries(row))
+            out[k] = serialize(v);
+        return out;
+    });
+    return { queryType, fromDate, toDate, rowCount: result.length, rows: result };
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── GOOGLE SHOPPING FEED ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Generates a live Google Merchant Center RSS/XML product feed from Firestore.
+//
+// Host at: https://importadoraeuro.com/google-shopping-feed.xml
+// (add rewrite in firebase.json: "/google-shopping-feed.xml" → this function)
+//
+// Google Merchant Center Setup:
+//  1. merchants.google.com → Add site → Verify via GA4 (already verified)
+//  2. Products → Feeds → Add feed → Scheduled fetch → paste the URL above
+//  3. Enable "Free Listings" for the Shopping tab (no cost)
+//  4. Enable "Surfaces across Google" for Image Search & Maps
+//
+// Google Shopping Category 5613 = Vehicles & Parts > Motor Vehicle Parts
+// ─────────────────────────────────────────────────────────────────────────────
+exports.googleShoppingFeed = functions
+    .runWith({ timeoutSeconds: 30, memory: '256MB' })
+    .https.onRequest(async (req, res) => {
+    try {
+        // Fetch all active, published products
+        const snap = await db.collection('products')
+            .where('active', '==', true)
+            .where('inStock', '==', true)
+            .limit(500)
+            .get();
+        const items = snap.docs.map(doc => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
+            const p = doc.data();
+            const id = doc.id;
+            const sku = (_a = p['sku']) !== null && _a !== void 0 ? _a : id;
+            const brand = (_b = p['brand']) !== null && _b !== void 0 ? _b : 'Importadora Euro';
+            const price = Number((_c = p['price']) !== null && _c !== void 0 ? _c : 0);
+            const slug = (_d = p['slug']) !== null && _d !== void 0 ? _d : id;
+            // Build human-readable title with size specs
+            const namePart = ((_g = (_f = (_e = p['name']) === null || _e === void 0 ? void 0 : _e.es) !== null && _f !== void 0 ? _f : p['name']) !== null && _g !== void 0 ? _g : 'Llanta Motocicleta');
+            const specs = (_h = p['specifications']) !== null && _h !== void 0 ? _h : {};
+            const sizePart = specs['width'] && specs['aspectRatio'] && specs['diameter']
+                ? ` ${specs['width']}/${specs['aspectRatio']}${specs['construction'] === 'radial' ? 'R' : '-'}${specs['diameter']}`
+                : '';
+            const title = `${namePart}${sizePart}`.slice(0, 150);
+            const description = ((_l = (_k = (_j = p['description']) === null || _j === void 0 ? void 0 : _j.es) !== null && _k !== void 0 ? _k : p['description']) !== null && _l !== void 0 ? _l : '')
+                .replace(/[<>&"']/g, ' ')
+                .slice(0, 5000);
+            const imageLink = (_p = (_o = (_m = p['images']) === null || _m === void 0 ? void 0 : _m.main) !== null && _o !== void 0 ? _o : p['imageUrl']) !== null && _p !== void 0 ? _p : '';
+            const productUrl = `https://importadoraeuro.com/product/${slug}`;
+            // Additional product type breadcrumb
+            const productTypeBreadcrumb = brand === 'Michelin'
+                ? 'Llantas para Motocicleta > Michelin'
+                : brand === 'Praxis'
+                    ? 'Llantas para Motocicleta > Praxis'
+                    : 'Llantas para Motocicleta';
+            if (price <= 0 || !imageLink)
+                return null; // skip incomplete products
+            return `
+    <item>
+      <g:id>${escapeXml(sku)}</g:id>
+      <g:title>${escapeXml(title)}</g:title>
+      <g:description>${escapeXml(description || title)}</g:description>
+      <g:link>${escapeXml(productUrl)}</g:link>
+      <g:image_link>${escapeXml(imageLink)}</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>${price.toFixed(2)} MXN</g:price>
+      <g:sale_price>${specs['compareAtPrice'] ? Number(specs['compareAtPrice']).toFixed(2) + ' MXN' : ''}</g:sale_price>
+      <g:brand>${escapeXml(brand)}</g:brand>
+      <g:mpn>${escapeXml(sku)}</g:mpn>
+      <g:product_type>${escapeXml(productTypeBreadcrumb)}</g:product_type>
+      <g:google_product_category>5613</g:google_product_category>
+      <g:identifier_exists>no</g:identifier_exists>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:service>Estándar (DHL/FedEx)</g:service>
+        <g:price>0 MXN</g:price>
+        <g:min_handling_time>0</g:min_handling_time>
+        <g:max_handling_time>1</g:max_handling_time>
+        <g:min_transit_time>1</g:min_transit_time>
+        <g:max_transit_time>3</g:max_transit_time>
+      </g:shipping>
+      <g:return_policy_label>return_policy</g:return_policy_label>
+    </item>`;
+        }).filter(Boolean);
+        const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>Importadora Eurollantas — Llantas para Motocicleta</title>
+    <link>https://importadoraeuro.com</link>
+    <description>Distribuidor autorizado Michelin y Praxis. Llantas de motocicleta con envío a toda la República Mexicana desde San Luis Potosí.</description>
+    <language>es-MX</language>
+    ${items.join('\n')}
+  </channel>
+</rss>`;
+        res.set('Content-Type', 'application/rss+xml; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600'); // 1hr cache
+        res.set('Access-Control-Allow-Origin', '*');
+        res.status(200).send(feedXml);
+        console.log(`[ShoppingFeed] Served ${items.length} products`);
+    }
+    catch (err) {
+        console.error('[ShoppingFeed] Error:', err);
+        res.status(500).send('Feed generation failed');
+    }
+});
+/** Escapes XML special characters for safe embedding in XML attributes/content. */
+function escapeXml(str) {
+    return String(str !== null && str !== void 0 ? str : '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── INDEXNOW — Instant Bing/Copilot Reindexing ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Pings IndexNow API when products or catalog pages are updated.
+// Bing shares IndexNow data with Yandex, Seznam, Naver — one call covers all.
+// Bing → feeds Microsoft Copilot citations directly.
+//
+// Key: stored in Firestore config/seo.indexNowKey
+// Register key: bing.com/webmasters → Settings → IndexNow
+//              Then serve the key at: https://importadoraeuro.com/{key}.txt
+//              (add to firebase.json rewrites or just create public/{key}.txt)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.notifyIndexNow = functions
+    .runWith({ timeoutSeconds: 10 })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    }
+    // Load IndexNow key from Firestore config
+    const configSnap = await db.collection('config').doc('seo').get();
+    const indexNowKey = (_b = (_a = configSnap.data()) === null || _a === void 0 ? void 0 : _a.indexNowKey) !== null && _b !== void 0 ? _b : '';
+    if (!indexNowKey) {
+        console.warn('[IndexNow] No key configured in config/seo.indexNowKey');
+        return { ok: false, reason: 'No IndexNow key configured' };
+    }
+    // Default URLs to notify: homepage, catalog, Praxis page, Michelin page, llms.txt
+    const urlsToNotify = ((_c = data === null || data === void 0 ? void 0 : data.urls) === null || _c === void 0 ? void 0 : _c.length)
+        ? data.urls
+        : [
+            'https://importadoraeuro.com/',
+            'https://importadoraeuro.com/catalogo',
+            'https://importadoraeuro.com/praxis',
+            'https://importadoraeuro.com/michelin',
+            'https://importadoraeuro.com/llms.txt',
+            'https://importadoraeuro.com/llms-full.txt',
+            'https://importadoraeuro.com/sitemap.xml',
+        ];
+    const payload = {
+        host: 'importadoraeuro.com',
+        key: indexNowKey,
+        keyLocation: `https://importadoraeuro.com/${indexNowKey}.txt`,
+        urlList: urlsToNotify,
+    };
+    try {
+        const r = await fetch('https://api.indexnow.org/indexnow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            body: JSON.stringify(payload),
+        });
+        console.log(`[IndexNow] Response: ${r.status} for ${urlsToNotify.length} URLs`);
+        return { ok: r.ok, status: r.status, urls: urlsToNotify.length };
+    }
+    catch (err) {
+        console.error('[IndexNow] Fetch failed:', err.message);
+        return { ok: false, reason: err.message };
+    }
+});
+// ─── Auto-notify IndexNow when a product is updated ──────────────────────────
+// Firestore trigger: fires when any product document is written.
+// Submits the specific product URL + catalog page to IndexNow.
+exports.onProductWriteIndexNow = functions
+    .runWith({ timeoutSeconds: 15 })
+    .firestore
+    .document('products/{productId}')
+    .onWrite(async (change, context) => {
+    var _a, _b, _c;
+    // Only notify on creates and updates, not deletes
+    if (!change.after.exists)
+        return;
+    const product = change.after.data();
+    const slug = (_a = product['slug']) !== null && _a !== void 0 ? _a : context.params.productId;
+    const configSnap = await db.collection('config').doc('seo').get();
+    const indexNowKey = (_c = (_b = configSnap.data()) === null || _b === void 0 ? void 0 : _b.indexNowKey) !== null && _c !== void 0 ? _c : '';
+    if (!indexNowKey)
+        return; // Key not configured yet — skip silently
+    const urlsToNotify = [
+        `https://importadoraeuro.com/product/${slug}`,
+        'https://importadoraeuro.com/catalogo',
+        'https://importadoraeuro.com/google-shopping-feed.xml',
+    ];
+    try {
+        await fetch('https://api.indexnow.org/indexnow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+            body: JSON.stringify({
+                host: 'importadoraeuro.com',
+                key: indexNowKey,
+                keyLocation: `https://importadoraeuro.com/${indexNowKey}.txt`,
+                urlList: urlsToNotify,
+            }),
+        });
+        console.log(`[IndexNow] Product ${slug} notified to Bing`);
+    }
+    catch (err) {
+        console.warn('[IndexNow] Auto-notify failed (non-critical):', err.message);
+    }
+});
+// ── MercadoLibre Universal Inbox Sync ───────────────────────────────────────
+exports.syncMeliToInbox = functions
+    .runWith({ timeoutSeconds: 60 })
+    .firestore
+    .document('meli_communications/{docId}')
+    .onWrite(async (change, context) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    if (!change.after.exists)
+        return; // Ignore deletes
+    const commData = change.after.data();
+    const topic = commData.topic; // 'messages' or 'questions'
+    const rawData = commData.data;
+    if (!rawData)
+        return;
+    let conversationId = '';
+    let channelConversationId = '';
+    let customerName = 'Cliente ML';
+    let customerHandle = '';
+    let messageText = '';
+    let platformMessageId = '';
+    let msgTimestamp = admin.firestore.FieldValue.serverTimestamp();
+    let tag = '';
+    if (topic === 'messages') {
+        // Post-sale message
+        const packId = ((_a = rawData.message_attachments) === null || _a === void 0 ? void 0 : _a.pack_id) || ((_b = rawData.message_attachments) === null || _b === void 0 ? void 0 : _b.order_id) || rawData.resource_id;
+        const senderId = ((_c = rawData.from) === null || _c === void 0 ? void 0 : _c.user_id) || ((_d = rawData.from) === null || _d === void 0 ? void 0 : _d.id) || rawData.sender_id;
+        // To prevent errors if payload is missing key IDs
+        if (!packId || !senderId)
+            return;
+        conversationId = `meli_msg_${packId}`;
+        channelConversationId = String(packId);
+        customerHandle = String(senderId);
+        customerName = ((_e = rawData.from) === null || _e === void 0 ? void 0 : _e.name) || 'Cliente ML';
+        messageText = ((_f = rawData.text) === null || _f === void 0 ? void 0 : _f.plain) || rawData.text || '';
+        platformMessageId = rawData.id || `msg_${Date.now()}`;
+        if ((_g = rawData.message_date) === null || _g === void 0 ? void 0 : _g.created) {
+            msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.message_date.created));
+        }
+        else if (rawData.date_created) {
+            msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
+        }
+        tag = 'Post-Venta';
+    }
+    else if (topic === 'questions') {
+        // Pre-sale question
+        const itemId = rawData.item_id;
+        const senderId = (_h = rawData.from) === null || _h === void 0 ? void 0 : _h.id;
+        if (!itemId || !senderId)
+            return;
+        conversationId = `meli_q_${itemId}_${senderId}`;
+        channelConversationId = `${itemId}_${senderId}`;
+        customerHandle = String(senderId);
+        messageText = rawData.text || '';
+        platformMessageId = rawData.id || `q_${Date.now()}`;
+        if (rawData.date_created) {
+            msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
+        }
+        tag = 'Pre-Venta';
+    }
+    else {
+        return; // Not a message or question
+    }
+    if (!messageText)
+        return;
+    const convRef = db.collection('customer_conversations').doc(conversationId);
+    // Upsert conversation
+    await convRef.set({
+        id: conversationId,
+        channel: 'mercadolibre',
+        channelConversationId,
+        customerName,
+        customerHandle,
+        status: 'open',
+        priority: 'normal',
+        unreadCount: admin.firestore.FieldValue.increment(1),
+        tags: admin.firestore.FieldValue.arrayUnion(tag),
+        lastMessage: {
+            text: messageText,
+            direction: 'inbound',
+            timestamp: msgTimestamp
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    // Check if createdAt is missing
+    const convSnap = await convRef.get();
+    if (convSnap.exists && !((_j = convSnap.data()) === null || _j === void 0 ? void 0 : _j.createdAt)) {
+        await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    }
+    // Insert message
+    const msgRef = convRef.collection('messages').doc(String(platformMessageId));
+    await msgRef.set({
+        id: String(platformMessageId),
+        direction: 'inbound',
+        type: 'text',
+        content: messageText,
+        platformMessageId: String(platformMessageId),
+        status: 'delivered',
+        timestamp: msgTimestamp
+    });
+    console.log(`[syncMeliToInbox] Synced ${topic} into Universal Inbox: ${conversationId}`);
+});
+// ── Temporary MercadoLibre Backfill ─────────────────────────────────────────
+exports.backfillMeliToInbox = functions
+    .runWith({ timeoutSeconds: 540, memory: '1GB' })
+    .https.onRequest(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    try {
+        const snapshot = await db.collection('meli_communications').get();
+        let count = 0;
+        for (const doc of snapshot.docs) {
+            const commData = doc.data();
+            const topic = commData.topic;
+            const rawData = commData.data;
+            if (!rawData)
+                continue;
+            let conversationId = '';
+            let channelConversationId = '';
+            let customerName = 'Cliente ML';
+            let customerHandle = '';
+            let messageText = '';
+            let platformMessageId = '';
+            let msgTimestamp = admin.firestore.FieldValue.serverTimestamp();
+            let tag = '';
+            if (topic === 'messages') {
+                const packId = ((_a = rawData.message_attachments) === null || _a === void 0 ? void 0 : _a.pack_id) || ((_b = rawData.message_attachments) === null || _b === void 0 ? void 0 : _b.order_id) || rawData.resource_id;
+                const senderId = ((_c = rawData.from) === null || _c === void 0 ? void 0 : _c.user_id) || ((_d = rawData.from) === null || _d === void 0 ? void 0 : _d.id) || rawData.sender_id;
+                if (!packId || !senderId)
+                    continue;
+                conversationId = `meli_msg_${packId}`;
+                channelConversationId = String(packId);
+                customerHandle = String(senderId);
+                customerName = ((_e = rawData.from) === null || _e === void 0 ? void 0 : _e.name) || 'Cliente ML';
+                messageText = ((_f = rawData.text) === null || _f === void 0 ? void 0 : _f.plain) || rawData.text || '';
+                platformMessageId = rawData.id || `msg_${Date.now()}`;
+                if ((_g = rawData.message_date) === null || _g === void 0 ? void 0 : _g.created) {
+                    msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.message_date.created));
+                }
+                else if (rawData.date_created) {
+                    msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
+                }
+                tag = 'Post-Venta';
+            }
+            else if (topic === 'questions') {
+                const itemId = rawData.item_id;
+                const senderId = (_h = rawData.from) === null || _h === void 0 ? void 0 : _h.id;
+                if (!itemId || !senderId)
+                    continue;
+                conversationId = `meli_q_${itemId}_${senderId}`;
+                channelConversationId = `${itemId}_${senderId}`;
+                customerHandle = String(senderId);
+                messageText = rawData.text || '';
+                platformMessageId = rawData.id || `q_${Date.now()}`;
+                if (rawData.date_created) {
+                    msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
+                }
+                tag = 'Pre-Venta';
+            }
+            else {
+                continue;
+            }
+            if (!messageText)
+                continue;
+            const convRef = db.collection('customer_conversations').doc(conversationId);
+            await convRef.set({
+                id: conversationId,
+                channel: 'mercadolibre',
+                channelConversationId,
+                customerName,
+                customerHandle,
+                status: 'open',
+                priority: 'normal',
+                unreadCount: admin.firestore.FieldValue.increment(1),
+                tags: admin.firestore.FieldValue.arrayUnion(tag),
+                lastMessage: {
+                    text: messageText,
+                    direction: 'inbound',
+                    timestamp: msgTimestamp
+                },
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            const convSnap = await convRef.get();
+            if (convSnap.exists && !((_j = convSnap.data()) === null || _j === void 0 ? void 0 : _j.createdAt)) {
+                await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            }
+            const msgRef = convRef.collection('messages').doc(String(platformMessageId));
+            await msgRef.set({
+                id: String(platformMessageId),
+                direction: 'inbound',
+                type: 'text',
+                content: messageText,
+                platformMessageId: String(platformMessageId),
+                status: 'delivered',
+                timestamp: msgTimestamp
+            });
+            count++;
+        }
+        res.status(200).send(`Successfully backfilled ${count} communications!`);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).send(error.message);
     }
 });
 //# sourceMappingURL=index.js.map

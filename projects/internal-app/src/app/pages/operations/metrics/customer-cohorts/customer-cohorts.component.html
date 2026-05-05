@@ -1,0 +1,200 @@
+<div class="cc-layout">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="cc-header">
+    <div class="cc-header-left">
+      <a class="cc-back" routerLink="/operations/metrics">← Métricas</a>
+      <h1 class="cc-title">👥 Cohortes de Clientes</h1>
+      <span class="cc-subtitle">Retención, ingresos y órdenes por cohorte de adquisición</span>
+    </div>
+    <div class="cc-header-right">
+      <div class="cc-range-pills">
+        @for (r of dateRanges; track r.type) {
+          <button class="cc-range-pill"
+                  [class.active]="selectedRange().type === r.type"
+                  (click)="selectRange(r)">
+            {{ r.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Loading ─────────────────────────────────────────────────────────── -->
+  @if (isLoading()) {
+    <div class="cc-loading">
+      <div class="cc-spinner"></div>
+      <p>Consultando BigQuery…</p>
+    </div>
+  }
+
+  @if (!isLoading()) {
+
+    <!-- ── KPI Strip ────────────────────────────────────────────────────── -->
+    <div class="cc-kpi-strip">
+      <div class="cc-kpi-card">
+        <span class="cc-kpi-icon">👥</span>
+        <div>
+          <div class="cc-kpi-value">{{ totalCustomers() | number }}</div>
+          <div class="cc-kpi-label">Clientes únicos</div>
+        </div>
+      </div>
+      <div class="cc-kpi-card">
+        <span class="cc-kpi-icon">💰</span>
+        <div>
+          <div class="cc-kpi-value">{{ fmtMoney(totalRevenue()) }}</div>
+          <div class="cc-kpi-label">Ingresos totales</div>
+        </div>
+      </div>
+      <div class="cc-kpi-card">
+        <span class="cc-kpi-icon">🔁</span>
+        <div>
+          <div class="cc-kpi-value">{{ overallRetentionM1() | percent:'1.0-0' }}</div>
+          <div class="cc-kpi-label">Retención mes 2 prom.</div>
+        </div>
+      </div>
+      <div class="cc-kpi-card">
+        <span class="cc-kpi-icon">📋</span>
+        <div>
+          <div class="cc-kpi-value">{{ cohorts().length }}</div>
+          <div class="cc-kpi-label">Cohortes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── View mode switcher ──────────────────────────────────────────── -->
+    <div class="cc-view-switcher">
+      <span class="cc-view-label">Ver como:</span>
+      <button class="cc-view-btn" [class.active]="viewMode() === 'retention'" (click)="viewMode.set('retention')">
+        % Retención
+      </button>
+      <button class="cc-view-btn" [class.active]="viewMode() === 'revenue'" (click)="viewMode.set('revenue')">
+        💰 Ingresos
+      </button>
+      <button class="cc-view-btn" [class.active]="viewMode() === 'orders'" (click)="viewMode.set('orders')">
+        📋 Órdenes
+      </button>
+    </div>
+
+    <!-- ── Cohort Heatmap Grid ─────────────────────────────────────────── -->
+    @if (cohorts().length > 0) {
+      <section class="cc-card cc-matrix-card">
+        <h2 class="cc-card-title">Matriz de Cohortes</h2>
+        <p class="cc-card-subtitle">
+          Cada fila = cohorte de adquisición (primer mes de compra).
+          Columnas = actividad en meses posteriores.
+          @if (viewMode() === 'retention') { Intensidad del color = % clientes que regresaron. }
+          @if (viewMode() === 'revenue')   { Intensidad del color = ingresos relativos por columna. }
+          @if (viewMode() === 'orders')    { Intensidad del color = órdenes relativas por columna. }
+        </p>
+
+        <div class="cc-matrix-wrap">
+          <table class="cc-matrix">
+            <thead>
+              <tr>
+                <th class="cc-th-cohort">Cohorte</th>
+                <th class="cc-th-size">Clientes</th>
+                @for (m of allMonths(); track m) {
+                  <th class="cc-th-month">{{ fmtMonth(m) }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (cohort of cohorts(); track cohort.cohort_month) {
+                <tr class="cc-row">
+                  <td class="cc-td-cohort">{{ fmtMonth(cohort.cohort_month) }}</td>
+                  <td class="cc-td-size">{{ cohort.total_customers | number }}</td>
+                  @for (m of allMonths(); track m) {
+                    @if (cohort.months.has(m)) {
+                      <td class="cc-cell cc-cell-active"
+                          [class.cc-cell-first]="isFirstMonth(cohort, m)"
+                          [style.--intensity]="heatIntensity(cohort, m)">
+                        <span class="cc-cell-val">{{ formatCell(cohort, m) }}</span>
+                      </td>
+                    } @else {
+                      <td class="cc-cell cc-cell-empty"></td>
+                    }
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Legend -->
+        <div class="cc-legend">
+          <div class="cc-legend-scale">
+            <span class="cc-legend-label">Baja</span>
+            <div class="cc-legend-bar"></div>
+            <span class="cc-legend-label">Alta</span>
+          </div>
+          <span class="cc-legend-note">
+            🟦 = primer mes de la cohorte (100% base)
+          </span>
+        </div>
+      </section>
+
+      <!-- ── Cohort Summary Table ──────────────────────────────────────── -->
+      <section class="cc-card cc-summary-card">
+        <h2 class="cc-card-title">Resumen por Cohorte</h2>
+        <div class="cc-summary-scroll">
+          <table class="cc-summary-table">
+            <thead>
+              <tr>
+                <th>Cohorte</th>
+                <th class="text-right">Clientes</th>
+                <th class="text-right">Ingresos totales</th>
+                <th class="text-right">Órdenes</th>
+                <th class="text-right">Ticket promedio</th>
+                <th class="text-right">LTV / cliente</th>
+                <th class="text-right">Ret. M2</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cohort of cohorts(); track cohort.cohort_month) {
+                <tr class="cc-sum-row">
+                  <td class="cc-sum-cohort">{{ fmtMonth(cohort.cohort_month) }}</td>
+                  <td class="text-right cc-num">{{ cohort.total_customers | number }}</td>
+                  <td class="text-right cc-num cc-rev">{{ cohort.total_revenue | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right cc-num">{{ cohort.total_orders | number }}</td>
+                  <td class="text-right cc-num">
+                    {{ cohort.total_orders > 0 ? (cohort.total_revenue / cohort.total_orders | currency:'MXN':'symbol-narrow':'1.0-0') : '—' }}
+                  </td>
+                  <td class="text-right cc-num cc-ltv">
+                    {{ cohort.total_customers > 0 ? (cohort.total_revenue / cohort.total_customers | currency:'MXN':'symbol-narrow':'1.0-0') : '—' }}
+                  </td>
+                  <td class="text-right">
+                    @if (cohort.months.size >= 2) {
+                      <span class="cc-ret-pill"
+                            [class.cc-ret-good]="cohortM2Retention(cohort) > 0.3"
+                            [class.cc-ret-mid]="cohortM2Retention(cohort) <= 0.3 && cohortM2Retention(cohort) > 0.1">
+                        {{ cohortM2Retention(cohort) | percent:'1.0-0' }}
+                      </span>
+                    } @else {
+                      <span class="cc-ret-na">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    } @else {
+      <div class="cc-empty">
+        <div class="cc-empty-icon">👥</div>
+        <div class="cc-empty-title">Sin datos de cohortes</div>
+        <div class="cc-empty-desc">
+          Asegúrate de haber ejecutado el backfill de BigQuery y de que existan
+          clientes con <code>customer_id</code> en las órdenes del período seleccionado.
+        </div>
+        <a routerLink="/operations/metrics/products" class="cc-empty-link">
+          → Ir a Análisis de Productos (Backfill)
+        </a>
+      </div>
+    }
+
+  } <!-- end !isLoading -->
+
+</div>

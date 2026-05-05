@@ -158,21 +158,21 @@ export class MetaService {
    * Generate catalog meta tags
    */
   generateCatalogMeta(filters?: any): PageMeta {
-    let title = 'Catálogo de Llantas para Moto | Michelin y Praxis en México';
-    let description = 'Compra llantas para moto en línea con envío a toda la República Mexicana. Distribuidores autorizados Michelin y Praxis. Catálogo completo: deportivas, naked, touring, doble propósito, scooter. Envío 1-3 días.';
+    let title = 'Llantas Praxis para Motocicleta';
+    let description = 'Catálogo de llantas Praxis para motocicleta. Deportivas, naked, touring, scooter. Envío a toda la República Mexicana en 1-3 días.';
 
     if (filters?.categoryId) {
-      title = `Llantas ${filters.categoryName || ''} para Moto | Compra en Línea`;
+      title = `Llantas ${(filters.categoryName || '').substring(0, 20)} para Moto en México`;
     }
 
     if (filters?.brand && filters.brand.length > 0) {
-      title = `Llantas ${filters.brand[0]} para Moto | Compra en Línea México`;
+      title = `Llantas ${filters.brand[0]} para Moto en México`;
     }
 
     return {
       title,
       description,
-      keywords: 'llantas para moto, comprar llantas para moto, llantas para motocicleta México, llantas Michelin moto, llantas Praxis, medida de llanta moto, llantas deportivas moto, llantas doble propósito, envío gratis llantas México, tamaño de llanta moto',
+      keywords: 'llantas para moto, comprar llantas para moto, llantas para motocicleta México, llantas Praxis, medida de llanta moto, llantas deportivas moto, llantas doble propósito, talla de llanta moto, llantas moto San Luis Potosí, envío gratis llantas México',
       type: 'website',
       // Always pin canonical to /catalogo regardless of which alias URL was used
       url: `${this.DOMAIN}/catalogo`
@@ -209,6 +209,7 @@ export class MetaService {
         availability: product.inStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
+        itemCondition: 'https://schema.org/NewCondition',
         url: `${this.DOMAIN}/product/${product.slug}`,
         seller: {
           '@type': 'Organization',
@@ -216,8 +217,43 @@ export class MetaService {
           url: this.DOMAIN
         },
         priceValidUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-          .toISOString().split('T')[0]
+          .toISOString().split('T')[0],
+        shippingDetails: {
+          '@type': 'OfferShippingDetails',
+          shippingRate: {
+            '@type': 'MonetaryAmount',
+            currency: 'MXN'
+          },
+          shippingDestination: {
+            '@type': 'DefinedRegion',
+            addressCountry: 'MX'
+          },
+          deliveryTime: {
+            '@type': 'ShippingDeliveryTime',
+            handlingTime: {
+              '@type': 'QuantitativeValue',
+              minValue: 0,
+              maxValue: 1,
+              unitCode: 'DAY'
+            },
+            transitTime: {
+              '@type': 'QuantitativeValue',
+              minValue: 1,
+              maxValue: 3,
+              unitCode: 'DAY'
+            }
+          }
+        },
+        hasMerchantReturnPolicy: {
+          '@type': 'MerchantReturnPolicy',
+          applicableCountry: 'MX',
+          returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+          merchantReturnDays: 30,
+          returnMethod: 'https://schema.org/ReturnByMail',
+          returnFees: 'https://schema.org/FreeReturn'
+        }
       },
+      dateModified: new Date().toISOString().split('T')[0],
       ...(product.rating ? {
         aggregateRating: {
           '@type': 'AggregateRating',

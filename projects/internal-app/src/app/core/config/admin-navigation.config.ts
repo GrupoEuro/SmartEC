@@ -3,6 +3,7 @@ export interface NavItem {
     title: string;      // Translation key or raw text if needed
     icon: string;       // Icon name for AppIconComponent
     route?: string;     // Router link
+    queryParams?: Record<string, string>;  // Optional query params for routerLink
     children?: NavItem[];
     roles?: string[];   // Roles allowed to see this item
     badge?: {
@@ -206,6 +207,25 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 icon: 'search',
                 route: '/admin/seo',
                 badge: { text: 'Nuevo', color: 'bg-emerald-600' }
+            },
+            {
+                id: 'inbox_channels',
+                title: 'Configuración de Canales',
+                icon: 'inbox',
+                route: '/admin/customer-care',
+            },
+            {
+                id: 'ai_agents',
+                title: 'EuroMind — Agentes IA',
+                icon: 'cpu',
+                route: '/admin/ai-agents',
+                badge: { text: 'IA', color: 'bg-violet-600' }
+            },
+            {
+                id: 'ai_agents_settings',
+                title: 'Configuración de IA',
+                icon: 'sliders',
+                route: '/admin/ai-agents/settings',
             },
             {
                 id: 'logs',

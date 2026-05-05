@@ -380,6 +380,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
                 city:      v.city      ?? '',
                 state:     v.state     ?? '',
                 zip:       v.zip       ?? '',
+                country:   'MX',
                 isDefault: false,
             });
         } catch (e) {

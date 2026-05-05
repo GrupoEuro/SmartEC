@@ -1,4 +1,4 @@
-import { Component, Input, signal, computed, inject } from '@angular/core';
+import { Component, Input, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AppIconComponent } from '../../app-icon/app-icon.component';
@@ -57,11 +57,11 @@ import { TranslateModule } from '@ngx-translate/core';
       </button>
     </div>
 
-    <!-- Recursive Children -->
-    <div *ngIf="hasChildren && !isCollapsed" 
+    <!-- Recursive Children — shown when section is open AND sidebar is not collapsed -->
+    <div *ngIf="hasChildren && isOpen() && !isCollapsed"
          class="children-container"
-         [@slideInOut]="isOpen() ? 'open' : 'closed'">
-        
+         [@slideInOut]="'open'">
+
         <app-sidebar-item *ngFor="let child of item.children"
                           [item]="child"
                           [depth]="depth + 1"
@@ -200,7 +200,7 @@ import { TranslateModule } from '@ngx-translate/core';
         ])
     ]
 })
-export class SidebarItemComponent {
+export class SidebarItemComponent implements OnInit {
     @Input() item!: NavItem;
     @Input() depth = 0;
     @Input() isCollapsed = false;
@@ -208,6 +208,30 @@ export class SidebarItemComponent {
     isOpen = signal(false);
 
     router = inject(Router);
+
+    ngOnInit() {
+        if (this.hasChildren && this.depth === 0) {
+            const key = 'sidebar-section-' + this.item.id;
+            const saved = localStorage.getItem(key);
+            // Default open if never saved; otherwise restore saved state
+            this.isOpen.set(saved === null ? true : saved === 'true');
+        }
+        // Always open if a child route is currently active
+        if (this.hasChildren && this.isAnyChildActive(this.item.children ?? [])) {
+            this.isOpen.set(true);
+        }
+    }
+
+    private isAnyChildActive(children: NavItem[]): boolean {
+        for (const child of children) {
+            if (child.route && this.router.isActive(child.route, {
+                paths: 'subset', queryParams: 'subset',
+                fragment: 'ignored', matrixParams: 'ignored'
+            })) return true;
+            if (child.children && this.isAnyChildActive(child.children)) return true;
+        }
+        return false;
+    }
 
     get hasChildren(): boolean {
         return !!this.item.children && this.item.children.length > 0;
@@ -226,7 +250,10 @@ export class SidebarItemComponent {
     }
 
     toggle() {
-        if (this.isCollapsed) return; // Don't expand in collapsed mode
+        if (this.isCollapsed) return;
         this.isOpen.update(v => !v);
+        if (this.depth === 0) {
+            localStorage.setItem('sidebar-section-' + this.item.id, String(this.isOpen()));
+        }
     }
 }

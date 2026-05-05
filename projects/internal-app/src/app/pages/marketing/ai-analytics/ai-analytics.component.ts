@@ -86,6 +86,35 @@ export const AI_COLORS: Record<string, string> = {
 
 const ALL_SOURCES = Object.keys(AI_COLORS);
 
+/**
+ * UTM-based AI source detection — mirrors AttributionService.detectAiFromUtm.
+ * ChatGPT automatically appends ?utm_source=chatgpt.com (with .com domain suffix),
+ * so we check against the AI_REFERRER_MAP first before the canonical name list.
+ */
+const UTM_AI_DOMAIN_MAP: Record<string, string> = {
+    'chatgpt.com': 'chatgpt', 'chat.openai.com': 'chatgpt',
+    'perplexity.ai': 'perplexity', 'www.perplexity.ai': 'perplexity',
+    'claude.ai': 'claude', 'gemini.google.com': 'gemini',
+    'copilot.microsoft.com': 'copilot', 'www.bing.com': 'copilot',
+    'meta.ai': 'meta-ai', 'www.meta.ai': 'meta-ai',
+    'you.com': 'you', 'poe.com': 'poe', 'mistral.ai': 'mistral',
+    'chat.mistral.ai': 'mistral', 'phind.com': 'phind', 'kagi.com': 'kagi',
+};
+const UTM_AI_CANONICAL = ['chatgpt','perplexity','claude','gemini','copilot','meta-ai','you','poe','kagi','phind','mistral'];
+
+function detectAiFromUtm(utm: any): string | undefined {
+    const src = utm?.utm_source?.toLowerCase();
+    if (!src) return undefined;
+    // Domain-format (e.g. 'chatgpt.com' as sent by ChatGPT's auto-UTM)
+    if (UTM_AI_DOMAIN_MAP[src]) return UTM_AI_DOMAIN_MAP[src];
+    // Canonical name (e.g. 'chatgpt')
+    if (UTM_AI_CANONICAL.includes(src)) return src;
+    // utm_medium signal
+    const med = utm?.utm_medium?.toLowerCase();
+    if (med === 'ai' || med === 'llm') return src;
+    return undefined;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 @Component({
@@ -210,8 +239,8 @@ export class AiAnalyticsComponent implements OnInit {
         const prevToTs   = Timestamp.fromDate(prevTo);
 
         try {
-            const [curSnap, prevSnap, idSnap] = await Promise.all([
-                // Current period session_starts
+            const [curSnap, prevSnap, idSnap, curAiSnap, prevAiSnap] = await Promise.all([
+                // Current period session_starts (legacy + new with aiSource)
                 getDocs(query(
                     collection(this.fs, 'sessionEvents'),
                     where('event', '==', 'session_start'),
@@ -238,6 +267,24 @@ export class AiAnalyticsComponent implements OnInit {
                     orderBy('timestamp', 'desc'),
                     limit(2000),
                 )),
+                // Current period ai_visit events (new — catches returning visitors + ChatGPT UTM)
+                getDocs(query(
+                    collection(this.fs, 'sessionEvents'),
+                    where('event', '==', 'ai_visit'),
+                    where('timestamp', '>=', fromTs),
+                    where('timestamp', '<=', toTs),
+                    orderBy('timestamp', 'desc'),
+                    limit(2000),
+                )),
+                // Prev period ai_visit events (for deltas)
+                getDocs(query(
+                    collection(this.fs, 'sessionEvents'),
+                    where('event', '==', 'ai_visit'),
+                    where('timestamp', '>=', prevFromTs),
+                    where('timestamp', '<=', prevToTs),
+                    orderBy('timestamp', 'desc'),
+                    limit(2000),
+                )),
             ]);
 
             // Build set of sessionIds that converted
@@ -248,78 +295,91 @@ export class AiAnalyticsComponent implements OnInit {
             }
 
             // ── Process current period ──────────────────────────────────────────
+            // Build unified session map: ai_visit takes precedence over session_start
             let storeFrontTotal = 0;
             const aiDocs: AiSession[] = [];
-            const sourceMap     = new Map<string, number>();
-            const landingMap    = new Map<string, { count: number; sources: Set<string> }>();
-            const geoMap        = new Map<string, number>();
+            const sourceMap        = new Map<string, number>();
+            const landingMap       = new Map<string, { count: number; sources: Set<string> }>();
+            const geoMap           = new Map<string, number>();
             const connectionCounts = new Map<string, number>();
+            const dayMap           = new Map<string, Record<string, number>>();
             let mobileCount = 0;
 
-            // Day buckets (keyed by 'YYYY-MM-DD')
-            const dayMap = new Map<string, Record<string, number>>();
+            const sessionDocMap = new Map<string, { d: any; ts: Date; isAiVisit: boolean }>();
 
-            for (const doc of curSnap.docs) {
-                const d = doc.data() as any;
+            // Pass 1: session_starts (legacy — lower priority)
+            for (const snap of curSnap.docs) {
+                const d = snap.data() as any;
                 storeFrontTotal++;
+                const src = (d.attribution?.aiSource as string | undefined)
+                    ?? detectAiFromUtm(d.attribution?.utm);
+                if (!src) continue;
+                const sessionId = d.sessionId ?? snap.id;
+                const ts = (d.timestamp as Timestamp).toDate();
+                if (!sessionDocMap.has(sessionId)) {
+                    sessionDocMap.set(sessionId, { d, ts, isAiVisit: false });
+                }
+            }
 
-                const src       = d.attribution?.aiSource as string | undefined;
-                const ts        = (d.timestamp as Timestamp).toDate();
-                const dateKey   = ts.toISOString().slice(0, 10);
-                const path      = d.attribution?.landingPath ?? '/';
-                const city      = d.attribution?.geo?.city    ?? '';
-                const country   = d.attribution?.geo?.country ?? '';
-                const mobile    = d.attribution?.device?.mobile ?? false;
-                const conn      = d.attribution?.device?.connection ?? '';
-                const sessionId = d.sessionId ?? doc.id;
+            // Pass 2: ai_visit events (new — override session_start for same sessionId)
+            for (const snap of curAiSnap.docs) {
+                const d = snap.data() as any;
+                const sessionId = d.sessionId ?? snap.id;
+                const ts = (d.timestamp as Timestamp).toDate();
+                sessionDocMap.set(sessionId, { d, ts, isAiVisit: true });
+            }
 
-                if (!src) continue;   // not an AI session
+            // ── Process unified map ────────────────────────────────────────────────
+            for (const [sessionId, { d, ts, isAiVisit }] of sessionDocMap) {
+                const src = isAiVisit
+                    ? (d.aiSource as string)
+                    : ((d.attribution?.aiSource as string) ?? detectAiFromUtm(d.attribution?.utm));
 
-                // KPI aggregates
+                const path    = isAiVisit ? (d.landingPath ?? '/') : (d.attribution?.landingPath ?? '/');
+                const city    = isAiVisit ? (d.geo?.city    ?? '') : (d.attribution?.geo?.city    ?? '');
+                const country = isAiVisit ? (d.geo?.country ?? '') : (d.attribution?.geo?.country ?? '');
+                const mobile  = isAiVisit ? (d.device?.mobile ?? false) : (d.attribution?.device?.mobile ?? false);
+                const conn    = isAiVisit ? (d.device?.connection ?? '') : (d.attribution?.device?.connection ?? '');
+                const dateKey = ts.toISOString().slice(0, 10);
+
                 sourceMap.set(src, (sourceMap.get(src) ?? 0) + 1);
 
-                // Day bucket
                 if (!dayMap.has(dateKey)) dayMap.set(dateKey, {});
                 const bucket = dayMap.get(dateKey)!;
                 bucket[src] = (bucket[src] ?? 0) + 1;
 
-                // Landing paths
                 if (!landingMap.has(path)) landingMap.set(path, { count: 0, sources: new Set() });
                 const lp = landingMap.get(path)!;
                 lp.count++;
                 lp.sources.add(src);
 
-                // Geo
                 const geoKey = city ? `${city}, ${country}` : (country || 'Unknown');
                 geoMap.set(geoKey, (geoMap.get(geoKey) ?? 0) + 1);
 
-                // Device
                 if (mobile) mobileCount++;
-
-                // Connection
                 if (conn) connectionCounts.set(conn, (connectionCounts.get(conn) ?? 0) + 1);
 
                 aiDocs.push({
                     sessionId,
                     source:       src,
                     landingPath:  path,
-                    landingUrl:   d.attribution?.landingUrl ?? '',
+                    landingUrl:   isAiVisit ? (d.landingUrl ?? '') : (d.attribution?.landingUrl ?? ''),
                     city,
-                    region:       d.attribution?.geo?.region  ?? '',
+                    region:       isAiVisit ? (d.geo?.region  ?? '') : (d.attribution?.geo?.region  ?? ''),
                     country,
-                    isp:          d.attribution?.geo?.org      ?? '',
+                    isp:          isAiVisit ? (d.geo?.org     ?? '') : (d.attribution?.geo?.org      ?? ''),
                     mobile,
-                    platform:     d.attribution?.device?.platform  ?? '',
-                    language:     d.attribution?.device?.language  ?? '',
+                    platform:     isAiVisit ? (d.device?.platform  ?? '') : (d.attribution?.device?.platform  ?? ''),
+                    language:     isAiVisit ? (d.device?.language  ?? '') : (d.attribution?.device?.language  ?? ''),
                     connection:   conn,
-                    screenWidth:  d.attribution?.device?.screenWidth ?? 0,
-                    userAgent:    d.attribution?.device?.userAgent  ?? '',
-                    referrer:     d.attribution?.referrer       ?? '',
-                    referrerDomain: d.attribution?.referrerDomain ?? '',
-                    campaignName: d.attribution?.campaignName   ?? '',
-                    utmSource:    d.attribution?.utm?.utm_source   ?? '',
-                    utmMedium:    d.attribution?.utm?.utm_medium   ?? '',
-                    utmCampaign:  d.attribution?.utm?.utm_campaign ?? '',
+                    screenWidth:  isAiVisit ? (d.device?.screenWidth ?? 0) : (d.attribution?.device?.screenWidth ?? 0),
+                    userAgent:    isAiVisit ? (d.device?.userAgent  ?? '') : (d.attribution?.device?.userAgent  ?? ''),
+                    referrer:     isAiVisit ? (d.referrer ?? '') : (d.attribution?.referrer ?? ''),
+                    referrerDomain: isAiVisit ? (d.referrerDomain ?? '') : (d.attribution?.referrerDomain ?? ''),
+                    campaignName: isAiVisit ? (d.campaignName ?? '') : (d.attribution?.campaignName ?? ''),
+                    utmSource:    isAiVisit ? (d.utm?.utm_source  ?? '') : (d.attribution?.utm?.utm_source   ?? ''),
+                    utmMedium:    isAiVisit ? (d.utm?.utm_medium  ?? '') : (d.attribution?.utm?.utm_medium   ?? ''),
+                    utmCampaign:  isAiVisit ? (d.utm?.utm_campaign ?? '') : (d.attribution?.utm?.utm_campaign ?? ''),
                     timestamp:    ts,
                     converted:    convertedSessions.has(sessionId),
                 });
@@ -327,12 +387,22 @@ export class AiAnalyticsComponent implements OnInit {
 
             const aiTotal = aiDocs.length;
 
-            // ── Process prev period for deltas ─────────────────────────────────
+            // ── Process prev period for deltas (session_starts + ai_visits) ──────────────────
             const prevSourceMap = new Map<string, number>();
-            for (const doc of prevSnap.docs) {
-                const d = doc.data() as any;
-                const src = d.attribution?.aiSource as string | undefined;
-                if (src) prevSourceMap.set(src, (prevSourceMap.get(src) ?? 0) + 1);
+            const prevSeen = new Set<string>();
+            for (const snap of prevSnap.docs) {
+                const d = snap.data() as any;
+                const src = (d.attribution?.aiSource as string | undefined)
+                    ?? detectAiFromUtm(d.attribution?.utm);
+                const sid = d.sessionId ?? snap.id;
+                if (src && !prevSeen.has(sid)) { prevSeen.add(sid); prevSourceMap.set(src, (prevSourceMap.get(src) ?? 0) + 1); }
+            }
+            for (const snap of prevAiSnap.docs) {
+                const d = snap.data() as any;
+                const src = d.aiSource as string;
+                const sid = d.sessionId ?? snap.id;
+                if (src && !prevSeen.has(sid)) { prevSeen.add(sid); prevSourceMap.set(src, (prevSourceMap.get(src) ?? 0) + 1); }
+                else if (src && prevSeen.has(sid)) { /* already counted */ }
             }
 
             // ── Build sourceRows ───────────────────────────────────────────────

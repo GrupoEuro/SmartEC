@@ -1242,6 +1242,7 @@
       "SETTINGS": "Website Settings",
       "GENERAL": "General",
       "INTEGRATIONS": "API Integrations",
+      "INBOX_CHANNELS": "Channel Configuration",
       "LOGS": "Activity Logs",
       "LOGOUT": "Logout",
       "PDFS": "PDFs",

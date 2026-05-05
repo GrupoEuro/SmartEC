@@ -414,6 +414,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /meli_communications/{document} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     // Amazon SP-API sync run logs — written by Cloud Functions (Admin SDK), read by staff.
     match /amazon_sync_logs/{document} {
       allow read: if isStaff();
@@ -638,6 +643,96 @@ service cloud.firestore {
       allow read:   if isStaff();
       allow create, update: if true;  // storefront writes counter atomically
       allow delete: if isAdmin();
+    }
+
+    // ── Universal Inbox — Atención al Cliente ─────────────────────────────────
+    // Conversations are created/updated by Cloud Functions via Admin SDK (webhooks).
+    // Staff can read all conversations and update operational fields (status,
+    // assignedTo, tags, unreadCount). No client-side creates — all new
+    // conversations are created server-side by the webhook handlers.
+    //
+    // The sendInboxReply callable writes outbound messages via Admin SDK,
+    // so no client write rules are needed for subcollection messages.
+
+    match /customer_conversations/{conversationId} {
+      // All staff can read conversations (inbox, analytics)
+      allow read: if isStaff();
+      
+      // Admin override for data seeding and system maintenance
+      allow create, update, delete: if isAdmin();
+
+      // ── Website channel: anonymous visitors can start a conversation ─────────
+      // Strict: must be website channel, must have customerName, no admin fields.
+      allow create: if request.resource.data.channel == 'website'
+                    && request.resource.data.customerName is string
+                    && request.resource.data.customerName.size() > 0
+                    && request.resource.data.status == 'open'
+                    // Prevent visitors from pre-assigning or escalating priority
+                    && request.resource.data.assignedTo == null
+                    && request.resource.data.priority == 'normal';
+
+      // Staff can update operational fields: status, assignedTo, tags, unreadCount, snoozedUntil
+      allow update: if isStaff()
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly(['status', 'assignedTo', 'tags', 'unreadCount',
+                                   'priority', 'snoozedUntil', 'resolvedAt', 'updatedAt',
+                                   'lastMessage']);
+
+      // No client-side deletes
+      allow delete: if false;
+
+      // ── Messages subcollection ─────────────────────────────────────────────
+      // Staff read for thread display.
+      // Visitors can create inbound messages on website-channel conversations.
+      // Staff can create outbound replies directly (in addition to Cloud Function).
+      match /messages/{messageId} {
+        allow read: if isStaff();
+        
+        // Admin override for data seeding
+        allow create, update, delete: if isAdmin();
+        
+        // Visitor create: must be inbound, must have content
+        allow create: if request.resource.data.direction == 'inbound'
+                      && request.resource.data.content is string
+                      && request.resource.data.content.size() > 0;
+        // Staff create (outbound reply from inbox UI)
+        allow create: if isStaff();
+        allow update, delete: if false;
+      }
+    }
+
+    // ── EuroMind AI — Agents ──────────────────────────────────────────────────
+    // AI agent configurations created and managed by admins in the internal app.
+    // Admins can fully CRUD agents. Staff can read for operational visibility.
+    // Cloud Functions (agentOrchestrator) always use Admin SDK — bypasses rules.
+
+    match /ai_agents/{agentId} {
+      allow read:   if isStaff();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── EuroMind AI — Knowledge Base ─────────────────────────────────────────
+    // FAQ / knowledge entries scoped to an agent (agentId field).
+    // Admins manage entries. Staff can read. Cloud Functions read via Admin SDK.
+
+    match /ai_knowledge/{entryId} {
+      allow read:   if isStaff();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── EuroMind AI — Interaction Logs ───────────────────────────────────────
+    // Written exclusively by the agentOrchestrator Cloud Function via Admin SDK.
+    // Admins and managers can read for analytics and debugging.
+    // No client-side writes.
+
+    match /ai_agent_logs/{logId} {
+      allow read:  if isManager();
+      allow write: if false; // Cloud Function (Admin SDK) only
     }
 
   }

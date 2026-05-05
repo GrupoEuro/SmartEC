@@ -16,33 +16,54 @@
             <button class="filter-btn">{{ 'BLOG.FILTERS.TIPS' | translate }}</button>
         </div>
 
-        <div class="blog-grid" *ngIf="posts$ | async as posts">
-            <article class="blog-card" *ngFor="let post of posts">
-                <div class="card-image-wrapper">
-                    <img [src]="post.coverImage" [alt]="post.title" class="card-image"
-                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="placeholder-img" [style.background-color]="'var(--primary-dark)'"
-                        style="display: none;">
-                        <span>{{ post.category[0] }}</span>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="card-meta">
-                        <span class="category-tag">{{ post.category }}</span>
-                        <span class="read-time">{{ post.readTime }} {{ 'BLOG.READ_TIME' | translate }}</span>
-                    </div>
-                    <h2>{{ post.title }}</h2>
-                    <p>{{ post.excerpt }}</p>
-                    <div class="card-footer">
-                        <div class="author-mini">
-                            <div class="avatar-circle">{{ post.author.avatar }}</div>
-                            <span class="author-name">{{ post.author.name }}</span>
+        <ng-container *ngIf="posts$ | async as posts; else loadingOrError">
+
+            <!-- Empty state when collection has no posts -->
+            <div *ngIf="posts.length === 0" class="blog-empty-state">
+                <div class="empty-icon">📝</div>
+                <h3>Próximamente</h3>
+                <p>Estamos preparando artículos con consejos, guías y novedades sobre llantas de motocicleta. ¡Vuelve pronto!</p>
+                <a routerLink="/catalogo" class="btn-catalog">Ver catálogo de llantas →</a>
+            </div>
+
+            <!-- Post grid when data is available -->
+            <div *ngIf="posts.length > 0" class="blog-grid">
+                <article class="blog-card" *ngFor="let post of posts">
+                    <div class="card-image-wrapper">
+                        <img [src]="post.coverImage" [alt]="post.title" class="card-image" width="600" height="400" loading="lazy"
+                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="placeholder-img" [style.background-color]="'var(--primary-dark)'"
+                            style="display: none;">
+                            <span>{{ post.category[0] }}</span>
                         </div>
-                        <a [routerLink]="['/blog', post.slug]" class="read-more-btn">{{ 'BLOG.READ_MORE' | translate
-                            }}</a>
                     </div>
-                </div>
-            </article>
-        </div>
+                    <div class="card-content">
+                        <div class="card-meta">
+                            <span class="category-tag">{{ post.category }}</span>
+                            <span class="read-time">{{ post.readTime }} {{ 'BLOG.READ_TIME' | translate }}</span>
+                        </div>
+                        <h2>{{ post.title }}</h2>
+                        <p>{{ post.excerpt }}</p>
+                        <div class="card-footer">
+                            <div class="author-mini">
+                                <div class="avatar-circle">{{ post.author.name[0] }}</div>
+                                <span class="author-name">{{ post.author.name }}</span>
+                            </div>
+                            <a [routerLink]="['/blog', post.slug]" class="read-more-btn">{{ 'BLOG.READ_MORE' | translate }}</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+        </ng-container>
+
+        <!-- Loading / Error fallback -->
+        <ng-template #loadingOrError>
+            <div class="blog-loading">
+                <div class="blog-spinner"></div>
+                <p>Cargando artículos...</p>
+            </div>
+        </ng-template>
+
     </div>
 </section>

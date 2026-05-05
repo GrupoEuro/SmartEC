@@ -97,6 +97,10 @@ export class MetricsHeatmapComponent implements OnChanges {
     view   = signal<HmView>('daily');
     metric = signal<'revenue' | 'orders'>('revenue');
 
+    /** True once the user has manually clicked a view tab — prevents the
+     *  auto-switch to 'weekly' from overriding their explicit choice. */
+    private _userHasSetView = false;
+
     readonly dowLabels   = DOW_LABELS;
     readonly legendSteps = [0.12, 0.25, 0.45, 0.65, 1];
 
@@ -124,7 +128,7 @@ export class MetricsHeatmapComponent implements OnChanges {
         })
     );
 
-    // ── Week headers ─────────────────────────────────────────────────────────
+    // ── Week headers ──────────────────────────────────────────────────────
     readonly weekHeaders = computed(() => {
         const seen = new Set<string>();
         return this.docs
@@ -134,12 +138,18 @@ export class MetricsHeatmapComponent implements OnChanges {
                 const mon = new Date(dt);
                 mon.setDate(dt.getDate() - dow);
                 const key = mon.toLocaleDateString('sv-SE');
-                return { key, monthLabel: mon.toLocaleDateString('es-MX', { month: 'short' }) };
+                // ISO-8601 week number
+                const tmp = new Date(Date.UTC(mon.getFullYear(), mon.getMonth(), mon.getDate()));
+                tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+                const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+                const weekNum  = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+                const monthLabel = 'S' + weekNum + ' ' + mon.toLocaleDateString('es-MX', { month: 'short' });
+                return { key, monthLabel };
             })
             .filter(w => { if (seen.has(w.key)) return false; seen.add(w.key); return true; });
     });
 
-    // ── Month headers ────────────────────────────────────────────────────────
+    // ── Month headers ──────────────────────────────────────────────────────
     readonly monthHeaders = computed(() => {
         const seen = new Set<string>();
         return this.docs
@@ -151,6 +161,18 @@ export class MetricsHeatmapComponent implements OnChanges {
                 const mo = Number(parts[1]);
                 return new Date(y, mo - 1, 1).toLocaleDateString('es-MX', { month: 'short', year: '2-digit' });
             });
+    });
+
+    // ── Active-view empty check ────────────────────────────────────────────
+    /** True only when the currently visible view tab has no data. */
+    readonly activeViewIsEmpty = computed(() => {
+        switch (this.view()) {
+            case 'daily':   return this.rows().length === 0;
+            case 'dow':     return this.dowRows().length === 0;
+            case 'weekly':  return this.weekRows().length === 0;
+            case 'monthly': return this.monthRows().length === 0;
+            default:        return true;
+        }
     });
 
     // ── DAILY rows ───────────────────────────────────────────────────────────
@@ -371,14 +393,19 @@ export class MetricsHeatmapComponent implements OnChanges {
         .sort((a, b) => b.totalRevenue - a.totalRevenue);
     });
 
-    // ── Lifecycle ────────────────────────────────────────────────────────────
+    // ── Lifecycle ──────────────────────────────────────────────────────
     ngOnChanges(changes: SimpleChanges) {
-        if (changes['docs'] && this.docs.length > 45) {
+        // Auto-switch to weekly only when docs are large AND the user has not
+        // manually picked a tab — avoids overriding an explicit preference.
+        if (changes['docs'] && this.docs.length > 45 && !this._userHasSetView) {
             this.view.set('weekly');
         }
     }
 
-    setView(v: HmView) { this.view.set(v); }
+    setView(v: HmView) {
+        this._userHasSetView = true;
+        this.view.set(v);
+    }
 
     abbrev(n: number): string {
         if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';

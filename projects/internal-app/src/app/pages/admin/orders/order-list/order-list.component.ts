@@ -125,8 +125,8 @@ export class OrderListComponent implements OnInit {
             if (searchTerm) {
                 const matches =
                     order.orderNumber.toLowerCase().includes(searchTerm) ||
-                    order.customer.name.toLowerCase().includes(searchTerm) ||
-                    order.customer.email.toLowerCase().includes(searchTerm);
+                    (order.customer?.name || '').toLowerCase().includes(searchTerm) ||
+                    (order.customer?.email || '').toLowerCase().includes(searchTerm);
                 if (!matches) return false;
             }
             return true;
@@ -157,8 +157,8 @@ export class OrderListComponent implements OnInit {
             return [
                 o.orderNumber,
                 date.toLocaleDateString(),
-                o.customer.name,
-                o.customer.email,
+                o.customer?.name || '',
+                o.customer?.email || '',
                 o.total,
                 o.status
             ].map(f => `"${f}"`).join(',');

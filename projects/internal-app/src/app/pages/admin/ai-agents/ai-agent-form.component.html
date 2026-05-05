@@ -1,0 +1,302 @@
+<div class="form-shell" *ngIf="!loading(); else loadingTpl">
+
+    <!-- ═══ Header ═══ -->
+    <div class="form-header">
+        <a routerLink="/admin/ai-agents" class="back-btn">
+            <app-icon name="arrow-left" [size]="16"></app-icon>
+        </a>
+        <span class="agent-emoji-preview">{{ agent.avatarEmoji }}</span>
+        <div class="header-text">
+            <h1 class="form-title">{{ agentId() ? 'Configurar Agente' : 'Nuevo Agente' }}</h1>
+            <p class="form-sub">{{ agent.name || 'Sin nombre' }}</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-save" [disabled]="saving()" (click)="save(false)">
+                @if(saving()){ <div class="spin-xs"></div> } @else { <app-icon name="save" [size]="14"></app-icon> }
+                Guardar
+            </button>
+            @if(agent.status !== 'active'){
+                <button class="btn-activate" [disabled]="saving()" (click)="save(true)">
+                    <app-icon name="zap" [size]="14"></app-icon> Activar
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- ═══ Step tabs ═══ -->
+    <div class="step-tabs">
+        <button class="step-tab" [class.active]="step()===1" (click)="goStep(1)">
+            <span class="step-num">1</span> Identidad
+        </button>
+        <div class="step-line"></div>
+        <button class="step-tab" [class.active]="step()===2" (click)="goStep(2)">
+            <span class="step-num">2</span> Canales
+        </button>
+        <div class="step-line"></div>
+        <button class="step-tab" [class.active]="step()===3" (click)="goStep(3)">
+            <span class="step-num">3</span> Conocimiento & Escalación
+        </button>
+    </div>
+
+    <div class="form-body">
+
+        <!-- ══════════════════════════════ STEP 1 ══════════════════════════════ -->
+        @if(step()===1){
+        <div class="step-pane">
+
+            <!-- Name + Emoji -->
+            <div class="field-row">
+                <div class="field-group" style="flex:1">
+                    <label class="field-label">Nombre del agente *</label>
+                    <input class="field-input" [(ngModel)]="agent.name" placeholder="EuroBot — Fuera de Horario">
+                </div>
+                <div class="field-group" style="width:140px">
+                    <label class="field-label">Emoji avatar</label>
+                    <div class="emoji-picker">
+                        @for(e of EMOJI_OPTIONS; track e){
+                            <button class="emoji-btn" [class.selected]="agent.avatarEmoji===e" (click)="agent.avatarEmoji=e">{{ e }}</button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="field-group">
+                <label class="field-label">Descripción breve</label>
+                <input class="field-input" [(ngModel)]="agent.description" placeholder="¿Qué hace este agente?">
+            </div>
+
+            <!-- System prompt -->
+            <div class="field-group">
+                <label class="field-label">Instrucciones del agente (System Prompt) *</label>
+                <p class="field-hint">
+                    Define personalidad, reglas y comportamiento. Usa <code>{{ varHint }}</code> como variable para el límite de oraciones.
+                    Para escalar: <code>[HANDOFF: department=Ventas reason=...]</code>
+                </p>
+                <textarea class="field-textarea" [(ngModel)]="agent.systemPrompt" rows="12"
+                    placeholder="Eres EuroBot, el asistente virtual de Importadora Euro..."></textarea>
+            </div>
+
+            <!-- Model + Temperature row -->
+            <div class="field-row">
+                <div class="field-group" style="flex:1">
+                    <label class="field-label">Modelo IA</label>
+                    <select class="field-input" [(ngModel)]="agent.modelConfig!.model">
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (rápido, económico)</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (más capaz)</option>
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (más nuevo)</option>
+                    </select>
+                </div>
+                <div class="field-group" style="width:160px">
+                    <label class="field-label">Temperatura: {{ agent.modelConfig!.temperature }}</label>
+                    <input type="range" min="0" max="1" step="0.1" [(ngModel)]="agent.modelConfig!.temperature" class="range-input">
+                    <div class="range-labels"><span>Preciso</span><span>Creativo</span></div>
+                </div>
+                <div class="field-group" style="width:130px">
+                    <label class="field-label">Tokens máx.</label>
+                    <input class="field-input" type="number" [(ngModel)]="agent.modelConfig!.maxTokens" min="128" max="2048" step="128">
+                </div>
+            </div>
+
+            <!-- Tone config -->
+            <div class="section-title">
+                <app-icon name="sliders" [size]="15"></app-icon>
+                Configuración de tono
+            </div>
+            <div class="field-row">
+                <div class="field-group" style="flex:1">
+                    <label class="field-label">Idioma</label>
+                    <select class="field-input" [(ngModel)]="agent.toneConfig!.language">
+                        <option value="es-MX">Español mexicano (es-MX)</option>
+                        <option value="en-US">English (en-US)</option>
+                        <option value="auto">Detectar automáticamente</option>
+                    </select>
+                </div>
+                <div class="field-group" style="flex:1">
+                    <label class="field-label">Tono</label>
+                    <select class="field-input" [(ngModel)]="agent.toneConfig!.tone">
+                        <option value="professional">Profesional y amable</option>
+                        <option value="friendly">Cercano y cálido</option>
+                        <option value="formal">Formal y respetuoso</option>
+                        <option value="casual">Casual y relajado</option>
+                    </select>
+                </div>
+                <div class="field-group" style="width:140px">
+                    <label class="field-label">Máx. oraciones</label>
+                    <input class="field-input" type="number" [(ngModel)]="agent.toneConfig!.maxSentences" min="1" max="8">
+                </div>
+                <div class="field-group" style="width:120px">
+                    <label class="field-label">Usar emojis</label>
+                    <label class="toggle-wrap">
+                        <input type="checkbox" [(ngModel)]="agent.toneConfig!.useEmojis">
+                        <span class="toggle-track" [class.on]="agent.toneConfig!.useEmojis"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Context window -->
+            <div class="field-group" style="width:220px">
+                <label class="field-label">Mensajes de contexto ({{ agent.contextMessageCount }})</label>
+                <input type="range" min="5" max="25" step="5" [(ngModel)]="agent.contextMessageCount" class="range-input">
+                <div class="range-labels"><span>5 msgs</span><span>25 msgs</span></div>
+            </div>
+
+            <button class="btn-next" (click)="goStep(2)">
+                Siguiente: Canales <app-icon name="arrow-right" [size]="15"></app-icon>
+            </button>
+        </div>
+        }
+
+        <!-- ══════════════════════════════ STEP 2 ══════════════════════════════ -->
+        @if(step()===2){
+        <div class="step-pane">
+            <p class="step-intro">Conecta este agente a uno o más canales y define cuándo debe activarse.</p>
+
+            @for(ch of channels; track ch.id){
+            <div class="channel-binding-card" [class.ch-enabled]="isChannelEnabled(ch.id)">
+                <div class="ch-header">
+                    <div class="ch-icon" [style.background]="ch.color+'22'" [style.border-color]="ch.color+'55'">
+                        <app-icon [name]="ch.icon" [size]="18" [style.color]="ch.color"></app-icon>
+                    </div>
+                    <span class="ch-label">{{ ch.label }}</span>
+                    <label class="toggle-wrap" style="margin-left:auto">
+                        <input type="checkbox" [checked]="isChannelEnabled(ch.id)" (change)="toggleChannel(ch.id)">
+                        <span class="toggle-track" [class.on]="isChannelEnabled(ch.id)"></span>
+                    </label>
+                </div>
+
+                @if(isChannelEnabled(ch.id)){
+                <div class="ch-body">
+                    <!-- Greeting override -->
+                    <div class="field-group">
+                        <label class="field-label">Mensaje de bienvenida (opcional)</label>
+                        <input class="field-input" [(ngModel)]="getBinding(ch.id).greetingMessage"
+                               placeholder="Deja en blanco para usar el primer mensaje del prompt">
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="field-group" style="width:160px">
+                        <label class="field-label">Prioridad (1=máxima)</label>
+                        <input class="field-input" type="number" [(ngModel)]="getBinding(ch.id).priority" min="1" max="10">
+                    </div>
+
+                    <!-- Conditions -->
+                    <label class="field-label">Condiciones de activación</label>
+                    @for(cond of getBinding(ch.id).conditions; track cond; let i=$index){
+                    <div class="cond-row">
+                        <select class="field-input" [ngModel]="cond.type"
+                                (ngModelChange)="setConditionType(ch.id, i, $event)">
+                            @for(ct of CONDITION_TYPES; track ct.value){
+                                <option [value]="ct.value">{{ ct.label }}</option>
+                            }
+                        </select>
+                        @if(cond.type === 'noHumanReplyWithin'){
+                            <input class="field-input minutes-input" type="number"
+                                   [(ngModel)]="$any(cond).minutes" min="1" max="60" placeholder="mins">
+                        }
+                        @if(cond.type === 'keywordMatch'){
+                            <input class="field-input" [(ngModel)]="$any(cond).keywordsStr"
+                                   placeholder="factura, cotizar, precio (separadas por coma)"
+                                   (blur)="onKeywordsBlur(cond, $any(cond).keywordsStr)">
+                        }
+                        <button class="btn-remove-cond" (click)="removeCondition(ch.id, i)">
+                            <app-icon name="x" [size]="13"></app-icon>
+                        </button>
+                    </div>
+                    }
+                    <button class="btn-add-cond" (click)="addCondition(ch.id)">
+                        <app-icon name="plus" [size]="13"></app-icon> Agregar condición
+                    </button>
+                </div>
+                }
+            </div>
+            }
+
+            <div class="step-nav">
+                <button class="btn-back" (click)="goStep(1)"><app-icon name="arrow-left" [size]="14"></app-icon> Atrás</button>
+                <button class="btn-next" (click)="goStep(3)">Siguiente: Conocimiento <app-icon name="arrow-right" [size]="15"></app-icon></button>
+            </div>
+        </div>
+        }
+
+        <!-- ══════════════════════════════ STEP 3 ══════════════════════════════ -->
+        @if(step()===3){
+        <div class="step-pane">
+
+            <!-- Departments -->
+            <div class="section-title"><app-icon name="users" [size]="15"></app-icon> Departamentos de escalación</div>
+            <p class="field-hint">Cuando el agente detecte que el cliente necesita un humano, lo enviará a uno de estos departamentos.</p>
+            <div class="dept-chips">
+                @for(dept of DEPARTMENTS; track dept){
+                    <span class="dept-chip" [class.dept-active]="agent.escalationDepartments?.includes(dept)"
+                          (click)="toggleDept(dept)">{{ dept }}</span>
+                }
+            </div>
+
+            <!-- Knowledge Base -->
+            <div class="section-title" style="margin-top:1.75rem">
+                <app-icon name="book-open" [size]="15"></app-icon> Base de conocimiento
+            </div>
+            <p class="field-hint">Agrega preguntas frecuentes y datos del negocio que el agente puede usar para responder con precisión.</p>
+
+            @if(!agentId()){
+                <div class="kb-save-first">
+                    <app-icon name="info" [size]="14"></app-icon>
+                    Guarda el agente primero para agregar entradas de conocimiento.
+                </div>
+            } @else {
+                <!-- KB list -->
+                @for(kb of knowledge(); track kb.id){
+                <div class="kb-row">
+                    <div class="kb-info">
+                        <span class="kb-cat">{{ kb.category }}</span>
+                        <span class="kb-title">{{ kb.title }}</span>
+                        <span class="kb-preview">{{ kb.content | slice:0:80 }}…</span>
+                    </div>
+                    <button class="btn-remove-cond" (click)="deleteKbEntry(kb.id!)">
+                        <app-icon name="trash-2" [size]="13"></app-icon>
+                    </button>
+                </div>
+                }
+
+                <!-- Add KB entry -->
+                <div class="kb-add-form">
+                    <div class="field-row">
+                        <div class="field-group" style="width:140px">
+                            <label class="field-label">Categoría</label>
+                            <input class="field-input" [(ngModel)]="newKbEntry.category" placeholder="General">
+                        </div>
+                        <div class="field-group" style="flex:1">
+                            <label class="field-label">Título / Pregunta</label>
+                            <input class="field-input" [(ngModel)]="newKbEntry.title" placeholder="¿Cuál es el horario de atención?">
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Contenido / Respuesta</label>
+                        <textarea class="field-textarea" [(ngModel)]="newKbEntry.content" rows="3"
+                            placeholder="Nuestro horario es lunes a viernes de 9am a 6pm CST..."></textarea>
+                    </div>
+                    <button class="btn-add-kb" [disabled]="kbSaving()" (click)="addKbEntry()">
+                        @if(kbSaving()){ <div class="spin-xs"></div> } @else { <app-icon name="plus" [size]="14"></app-icon> }
+                        Agregar entrada
+                    </button>
+                </div>
+            }
+
+            <div class="step-nav" style="margin-top:2rem">
+                <button class="btn-back" (click)="goStep(2)"><app-icon name="arrow-left" [size]="14"></app-icon> Atrás</button>
+                <button class="btn-activate" (click)="save(true)" [disabled]="saving()">
+                    <app-icon name="zap" [size]="14"></app-icon> Guardar y Activar
+                </button>
+                <button class="btn-save" (click)="save(false)" [disabled]="saving()">
+                    <app-icon name="save" [size]="14"></app-icon><span> Guardar borrador</span>
+                </button>
+            </div>
+        </div>
+        }
+    </div>
+</div>
+
+<ng-template #loadingTpl>
+    <div class="state-center"><div class="spinner"></div></div>
+</ng-template>

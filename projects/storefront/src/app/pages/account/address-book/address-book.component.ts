@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AccountService, Address } from '@lib/core';
 import { AddressFormComponent } from './components/address-form/address-form.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
     selector: 'app-address-book',
@@ -25,6 +26,8 @@ import { TranslateModule } from '@ngx-translate/core';
 export class AddressBookComponent implements OnInit {
     accountService = inject(AccountService);
     dialog = inject(MatDialog);
+    translate = inject(TranslateService);
+    toast = inject(ToastService);
 
     addresses: Address[] = [];
     loading = true;
@@ -58,10 +61,11 @@ export class AddressBookComponent implements OnInit {
                 this.loading = true;
                 try {
                     await this.accountService.addAddress(result);
+                    this.toast.success(this.translate.instant('ACCOUNT.ADDRESS_BOOK.SUCCESS_ADD'));
                     await this.loadAddresses();
                 } catch (error: any) {
                     console.error('Error adding address', error);
-                    // TODO: Show error
+                    this.toast.error(this.translate.instant('ACCOUNT.ADDRESS_BOOK.ERROR_ADD'));
                     this.loading = false;
                 }
             }
@@ -80,9 +84,11 @@ export class AddressBookComponent implements OnInit {
                 this.loading = true;
                 try {
                     await this.accountService.updateAddress(address.id, result);
+                    this.toast.success(this.translate.instant('ACCOUNT.ADDRESS_BOOK.SUCCESS_UPDATE'));
                     await this.loadAddresses();
                 } catch (error: any) {
                     console.error('Error updating address', error);
+                    this.toast.error(this.translate.instant('ACCOUNT.ADDRESS_BOOK.ERROR_UPDATE'));
                     this.loading = false;
                 }
             }
@@ -90,15 +96,17 @@ export class AddressBookComponent implements OnInit {
     }
 
     async deleteAddress(address: Address) {
-        if (!confirm('Are you sure you want to delete this address?')) return;
+        if (!confirm(this.translate.instant('ACCOUNT.ADDRESS_BOOK.CONFIRM_DELETE'))) return;
 
         if (address.id) {
             this.loading = true;
             try {
                 await this.accountService.deleteAddress(address.id);
+                this.toast.success(this.translate.instant('ACCOUNT.ADDRESS_BOOK.SUCCESS_DELETE'));
                 await this.loadAddresses();
             } catch (error: any) {
                 console.error('Error deleting address', error);
+                this.toast.error(this.translate.instant('ACCOUNT.ADDRESS_BOOK.ERROR_DELETE'));
                 this.loading = false;
             }
         }

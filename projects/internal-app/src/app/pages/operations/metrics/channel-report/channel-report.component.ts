@@ -3,9 +3,10 @@ import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import {
-    MetricsAnalyticsService, AnalyticsDailyDoc, DATE_RANGES, DateRange
+    MetricsAnalyticsService, AnalyticsDailyDoc, DATE_RANGES, DateRange, ChannelBreakdown
 } from '../services/metrics-analytics.service';
 import { MetricsTimeframeService } from '../services/metrics-timeframe.service';
+import { MetricsBigqueryService, DailyTrendRow, SummaryKpisRow } from '../services/metrics-bigquery.service';
 import { MetricsHeatmapComponent } from '../shared/metrics-heatmap.component';
 
 interface ChannelConfig {
@@ -34,7 +35,8 @@ const CHANNEL_CONFIGS: Record<string, ChannelConfig> = {
 })
 export class ChannelReportComponent implements OnInit {
 
-    private svc   = inject(MetricsAnalyticsService);
+    private svc   = inject(MetricsAnalyticsService);  // kept for pctChange helper
+    private bqSvc = inject(MetricsBigqueryService);
     private tf    = inject(MetricsTimeframeService);
     private route = inject(ActivatedRoute);
 
@@ -151,14 +153,68 @@ export class ChannelReportComponent implements OnInit {
     private async load() {
         this.isLoading.set(true);
         const range = this.tf.selected();
-        const [cur, prev] = await Promise.all([
-            this.svc.getDailyDocs(range),
-            this.svc.getPriorPeriodDocs(range),
-        ]);
-        this.dailyDocs.set(cur);
-        this.priorDocs.set(prev);
-        this.isLoading.set(false);
+        try {
+            const { fromDate: curFrom, toDate: curTo } = this.bqSvc.getDateStrings(range);
+            const [prevFrom, prevTo] = this.svc.getPriorRange(range.type);
+            const prevFromStr = prevFrom.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+            const prevToStr   = prevTo.toLocaleDateString('sv-SE',   { timeZone: 'America/Mexico_City' });
+
+            const [curTrend, curKpis, prevTrend, prevKpis] = await Promise.all([
+                this.bqSvc.queryDailyTrendBetween(curFrom, curTo),
+                this.bqSvc.querySummaryKpisBetween(curFrom, curTo),
+                this.bqSvc.queryDailyTrendBetween(prevFromStr, prevToStr),
+                this.bqSvc.querySummaryKpisBetween(prevFromStr, prevToStr),
+            ]);
+            this.dailyDocs.set(this._bqToDocs(curTrend, curKpis));
+            this.priorDocs.set(this._bqToDocs(prevTrend, prevKpis));
+        } catch (err) {
+            console.error('[ChannelReport] BQ load failed:', err);
+            this.dailyDocs.set([]);
+            this.priorDocs.set([]);
+        } finally {
+            this.isLoading.set(false);
+        }
     }
+
+    private _bqToDocs(trend: DailyTrendRow[], kpis: SummaryKpisRow[]): AnalyticsDailyDoc[] {
+        const daysMap = new Map<string, AnalyticsDailyDoc>();
+
+        for (const row of trend) {
+            let doc = daysMap.get(row.order_date);
+            if (!doc) {
+                const dt = new Date(row.order_date + 'T12:00:00');
+                doc = {
+                    date:         row.order_date,
+                    month:        row.order_date.slice(0, 7),
+                    dayOfWeek:    (dt.getDay() + 6) % 7,
+                    totalRevenue: 0,
+                    totalOrders:  0,
+                    totalUnits:   0,
+                    avgTicket:    0,
+                    byChannel:    {},
+                };
+                daysMap.set(row.order_date, doc);
+            }
+            
+            doc.totalRevenue += row.revenue;
+            doc.totalOrders  += row.orders;
+            doc.totalUnits   += row.units;
+            
+            if (row.source_channel) {
+                doc.byChannel[row.source_channel] = {
+                    revenue: row.revenue,
+                    orders:  row.orders,
+                    units:   row.units
+                };
+            }
+        }
+
+        return Array.from(daysMap.values()).map(doc => {
+            doc.avgTicket = doc.totalOrders > 0 ? doc.totalRevenue / doc.totalOrders : 0;
+            return doc;
+        }).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
 
     formatDelta(delta: number | null): string {
         if (delta === null) return '—';

@@ -692,6 +692,13 @@
       "HOME": "Home",
       "ADDRESS": "Address",
       "ADD_FIRST": "Add New Address",
+      "CONFIRM_DELETE": "Are you sure you want to delete this address?",
+      "SUCCESS_ADD": "Address added successfully",
+      "SUCCESS_UPDATE": "Address updated successfully",
+      "SUCCESS_DELETE": "Address deleted successfully",
+      "ERROR_ADD": "Failed to add address",
+      "ERROR_UPDATE": "Failed to update address",
+      "ERROR_DELETE": "Failed to delete address",
       "MODAL": {
         "ADD_TITLE": "Add Address",
         "EDIT_TITLE": "Edit Address",

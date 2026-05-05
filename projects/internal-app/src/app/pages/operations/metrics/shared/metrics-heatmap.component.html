@@ -41,17 +41,24 @@
           @for (row of rows(); track row.channelId) {
             <tr class="mhm-row">
               <td class="mhm-ch-td">
-                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
-                <span class="mhm-ch-name">{{ row.label }}</span>
+                <div class="mhm-ch-inner">
+                  <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                  <span class="mhm-ch-name">{{ row.label }}</span>
+                </div>
               </td>
               <td class="mhm-tot-td">
                 <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
-                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : (row.totalOrders | number:'1.0-0') }}
                 </span>
               </td>
               @for (cell of row.cells; track cell.key) {
                 <td class="mhm-cell-td" [class.mhm-weekend]="cell.isWeekend">
                   <div class="mhm-cell" [style.background]="cell.bgColor" [title]="cell.tooltip">
+                    @if (metric() === 'revenue' && cell.revenue > 0) {
+                      <span class="mhm-cell-rev" [style.color]="'rgb(' + row.rgb + ')'">
+                        ${{ abbrev(cell.revenue) }}
+                      </span>
+                    }
                     @if (cell.orders > 0) {
                       <span class="mhm-cell-ord"
                             [class.mhm-cell-ord--primary]="metric() === 'orders'"
@@ -84,12 +91,14 @@
           @for (row of dowRows(); track row.channelId) {
             <tr class="mhm-row">
               <td class="mhm-ch-td">
-                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
-                <span class="mhm-ch-name">{{ row.label }}</span>
+                <div class="mhm-ch-inner">
+                  <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                  <span class="mhm-ch-name">{{ row.label }}</span>
+                </div>
               </td>
               <td class="mhm-tot-td">
                 <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
-                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : (row.totalOrders | number:'1.0-0') }}
                 </span>
               </td>
               @for (cell of row.cells; track cell.key) {
@@ -135,12 +144,14 @@
           @for (row of weekRows(); track row.channelId) {
             <tr class="mhm-row">
               <td class="mhm-ch-td">
-                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
-                <span class="mhm-ch-name">{{ row.label }}</span>
+                <div class="mhm-ch-inner">
+                  <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                  <span class="mhm-ch-name">{{ row.label }}</span>
+                </div>
               </td>
               <td class="mhm-tot-td">
                 <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
-                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : (row.totalOrders | number:'1.0-0') }}
                 </span>
               </td>
               @for (cell of row.cells; track cell.key) {
@@ -178,12 +189,14 @@
           @for (row of monthRows(); track row.channelId) {
             <tr class="mhm-row">
               <td class="mhm-ch-td">
-                <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
-                <span class="mhm-ch-name">{{ row.label }}</span>
+                <div class="mhm-ch-inner">
+                  <span class="mhm-dot" [style.background]="'rgb(' + row.rgb + ')'"></span>
+                  <span class="mhm-ch-name">{{ row.label }}</span>
+                </div>
               </td>
               <td class="mhm-tot-td">
                 <span class="mhm-badge" [style.color]="'rgb(' + row.rgb + ')'">
-                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : row.totalOrders }}
+                  {{ metric() === 'revenue' ? '$' + abbrev(row.totalRevenue) : (row.totalOrders | number:'1.0-0') }}
                 </span>
               </td>
               @for (cell of row.cells; track cell.key) {
@@ -207,7 +220,7 @@
     </div>
   }
 
-  @if (rows().length === 0) {
+  @if (activeViewIsEmpty()) {
     <div class="mhm-empty">No hay datos de ventas en este período</div>
   }
 

@@ -15,6 +15,15 @@
         <div class="spinner"></div>
     </div>
 
+    <!-- Data Source Notice -->
+    <div class="info-panel glass-panel" style="margin-bottom: 1.5rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 1rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+        <app-icon name="info" [size]="24" class="text-blue-400"></app-icon>
+        <div>
+            <h4 style="color: #60a5fa; margin: 0 0 0.25rem 0;">Data Source Notice</h4>
+            <p style="color: #cbd5e1; font-size: 0.875rem; margin: 0;">This module currently processes Direct (Shopify/Web) orders from the operational database. Multi-channel data (MercadoLibre, Amazon) is not yet integrated into the RFM and Cohort segmentations.</p>
+        </div>
+    </div>
+
     <div *ngIf="!isLoading() && insightsData() as data" class="dashboard-grid">
         <!-- KPI Cards -->
         <div class="kpi-row" id="ci-clv">

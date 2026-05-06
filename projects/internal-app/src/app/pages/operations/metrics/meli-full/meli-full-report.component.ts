@@ -213,7 +213,7 @@ export class MeliFullReportComponent implements OnInit, AfterViewInit, OnDestroy
     private may2025Chart?: Chart;
 
     private revenueChart?: Chart;
-    private burnChart?: Chart;
+    private burnChart?: any;
     private matrixChart?: Chart;
     private viewReady = false;
 

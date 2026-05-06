@@ -333,27 +333,30 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
     // ── Cost Analyzer ─────────────────────────────────────────────────────────
     readonly CHANNELS = CHANNEL_COMMISSIONS;
 
-    costInput        = 0;
-    priceInput       = 0;
-    marketPriceInput = 0;
+    costInput        = signal<number>(0);
+    priceInput       = signal<number>(0);
+    marketPriceInput = signal<number>(0);
 
     channelAnalysis = computed(() => {
         return CHANNEL_COMMISSIONS.map(ch => {
-            const commissionAmt  = this.priceInput * ch.rate;
+            const p = this.priceInput();
+            const c = this.costInput();
+            const commissionAmt  = p * ch.rate;
             const fulfillmentFee = ch.fulfillmentFee ?? 0;
-            const netRevenue     = this.priceInput - commissionAmt - fulfillmentFee;
-            const netProfit      = netRevenue - this.costInput;
-            const netMarginPct   = this.priceInput > 0 ? (netProfit / this.priceInput) * 100 : 0;
+            const netRevenue     = p - commissionAmt - fulfillmentFee;
+            const netProfit      = netRevenue - c;
+            const netMarginPct   = p > 0 ? (netProfit / p) * 100 : 0;
             return { ...ch, commissionAmt, fulfillmentFee, netRevenue, netProfit, netMarginPct, commissionRate: ch.rate };
         });
     });
 
     breakEvenPrices = computed(() => {
         const minMargin = 0.15;
+        const c = this.costInput();
         return CHANNEL_COMMISSIONS.map(ch => {
             const ff     = ch.fulfillmentFee ?? 0;
             const denom  = 1 - ch.rate - minMargin;
-            const breakEven = denom > 0 ? Math.ceil((this.costInput + ff) / denom) : 0;
+            const breakEven = denom > 0 ? Math.ceil((c + ff) / denom) : 0;
             return { id: ch.id, label: ch.label, breakEven, color: ch.color, icon: ch.icon };
         });
     });
@@ -480,8 +483,8 @@ export class PriceIntelligenceComponent implements OnInit, OnDestroy {
             this.scanState.set('done');
 
             const s = this.stats();
-            if (s?.medianPrice && this.marketPriceInput === 0) {
-                this.marketPriceInput = Math.round(s.medianPrice);
+            if (s?.medianPrice && this.marketPriceInput() === 0) {
+                this.marketPriceInput.set(Math.round(s.medianPrice));
             }
             if (d.noListing && (d.count ?? 0) === 0) {
                 this.toastSvc.info(`ℹ️ Sin publicación activa en ML ni competidores encontrados para ${this.displaySize()}.`);

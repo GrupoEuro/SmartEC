@@ -1,180 +1,93 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, query, where, orderBy, limit, getDocs, Timestamp } from '@angular/fire/firestore';
-import { Observable, combineLatest, map, of } from 'rxjs';
+import { Observable, from, map, of } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
-import { OrderService } from './order.service';
-import { GlobalOrderCacheService } from './global-order-cache.service';
+import { MetricsBigqueryService } from '../../pages/operations/metrics/services/metrics-bigquery.service';
+import { KPICard, MetricChartData, RevenueTrendPoint } from '../models/business-metrics.model';
 import { ProductService } from './product.service';
-import { UserManagementService } from './user-management.service';
-import { DailyMetrics, KPICard, MetricChartData, RevenueTrendPoint, OrderStatusCount, TopProduct } from '../models/business-metrics.model';
+import { CustomerInsightsService } from '../../services/customer-insights.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class MetricsService {
-    private firestore = inject(Firestore);
-    private orderService = inject(OrderService);
-    private globalOrderCache = inject(GlobalOrderCacheService);
-    private productService = inject(ProductService);
-    private userService = inject(UserManagementService);
+    private bqService = inject(MetricsBigqueryService);
     private translate = inject(TranslateService);
+    private productService = inject(ProductService);
+    private customerInsightsService = inject(CustomerInsightsService);
+
+    private formatDate(d: Date): string {
+        return d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    }
 
     /**
      * Get all KPI cards for the dashboard
      */
     getKPICards(startDate?: Date, endDate?: Date): Observable<KPICard[]> {
-        return combineLatest([
-            startDate && endDate
-                ? this.globalOrderCache.get(startDate, endDate)
-                : this.orderService.getOrders(),
-            this.productService.getProducts(),
-            this.userService.getCustomers()
-        ]).pipe(
-            map(([orders, products, customers]) => {
-                const now = new Date();
-                const today = new Date(now.setHours(0, 0, 0, 0));
-                const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-                const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        if (!startDate || !endDate) {
+            startDate = new Date(new Date().setHours(0,0,0,0));
+            endDate = new Date();
+        }
 
-                // Helper to get order date
-                const getOrderDate = (order: any): Date => {
-                    if (!order.createdAt) return new Date();
-                    if (typeof order.createdAt.toDate === 'function') {
-                        return order.createdAt.toDate();
-                    }
-                    return new Date(order.createdAt as any);
-                };
+        const diffTime = endDate.getTime() - startDate.getTime();
+        const priorStart = new Date(startDate.getTime() - diffTime);
+        const priorEnd = new Date(startDate.getTime() - 1);
 
-                // Today's orders
-                const todayOrders = orders.filter(o => getOrderDate(o) >= today);
-                const yesterdayOrders = orders.filter(o => {
-                    const date = getOrderDate(o);
-                    return date >= yesterday && date < today;
-                });
+        return from(Promise.all([
+            this.bqService.querySummaryKpisBetween(this.formatDate(startDate), this.formatDate(endDate)),
+            this.bqService.querySummaryKpisBetween(this.formatDate(priorStart), this.formatDate(priorEnd))
+        ])).pipe(
+            map(([currentData, priorData]) => {
+                const currentRev = currentData.reduce((sum, row) => sum + row.revenue, 0);
+                const currentOrd = currentData.reduce((sum, row) => sum + row.orders, 0);
+                const currentUnits = currentData.reduce((sum, row) => sum + row.units, 0);
+                const currentAov = currentOrd > 0 ? currentRev / currentOrd : 0;
 
-                // This month's orders
-                const thisMonthOrders = orders.filter(o => getOrderDate(o) >= thisMonthStart);
-                const lastMonthOrders = orders.filter(o => {
-                    const date = getOrderDate(o);
-                    return date >= lastMonthStart && date <= lastMonthEnd;
-                });
+                const priorRev = priorData.reduce((sum, row) => sum + row.revenue, 0);
+                const priorOrd = priorData.reduce((sum, row) => sum + row.orders, 0);
+                const priorUnits = priorData.reduce((sum, row) => sum + row.units, 0);
+                const priorAov = priorOrd > 0 ? priorRev / priorOrd : 0;
 
-                // Revenue calculations
-                const todayRevenue = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                const yesterdayRevenue = yesterdayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-                const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-
-                const revenueChange = yesterdayRevenue > 0
-                    ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
-                    : 0;
-
-                // Orders KPI
-                const ordersChange = yesterdayOrders.length > 0
-                    ? ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100
-                    : 0;
-
-                // Customers
-                const newCustomers = customers.filter(c => {
-                    if (!c.createdAt) return false;
-                    const created = typeof c.createdAt.toDate === 'function'
-                        ? c.createdAt.toDate()
-                        : new Date(c.createdAt as any);
-                    return created >= thisMonthStart;
-                });
-                const returningCustomers = customers.filter(c => (c.stats?.totalOrders || 0) > 1);
-
-                // AOV
-                const aov = orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0;
-                const lastMonthAOV = lastMonthOrders.length > 0
-                    ? lastMonthOrders.reduce((sum, o) => sum + o.total, 0) / lastMonthOrders.length
-                    : 0;
-                const aovChange = lastMonthAOV > 0 ? ((aov - lastMonthAOV) / lastMonthAOV) * 100 : 0;
-
-                // SLA Compliance
-                const completedOrders = orders.filter(o => o.status === 'delivered' || o.status === 'shipped');
-                const onTimeOrders = completedOrders.filter(o => !o.isOverdue);
-                const slaCompliance = completedOrders.length > 0
-                    ? (onTimeOrders.length / completedOrders.length) * 100
-                    : 100;
-
-                // Inventory Value
-                const inventoryValue = products.reduce((sum, p) => sum + (p.price * p.stockQuantity), 0);
+                const revChange = priorRev > 0 ? ((currentRev - priorRev) / priorRev) * 100 : (currentRev > 0 ? 100 : 0);
+                const ordChange = priorOrd > 0 ? ((currentOrd - priorOrd) / priorOrd) * 100 : (currentOrd > 0 ? 100 : 0);
+                const unitsChange = priorUnits > 0 ? ((currentUnits - priorUnits) / priorUnits) * 100 : (currentUnits > 0 ? 100 : 0);
+                const aovChange = priorAov > 0 ? ((currentAov - priorAov) / priorAov) * 100 : (currentAov > 0 ? 100 : 0);
 
                 return [
                     {
                         title: 'COMMAND_CENTER.KPI.REVENUE',
-                        value: todayRevenue,
-                        change: revenueChange,
-                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_YESTERDAY',
+                        value: currentRev,
+                        change: revChange,
+                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_PREVIOUS',
                         icon: 'wallet',
-                        trend: revenueChange > 0 ? 'up' : revenueChange < 0 ? 'down' : 'neutral',
+                        trend: revChange > 0 ? 'up' : revChange < 0 ? 'down' : 'neutral',
                         format: 'currency'
                     },
                     {
                         title: 'COMMAND_CENTER.KPI.ORDERS',
-                        value: todayOrders.length,
-                        change: ordersChange,
-                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_YESTERDAY',
+                        value: currentOrd,
+                        change: ordChange,
+                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_PREVIOUS',
                         icon: 'box',
-                        trend: ordersChange > 0 ? 'up' : ordersChange < 0 ? 'down' : 'neutral',
+                        trend: ordChange > 0 ? 'up' : ordChange < 0 ? 'down' : 'neutral',
                         format: 'number'
                     },
                     {
-                        title: 'COMMAND_CENTER.KPI.CUSTOMERS',
-                        value: customers.length,
-                        change: newCustomers.length,
-                        changeLabel: 'COMMAND_CENTER.LABELS.NEW',
-                        icon: 'users',
-                        trend: 'neutral',
+                        title: 'COMMAND_CENTER.KPI.UNITS',
+                        value: currentUnits,
+                        change: unitsChange,
+                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_PREVIOUS',
+                        icon: 'chart-bar',
+                        trend: unitsChange > 0 ? 'up' : unitsChange < 0 ? 'down' : 'neutral',
                         format: 'number'
                     },
                     {
                         title: 'COMMAND_CENTER.KPI.AOV',
-                        value: aov,
+                        value: currentAov,
                         change: aovChange,
-                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_LAST_MONTH',
+                        changeLabel: 'COMMAND_CENTER.TRENDS.VS_PREVIOUS',
                         icon: 'cart',
                         trend: aovChange > 0 ? 'up' : aovChange < 0 ? 'down' : 'neutral',
                         format: 'currency'
-                    },
-                    {
-                        title: 'COMMAND_CENTER.KPI.SLA',
-                        value: slaCompliance,
-                        change: 0,
-                        changeLabel: 'COMMAND_CENTER.LABELS.TOTAL',
-                        icon: 'clock',
-                        trend: slaCompliance >= 90 ? 'up' : slaCompliance >= 75 ? 'neutral' : 'down',
-                        format: 'percentage'
-                    },
-                    {
-                        title: 'COMMAND_CENTER.KPI.INVENTORY_VALUE',
-                        value: inventoryValue,
-                        change: 0,
-                        changeLabel: 'COMMAND_CENTER.LABELS.TOTAL',
-                        icon: 'chart-bar',
-                        trend: 'neutral',
-                        format: 'currency'
-                    },
-                    {
-                        title: 'COMMAND_CENTER.KPI.MARGIN',
-                        value: 35, // Placeholder - would need cost data
-                        change: 0,
-                        changeLabel: 'COMMAND_CENTER.LABELS.TOTAL',
-                        icon: 'trending-up',
-                        trend: 'neutral',
-                        format: 'percentage'
-                    },
-                    {
-                        title: 'COMMAND_CENTER.KPI.CONVERSION',
-                        value: 2.5, // Placeholder - would need traffic data
-                        change: 0,
-                        changeLabel: 'COMMAND_CENTER.LABELS.TOTAL',
-                        icon: 'trophy',
-                        trend: 'neutral',
-                        format: 'percentage'
                     }
                 ];
             })
@@ -182,49 +95,34 @@ export class MetricsService {
     }
 
     /**
-     * Get revenue trend data for the last N days
+     * Get revenue trend data
      */
     getRevenueTrend(days: number = 30, startDate?: Date, endDate?: Date): Observable<MetricChartData> {
-        return (startDate && endDate
-            ? this.globalOrderCache.get(startDate, endDate)
-            : this.orderService.getOrders()
-        ).pipe(
-            map(orders => {
-                const now = new Date();
-                const trendData: RevenueTrendPoint[] = [];
+        if (!startDate || !endDate) {
+            endDate = new Date();
+            startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+        }
+        
+        return from(this.bqService.queryDailyTrendBetween(this.formatDate(startDate), this.formatDate(endDate))).pipe(
+            map(data => {
+                const dateMap = new Map<string, number>();
+                data.forEach(row => {
+                    dateMap.set(row.order_date, (dateMap.get(row.order_date) || 0) + row.revenue);
+                });
 
-                // Generate data for each day
-                for (let i = days - 1; i >= 0; i--) {
-                    const date = new Date(now);
-                    date.setDate(date.getDate() - i);
-                    date.setHours(0, 0, 0, 0);
+                const sortedDates = Array.from(dateMap.keys()).sort();
+                const revenues = sortedDates.map(d => dateMap.get(d) || 0);
 
-                    const nextDay = new Date(date);
-                    nextDay.setDate(nextDay.getDate() + 1);
-
-                    const dayOrders = orders.filter(o => {
-                        if (!o.createdAt) return false;
-                        const createdAt: any = o.createdAt;
-                        const orderDate = typeof createdAt.toDate === 'function'
-                            ? createdAt.toDate()
-                            : new Date(createdAt);
-                        return orderDate >= date && orderDate < nextDay;
-                    });
-
-                    const revenue = dayOrders.reduce((sum, o) => sum + o.total, 0);
-
-                    trendData.push({
-                        date: date.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }),
-                        revenue,
-                        orders: dayOrders.length
-                    });
-                }
+                const labels = sortedDates.map(d => {
+                    const dateObj = new Date(d + 'T12:00:00'); 
+                    return dateObj.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
+                });
 
                 return {
-                    labels: trendData.map(d => d.date),
+                    labels,
                     datasets: [{
                         label: this.translate.instant('COMMAND_CENTER.KPI.REVENUE'),
-                        data: trendData.map(d => d.revenue),
+                        data: revenues,
                         borderColor: '#fbbf24',
                         backgroundColor: 'rgba(251, 191, 36, 0.1)',
                         borderWidth: 2,
@@ -236,34 +134,26 @@ export class MetricsService {
     }
 
     /**
-     * Get order status distribution
+     * Get order status distribution. Uses BigQuery Channel split.
      */
     getOrderDistribution(startDate?: Date, endDate?: Date): Observable<MetricChartData> {
-        return (startDate && endDate
-            ? this.globalOrderCache.get(startDate, endDate)
-            : this.orderService.getOrders()
-        ).pipe(
-            map(orders => {
-                const statusCounts: { [key: string]: number } = {};
+        if (!startDate || !endDate) {
+            startDate = new Date(new Date().setHours(0,0,0,0));
+            endDate = new Date();
+        }
 
-                orders.forEach(order => {
-                    statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
-                });
-
-                const labels = Object.keys(statusCounts);
-                const data = Object.values(statusCounts);
+        return from(this.bqService.querySummaryKpisBetween(this.formatDate(startDate), this.formatDate(endDate))).pipe(
+            map(data => {
+                const labels = data.map(d => d.source_channel);
+                const values = data.map(d => d.orders);
 
                 return {
                     labels,
                     datasets: [{
                         label: this.translate.instant('COMMAND_CENTER.KPI.ORDERS'),
-                        data,
+                        data: values,
                         backgroundColor: [
-                            '#fbbf24', // pending
-                            '#3b82f6', // processing
-                            '#10b981', // shipped
-                            '#22c55e', // delivered
-                            '#ef4444'  // cancelled
+                            '#fbbf24', '#3b82f6', '#10b981', '#22c55e', '#ef4444', '#8b5cf6', '#ec4899'
                         ]
                     }]
                 };
@@ -275,47 +165,23 @@ export class MetricsService {
      * Get top products by revenue
      */
     getTopProducts(limitCount: number = 5, startDate?: Date, endDate?: Date): Observable<MetricChartData> {
-        return combineLatest([
-            startDate && endDate
-                ? this.globalOrderCache.get(startDate, endDate)
-                : this.orderService.getOrders(),
-            this.productService.getProducts()
-        ]).pipe(
-            map(([orders, products]) => {
-                const productRevenue: { [key: string]: { name: string; revenue: number; quantity: number } } = {};
-
-                // Aggregate revenue by product
-                orders.forEach(order => {
-                    order.items?.forEach(item => {
-                        if (!productRevenue[item.productId]) {
-                            const product = products.find(p => p.id === item.productId);
-                            productRevenue[item.productId] = {
-                                name: product?.name.es || (item as any).name || 'Unknown',
-                                revenue: 0,
-                                quantity: 0
-                            };
-                        }
-                        productRevenue[item.productId].revenue += item.price * item.quantity;
-                        productRevenue[item.productId].quantity += item.quantity;
-                    });
-                });
-
-                // Sort and get top N
-                const topProducts = Object.values(productRevenue)
-                    .sort((a, b) => b.revenue - a.revenue)
-                    .slice(0, limitCount);
+        if (!startDate || !endDate) {
+            startDate = new Date(new Date().setHours(0,0,0,0));
+            endDate = new Date();
+        }
+        
+        return from(this.bqService.queryProductRevenueBetween(this.formatDate(startDate), this.formatDate(endDate), limitCount)).pipe(
+            map(data => {
+                const labels = data.map(d => d.product_name || d.sku);
+                const values = data.map(d => d.total_revenue);
 
                 return {
-                    labels: topProducts.map(p => p.name),
+                    labels,
                     datasets: [{
                         label: this.translate.instant('COMMAND_CENTER.KPI.REVENUE'),
-                        data: topProducts.map(p => p.revenue),
+                        data: values,
                         backgroundColor: [
-                            '#fbbf24', // Gold 400
-                            '#f59e0b', // Amber 500
-                            '#d97706', // Amber 600
-                            '#ea580c', // Orange 600
-                            '#c2410c'  // Orange 700
+                            '#fbbf24', '#f59e0b', '#d97706', '#ea580c', '#c2410c'
                         ]
                     }]
                 };
@@ -323,55 +189,33 @@ export class MetricsService {
         );
     }
 
-    /**
-     * Get customer acquisition vs retention composition
-     */
     getCustomerComposition(startDate: Date, endDate: Date): Observable<MetricChartData> {
-        return this.userService.getCustomers().pipe(
-            map(customers => {
+        return this.customerInsightsService.getInsights().pipe(
+            map(data => {
                 let newCount = 0;
                 let returningCount = 0;
-
-                customers.forEach(c => {
-                    const created = typeof c.createdAt.toDate === 'function'
-                        ? c.createdAt.toDate()
-                        : new Date(c.createdAt as any);
-
-                    // "New" if created within the window
-                    if (created >= startDate && created <= endDate) {
-                        newCount++;
-                    }
-                    // "Returning" if they have > 1 order, regardless of creation date (or based on activity in period?)
-                    // Simplified definition for dashboard:
-                    // New = Created in period
-                    // Returning = Created before period start but Active? 
-                    // Let's stick to the KPI logic: 
-                    // New = Created in period
-                    // Returning = Total - New (for composition of "Active Base"?) 
-                    // actually, usually it's "Revenue from New vs Returning".
-
-                    // Let's do "Customer Segments" based on the user request for "deep analysis"
-                    // New vs Returning is classic.
-
-                    // Alternative: "New" vs "Existing"
-                    else {
-                        returningCount++;
+                
+                data.profiles.forEach(p => {
+                    // Check if they had any orders in this period
+                    if (p.lastOrderDate >= startDate && p.lastOrderDate <= endDate) {
+                        // If their first order was also in this period, they are new
+                        if (p.firstOrderDate >= startDate) {
+                            newCount++;
+                        } else {
+                            returningCount++;
+                        }
                     }
                 });
 
                 return {
                     labels: [
-                        this.translate.instant('COMMAND_CENTER.LABELS.NEW_CUSTOMERS'),
-                        this.translate.instant('COMMAND_CENTER.LABELS.RETURNING_CUSTOMERS')
+                        this.translate.instant('COMMAND_CENTER.KPI.NEW_CUSTOMERS') || 'New',
+                        this.translate.instant('COMMAND_CENTER.KPI.RETURNING_CUSTOMERS') || 'Returning'
                     ],
                     datasets: [{
-                        label: this.translate.instant('COMMAND_CENTER.CHARTS.CUSTOMER_COMPOSITION'),
+                        label: 'Customers',
                         data: [newCount, returningCount],
-                        backgroundColor: [
-                            '#3b82f6', // Blue for New
-                            '#8b5cf6'  // Violet for Returning
-                        ],
-                        hoverOffset: 4
+                        backgroundColor: ['#3b82f6', '#10b981']
                     }]
                 };
             })

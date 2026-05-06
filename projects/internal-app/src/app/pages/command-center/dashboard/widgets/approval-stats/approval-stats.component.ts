@@ -283,7 +283,7 @@ export class ApprovalStatsComponent implements OnDestroy {
 
     // Load pending approvals (not date-filtered, status-based)
     private pendingApprovals$ = this.approvalService.getPendingRequests().pipe(
-        timeout(10000),
+        timeout(3000),
         map(requests => requests.length),
         catchError(err => {
             console.error('[ApprovalStats] Error loading pending approvals:', err);
@@ -297,7 +297,7 @@ export class ApprovalStatsComponent implements OnDestroy {
         switchMap(range => {
             console.log('[ApprovalStats] Loading historical stats for range:', range!.start, '-', range!.end);
             return this.approvalService.getRequestsByDateRange(range!.start, range!.end).pipe(
-                timeout(10000),
+                timeout(3000),
                 map(requests => {
                     console.log('[ApprovalStats] Loaded historical stats:', requests.length, 'requests');
 

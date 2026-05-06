@@ -27,6 +27,10 @@ export class InventoryAnalyticsComponent implements OnInit {
     private translate = inject(TranslateService);
     private ngZone = inject(NgZone);
 
+    onChannelChange(channelId: string) {
+        this.contextService.selectedInventoryChannel.set(channelId);
+    }
+
     // Reactive Language Signal to trigger computed re-evaluation
     private currentLang = signal(this.translate.currentLang);
 
@@ -291,10 +295,10 @@ export class InventoryAnalyticsComponent implements OnInit {
     };
 
     efficiencyTableColumns: TableColumn[] = [
-        { key: 'productName', label: 'Product' },
-        { key: 'turnoverRate', label: 'Turnover', format: 'number' },
-        { key: 'gmroi', label: 'GMROI', format: 'number' },
-        { key: 'classification', label: 'Classification' }
+        { key: 'productName', label: 'COMMAND_CENTER.INVENTORY_ANALYTICS.CHART.PRODUCT' },
+        { key: 'turnoverRate', label: 'COMMAND_CENTER.INVENTORY_ANALYTICS.TURNOVER_RATE', format: 'number' },
+        { key: 'gmroi', label: 'COMMAND_CENTER.INVENTORY_ANALYTICS.GMROI', format: 'number' },
+        { key: 'classification', label: 'COMMAND_CENTER.INVENTORY_ANALYTICS.CLASSIFICATION' }
     ];
 
     efficiencyTableData = computed(() => {

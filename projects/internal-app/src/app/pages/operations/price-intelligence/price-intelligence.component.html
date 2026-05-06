@@ -708,7 +708,7 @@
                 <label class="cost-label">💰 Costo del producto (MXN)</label>
                 <div class="cost-input-wrap">
                   <span class="cost-prefix">$</span>
-                  <input type="number" class="cost-number-input" [(ngModel)]="costInput"
+                  <input type="number" class="cost-number-input" [ngModel]="costInput()" (ngModelChange)="costInput.set($event)"
                          min="0" step="10" placeholder="0" id="input-cost">
                 </div>
               </div>
@@ -716,7 +716,7 @@
                 <label class="cost-label">🏷️ Precio de venta (MXN)</label>
                 <div class="cost-input-wrap">
                   <span class="cost-prefix">$</span>
-                  <input type="number" class="cost-number-input" [(ngModel)]="priceInput"
+                  <input type="number" class="cost-number-input" [ngModel]="priceInput()" (ngModelChange)="priceInput.set($event)"
                          min="0" step="10" placeholder="0" id="input-price">
                 </div>
               </div>
@@ -724,11 +724,11 @@
                 <label class="cost-label">📊 Precio de mercado / competencia (MXN)</label>
                 <div class="cost-input-wrap">
                   <span class="cost-prefix">$</span>
-                  <input type="number" class="cost-number-input" [(ngModel)]="marketPriceInput"
+                  <input type="number" class="cost-number-input" [ngModel]="marketPriceInput()" (ngModelChange)="marketPriceInput.set($event)"
                          min="0" step="10" placeholder="0" id="input-market-price">
                 </div>
                 @if (stats()?.medianPrice) {
-                  <button class="hint-btn" (click)="marketPriceInput = stats()!.medianPrice">
+                  <button class="hint-btn" (click)="marketPriceInput.set(stats()!.medianPrice)">
                     Usar mediana ML: {{ fmt(stats()?.medianPrice) }}
                   </button>
                 }
@@ -753,7 +753,7 @@
                   <div class="channel-lines">
                     <div class="channel-line">
                       <span>Precio venta</span>
-                      <span class="channel-val">{{ fmt(priceInput) }}</span>
+                      <span class="channel-val">{{ fmt(priceInput()) }}</span>
                     </div>
                     @if (ch.commissionAmt > 0) {
                       <div class="channel-line deduction">
@@ -769,7 +769,7 @@
                     }
                     <div class="channel-line deduction">
                       <span>Costo</span>
-                      <span class="channel-val">−{{ fmt(costInput) }}</span>
+                      <span class="channel-val">−{{ fmt(costInput()) }}</span>
                     </div>
                     <div class="channel-total" [class.profit]="ch.netProfit >= 0" [class.loss]="ch.netProfit < 0">
                       <span>Utilidad neta</span>
@@ -779,10 +779,10 @@
                       Margen: {{ ch.netMarginPct | number:'1.1-1' }}%
                     </div>
                   </div>
-                  @if (marketPriceInput > 0) {
+                  @if (marketPriceInput() > 0) {
                     <div class="channel-vs-market">
-                      <span [class]="priceInput <= marketPriceInput ? 'text-green' : 'text-amber'">
-                        {{ priceInput <= marketPriceInput ? '✓ Competitivo' : '▲ +' + fmt(priceInput - marketPriceInput) + ' sobre mercado' }}
+                      <span [class]="priceInput() <= marketPriceInput() ? 'text-green' : 'text-amber'">
+                        {{ priceInput() <= marketPriceInput() ? '✓ Competitivo' : '▲ +' + fmt(priceInput() - marketPriceInput()) + ' sobre mercado' }}
                       </span>
                     </div>
                   }
@@ -803,9 +803,9 @@
                   <div class="be-icon">{{ ch.icon }}</div>
                   <div class="be-label">{{ ch.label }}</div>
                   <div class="be-value">{{ fmt(ch.breakEven) }}</div>
-                  @if (priceInput > 0) {
-                    <div class="be-comparison" [class.be-ok]="priceInput >= ch.breakEven" [class.be-warn]="priceInput < ch.breakEven">
-                      {{ priceInput >= ch.breakEven ? '✓ OK' : '↑ falta ' + fmt(ch.breakEven - priceInput) }}
+                  @if (priceInput() > 0) {
+                    <div class="be-comparison" [class.be-ok]="priceInput() >= ch.breakEven" [class.be-warn]="priceInput() < ch.breakEven">
+                      {{ priceInput() >= ch.breakEven ? '✓ OK' : '↑ falta ' + fmt(ch.breakEven - priceInput()) }}
                     </div>
                   }
                 </div>

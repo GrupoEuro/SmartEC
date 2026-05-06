@@ -80,13 +80,14 @@ export class CareAnalyticsComponent implements OnInit {
 
     private async loadAnalytics() {
         try {
-            const col  = collection(this.fs, 'customer_conversations');
-            const snap = await getDocs(col);
-
             const now         = new Date();
             const todayStart  = new Date(now); todayStart.setHours(0, 0, 0, 0);
             const days        = this.period() === '7d' ? 7 : this.period() === '30d' ? 30 : 90;
             const periodStart = new Date(now.getTime() - days * 86_400_000);
+
+            const col  = collection(this.fs, 'customer_conversations');
+            const q = query(col, where('updatedAt', '>=', periodStart));
+            const snap = await getDocs(q);
 
             let open = 0, today = 0, unread = 0, resolved = 0, total = 0;
             const counts: Record<string, number> = {};

@@ -95,9 +95,9 @@ export class SalesAnalyticsComponent implements OnDestroy {
 
     // Table Configurations
     revenueTableColumns: TableColumn[] = [
-        { key: 'date', label: 'COMMAND_CENTER.KPIS.DATE', format: 'date' },
-        { key: 'revenue', label: 'COMMAND_CENTER.KPIS.REVENUE', format: 'currency' },
-        { key: 'orders', label: 'COMMAND_CENTER.KPIS.ORDERS', format: 'number' }
+        { key: 'date', label: 'COMMAND_CENTER.KPI.DATE', format: 'date' },
+        { key: 'revenue', label: 'COMMAND_CENTER.KPI.REVENUE', format: 'currency' },
+        { key: 'orders', label: 'COMMAND_CENTER.KPI.ORDERS', format: 'number' }
     ];
 
     categoryTableColumns: TableColumn[] = [

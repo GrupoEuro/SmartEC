@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -6,6 +6,8 @@ import {
     Firestore, collection, query, where, getDocs,
     orderBy, Timestamp,
 } from '@angular/fire/firestore';
+import { MetricsBigqueryService } from '../../../../operations/metrics/services/metrics-bigquery.service';
+import { CommandCenterContextService } from '../../../services/command-center-context.service';
 
 interface MktKpi {
     label:    string;
@@ -21,35 +23,42 @@ interface MktKpi {
     templateUrl: './cc-marketing-performance.component.html',
     styleUrls: ['./cc-marketing-performance.component.css'],
 })
-export class CcMarketingPerformanceComponent implements OnInit {
+export class CcMarketingPerformanceComponent {
     private fs = inject(Firestore);
+    private bqService = inject(MetricsBigqueryService);
+    public contextService = inject(CommandCenterContextService);
 
     isLoading  = signal(true);
     kpis       = signal<MktKpi[]>([]);
     topSource  = signal('—');
 
-    ngOnInit() { this.load(); }
+    constructor() {
+        effect(() => {
+            const range = this.contextService.dateRange() as any;
+            if (range) {
+                this.load(range.start, range.end);
+            }
+        });
+    }
 
-    private async load() {
-        const now  = new Date();
-        const from = new Date(now.getFullYear(), now.getMonth(), 1); // MTD
-        const fromTs = Timestamp.fromDate(from);
-        const toTs   = Timestamp.fromDate(now);
+    private async load(startDate: Date, endDate: Date) {
+        this.isLoading.set(true);
+        const fromTs = Timestamp.fromDate(startDate);
+        const toTs   = Timestamp.fromDate(endDate);
+        
+        // Format dates for BigQuery
+        const fromDateStr = startDate.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+        const toDateStr   = endDate.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
 
         try {
-            const [snapsSnap, ordersSnap] = await Promise.all([
+            const [snapsSnap, bqMetrics] = await Promise.all([
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
                     where('createdAt', '>=', fromTs),
                     where('createdAt', '<=', toTs),
                     orderBy('createdAt', 'desc'),
                 )),
-                getDocs(query(
-                    collection(this.fs, 'orders'),
-                    where('createdAt', '>=', fromTs),
-                    where('createdAt', '<=', toTs),
-                    orderBy('createdAt', 'desc'),
-                )),
+                this.bqService.querySummaryKpisBetween(fromDateStr, toDateStr)
             ]);
 
             const sessions = new Set<string>();
@@ -64,13 +73,18 @@ export class CcMarketingPerformanceComponent implements OnInit {
                 sourceMap.set(src, (sourceMap.get(src) ?? 0) + 1);
             }
 
+            // Accurate revenue and orders from BigQuery (excludes cancelled/failed)
             let totalRev = 0;
-            for (const doc of ordersSnap.docs) {
-                totalRev += (doc.data() as any).total ?? 0;
+            let totalOrders = 0;
+            for (const row of bqMetrics) {
+                totalRev += row.revenue;
+                totalOrders += row.orders;
             }
 
-            const convRate = sessions.size > 0
-                ? ((ordersSnap.size / sessions.size) * 100).toFixed(1) + '%'
+            let actualSessions = sessions.size;
+
+            const convRate = actualSessions > 0
+                ? ((totalOrders / actualSessions) * 100).toFixed(1) + '%'
                 : '0%';
 
             let topSrc = '—', topCount = 0;
@@ -88,12 +102,12 @@ export class CcMarketingPerformanceComponent implements OnInit {
                 },
                 {
                     label: 'Orders', labelKey: 'CC.MARKETING.ORDERS',
-                    value: String(ordersSnap.size),
+                    value: String(totalOrders),
                     color: '#6366f1'
                 },
                 {
                     label: 'Sessions', labelKey: 'CC.MARKETING.SESSIONS',
-                    value: String(sessions.size),
+                    value: String(actualSessions),
                     color: '#8b5cf6'
                 },
                 {

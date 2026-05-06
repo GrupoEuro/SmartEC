@@ -5,6 +5,7 @@ import { Observable, combineLatest, map, of, switchMap, from } from 'rxjs';
 import { OrderService } from './order.service';
 import { ProductService } from './product.service';
 import { AnalyticsService } from '../../services/analytics.service';
+import { MetricsBigqueryService } from '../../pages/operations/metrics/services/metrics-bigquery.service';
 import {
     RevenueMetrics,
     MarginMetrics,
@@ -117,82 +118,60 @@ export class FinancialService {
         }
     }
 
+    private bqService = inject(MetricsBigqueryService);
+
+    private formatDate(d: Date): string {
+        return d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    }
+
     /**
-     * Get all financial dashboard data in a single optimized pass
+     * Get all financial dashboard data in a single optimized pass using BigQuery
      */
     getFinancialDashboardData(startDate: Date, endDate: Date): Observable<{
-        revenue: RevenueMetrics;
-        margin: MarginMetrics;
+        revenue: RevenueMetrics & { trends?: any[] };
+        margin: MarginMetrics & { trends?: any[] };
         profitability: ProfitabilityAnalysis[];
         bostonMatrix: BostonMatrixData;
     }> {
         return from(Promise.all([
-            // Calculate previous period start for growth metrics
             new Promise<{ start: Date, end: Date }>(resolve => {
                 const periodDuration = endDate.getTime() - startDate.getTime();
                 const prevStart = new Date(startDate.getTime() - periodDuration);
-                // We need extended range: prevStart -> endDate
-                resolve({ start: prevStart, end: endDate });
+                resolve({ start: prevStart, end: new Date(startDate.getTime() - 1) });
             })
         ])).pipe(
-            switchMap(([range]) => {
-                // Fetch consolidated data via AnalyticsService
+            switchMap(([prevRange]) => {
                 return from(Promise.all([
-                    this.analyticsService.fetchSharedOrderData(range.start, range.end),
-                    this.analyticsService.fetchSharedProductData()
+                    this.bqService.querySummaryKpisBetween(this.formatDate(startDate), this.formatDate(endDate)),
+                    this.bqService.querySummaryKpisBetween(this.formatDate(prevRange.start), this.formatDate(prevRange.end)),
+                    this.bqService.queryProductRevenueBetween(this.formatDate(startDate), this.formatDate(endDate), 5000),
+                    this.bqService.queryProductRevenueBetween(this.formatDate(prevRange.start), this.formatDate(prevRange.end), 5000),
+                    this.analyticsService.fetchSharedProductData(),
+                    this.bqService.queryDailyTrendBetween(this.formatDate(startDate), this.formatDate(endDate))
                 ])).pipe(
-                    map(() => {
-                        return {
-                            orders: this.analyticsService.getSharedOrders(),
-                            products: this.analyticsService.getSharedProducts()
-                        };
+                    map(([currentKpis, prevKpis, currentData, prevData, products, dailyTrend]) => {
+                        return { currentKpis, prevKpis, currentData, prevData, products: this.analyticsService.getSharedProducts(), dailyTrend };
                     })
                 );
             }),
-            switchMap(({ orders, products }) => {
+            switchMap(({ currentKpis, prevKpis, currentData, prevData, products, dailyTrend }) => {
                 return new Observable<{
-                    revenue: RevenueMetrics;
-                    margin: MarginMetrics;
+                    revenue: RevenueMetrics & { trends?: any[] };
+                    margin: MarginMetrics & { trends?: any[] };
                     profitability: ProfitabilityAnalysis[];
                     bostonMatrix: BostonMatrixData;
                 }>(observer => {
-                    // Yield to main thread to allow UI to render spinner
                     setTimeout(() => {
                         try {
-                            // 1. Date Ranges
                             const currentStart = startDate;
                             const currentEnd = endDate;
-                            // Re-calculate previous period for logic consistency
-                            const periodDuration = currentEnd.getTime() - currentStart.getTime();
-                            const prevStart = new Date(currentStart.getTime() - periodDuration);
-                            const prevEnd = currentStart;
 
-                            // 2. Filter Orders (Single Pass Filtering)
-                            // Note: orders array already contains only relevant orders (prevStart to currentEnd)
-                            const currentOrders: any[] = [];
-                            const prevOrders: any[] = [];
-
-                            // Pre-calculate date boundaries timestamps for faster comparison
-                            const currentStartTime = currentStart.getTime();
-                            const currentEndTime = currentEnd.getTime();
-                            const prevStartTime = prevStart.getTime();
-                            const prevEndTime = prevEnd.getTime();
-
-                            orders.forEach(o => {
-                                const d = this.getOrderDate(o).getTime();
-                                if (d >= currentStartTime && d <= currentEndTime) {
-                                    currentOrders.push(o);
-                                } else if (d >= prevStartTime && d < prevEndTime) {
-                                    prevOrders.push(o);
-                                }
-                            });
-
-                            // 3. Initialize Aggregators
-                            // Core Metrics
-                            let totalRevenue = 0;
+                            let totalRevenue = currentKpis.reduce((sum, row) => sum + row.revenue, 0);
+                            let orderCount = currentKpis.reduce((sum, row) => sum + row.orders, 0);
+                            let prevTotalRevenue = prevKpis.reduce((sum, row) => sum + row.revenue, 0);
+                            
                             let totalCost = 0;
 
-                            // Maps for detailed breakdown
                             const categoryMap = new Map<string, { name: string; revenue: number; cost: number }>();
                             const brandMap = new Map<string, { name: string; revenue: number; cost: number }>();
                             const productMap = new Map<string, {
@@ -202,80 +181,53 @@ export class FinancialService {
                                 cost: number
                             }>();
 
-                            // 4. Process Current Period Orders (Single Pass Aggregation)
-                            currentOrders.forEach(order => {
-                                order.items?.forEach((item: any) => {
-                                    const pid = item.productId;
-                                    if (!pid) return;
+                            currentData.forEach(row => {
+                                const pid = row.sku;
+                                if (!pid) return;
 
-                                    const product = products.find(p => p['id'] === pid);
-                                    if (!product) return;
+                                const product = products.find(p => p['sku'] === pid || p['id'] === pid) || { name: { es: row.product_name }, categoryId: 'uncategorized', brand: row.brand || 'Unknown' };
+                                const quantity = row.total_units;
+                                const itemRevenue = row.total_revenue;
+                                const costPrice = (product as any)?.costPrice || 0;
+                                const itemCost = costPrice * quantity;
 
-                                    const price = typeof item.price === 'number' ? item.price : 0;
-                                    const quantity = typeof item.quantity === 'number' ? item.quantity : 0;
-                                    // Use 0 as fallback cost if not present
-                                    const costPrice = (product as any)?.costPrice || 0;
+                                totalCost += itemCost;
 
-                                    const itemRevenue = price * quantity;
-                                    const itemCost = costPrice * quantity;
+                                let catId = product['categoryId'];
+                                if (!catId || catId === 'undefined' || catId === 'null') catId = 'uncategorized';
 
-                                    // Global Totals
-                                    totalRevenue += itemRevenue;
-                                    totalCost += itemCost;
+                                const catEntry = categoryMap.get(catId) || { name: catId, revenue: 0, cost: 0 };
+                                catEntry.revenue += itemRevenue;
+                                catEntry.cost += itemCost;
+                                categoryMap.set(catId, catEntry);
 
-                                    // Category Aggregation
-                                    let catId = product['categoryId'];
-                                    if (!catId || catId === 'undefined' || catId === 'null') catId = 'uncategorized';
+                                const brand = product['brand'] || row.brand || 'Unknown';
+                                const brandEntry = brandMap.get(brand) || { name: brand, revenue: 0, cost: 0 };
+                                brandEntry.revenue += itemRevenue;
+                                brandEntry.cost += itemCost;
+                                brandMap.set(brand, brandEntry);
 
-                                    const catEntry = categoryMap.get(catId) || { name: catId, revenue: 0, cost: 0 };
-                                    catEntry.revenue += itemRevenue;
-                                    catEntry.cost += itemCost;
-                                    categoryMap.set(catId, catEntry);
-
-                                    // Brand Aggregation
-                                    const brand = product['brand'] || 'Unknown';
-                                    const brandEntry = brandMap.get(brand) || { name: brand, revenue: 0, cost: 0 };
-                                    brandEntry.revenue += itemRevenue;
-                                    brandEntry.cost += itemCost;
-                                    brandMap.set(brand, brandEntry);
-
-                                    // Product Aggregation
-                                    const prodEntry = productMap.get(pid) || {
-                                        product,
-                                        unitsSold: 0,
-                                        revenue: 0,
-                                        cost: 0
-                                    };
-                                    prodEntry.unitsSold += quantity;
-                                    prodEntry.revenue += itemRevenue;
-                                    prodEntry.cost += itemCost;
-                                    productMap.set(pid, prodEntry);
-                                });
+                                const prodEntry = productMap.get(pid) || {
+                                    product,
+                                    unitsSold: 0,
+                                    revenue: 0,
+                                    cost: 0
+                                };
+                                prodEntry.unitsSold += quantity;
+                                prodEntry.revenue += itemRevenue;
+                                prodEntry.cost += itemCost;
+                                productMap.set(pid, prodEntry);
                             });
 
-                            // 5. Process Previous Period (for Growth Calculation)
-                            let prevTotalRevenue = 0;
                             const prevProductRev = new Map<string, number>();
-
-                            prevOrders.forEach(order => {
-                                prevTotalRevenue += order.total || 0;
-                                order.items?.forEach((item: any) => {
-                                    const pid = item.productId;
-                                    if (pid) {
-                                        const rev = (item.price || 0) * (item.quantity || 0);
-                                        prevProductRev.set(pid, (prevProductRev.get(pid) || 0) + rev);
-                                    }
-                                });
+                            prevData.forEach(row => {
+                                prevProductRev.set(row.sku, row.total_revenue);
                             });
 
-                            // 6. Construct Derived Metrics
-
-                            // A. Revenue Metrics
-                            const orderCount = currentOrders.length;
                             const growthAmount = totalRevenue - prevTotalRevenue;
                             const growthPercentage = prevTotalRevenue > 0 ? (growthAmount / prevTotalRevenue) * 100 : 0;
 
-                            const revenueMetrics: RevenueMetrics = {
+                            const revenueMetrics = {
                                 period: this.determinePeriod(startDate, endDate),
                                 startDate,
                                 endDate,
@@ -299,15 +251,15 @@ export class FinancialService {
                                 })).sort((a, b) => b.revenue - a.revenue),
                                 byProduct: Array.from(productMap.entries()).map(([id, d]) => ({
                                     productId: id,
-                                    productName: d.product.name.es,
+                                    productName: d.product.name?.es || d.product.name,
                                     revenue: d.revenue,
                                     percentage: totalRevenue > 0 ? (d.revenue / totalRevenue) * 100 : 0
-                                })).sort((a, b) => b.revenue - a.revenue).slice(0, 10)
-                            };
+                                })).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+                                trends: dailyTrend || []
+                            } as any;
 
-                            // B. Margin Metrics
                             const grossProfit = totalRevenue - totalCost;
-                            const marginMetrics: MarginMetrics = {
+                            const marginMetrics = {
                                 period: this.determinePeriod(startDate, endDate),
                                 startDate,
                                 endDate,
@@ -331,14 +283,14 @@ export class FinancialService {
                                 })).sort((a, b) => b.margin - a.margin),
                                 byProduct: Array.from(productMap.entries()).map(([id, d]) => ({
                                     productId: id,
-                                    productName: d.product.name.es,
+                                    productName: d.product.name?.es || d.product.name,
                                     revenue: d.revenue,
                                     cost: d.cost,
                                     margin: d.revenue > 0 ? ((d.revenue - d.cost) / d.revenue) * 100 : 0
-                                })).sort((a, b) => b.margin - a.margin).slice(0, 10)
-                            };
+                                })).sort((a, b) => b.margin - a.margin).slice(0, 10),
+                                trends: dailyTrend || []
+                            } as any;
 
-                            // C. Profitability Analysis
                             const profitability: ProfitabilityAnalysis[] = [];
                             let totalProfit = 0;
 
@@ -347,12 +299,12 @@ export class FinancialService {
                                 totalProfit += pProfit;
                                 profitability.push({
                                     productId: pid,
-                                    productName: data.product.name.es,
-                                    sku: data.product.sku,
+                                    productName: data.product.name?.es || data.product.name,
+                                    sku: data.product.sku || pid,
                                     unitsSold: data.unitsSold,
                                     totalRevenue: data.revenue,
                                     averagePrice: data.unitsSold > 0 ? data.revenue / data.unitsSold : 0,
-                                    unitCost: (data.product as any).costPrice || 0,
+                                    unitCost: (data.product as any)?.costPrice || 0,
                                     totalCost: data.cost,
                                     grossProfit: pProfit,
                                     grossMargin: data.revenue > 0 ? (pProfit / data.revenue) * 100 : 0,
@@ -362,17 +314,13 @@ export class FinancialService {
                                 });
                             });
 
-                            // Calculate contribution and rank
                             profitability.forEach(p => {
                                 p.contribution = totalProfit > 0 ? (p.grossProfit / totalProfit) * 100 : 0;
                             });
                             profitability.sort((a, b) => b.grossProfit - a.grossProfit);
                             profitability.forEach((p, i) => p.rank = i + 1);
 
-                            // D. Boston Matrix Data
                             const points: BostonMatrixPoint[] = [];
-
-
                             const categoryCounts = new Map<string, number>();
                             productMap.forEach((p, _) => {
                                 let c = p.product.categoryId || 'uncategorized';
@@ -382,17 +330,13 @@ export class FinancialService {
 
                             productMap.forEach((data, pid) => {
                                 const curRev = data.revenue;
-                                // Skip if no revenue in current period
                                 if (curRev === 0) return;
 
                                 const prevRev = prevProductRev.get(pid) || 0;
-
-                                // Growth
                                 let growth = 0;
                                 if (prevRev > 0) growth = ((curRev - prevRev) / prevRev) * 100;
-                                else if (curRev > 0) growth = 100; // New product or re-introduced
+                                else if (curRev > 0) growth = 100;
 
-                                // Share (Relative to Category Average)
                                 let catId = data.product.categoryId;
                                 if (!catId || catId === 'undefined' || catId === 'null') catId = 'uncategorized';
 
@@ -400,17 +344,8 @@ export class FinancialService {
                                 const catCount = categoryCounts.get(catId) || 1;
                                 const avgRev = catTotal / catCount;
 
-                                // Relative Share = Revenue / Average Revenue
-                                // METHODOLOGY NOTE:
-                                // Standard BCG Matrix uses "Relative Market Share" vs Largest Competitor.
-                                // Since we lack external competitor data, we use "Internal Relative Share":
-                                // Formula: Product Revenue / Average Revenue of Products in the same Category.
-                                // 1.0 = Average Performer. >1.0 = Leader within category.
                                 const share = avgRev > 0 ? (curRev / avgRev) : 0;
 
-                                // Quadrant Logic (Standardized)
-                                // Baseline is 1.0 (Average Performer)
-                                // Growth baseline is 10% (High Growth) or 0% (Positive Growth)
                                 const isHighGrowth = growth >= 10;
                                 const isHighShare = share >= 1.0;
 
@@ -420,16 +355,14 @@ export class FinancialService {
                                 else if (isHighGrowth && !isHighShare) quadrant = 'questions';
                                 else quadrant = 'dogs';
 
-                                // Radius scaling (logarithmic for better distribution?)
-                                // Keep simple sqrt for area proportionality, clamped.
                                 const r = Math.min(Math.max(Math.sqrt(curRev) / 5, 5), 40);
 
                                 points.push({
                                     productId: pid,
-                                    productName: data.product.name.es,
+                                    productName: data.product.name?.es || data.product.name,
                                     categoryName: categoryMap.get(catId)?.name || catId,
-                                    x: share, // Relative Share (e.g. 1.5x)
-                                    y: growth, // Growth %
+                                    x: share,
+                                    y: growth,
                                     r,
                                     quadrant,
                                     revenue: curRev,
@@ -453,7 +386,6 @@ export class FinancialService {
             })
         );
     }
-
 
     /**
      * Get profitability analysis

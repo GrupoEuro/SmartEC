@@ -1,7 +1,7 @@
 import { Component, inject, computed, OnDestroy, ChangeDetectionStrategy, signal, effect, Injector, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
-import { Firestore, collection, getDocs, query, limit, where } from '@angular/fire/firestore';
+
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
 import { ChartCardComponent } from '../../../shared/components/chart-card/chart-card.component';
 import { ApprovalStatsComponent } from './widgets/approval-stats/approval-stats.component';
@@ -146,7 +146,6 @@ export class CommandCenterDashboardComponent implements OnDestroy {
 
     // Build Verification
     readonly buildVersion = 'v1.1.0-AI-ANALYST';
-    private firestore = inject(Firestore);
     private cdr = inject(ChangeDetectorRef);
 
     constructor() {
@@ -190,41 +189,6 @@ export class CommandCenterDashboardComponent implements OnDestroy {
         ]);
 
         this.isLoading.set(true);
-
-        // 1. RUN QUERY DIAGNOSTIC (Inline Probe)
-        try {
-            const ordersRef = collection(this.firestore, 'orders');
-
-            // Check count for this SPECIFIC range manually first
-            const q = query(
-                ordersRef,
-                where('createdAt', '>=', start),
-                where('createdAt', '<=', end),
-                limit(5)
-            );
-
-            const snap = await getDocs(q);
-            const count = snap.size;
-
-            this.errorLog.update(l => [
-                `🧪 DIAGNOSTIC: Found ${count} orders in this range.`,
-                ...l
-            ]);
-
-            if (count > 0) {
-                const first = snap.docs[0].data();
-                const dateVal = first['createdAt']?.toDate ? first['createdAt'].toDate().toISOString() : first['createdAt'];
-                this.errorLog.update(l => [`🔎 FOUND SAMPLE: ${dateVal}`, ...l]);
-            } else {
-                this.errorLog.update(l => ['❌ DIAGNOSTIC: 0 orders found. Checking Global...', ...l]);
-                // Fallback: Check if ANY orders exist at all
-                const globals = await getDocs(query(ordersRef, limit(1)));
-                this.errorLog.update(l => [`🔎 GLOBAL CHECK: Any orders in DB? ${!globals.empty}`, ...l]);
-            }
-
-        } catch (e: any) {
-            this.errorLog.update(l => [`❌ DIAGNOSTIC ERROR: ${e.message}`, ...l]);
-        }
 
         // 2. PROCEED WITH REGULAR SERVICE LOADING
         const updateDebug = (type: string, count: number) => {

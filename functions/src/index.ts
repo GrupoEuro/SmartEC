@@ -5,7 +5,7 @@ import { BigQuery } from '@google-cloud/bigquery';
 
 admin.initializeApp();
 const db = admin.firestore();
-const bigquery = new BigQuery({ projectId: 'tiendapraxis' });
+const bigquery = new BigQuery();
 
 // ── IA Agents (EuroMind) ──────────────────────────────────────────────────────
 export { inboxMessageRouter, agentOrchestrator, agentHandoff, analyzeMeliInsights, testAnalyzeMeliInsights } from './ai-agents';
@@ -5094,15 +5094,18 @@ export const backfillMonthlyStats = functions
     });
 
 /**
- * aggregateDailyStats — scheduled nightly at 23:58 Mexico City time.
+ * aggregateDailyStats — scheduled every hour.
  * Writes today's order totals to monthly_stats/{YYYY-MM}/days/{DD}
  * and updates the parent month aggregate by re-summing all day docs.
+ * Also synchronizes today's orders into BigQuery.
  */
 export const aggregateDailyStats = functions.pubsub
-    .schedule('58 23 * * *')
+    .schedule('0 * * * *')
     .timeZone('America/Mexico_City')
     .onRun(async (_context) => {
-        const today = new Date();
+        // Force evaluation in Mexico City Timezone
+        const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+        const today = new Date(nowStr);
         const DAYS_TO_SYNC = 5;
 
         // ── Canonical non-revenue statuses (mirrors order.model.ts) ──────────
@@ -5136,8 +5139,9 @@ export const aggregateDailyStats = functions.pubsub
             const dateStr    = `${monthStr}-${dayStr}`;   // YYYY-MM-DD
             lastSyncDateStr  = dateStr;
 
-            const startOfDay = new Date(year, month, day,  0,  0,  0,   0);
-            const endOfDay   = new Date(year, month, day, 23, 59, 59, 999);
+            // Construct boundaries explicitly using UTC-6 (Mexico City Standard Time)
+            const startOfDay = new Date(`${dateStr}T00:00:00-06:00`);
+            const endOfDay   = new Date(`${dateStr}T23:59:59.999-06:00`);
 
             // ── Read target day's orders ───────────────────────────────────────────────
             const ordersSnap = await db.collection('orders')
@@ -7180,12 +7184,13 @@ export const backfillOrdersToBigQuery = functions
         if (data?.deleteFirst) {
             const dataset = bigquery.dataset(BQ_DATASET);
             const fromStr = fromDate.toLocaleDateString('sv-SE');
+            const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
             await bigquery.query({
-                query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.orders\` WHERE order_date >= @fromDate`,
+                query: `DELETE FROM \`${PROJECT}.${BQ_DATASET}.orders\` WHERE order_date >= CAST(@fromDate AS DATE)`,
                 params: { fromDate: fromStr }, location: BQ_LOCATION,
             });
             await bigquery.query({
-                query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.order_items\` WHERE order_date >= @fromDate`,
+                query: `DELETE FROM \`${PROJECT}.${BQ_DATASET}.order_items\` WHERE order_date >= CAST(@fromDate AS DATE)`,
                 params: { fromDate: fromStr }, location: BQ_LOCATION,
             });
             console.log(`[BQ Backfill] Cleared existing data from ${fromStr}`);
@@ -7298,7 +7303,7 @@ export const queryMetrics = functions
         }
 
         const { queryType, fromDate, toDate, channel, limit = 50 } = data;
-        const PROJECT = 'tiendapraxis';
+        const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
         const DS      = BQ_DATASET;
 
         // Revenue-positive statuses only — 'paid' = web/MP orders confirmed by webhook
@@ -7314,6 +7319,7 @@ export const queryMetrics = functions
                 sql = `
                     SELECT
                         i.sku,
+                        MAX(i.product_id) AS product_id,
                         i.product_name,
                         i.brand,
                         SUM(i.quantity)  AS total_units,
@@ -7960,14 +7966,24 @@ export async function appendOrdersToBQForDate(dateStr: string, ordersData: Array
         await ensureBQSchema();
 
         // DELETION FIRST TO ENSURE IDEMPOTENCY (ROLLING WINDOW SYNC)
-        await bigquery.query({
-            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.orders\` WHERE order_date = @fromDate`,
-            params: { fromDate: dateStr }, location: BQ_LOCATION,
-        });
-        await bigquery.query({
-            query: `DELETE FROM \`tiendapraxis.${BQ_DATASET}.order_items\` WHERE order_date = @fromDate`,
-            params: { fromDate: dateStr }, location: BQ_LOCATION,
-        });
+        try {
+            const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
+            await bigquery.query({
+                query: `DELETE FROM \`${PROJECT}.${BQ_DATASET}.orders\` WHERE order_date = CAST(@fromDate AS DATE)`,
+                params: { fromDate: dateStr }, location: BQ_LOCATION,
+            });
+            await bigquery.query({
+                query: `DELETE FROM \`${PROJECT}.${BQ_DATASET}.order_items\` WHERE order_date = CAST(@fromDate AS DATE)`,
+                params: { fromDate: dateStr }, location: BQ_LOCATION,
+            });
+        } catch (delErr: any) {
+            // If the deletion fails because of the BigQuery Streaming Buffer restriction 
+            // ("UPDATE or DELETE statement over table ... would modify rows in the streaming buffer")
+            // we MUST return early and skip insertion to avoid duplicating data. 
+            // The buffer clears after ~90 minutes, and the next cron run will succeed.
+            console.warn(`[BQ Append] Deletion skipped for ${dateStr} (Likely streaming buffer or schema mismatch):`, delErr.message);
+            return;
+        }
 
         if (ordersData.length === 0) {
             console.log(`[BQ Append] ${dateStr}: orders=0, items=0 (Cleared previous data)`);
@@ -8250,7 +8266,7 @@ export const querySearchAnalytics = functions
         }
 
         const { queryType, fromDate, toDate, limit = 50 } = data;
-        const PROJECT = 'tiendapraxis';
+        const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
         const DS      = BQ_DATASET;
         const TBL     = `\`${PROJECT}.${DS}.${BQ_SEARCH_TABLE}\``;
 

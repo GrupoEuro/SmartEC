@@ -9,7 +9,13 @@
                     <p>{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.SUBTITLE' | translate }}</p>
                 </div>
             </div>
-            <div class="inventory-header-actions">
+            <div class="inventory-header-actions" style="display: flex; gap: 12px; align-items: center;">
+                <select class="form-select" [ngModel]="contextService.selectedInventoryChannel()" (ngModelChange)="onChannelChange($event)"
+                        style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(51, 65, 85, 0.8); color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; outline: none; cursor: pointer;">
+                    <option *ngFor="let c of contextService.inventoryChannels" [value]="c.id">
+                        {{ c.label }}
+                    </option>
+                </select>
                 <button class="btn-icon-subtle" (click)="exportToCSV()" [disabled]="isLoading()"
                     [title]="'COMMAND_CENTER.INVENTORY_ANALYTICS.EXPORT' | translate">
                     <app-icon name="download" [size]="20"></app-icon>

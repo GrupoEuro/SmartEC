@@ -11,6 +11,7 @@ export class CommandCenterContextService {
     // State - Initialize with default period to prevent null dateRange
     selectedPeriod = signal<string>('thisMonth'); // CRITICAL: Must start with value, not null
     selectedChannels = signal<string[]>([]); // Empty array = All Channels
+    selectedInventoryChannel = signal<string>('all'); // specific selector for Inventory Analytics
     customDateRange = signal<{ start: Date; end: Date } | null>(null);
     refreshSignal = signal<number>(0);
     isInitialized = signal(true); // Already initialized since we have default period
@@ -24,6 +25,12 @@ export class CommandCenterContextService {
         { id: 'MELI_CLASSIC', label: 'MercadoLibre', icon: 'shopping_cart' }, // Snake case matches registry
         { id: 'MELI_FULL', label: 'MercadoLibre Full', icon: 'zap' },
         { id: 'ON_BEHALF', label: 'On Behalf (B2B)', icon: 'phone' }
+    ];
+
+    // Inventory specific channels
+    inventoryChannels = [
+        { id: 'all', label: 'All Channels', icon: 'grid' },
+        ...this.availableChannels
     ];
 
     constructor() {

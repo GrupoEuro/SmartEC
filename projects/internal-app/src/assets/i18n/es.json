@@ -263,7 +263,8 @@
       "STATUS": "Estado",
       "COUNT": "Cantidad",
       "PRODUCT": "Producto",
-      "SEGMENT": "Segmento"
+      "SEGMENT": "Segmento",
+      "UNITS": "Unidades"
     },
     "TRENDS": {
       "TODAY": "Hoy",
@@ -273,7 +274,8 @@
       "VS_LAST_WEEK": "vs semana pasada",
       "VS_LAST_MONTH": "vs mes pasado",
       "VS_LAST_YEAR": "vs año pasado",
-      "THIS_WEEK": "This Week"
+      "THIS_WEEK": "This Week",
+      "VS_PREVIOUS": "vs periodo anterior"
     },
     "STATUS": {
       "ALL": "Todos",
@@ -302,6 +304,7 @@
       "LOADING_DATA_FOR": "Cargando datos para",
       "PROCESSING": "Procesando",
       "SELECT_DATE_RANGE": "Seleccionar Rango de Fechas",
+      "SELECTED_RANGE": "Rango Seleccionado",
       "SELECT_DATE_RANGE_DESC": "Elige el intervalo de fechas para el análisis",
       "REFRESH": "Actualizar",
       "VS_LAST_PERIOD": "vs período anterior",
@@ -342,6 +345,7 @@
       "LAST_30_DAYS": "Últimos 30 días",
       "ORDER_DISTRIBUTION": "Distribución de Pedidos",
       "TOP_3_BY_REVENUE": "Top 3 por Ingresos",
+      "TOP_5_BY_REVENUE": "Top 5 por Ingresos",
       "CUSTOMER_COMPOSITION": "Composición de Clientes"
     },
     "MISSION_CONTROL": {
@@ -812,7 +816,9 @@
       "VELOCITY_MONTHLY": "Velocidad Mensual",
       "VELOCITY_SCORE": "Puntuación de Velocidad",
       "CUSTOMER_SEGMENTS": "Segmentos de Clientes",
-      "VS_LAST_PERIOD": "vs periodo anterior"
+      "VS_LAST_PERIOD": "vs periodo anterior",
+      "BRAND": "Marca",
+      "PERIOD": "Periodo"
     },
     "DEBUG": {
       "SYSTEM_DIAGNOSTICS": "Diagnóstico del Sistema",

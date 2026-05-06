@@ -11,7 +11,9 @@
         </div>
         <div class="mktw-header-text">
             <span class="mktw-title">{{ 'CC.MARKETING.TITLE' | translate }}</span>
-            <span class="mktw-badge">MTD</span>
+            <span class="mktw-badge" *ngIf="contextService.selectedPeriod() !== 'custom'" style="text-transform: uppercase;">
+                {{ contextService.selectedPeriod() }}
+            </span>
         </div>
         <a routerLink="/marketing/dashboard" class="mktw-link">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"

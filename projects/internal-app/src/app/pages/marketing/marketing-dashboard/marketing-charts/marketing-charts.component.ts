@@ -139,9 +139,9 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
     @ViewChild('sessionCanvas')  sessionCanvas!:  ElementRef<HTMLCanvasElement>;
 
     private fs = inject(Firestore);
-    private mixChart?:     Chart;
-    private trendChart?:   Chart;
-    private sessionChart?: Chart;
+    private mixChart?:     any;
+    private trendChart?:   any;
+    private sessionChart?: any;
     private viewReady = false;
 
     isLoading = signal(true);

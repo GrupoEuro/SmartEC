@@ -852,43 +852,511 @@
       "ACTIONS": {
         "APPROVE": "Aprobar",
         "REJECT": "Rechazar",
-        "VIEW_DETAILS": "Ver Detalles"
-      }
+        "VIEW_DETAILS": "Ver Detalles",
+        "CANCEL": "Cancelar"
+      },
+      "TYPES": {
+        "COUPON_CREATION": "Creación de Cupón",
+        "FLASH_SALE": "Venta Flash",
+        "PRICE_CHANGE": "Cambio de Precio",
+        "BULK_DISCOUNT": "Descuento por Volumen",
+        "PROMOTION_CREATION": "Creación de Promoción"
+      },
+      "BACK": "Volver",
+      "AUTO_APPROVED": "Auto Aprobado",
+      "PRIORITY": {
+        "URGENT": "Urgente",
+        "HIGH": "Alta",
+        "NORMAL": "Normal",
+        "LOW": "Baja"
+      },
+      "REQUEST_DETAILS": "Detalles de la Solicitud",
+      "COUPON_CODE": "Código de Cupón",
+      "DISCOUNT_TYPE": "Tipo de Descuento",
+      "DISCOUNT_VALUE": "Valor de Descuento",
+      "MIN_PURCHASE": "Compra Mínima",
+      "USAGE_LIMIT": "Límite de Uso",
+      "PRODUCT": "Producto",
+      "SKU": "SKU",
+      "CURRENT_PRICE": "Precio Actual",
+      "NEW_PRICE": "Nuevo Precio",
+      "CHANGE_PERCENT": "Porcentaje de Cambio",
+      "REASON": "Razón",
+      "REVIEW_DETAILS": "Detalles de Revisión",
+      "REVIEWED_BY": "Revisado Por",
+      "REVIEWED_AT": "Revisado En",
+      "REVIEWER_NOTES": "Notas del Revisor",
+      "REJECTION_REASON": "Razón de Rechazo",
+      "TIMELINE": "Línea de Tiempo",
+      "REQUEST_CREATED": "Solicitud Creada",
+      "REQUEST_APPROVED": "Solicitud Aprobada",
+      "REQUEST_REJECTED": "Solicitud Rechazada",
+      "REQUESTER_INFO": "Info Solicitante",
+      "NAME": "Nombre",
+      "EMAIL": "Correo",
+      "ROLE": "Rol",
+      "APPROVE_REQUEST": "Aprobar Solicitud",
+      "APPROVE_CONFIRM_MESSAGE": "Mensaje de Confirmación",
+      "NOTES_PLACEHOLDER": "Notas...",
+      "REJECT_REQUEST": "Rechazar Solicitud",
+      "REJECT_CONFIRM_MESSAGE": "Confirmación de Rechazo",
+      "REJECTION_PLACEHOLDER": "Razón del rechazo...",
+      "PENDING": "Pendiente",
+      "APPROVED": "Aprobado",
+      "REJECTED": "Rechazado",
+      "FILTERS": {
+        "TYPE": "Tipo",
+        "PRIORITY": "Prioridad",
+        "SEARCH": "Buscar",
+        "SEARCH_PLACEHOLDER": "Buscar..."
+      },
+      "ALL": "Todos",
+      "NO_PENDING": "Sin Pendientes",
+      "NO_MATCHING_REQUESTS": "Sin Coincidencias",
+      "STATS_SUBTITLE": "Stats Subtitle",
+      "VIEW_ALL": "View All",
+      "AVG_APPROVAL_TIME": "Avg Approval Time"
     },
     "CHARTS": {
-      "CUSTOMER_COMPOSITION": "Composición de Clientes"
+      "CUSTOMER_COMPOSITION": "Composición de Clientes",
+      "REVENUE_TREND": "Tendencia de Ingresos",
+      "ORDER_DISTRIBUTION": "Distribución de Pedidos",
+      "TOP_PRODUCTS": "Mejores Productos",
+      "TOP_5_BY_REVENUE": "Top 5 por Ingresos"
     },
     "FINANCIALS": {
-      "TITLE": "Finanzas"
+      "TITLE": "Finanzas",
+      "SUBTITLE": "Subtítulo",
+      "CHARTS": {
+        "REVENUE_TREND": "Tendencia de Ingresos",
+        "MARGIN_TREND": "Margin Trend",
+        "TOP_PRODUCTS": "Mejores Productos",
+        "CATEGORY_PERFORMANCE": "Category Performance",
+        "PRODUCT_STRATEGY": "Product Strategy"
+      },
+      "MATRIX": {
+        "STARS": "Stars",
+        "STARS_DESC": "Stars Desc",
+        "STARS_ACTION": "Stars Action",
+        "COWS": "Cows",
+        "COWS_DESC": "Cows Desc",
+        "COWS_ACTION": "Cows Action",
+        "QUESTIONS": "Questions",
+        "QUESTIONS_DESC": "Questions Desc",
+        "QUESTIONS_ACTION": "Questions Action",
+        "DOGS": "Dogs",
+        "DOGS_DESC": "Dogs Desc",
+        "DOGS_ACTION": "Dogs Action",
+        "AXIS_X": "Axis X",
+        "AXIS_Y": "Axis Y"
+      },
+      "TABLE": {
+        "PRODUCT": "Producto",
+        "QUADRANT": "Quadrant",
+        "CATEGORY": "Category",
+        "REVENUE": "Ingresos",
+        "GROWTH": "Growth",
+        "SHARE": "Share",
+        "UNITS_SOLD": "Units Sold",
+        "PROFIT": "Profit",
+        "MARGIN": "Margin"
+      },
+      "TOP_PERFORMERS": "Top Performers",
+      "KPI": {
+        "REVENUE": "Ingresos",
+        "PROFIT": "Profit",
+        "MARGIN": "Margin",
+        "AOV": "Aov"
+      },
+      "PREVIOUS_PERIOD": "Previous Period",
+      "PERIODS": {
+        "SELECT_PERIOD": "Select Period",
+        "QUICK_PERIODS": "Periodos Rápidos",
+        "TODAY": "Hoy",
+        "YESTERDAY": "Ayer",
+        "LAST_7_DAYS": "Últimos 7 Días",
+        "LAST_30_DAYS": "Últimos 30 Días",
+        "MTD": "Mes a la Fecha",
+        "LAST_MONTH": "Mes Pasado"
+      }
     },
     "INCOME_STATEMENT": {
-      "TITLE": "Estado de Resultados"
+      "TITLE": "Estado de Resultados",
+      "SUBTITLE": "Subtítulo",
+      "HIDE_COMPARISON": "Hide Comparison",
+      "SHOW_COMPARISON": "Show Comparison",
+      "EXPORT_PDF": "Export Pdf",
+      "HEALTH_SCORE": {
+        "LABEL": "Label",
+        "SCORE_BREAKDOWN": "Score Breakdown",
+        "UNDERSTANDING": "Understanding",
+        "INSIGHTS": {
+          "CURRENT": "Current",
+          "TARGET": "Target",
+          "GROSS_EXCELLENT": "Gross Excellent",
+          "GROSS_GOOD": "Gross Good",
+          "GROSS_FAIR": "Gross Fair",
+          "GROSS_LOW": "Gross Low",
+          "NET_EXCELLENT": "Net Excellent",
+          "NET_GOOD": "Net Good",
+          "NET_FAIR": "Net Fair",
+          "NET_LOW": "Net Low",
+          "EFFICIENCY_EXCELLENT": "Efficiency Excellent",
+          "EFFICIENCY_GOOD": "Efficiency Good",
+          "EFFICIENCY_FAIR": "Efficiency Fair",
+          "EFFICIENCY_LOW": "Efficiency Low"
+        },
+        "STATUS": {
+          "EXCELLENT": "Excellent",
+          "GOOD": "Good",
+          "FAIR": "Fair",
+          "NEEDS_ATTENTION": "Needs Attention"
+        }
+      },
+      "RECOMMENDATIONS": {
+        "TITLE": "Título",
+        "PRICING": "Pricing",
+        "EXPENSES": "Expenses",
+        "AUDIT": "Audit",
+        "EFFICIENCY": "Efficiency",
+        "STRONG": "Strong"
+      },
+      "SCENARIOS": {
+        "PATH_TITLE": "Path Title",
+        "PATH_SUBTITLE": "Path Subtitle",
+        "REQUIREMENTS": "Requirements",
+        "GAP_NEEDED": "Gap Needed",
+        "CHOOSE_APPROACH": "Choose Approach",
+        "NEW_SCORE": "New Score",
+        "DIFFICULTY": "Difficulty",
+        "TIMEFRAME": "Timeframe",
+        "REDUCE_EXPENSES": {
+          "NAME": "Nombre",
+          "DESC": "Desc",
+          "ACTION": "Acción",
+          "TARGET": "Target"
+        },
+        "INCREASE_REVENUE": {
+          "NAME": "Nombre",
+          "DESC": "Desc",
+          "ACTION": "Acción",
+          "TARGET": "Target"
+        },
+        "BALANCED": {
+          "NAME": "Nombre",
+          "DESC": "Desc"
+        },
+        "MAINTAIN": {
+          "NAME": "Nombre",
+          "DESC": "Desc",
+          "ACTION_CONTINUE": "Action Continue",
+          "ACTION_MONITOR": "Action Monitor"
+        },
+        "FINE_TUNE": {
+          "NAME": "Nombre",
+          "DESC": "Desc"
+        },
+        "QUICK_WIN": {
+          "DESC": "Desc",
+          "ACTION_REDUCE": "Action Reduce",
+          "ACTION_BOOST": "Action Boost"
+        }
+      },
+      "REVENUE": "Ingresos",
+      "GROSS_SALES": "Gross Sales",
+      "LESS_RETURNS": "Less Returns",
+      "LESS_DISCOUNTS": "Less Discounts",
+      "NET_SALES": "Net Sales",
+      "COGS": "Cogs",
+      "PRODUCT_COSTS": "Product Costs",
+      "GROSS_PROFIT": "Gross Profit",
+      "OPERATING_EXPENSES": "Operating Expenses",
+      "NO_EXPENSES": "No Expenses",
+      "TOTAL_OPERATING_EXPENSES": "Total Operating Expenses",
+      "OPERATING_INCOME": "Operating Income",
+      "NET_INCOME": "Net Income",
+      "GROSS_MARGIN": "Gross Margin",
+      "OPERATING_MARGIN": "Operating Margin",
+      "NET_MARGIN": "Net Margin",
+      "TOTAL_REVENUE": "Total Revenue",
+      "PERIOD_COMPARISON": "Period Comparison"
     },
     "INVENTORY_ANALYTICS": {
-      "TITLE": "Análisis de Inventario"
+      "TITLE": "Análisis de Inventario",
+      "PRODUCT": "Producto",
+      "SUBTITLE": "Subtítulo",
+      "EXPORT": "Export",
+      "TOTAL_PRODUCTS": "Total Products",
+      "LOW_STOCK": "Low Stock",
+      "OUT_OF_STOCK": "Out Of Stock",
+      "STOCK_VALUE": "Stock Value",
+      "EFFICIENCY_METRICS": "Efficiency Metrics",
+      "GMROI": "Gmroi",
+      "GMROI_SUBTEXT": "Gmroi Subtext",
+      "SELL_THROUGH": "Sell Through",
+      "SELL_THROUGH_SUBTEXT": "Sell Through Subtext",
+      "DEAD_STOCK": "Inventario Muerto",
+      "DEAD_STOCK_SUBTEXT": "Dead Stock Subtext",
+      "TURNOVER_RATE": "Turnover Rate",
+      "TURNOVER_SUBTEXT": "Turnover Subtext",
+      "OPPORTUNITY_COST": "Costo de Oportunidad",
+      "OPPORTUNITY_SUBTEXT": "Opportunity Subtext",
+      "STOCK_DISTRIBUTION": "Stock Distribution",
+      "TOP_TURNOVER": "Top Turnover",
+      "EFFICIENCY_MATRIX": "Efficiency Matrix",
+      "EFFICIENCY_MATRIX_DESC": "Efficiency Matrix Desc",
+      "LOW_STOCK_ALERTS": "Low Stock Alerts",
+      "PRODUCTS": "Products",
+      "UNITS": "Units",
+      "SALES_VELOCITY": "Sales Velocity",
+      "DAY": "Day",
+      "DAYS_UNTIL_STOCKOUT": "Days Until Stockout",
+      "DAYS": "Days",
+      "REORDER_RECOMMENDATIONS": "Reorder Recommendations",
+      "CURRENT_STOCK": "Current Stock",
+      "STOCKOUT_DATE": "Stockout Date",
+      "SUGGESTED_ORDER": "Suggested Order",
+      "POTENTIAL_LOSS": "Pérdida Potencial",
+      "NO_DATA": "No Data",
+      "DEAD_STOCK_REPORT": "Dead Stock Report",
+      "STAGNANT_PRODUCTS": "Stagnant Products",
+      "STOCK": "Stock",
+      "VALUE_EST": "Value Est",
+      "STATUS": "Estado",
+      "ZERO_SALES": "Zero Sales",
+      "TOP_PERFORMERS": "Top Performers",
+      "NO_DATA_DESC": "No Data Desc",
+      "CHART": {
+        "IN_STOCK": "In Stock",
+        "LOW_STOCK": "Low Stock",
+        "OUT_OF_STOCK": "Out Of Stock",
+        "PRODUCT": "Producto"
+      },
+      "CLASSIFICATION": "Classification",
+      "REPORT": {},
+      "COMMON": {}
     },
     "SALES_ANALYTICS": {
-      "TITLE": "Análisis de Ventas"
+      "TITLE": "Análisis de Ventas",
+      "REVENUE": "Ingresos",
+      "ORDERS": "Pedidos",
+      "QUANTITY": "Quantity",
+      "PERIOD": "Period",
+      "SUBTITLE": "Subtítulo",
+      "EXPORT_PDF": "Export Pdf",
+      "TOTAL_REVENUE": "Total Revenue",
+      "TOTAL_ORDERS": "Total Orders",
+      "AVG_ORDER_VALUE": "Avg Order Value",
+      "VS_LAST_PERIOD": "Vs Last Period",
+      "TOP_PRODUCT_REVENUE": "Top Product Revenue",
+      "TOP_PERFORMER": "Top Performer",
+      "SALES_VELOCITY": "Sales Velocity",
+      "VELOCITY_DAILY": "Velocity Daily",
+      "VELOCITY_WEEKLY": "Velocity Weekly",
+      "VELOCITY_MONTHLY": "Velocity Monthly",
+      "VELOCITY_SCORE": "Velocity Score",
+      "CUSTOMER_SEGMENTS": "Customer Segments",
+      "CUSTOMERS": "Customers",
+      "CONVERSION_FUNNEL": "Conversion Funnel",
+      "CONVERSION_RATE": "Conversion Rate",
+      "GROWTH_METRICS": "Growth Metrics",
+      "REVENUE_GROWTH": "Revenue Growth",
+      "MOM": "Mom",
+      "ORDER_GROWTH": "Order Growth",
+      "CUSTOMER_GROWTH": "Customer Growth",
+      "AOV_GROWTH": "Aov Growth",
+      "CAGR": "Cagr",
+      "YOY": "Yoy",
+      "REVENUE_TREND": "Tendencia de Ingresos",
+      "SALES_BY_CATEGORY": "Sales By Category",
+      "SALES_BY_BRAND": "Sales By Brand",
+      "TOP_PRODUCTS": "Mejores Productos",
+      "PRODUCT_NAME": "Product Name",
+      "NO_DATA": "No Data",
+      "BRAND": "Brand",
+      "CSV_EXPORT": {
+        "REVENUE": "Ingresos",
+        "REVENUE_TRENDS": "Revenue Trends",
+        "DATE": "Fecha",
+        "ORDERS": "Pedidos",
+        "SALES_BY_CATEGORY": "Sales By Category",
+        "CATEGORY": "Category",
+        "PERCENTAGE": "Percentage",
+        "RANK": "Rank",
+        "PRODUCT_NAME": "Product Name",
+        "SKU": "SKU",
+        "QUANTITY": "Quantity"
+      },
+      "CHARTS": {
+        "REVENUE_BY_BRAND": "Revenue By Brand"
+      },
+      "TRENDING_UP": "Trending Up",
+      "TRENDING_DOWN": "Trending Down",
+      "TRENDING_STABLE": "Trending Stable",
+      "SEGMENT_CHAMPIONS": "Segment Champions",
+      "SEGMENT_LOYAL": "Segment Loyal",
+      "SEGMENT_POTENTIAL": "Segment Potential",
+      "SEGMENT_AT_RISK": "Segment At Risk",
+      "SEGMENT_LOST": "Segment Lost"
     },
     "CUSTOMER_INSIGHTS": {
-      "TITLE": "Análisis de Clientes"
+      "TITLE": "Análisis de Clientes",
+      "SUBTITLE": "Subtítulo",
+      "KPI": {
+        "NEW_CUSTOMERS": "Clientes Nuevos",
+        "ACTIVE_GROWTH": "Crecimiento Activo",
+        "AVG_CLV": "LTV Promedio",
+        "LTV_DESC": "Valor a Largo Plazo",
+        "CHURN_RATE": "Tasa de Abandono",
+        "CHURN_DESC": "Abandono de Clientes",
+        "AT_RISK_VALUE": "Valor en Riesgo",
+        "POTENTIAL_LOSS": "Pérdida Potencial"
+      },
+      "CHARTS": {
+        "ACQUISITION": "Adquisición",
+        "ACQUISITION_DESC": "Adquisición de Clientes",
+        "SEGMENTATION": "Segmentación"
+      },
+      "RFM": {
+        "TITLE": "Título",
+        "SUBTITLE": "Subtítulo",
+        "TABLE": {
+          "CUSTOMER": "Cliente",
+          "SEGMENT": "Segmento",
+          "DAYS_SINCE": "Días Desde",
+          "ORDERS": "Pedidos",
+          "LTV": "LTV"
+        }
+      },
+      "COHORTS": {
+        "TITLE": "Título",
+        "INFO_TITLE": "Información",
+        "INFO_DESC": "Descripción",
+        "LEGEND": "Leyenda",
+        "TABLE": {
+          "COHORT": "Cohorte",
+          "USERS": "Usuarios",
+          "MONTH": "Mes"
+        }
+      },
+      "AT_RISK": {
+        "TITLE": "Título",
+        "TABLE": {
+          "TOTAL_SPENT": "Gasto Total",
+          "LAST_ORDER": "Último Pedido",
+          "RISK_SCORE": "Nivel de Riesgo",
+          "ACTION": "Acción"
+        }
+      }
     },
     "OPERATIONAL_METRICS": {
-      "TITLE": "Métricas Operacionales"
+      "TITLE": "Métricas Operacionales",
+      "SUBTITLE": "Subtítulo",
+      "KPI": {
+        "AVG_FULFILLMENT_TIME": "Avg Fulfillment Time",
+        "ORDERS_TODAY": "Orders Today",
+        "SLA_COMPLIANCE": "Sla Compliance",
+        "PENDING_ORDERS": "Pending Orders"
+      },
+      "CHARTS": {
+        "FULFILLMENT_TREND": "Fulfillment Trend",
+        "SLA_TREND": "Sla Trend",
+        "ORDER_STATUS": "Order Status",
+        "STAFF_PERFORMANCE": "Staff Performance"
+      },
+      "TABLE": {
+        "STAFF_LEADERBOARD": "Staff Leaderboard",
+        "RANK": "Rank",
+        "STAFF": "Staff",
+        "ORDERS_PROCESSED": "Orders Processed",
+        "AVG_TIME": "Avg Time",
+        "ACTIVE_ORDERS": "Active Orders"
+      },
+      "LOADING_LEADERBOARD": "Loading Leaderboard",
+      "SLA": {
+        "AT_RISK": "At Risk",
+        "OVERDUE": "Overdue",
+        "AVG_RESPONSE_TIME": "Avg Response Time"
+      }
     },
     "EXPENSES": {
-      "TITLE": "Gestión de Gastos"
+      "TITLE": "Gestión de Gastos",
+      "SUBTITLE": "Subtítulo",
+      "VIEW_CARDS": "View Cards",
+      "VIEW_TABLE": "View Table",
+      "ACTIONS": {
+        "EXPORT": "Export",
+        "EXPORT_CSV": "Export Csv",
+        "EXPORT_EXCEL": "Export Excel",
+        "DELETE": "Delete",
+        "CLEAR": "Clear"
+      },
+      "ADD_EXPENSE": "Add Expense",
+      "SEARCH": "Buscar",
+      "SEARCH_PLACEHOLDER": "Buscar...",
+      "CATEGORY": "Category",
+      "ALL_CATEGORIES": "All Categories",
+      "EXPENSES": "Expenses",
+      "TOTAL_EXPENSES": "Total Expenses",
+      "RECURRING": "Recurring",
+      "SELECTED": "Selected",
+      "TABLE": {
+        "DATE": "Fecha",
+        "CATEGORY": "Category",
+        "DESCRIPTION": "Description",
+        "VENDOR": "Vendor",
+        "AMOUNT": "Amount",
+        "RECURRING": "Recurring",
+        "ACTIONS": "Acciones"
+      },
+      "PAGINATION": {
+        "SHOWING": "Showing",
+        "PREVIOUS": "Previous",
+        "PAGE_OF": "Page Of",
+        "NEXT": "Next",
+        "PER_PAGE": "Per Page"
+      },
+      "NO_EXPENSES": "No Expenses",
+      "NO_EXPENSES_DESC": "No Expenses Desc",
+      "ADD_FIRST": "Add First",
+      "EDIT_EXPENSE": "Edit Expense",
+      "FORM": {
+        "CATEGORY": "Category",
+        "AMOUNT": "Amount",
+        "DESCRIPTION": "Description",
+        "DATE": "Fecha",
+        "VENDOR": "Vendor",
+        "RECURRING": "Recurring",
+        "FREQUENCY": "Frequency",
+        "MONTHLY": "Monthly",
+        "QUARTERLY": "Quarterly",
+        "YEARLY": "Yearly",
+        "NOTES": "Notes",
+        "CANCEL": "Cancelar",
+        "SAVE": "Save"
+      }
     },
     "ACTIONS": {
       "EXPORT": "Exportar CSV",
-      "VIEW_DATA": "Ver Datos"
+      "VIEW_DATA": "Ver Datos",
+      "CONTACT": "Contactar",
+      "REFRESH": "Refresh"
     },
     "LABELS": {
       "NO_DATA": "Sin datos",
       "NEW": "Nuevo",
       "TOTAL": "Total",
       "NEW_CUSTOMERS": "Clientes Nuevos",
-      "RETURNING_CUSTOMERS": "Clientes Recurrentes"
+      "RETURNING_CUSTOMERS": "Clientes Recurrentes",
+      "LOADING": "Cargando",
+      "PROCESSING": "Procesando",
+      "LOADING_SYSTEM": "Cargando Sistema",
+      "SELECTED_RANGE": "Rango Seleccionado",
+      "SELECT_DATE_RANGE": "Select Date Range",
+      "SELECT_DATE_RANGE_DESC": "Select Date Range Desc",
+      "REFRESH": "Refresh",
+      "VS_LAST_PERIOD": "Vs Last Period",
+      "EMPTY_PRODUCTS_MESSAGE": "Empty Products Message"
     },
     "KPI": {
       "REVENUE": "Ingresos",
@@ -898,11 +1366,87 @@
       "SLA": "Cumplimiento SLA",
       "INVENTORY_VALUE": "Valor de Inventario",
       "MARGIN": "Margen Bruto",
-      "CONVERSION": "Tasa de Conversión"
+      "CONVERSION": "Tasa de Conversión",
+      "DATE": "Fecha",
+      "STATUS": "Estado",
+      "COUNT": "Count",
+      "PRODUCT": "Producto",
+      "SEGMENT": "Segmento"
     },
     "TRENDS": {
       "VS_LAST_MONTH": "vs mes pasado",
       "VS_YESTERDAY": "vs ayer"
+    },
+    "TOUR": {
+      "START": "Iniciar"
+    },
+    "DASHBOARD_SUBTITLE": "Resumen del Tablero",
+    "HEADER": {
+      "START_DATE": "Fecha de Inicio",
+      "END_DATE": "Fecha de Fin",
+      "USER_FALLBACK": "Usuario"
+    },
+    "MISSION_CONTROL": {
+      "TITLE": "Título",
+      "SUBTITLE": "Subtítulo"
+    },
+    "CHANNELS": {
+      "ALL": "Todos"
+    },
+    "AI_ANALYST": {
+      "INSIGHTS": {
+        "REVENUE_MISS": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "STRONG_SALES": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "INVENTORY_DRAG": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "SUPPLY_CHAIN_RISK": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "SLA_BREACH": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "FULFILLMENT_BOTTLENECK": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "HERO_PRODUCT_RISK": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "DEAD_STOCK": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        },
+        "CATEGORY_DOMINANCE": {
+          "TITLE": "Título",
+          "MESSAGE": "Message"
+        }
+      },
+      "IMPACT": {
+        "MISS": "Pérdida",
+        "LIFT": "Mejora",
+        "HIGH_CORRELATION": "Alta Correlación",
+        "SLA_RISK": "Riesgo SLA",
+        "OPPORTUNITY_COST": "Costo de Oportunidad",
+        "CONCENTRATION": "Concentración"
+      },
+      "HEADLINE": {
+        "NEUTRAL": "Neutral",
+        "POSITIVE": "Positivo",
+        "NEGATIVE": "Negativo",
+        "MIXED_GROWTH_PAIN": "Crecimiento Mixto",
+        "MIXED_SOFT_REVENUE": "Ingresos Mixtos"
+      }
     }
   },
   "OPERATIONS": {

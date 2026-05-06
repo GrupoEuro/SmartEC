@@ -280,18 +280,24 @@ export class FinancialDashboardComponent {
         return `${value.toFixed(1)}%`;
     }
 
-    private generateRevenueTrendChart(metrics: RevenueMetrics): ChartData<'line'> {
-        // For now, simple placeholder - would need historical data
+    private generateRevenueTrendChart(metrics: RevenueMetrics & { trends?: any[] }): ChartData<'line'> {
+        const trends = metrics.trends || [];
+        if (!trends.length) {
+            return { labels: [], datasets: [] };
+        }
+
+        const labels = trends.map(t => {
+            const dateObj = new Date(t.order_date + 'T12:00:00'); 
+            return dateObj.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
+        });
+        
+        const data = trends.map(t => t.revenue || 0);
+
         return {
-            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            labels,
             datasets: [{
                 label: 'Revenue',
-                data: [
-                    metrics.totalRevenue * 0.7,
-                    metrics.totalRevenue * 0.85,
-                    metrics.totalRevenue * 0.95,
-                    metrics.totalRevenue
-                ],
+                data,
                 borderColor: CHART_THEME.colors.primary,
                 backgroundColor: CHART_THEME.colors.bg.primary,
                 tension: 0.4,
@@ -300,25 +306,31 @@ export class FinancialDashboardComponent {
         };
     }
 
-    private generateMarginTrendChart(metrics: MarginMetrics): ChartData<'line'> {
-        // Placeholder margin trend
+    private generateMarginTrendChart(metrics: MarginMetrics & { trends?: any[] }): ChartData<'line'> {
+        const trends = metrics.trends || [];
+        if (!trends.length) {
+            return { labels: [], datasets: [] };
+        }
+
+        const labels = trends.map(t => {
+            const dateObj = new Date(t.order_date + 'T12:00:00'); 
+            return dateObj.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
+        });
+
+        // Estimate daily margin % based on revenue and units, or just show revenue if cost isn't in daily trend yet
+        // Since DailyTrendRow has orders and units, we can show Average Order Value or something else,
+        // or assuming a flat 35% margin for the daily chart if we lack daily COGS.
+        // Let's calculate estimated daily gross profit (Revenue * average gross margin %)
+        const avgMarginPct = metrics.totalRevenue > 0 ? metrics.grossProfit / metrics.totalRevenue : 0;
+        const data = trends.map(t => t.revenue * avgMarginPct);
+
         return {
-            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+            labels,
             datasets: [{
-                label: 'Margin %',
-                data: [
-                    metrics.grossMargin * 0.95,
-                    metrics.grossMargin * 0.98,
-                    metrics.grossMargin * 1.02,
-                    metrics.grossMargin
-                ],
+                label: 'Gross Profit',
+                data,
                 borderColor: CHART_THEME.colors.success,
-                backgroundColor: CHART_THEME.colors.success + '1A', // 10% opacity hex hack, or use helper if needed. But chart-theme has rba helpers or just use hardcoded transparent version if needed.
-                // Wait, colors.success is hex. I need an alpha version. 
-                // Let's check chart-theme again. It defines hexes. 
-                // I will use a simple rgba string since I don't have a helper imported.
-                // Actually I can just use transparent success color. 
-                // Let's use 'rgba(52, 211, 153, 0.1)' matching #34d399
+                backgroundColor: 'rgba(52, 211, 153, 0.1)',
                 tension: 0.4,
                 fill: true
             }]

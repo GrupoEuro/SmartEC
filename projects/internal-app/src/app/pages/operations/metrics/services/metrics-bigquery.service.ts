@@ -6,6 +6,7 @@ import { MetricsAnalyticsService, DateRange } from './metrics-analytics.service'
 
 export interface ProductRevenueRow {
     sku:           string;
+    product_id?:   string;
     product_name:  string;
     brand:         string | null;
     total_units:   number;
@@ -160,6 +161,18 @@ export class MetricsBigqueryService {
     ): Promise<SummaryKpisRow[]> {
         const fn = httpsCallable<object, BQResult<SummaryKpisRow>>(this.fns, 'queryMetrics');
         const res = await fn({ queryType: 'summaryKpis', fromDate, toDate });
+        return res.data.rows;
+    }
+
+    /** Same as queryProductRevenue but with explicit YYYY-MM-DD strings. */
+    async queryProductRevenueBetween(
+        fromDate: string,
+        toDate:   string,
+        limit     = 50,
+        channel?: string
+    ): Promise<ProductRevenueRow[]> {
+        const fn = httpsCallable<object, BQResult<ProductRevenueRow>>(this.fns, 'queryMetrics');
+        const res = await fn({ queryType: 'productRevenue', fromDate, toDate, limit, channel });
         return res.data.rows;
     }
 

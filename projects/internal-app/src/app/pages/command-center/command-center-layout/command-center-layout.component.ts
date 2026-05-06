@@ -72,6 +72,12 @@ import { Subscription } from 'rxjs';
                         </span>
                         <span class="nav-label">{{ 'COMMAND_CENTER.INVENTORY_ANALYTICS.TITLE' | translate }}</span>
                     </a>
+                    <a routerLink="/command-center/mission-control" routerLinkActive="active" class="nav-item">
+                        <span class="nav-icon">
+                            <app-icon name="globe" [size]="20"></app-icon>
+                        </span>
+                        <span class="nav-label">Mission Control</span>
+                    </a>
                     
                     <div class="nav-separator"></div>
                     

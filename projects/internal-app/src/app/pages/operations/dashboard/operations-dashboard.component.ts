@@ -14,6 +14,7 @@ import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { ToastService } from '../../../core/services/toast.service';
 import { GoogleMapsModule, MapMarker, MapInfoWindow } from '@angular/google-maps';
 import { ViewChild, ElementRef } from '@angular/core';
+import { MetricsBigqueryService } from '../metrics/services/metrics-bigquery.service';
 
 // Register Chart.js components
 Chart.register(...registerables);
@@ -137,7 +138,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private firestore         = inject(Firestore);
     private toast             = inject(ToastService);
     private translate         = inject(TranslateService);
-
+    private bqService         = inject(MetricsBigqueryService);
 
     timeframe = signal<'MTD' | 'PM' | 'YTD'>('MTD');
     channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf'>('ALL');
@@ -577,111 +578,40 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
      * Never throws — graceful degradation to null.
      */
     /**
-     * Fetch last year's equivalent period using daily subcollection for exact date cut-off.
-     *
-     * MTD  → sum monthly_stats/{lyYear}-{MM}/days/01..today's day
-     *         Fallback to full month aggregate (sets lyUsingApprox=true) if no days/ yet.
-     * YTD  → full monthly aggregates for Jan..(currentMonth-1)
-     *         + exact days for current partial month (same fallback logic)
+     * Fetch last year's equivalent period using BigQuery.
      */
     private async loadLyComparison(): Promise<void> {
         try {
-            const now               = new Date();
-            const lyYear            = now.getFullYear() - 1;
-            const currentMonthIndex = now.getMonth(); // 0-based
-            const todayDay          = now.getDate();  // 1-based
-            const lyMon             = String(currentMonthIndex + 1).padStart(2, '0');
-
-            // Helper: read daily subcollection up to todayDay, returns totals + whether any doc existed
-            const readDays = async (yearStr: number, monStr: string) => {
-                const dayIds  = Array.from({ length: todayDay }, (_, i) => String(i + 1).padStart(2, '0'));
-                const dayRefs = dayIds.map(d => doc(this.firestore, `monthly_stats/${yearStr}-${monStr}/days/${d}`));
-                const snaps   = await Promise.all(dayRefs.map(r => getDoc(r)));
-                let sales = 0, orders = 0, pieces = 0, hasAny = false;
-                snaps.forEach(s => {
-                    if (s.exists()) {
-                        const d = s.data() as any;
-                        sales  += d['sales']  ?? 0;
-                        orders += d['orders'] ?? 0;
-                        pieces += d['pieces'] ?? 0;
-                        hasAny = true;
-                    }
-                });
-                return { sales, orders, pieces, hasAny };
-            };
-
-            // Helper: fallback to full-month aggregate
-            const readMonthAggregate = async (id: string) => {
-                const snap = await getDoc(doc(this.firestore, `monthly_stats/${id}`));
-                if (!snap.exists()) return null;
-                const d = snap.data() as any;
-                return { sales: d['sales'] ?? 0, orders: d['orders'] ?? 0, pieces: d['pieces'] ?? 0 };
-            };
-
+            const now = new Date();
+            let fromDateStr = '';
+            let toDateStr = '';
+            
             if (this.timeframe() === 'MTD') {
-                // Try exact daily range first
-                const daily = await readDays(lyYear, lyMon);
-                if (daily.hasAny) {
-                    this.lyPeriodStats.set({ sales: daily.sales, orders: daily.orders, pieces: daily.pieces });
-                    this.lyUsingApprox.set(false);
-                } else {
-                    // Fallback: full month aggregate (over-counts but best available)
-                    const agg = await readMonthAggregate(`${lyYear}-${lyMon}`);
-                    this.lyPeriodStats.set(agg);
-                    this.lyUsingApprox.set(agg !== null);
-                }
+                fromDateStr = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                toDateStr = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             } else if (this.timeframe() === 'PM') {
-                const prevMonth = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
-                const prevYearLY = currentMonthIndex === 0 ? lyYear - 1 : lyYear;
-                const pmMon = String(prevMonth + 1).padStart(2, '0');
-                const agg = await readMonthAggregate(`${prevYearLY}-${pmMon}`);
-                this.lyPeriodStats.set(agg);
-                this.lyUsingApprox.set(false);
+                const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+                const lyYear = now.getMonth() === 0 ? now.getFullYear() - 2 : now.getFullYear() - 1;
+                fromDateStr = `${lyYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+                const lastDay = new Date(lyYear, prevMonth + 1, 0).getDate();
+                toDateStr = `${lyYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
             } else {
-                // YTD: full months Jan → (currentMonth-1) + exact partial current month
-                const totals = { sales: 0, orders: 0, pieces: 0 };
-                let hasAny = false;
-                let partialApprox = false;
-
-                // Full completed months
-                if (currentMonthIndex > 0) {
-                    const ids = Array.from({ length: currentMonthIndex }, (_, i) =>
-                        `${lyYear}-${String(i + 1).padStart(2, '0')}`
-                    );
-                    const snaps = await Promise.all(ids.map(id => getDoc(doc(this.firestore, `monthly_stats/${id}`))));
-                    snaps.forEach(snap => {
-                        if (snap.exists()) {
-                            const d = snap.data() as any;
-                            totals.sales  += d['sales']  ?? 0;
-                            totals.orders += d['orders'] ?? 0;
-                            totals.pieces += d['pieces'] ?? 0;
-                            hasAny = true;
-                        }
-                    });
-                }
-
-                // Current partial month: try exact days first
-                const daily = await readDays(lyYear, lyMon);
-                if (daily.hasAny) {
-                    totals.sales  += daily.sales;
-                    totals.orders += daily.orders;
-                    totals.pieces += daily.pieces;
-                    hasAny = true;
-                } else {
-                    // Fallback to full month aggregate for the current month
-                    const agg = await readMonthAggregate(`${lyYear}-${lyMon}`);
-                    if (agg) {
-                        totals.sales  += agg.sales;
-                        totals.orders += agg.orders;
-                        totals.pieces += agg.pieces;
-                        hasAny = true;
-                        partialApprox = true;
-                    }
-                }
-
-                this.lyPeriodStats.set(hasAny ? totals : null);
-                this.lyUsingApprox.set(partialApprox);
+                fromDateStr = `${now.getFullYear() - 1}-01-01`;
+                toDateStr = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             }
+
+            const kpis = await this.bqService.querySummaryKpisBetween(fromDateStr, toDateStr);
+            
+            let sales = 0, orders = 0, pieces = 0, hasAny = false;
+            kpis.forEach((k: any) => {
+                sales += k.revenue || 0;
+                orders += k.orders || 0;
+                pieces += k.units || 0;
+                hasAny = true;
+            });
+
+            this.lyPeriodStats.set(hasAny ? { sales, orders, pieces } : null);
+            this.lyUsingApprox.set(false);
         } catch (err) {
             console.warn('[Dashboard] LY comparison read failed (non-critical):', err);
             this.lyPeriodStats.set(null);
@@ -691,25 +621,25 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     /**
      * Load per-day LY sales for MTD overlay line on trend chart.
-     * Reads monthly_stats/{lyYear}-{currentMonth}/days/01..todayDay.
-     * Silently no-ops if docs don't exist yet.
      */
     private async loadLyDailyForMTD(): Promise<void> {
         try {
-            const now    = new Date();
+            const now = new Date();
             const lyYear = now.getFullYear() - 1;
-            const lyMon  = String(now.getMonth() + 1).padStart(2, '0');
+            const lyMon = String(now.getMonth() + 1).padStart(2, '0');
             const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-            const dayIds  = Array.from({ length: totalDaysInMonth }, (_, i) => String(i + 1).padStart(2, '0'));
-            const dayRefs = dayIds.map(d => doc(this.firestore, `monthly_stats/${lyYear}-${lyMon}/days/${d}`));
-            const snaps   = await Promise.all(dayRefs.map(r => getDoc(r)));
+            const fromDateStr = `${lyYear}-${lyMon}-01`;
+            const toDateStr = `${lyYear}-${lyMon}-${String(totalDaysInMonth).padStart(2, '0')}`;
 
+            const trend: any[] = await (this.bqService as any).queryDailyTrendBetween(fromDateStr, toDateStr);
             const dailySales: number[] = new Array(totalDaysInMonth).fill(0);
+            
             let hasAny = false;
-            snaps.forEach((snap, i) => {
-                if (snap.exists()) {
-                    dailySales[i] = Number((snap.data() as any)['sales'] ?? 0);
+            trend.forEach((t: any) => {
+                const day = parseInt(t.order_date.split('-')[2], 10);
+                if (day >= 1 && day <= totalDaysInMonth) {
+                    dailySales[day - 1] += t.revenue || 0;
                     hasAny = true;
                 }
             });

@@ -198,11 +198,13 @@
       "STATUS": "Status",
       "COUNT": "Count",
       "PRODUCT": "Product",
-      "SEGMENT": "Segment"
+      "SEGMENT": "Segment",
+      "UNITS": "Units"
     },
     "TRENDS": {
       "VS_LAST_MONTH": "vs last month",
-      "THIS_WEEK": "this week"
+      "THIS_WEEK": "this week",
+      "VS_PREVIOUS": "vs previous period"
     },
     "STATUS": {
       "ACTIVE": "Active",
@@ -228,6 +230,7 @@
       "LOADING_DATA_FOR": "Loading data for",
       "PROCESSING": "Processing",
       "SELECT_DATE_RANGE": "Select Date Range",
+      "SELECTED_RANGE": "Selected Range",
       "SELECT_DATE_RANGE_DESC": "Select Date Range Desc",
       "REFRESH": "Refresh",
       "VS_LAST_PERIOD": "Vs Last Period",
@@ -257,6 +260,7 @@
       "ORDER_DISTRIBUTION": "Order Distribution",
       "TOP_PRODUCTS": "Top Products",
       "TOP_3_BY_REVENUE": "Top 3 by Revenue",
+      "TOP_5_BY_REVENUE": "Top 5 by Revenue",
       "CUSTOMER_COMPOSITION": "Customer Composition"
     },
     "MISSION_CONTROL": {
@@ -717,7 +721,9 @@
       "VELOCITY_MONTHLY": "Monthly Velocity",
       "VELOCITY_SCORE": "Velocity Score",
       "CUSTOMER_SEGMENTS": "Customer Segments",
-      "VS_LAST_PERIOD": "vs previous period"
+      "VS_LAST_PERIOD": "vs previous period",
+      "BRAND": "Brand",
+      "PERIOD": "Period"
     },
     "EXPENSES": {
       "TITLE": "Title",
@@ -773,7 +779,8 @@
         "CANCEL": "Cancel",
         "SAVE": "Save"
       },
-      "SEARCH_PLACEHOLDER": "Search Placeholder"
+      "SEARCH_PLACEHOLDER": "Search Placeholder",
+      "EDIT_EXPENSE": "Edit Expense"
     },
     "OPERATIONAL_METRICS": {
       "TITLE": "Title",
@@ -804,6 +811,64 @@
         "ORDER_STATUS": "Order Status",
         "STAFF_PERFORMANCE": "Staff Performance"
       }
+    },
+    "AI_ANALYST": {
+      "HEADLINE": {
+        "NEUTRAL": "Business is performing as expected.",
+        "POSITIVE": "Stellar performance overall 🚀",
+        "NEGATIVE": "Attention required in Supply Chain and Sales ⚠️",
+        "MIXED_GROWTH_PAIN": "Growing pains: Sales up, but inventory struggling.",
+        "MIXED_SOFT_REVENUE": "Soft revenue, driven mainly by stockouts."
+      },
+      "INSIGHTS": {
+        "REVENUE_MISS": {
+          "TITLE": "Revenue Miss",
+          "MESSAGE": "Revenue is {{percent}}% below target."
+        },
+        "STRONG_SALES": {
+          "TITLE": "Strong Sales",
+          "MESSAGE": "Revenue exceeding targets by {{percent}}%."
+        },
+        "INVENTORY_DRAG": {
+          "TITLE": "Inventory Drag",
+          "MESSAGE": "High stockouts are suppressing revenue. {{count}} products out of stock."
+        },
+        "SUPPLY_CHAIN_RISK": {
+          "TITLE": "Supply Chain Risk",
+          "MESSAGE": "Critical levels detected. {{oos}} out of stock and {{low}} low."
+        },
+        "FULFILLMENT_BOTTLENECK": {
+          "TITLE": "Fulfillment Bottleneck",
+          "MESSAGE": "{{count}} orders waiting to be processed."
+        },
+        "SLA_BREACH": {
+          "TITLE": "SLA Quality Alert",
+          "MESSAGE": "{{count}} orders are overdue. SLA compliance dropped to {{rate}}%."
+        },
+        "HERO_PRODUCT_RISK": {
+          "TITLE": "Hero Product Risk",
+          "MESSAGE": "Your #1 seller '{{product}}' has critical inventory levels."
+        },
+        "DEAD_STOCK": {
+          "TITLE": "Stagnant Capital",
+          "MESSAGE": "{{count}} products haven't sold in 90 days."
+        },
+        "CATEGORY_DOMINANCE": {
+          "TITLE": "Portfolio Concentration",
+          "MESSAGE": "'{{category}}' represents {{percent}}% of total revenue."
+        }
+      },
+      "IMPACT": {
+        "MISS": "Loss",
+        "LIFT": "Gain",
+        "HIGH_CORRELATION": "High Correlation",
+        "SLA_RISK": "SLA Risk",
+        "OPPORTUNITY_COST": "Opportunity Cost",
+        "CONCENTRATION": "Concentration"
+      },
+      "LOADING": "Analyzing latest business signals...",
+      "BADGE": "AI Analyst",
+      "HEALTH": "Health"
     }
   },
   "BRIEFING": {

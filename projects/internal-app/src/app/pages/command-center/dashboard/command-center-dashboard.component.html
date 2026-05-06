@@ -64,7 +64,7 @@
                 <div class="chart-card">
                     <div class="chart-header">
                         <h3>{{ 'COMMAND_CENTER.CHARTS.REVENUE_TREND' | translate }}</h3>
-                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.CHARTS.LAST_7_DAYS' | translate }}</span>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.LABELS.SELECTED_RANGE' | translate }}</span>
                     </div>
                     <div class="chart-body">
                         <div class="skeleton-chart"></div>
@@ -73,7 +73,7 @@
             </ng-container>
             <app-chart-card *ngIf="!isLoadingRevenue() && revenueTrend()"
                 [title]="'COMMAND_CENTER.CHARTS.REVENUE_TREND' | translate"
-                [subtitle]="'COMMAND_CENTER.CHARTS.LAST_7_DAYS' | translate" [type]="'line'" [data]="revenueTrend()!"
+                [subtitle]="'COMMAND_CENTER.LABELS.SELECTED_RANGE' | translate" [type]="'line'" [data]="revenueTrend()!"
                 [height]="300" [tableData]="revenueTableData()" [tableColumns]="revenueTableColumns">
             </app-chart-card>
 
@@ -100,7 +100,7 @@
                 <div class="chart-card">
                     <div class="chart-header">
                         <h3>{{ 'COMMAND_CENTER.CHARTS.TOP_PRODUCTS' | translate }}</h3>
-                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.CHARTS.TOP_3_BY_REVENUE' | translate }}</span>
+                        <span class="chart-subtitle">{{ 'COMMAND_CENTER.CHARTS.TOP_5_BY_REVENUE' | translate }}</span>
                     </div>
                     <div class="chart-body">
                         <div class="skeleton-chart"></div>
@@ -109,7 +109,7 @@
             </ng-container>
             <app-chart-card *ngIf="!isLoadingProducts() && topProducts()"
                 [title]="'COMMAND_CENTER.CHARTS.TOP_PRODUCTS' | translate"
-                [subtitle]="'COMMAND_CENTER.CHARTS.TOP_3_BY_REVENUE' | translate" [type]="'bar'" [data]="topProducts()!"
+                [subtitle]="'COMMAND_CENTER.CHARTS.TOP_5_BY_REVENUE' | translate" [type]="'bar'" [data]="topProducts()!"
                 [height]="300" [tableData]="productTableData()" [tableColumns]="productTableColumns">
             </app-chart-card>
 

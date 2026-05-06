@@ -55,7 +55,7 @@ export class AdminLogListComponent implements OnInit {
     try {
       // Fetch more logs to allow for meaningful filtering
       const colRef = collection(this.firestore, 'admin_logs');
-      const q = query(colRef, orderBy('timestamp', 'desc'), limit(500));
+      const q = query(colRef, orderBy('timestamp', 'desc'), limit(100));
       const querySnapshot = await getDocs(q);
 
       this.allLogs = querySnapshot.docs.map(doc => {

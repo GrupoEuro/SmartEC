@@ -59,16 +59,18 @@ export class CommandCenterDashboardComponent implements OnDestroy {
     customerComposition = signal<MetricChartData | null>(null);
 
     // Data Streams for Briefing
-    salesData = toSignal(this.dataService.salesAnalyticsData$);
-    inventoryData = toSignal(this.dataService.inventoryData$);
+    salesData      = toSignal(this.dataService.salesAnalyticsData$);
+    inventoryData  = toSignal(this.dataService.inventoryData$);
     operationalData = toSignal(this.dataService.operationalData$);
+    lyData         = toSignal(this.dataService.lyRevenueData$);
 
     // Computed Briefing
     briefing = computed(() => {
         return this.briefingService.generateBriefing(
-            this.salesData() || null,
-            this.inventoryData() || null,
-            this.operationalData() || null
+            this.salesData()      || null,
+            this.inventoryData()  || null,
+            this.operationalData() || null,
+            this.lyData()         || null
         );
     });
 

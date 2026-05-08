@@ -24,7 +24,7 @@ import { IncomeStatementService } from '../../../core/services/income-statement.
 import { AnalyticsService } from '../../../services/analytics.service';
 import { OperationalMetricsService } from '../../../services/operational-metrics.service';
 import { CommandCenterContextService } from './command-center-context.service';
-import { MetricsBigqueryService } from '../../operations/metrics/services/metrics-bigquery.service';
+import { MetricsBigqueryService, SummaryKpisRow } from '../../operations/metrics/services/metrics-bigquery.service';
 
 // Models
 import { KPICard, MetricChartData } from '../../../core/models/business-metrics.model';
@@ -355,6 +355,30 @@ export class CommandCenterDataService {
             );
         }),
         tap(() => this.loadingSubject.next(false)),
+        shareReplay(1)
+    );
+
+    // ===== LAST-YEAR REVENUE DATA (same date window, -1 year from BQ) =====
+    // Used by SmartBriefingService as a real benchmark instead of a hardcoded target.
+
+    lyRevenueData$: Observable<SummaryKpisRow[]> = this.trigger$.pipe(
+        switchMap(range => {
+            // Shift the active window back exactly one calendar year
+            const lyStart = new Date(range.start);
+            const lyEnd   = new Date(range.end);
+            lyStart.setFullYear(lyStart.getFullYear() - 1);
+            lyEnd.setFullYear(lyEnd.getFullYear()   - 1);
+
+            const fromDate = lyStart.toISOString().split('T')[0];
+            const toDate   = lyEnd.toISOString().split('T')[0];
+
+            return from(this.bqService.querySummaryKpisBetween(fromDate, toDate)).pipe(
+                catchError(err => {
+                    console.warn('⚠️ [DataService] LY revenue data unavailable:', err.message);
+                    return of([] as SummaryKpisRow[]);
+                })
+            );
+        }),
         shareReplay(1)
     );
 

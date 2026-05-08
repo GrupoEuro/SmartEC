@@ -7,6 +7,7 @@ import {
 import {
     OrderMetrics, SLAMetrics, StaffPerformance
 } from '../../../services/operational-metrics.service';
+import { SummaryKpisRow } from '../../operations/metrics/services/metrics-bigquery.service';
 import { TranslateService } from '@ngx-translate/core';
 
 // Define shapes matching DataService output
@@ -62,9 +63,10 @@ export class SmartBriefingService {
     private operationalData = this.dataService.operationalData$;
 
     generateBriefing(
-        sales: SalesAnalyticsData | null,
-        inventory: InventoryData | null,
-        ops: OperationalData | null
+        sales:     SalesAnalyticsData | null,
+        inventory: InventoryData      | null,
+        ops:       OperationalData    | null,
+        lyRows:    SummaryKpisRow[]   | null = null
     ): ExecutiveBriefing {
         const insights: Insight[] = [];
         let score = 85; // Baseline healthy score
@@ -73,32 +75,42 @@ export class SmartBriefingService {
             return this.getLoadingState();
         }
 
-        // --- 1. Sales Analysis (The "What") ---
+        // --- 1. Sales Analysis — YoY vs Last Year (same calendar window from BigQuery) ---
         const totalRevenue = sales.revenueTrends.reduce((acc: number, curr: RevenueTrend) => acc + curr.revenue, 0);
-        // Mock Target (In real app, fetch from config)
-        const dailyTarget = 5000 * sales.revenueTrends.length;
-        const revenueDiff = totalRevenue - dailyTarget;
-        const revenueP_change = (revenueDiff / dailyTarget) * 100;
 
-        if (revenueP_change < -10) {
-            score -= 15;
-            insights.push({
-                type: 'CRITICAL',
-                title: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.REVENUE_MISS.TITLE'),
-                message: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.REVENUE_MISS.MESSAGE', { percent: Math.abs(revenueP_change).toFixed(1) }),
-                impact: `${this.translate.instant('COMMAND_CENTER.AI_ANALYST.IMPACT.MISS')}: -${this.formatCurrency(revenueDiff)}`,
-                category: 'SALES'
-            });
-        } else if (revenueP_change > 10) {
-            score += 10;
-            insights.push({
-                type: 'SUCCESS',
-                title: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.STRONG_SALES.TITLE'),
-                message: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.STRONG_SALES.MESSAGE', { percent: revenueP_change.toFixed(1) }),
-                impact: `${this.translate.instant('COMMAND_CENTER.AI_ANALYST.IMPACT.LIFT')}: +${this.formatCurrency(revenueDiff)}`,
-                category: 'SALES'
-            });
+        // Sum LY revenue across all channels for the same window (-1 year)
+        const lyRevenue = (lyRows && lyRows.length > 0)
+            ? lyRows.reduce((acc, row) => acc + (row.revenue ?? 0), 0)
+            : null;
+
+        const hasLyBenchmark = lyRevenue !== null && lyRevenue > 0;
+        const revenueP_change = hasLyBenchmark ? ((totalRevenue - lyRevenue!) / lyRevenue!) * 100 : 0;
+        const revenueDiff     = hasLyBenchmark ? totalRevenue - lyRevenue! : 0;
+
+        if (hasLyBenchmark) {
+            if (revenueP_change < -10) {
+                score -= 15;
+                insights.push({
+                    type: 'CRITICAL',
+                    title: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.REVENUE_MISS.TITLE'),
+                    message: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.REVENUE_MISS.MESSAGE', { percent: Math.abs(revenueP_change).toFixed(1) }),
+                    impact: `${this.translate.instant('COMMAND_CENTER.AI_ANALYST.IMPACT.MISS')}: -${this.formatCurrency(Math.abs(revenueDiff))} vs AA`,
+                    category: 'SALES'
+                });
+            } else if (revenueP_change > 10) {
+                score += 10;
+                insights.push({
+                    type: 'SUCCESS',
+                    title: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.STRONG_SALES.TITLE'),
+                    message: this.translate.instant('COMMAND_CENTER.AI_ANALYST.INSIGHTS.STRONG_SALES.MESSAGE', { percent: revenueP_change.toFixed(1) }),
+                    impact: `${this.translate.instant('COMMAND_CENTER.AI_ANALYST.IMPACT.LIFT')}: +${this.formatCurrency(revenueDiff)} vs AA`,
+                    category: 'SALES'
+                });
+            }
+            // -10% to +10%: on-track — no insight noise needed
         }
+        // If lyRevenue is null (BQ returned nothing for LY), skip the revenue insight entirely
+        // to avoid meaningless comparisons.
 
         // --- 2. Inventory Analysis (The "Why" - Stockouts) ---
         const stockouts = inventory.metrics.outOfStockProducts;

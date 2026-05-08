@@ -411,7 +411,8 @@
         "SHARE": "Relative Share",
         "UNITS_SOLD": "Units",
         "PROFIT": "Profit",
-        "MARGIN": "Margin"
+        "MARGIN": "Margin",
+        "UNCATEGORIZED": "Uncategorized"
       },
       "PROFIT": "Profit",
       "MARGIN": "Margin",

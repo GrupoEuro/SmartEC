@@ -141,10 +141,9 @@
                                 <span *ngIf="point.quadrant === 'dogs'"
                                     [title]="('COMMAND_CENTER.FINANCIALS.MATRIX.DOGS' | translate) + ' (' + ('COMMAND_CENTER.FINANCIALS.MATRIX.DOGS_DESC' | translate) + ')'">🐕</span>
                             </td>
-                            <td style="color: #94a3b8;">{{ 'CATEGORIES.' + (point.categoryName | uppercase) | translate
-                                }}</td>
+                            <td style="color: #94a3b8;">{{ point.categoryName || ('COMMAND_CENTER.FINANCIALS.TABLE.UNCATEGORIZED' | translate) }}</td>
                             <td class="profit">{{ point.revenue | currency }}</td>
-                            <td [class.profit]="point.y > 0" [class.loss]="point.y < 0">{{ point.y }}%</td>
+                            <td [class.profit]="point.y > 0" [class.loss]="point.y < 0">{{ point.y | number:'1.2-2' }}%</td>
                             <td>{{ point.x | number:'1.2-2' }}x</td>
                         </tr>
                     </tbody>

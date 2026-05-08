@@ -496,7 +496,8 @@
         "SHARE": "Cuota Relativa",
         "UNITS_SOLD": "Unidades",
         "PROFIT": "Beneficio",
-        "MARGIN": "Margen"
+        "MARGIN": "Margen",
+        "UNCATEGORIZED": "Sin categoría"
       },
       "PROFIT": "Ganancia",
       "MARGIN": "Margen",

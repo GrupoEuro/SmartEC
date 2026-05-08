@@ -1204,7 +1204,9 @@
         "SHARE": "Share",
         "CROP": "Crop",
         "BULK_EDIT": "Bulk Edit",
-        "CLEAR": "Clear"
+        "CLEAR": "Clear",
+        "SHOW_FOLDERS": "Show folders",
+        "HIDE_FOLDERS": "Hide folders"
       },
       "EMPTY": {
         "TITLE": "No assets found",
@@ -1312,7 +1314,9 @@
       "LOGOUT": "Logout",
       "PDFS": "PDFs",
       "ATTRIBUTION": "Attribution",
-      "GO_MARKETING_HUB": "Marketing Hub ↗"
+      "GO_MARKETING_HUB": "Marketing Hub ↗",
+      "WAREHOUSES": "Warehouses",
+      "MEDIA": "Media Library"
     },
     "PDF_LIST": {
       "TITLE": "PDF Library",
@@ -1735,8 +1739,18 @@
       "ITEMS_PER_PAGE": "Items per page",
       "SHOWING_ITEMS": "Showing {{start}} to {{end}} of {{total}} kits",
       "STATUS": {
-        "ALL": "All"
-      }
+        "ALL": "All",
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
+      "DESCRIPTION": "Management of bundled product packages",
+      "EDIT_TITLE": "Edit Kit",
+      "EDIT_SUBTITLE": "Update the kit product information",
+      "NEW_TITLE": "New Kit",
+      "NEW_SUBTITLE": "Create a combined product bundle",
+      "EMPTY": "No kits created",
+      "EMPTY_DESC": "Create your first combined product kit",
+      "PRICE": "Price"
     },
     "PRODUCTS": {
       "NEW_TITLE": "Add Product",
@@ -2019,7 +2033,8 @@
         "EMPTY_DETAIL": "Events will appear here as the customer interacts with the store.",
         "SEE_ORDER": "View order →",
         "SESSION": "session"
-      }
+      },
+      "NO_ORDERS": "This customer has no orders on record."
     },
     "ORDERS": {
       "TITLE": "Orders",
@@ -2034,7 +2049,8 @@
         "DELIVERED": "Delivered",
         "CANCELLED": "Cancelled",
         "REFUNDED": "Refunded",
-        "RETURNED": "Returned"
+        "RETURNED": "Returned",
+        "ON_HOLD": "On Hold"
       },
       "TABLE": {
         "ORDER_NUMBER": "Order #",
@@ -2079,12 +2095,51 @@
         "TOTAL": "Total",
         "NO_ITEMS": "No items in this order",
         "COPIED": "Copied to clipboard",
-        "TRANSACTION_ID": "Transaction ID"
+        "TRANSACTION_ID": "Transaction ID",
+        "CANCEL_CONFIRM": "Are you sure you want to cancel this order?"
       }
     },
     "HELP": {
       "TITLE": "Knowledge Base",
       "DESC": "Documentation, guides, and support resources."
+    },
+    "ATTRIBUTION": {
+      "TITLE": "Sales Attribution",
+      "SUBTITLE": "Acquisition channel analysis and revenue impact",
+      "LOADING": "Loading attribution data...",
+      "KPI": {
+        "REVENUE": "Attributed Revenue",
+        "ORDERS": "Orders",
+        "SESSIONS": "Sessions",
+        "CONV_RATE": "Conversion Rate",
+        "CHANNELS": "Active Channels",
+        "TOP_SOURCE": "Top Source"
+      },
+      "TABLE": {
+        "TITLE": "Channel Breakdown",
+        "CHANNEL": "Channel",
+        "MEDIUM": "Medium",
+        "CAMPAIGN": "Campaign",
+        "SESSIONS": "Sessions",
+        "ORDERS": "Orders",
+        "REVENUE": "Revenue",
+        "CONV": "Conv. %",
+        "AOV": "Avg. Order Value",
+        "CART_ADDS": "Cart Adds",
+        "SHARE": "% Share",
+        "EMPTY": "No attribution data for the selected period."
+      },
+      "HOW": {
+        "TITLE": "How does attribution work?",
+        "STEP1_TITLE": "Session starts",
+        "STEP1_BODY": "Customer arrives from an external channel (Google, social, email...).",
+        "STEP2_TITLE": "Source captured",
+        "STEP2_BODY": "UTM params or referrer are stored in the browser session.",
+        "STEP3_TITLE": "Order placed",
+        "STEP3_BODY": "On checkout, the source is associated with the order in Firestore.",
+        "STEP4_TITLE": "Report generated",
+        "STEP4_BODY": "This panel aggregates all orders and computes KPIs per channel."
+      }
     }
   },
   "PRICING_STRATEGY": {

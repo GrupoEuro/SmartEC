@@ -4721,7 +4721,8 @@
         "EMPTY_DETAIL": "Los eventos aparecerán aquí a medida que el cliente interactúe con la tienda.",
         "SEE_ORDER": "Ver orden →",
         "SESSION": "sesión"
-      }
+      },
+      "NO_ORDERS": "Este cliente no tiene pedidos registrados."
     },
     "ORDERS": {
       "TABLE": {
@@ -4938,7 +4939,9 @@
         "REMOVE_ITEM": "Eliminar",
         "SAVINGS": "Ahorro",
         "SUBTITLE": "Subtítulo",
-        "SUBTITLE_PLACEHOLDER": "Breve descripción del kit"
+        "SUBTITLE_PLACEHOLDER": "Breve descripción del kit",
+        "TITLE_EDIT": "Editar Kit",
+        "TITLE_NEW": "Crear Nuevo Kit"
       },
       "SUCCESS_UPDATE": "Kit actualizado correctamente",
       "ERROR_SAVE": "Error al guardar el kit",
@@ -5115,7 +5118,45 @@
       "TITLE_TOO_LONG": "El título es demasiado largo"
     },
     "GO_TO_PORTAL": "Ir al Portal",
-    "GO_TO_WEBSITE": "Ir al Sitio Web"
+    "GO_TO_WEBSITE": "Ir al Sitio Web",
+    "ATTRIBUTION": {
+      "TITLE": "Atribución de Ventas",
+      "SUBTITLE": "Análisis de canales de adquisición y su impacto en ventas",
+      "LOADING": "Cargando datos de atribución...",
+      "KPI": {
+        "REVENUE": "Ingresos Atribuidos",
+        "ORDERS": "Pedidos",
+        "SESSIONS": "Sesiones",
+        "CONV_RATE": "Tasa de Conversión",
+        "CHANNELS": "Canales Activos",
+        "TOP_SOURCE": "Fuente Principal"
+      },
+      "TABLE": {
+        "TITLE": "Desglose por Canal",
+        "CHANNEL": "Canal",
+        "MEDIUM": "Medio",
+        "CAMPAIGN": "Campaña",
+        "SESSIONS": "Sesiones",
+        "ORDERS": "Pedidos",
+        "REVENUE": "Ingresos",
+        "CONV": "Conv. %",
+        "AOV": "Ticket Promedio",
+        "CART_ADDS": "Agr. al Carrito",
+        "SHARE": "% Participación",
+        "EMPTY": "Sin datos de atribución para el período seleccionado."
+      },
+      "HOW": {
+        "TITLE": "¿Cómo funciona la atribución?",
+        "STEP1_TITLE": "Sesión iniciada",
+        "STEP1_BODY": "El cliente llega a la tienda desde un canal externo (Google, redes, email...).",
+        "STEP2_TITLE": "Fuente registrada",
+        "STEP2_BODY": "UTM params o referrer se capturan y almacenan en la sesión del navegador.",
+        "STEP3_TITLE": "Pedido realizado",
+        "STEP3_BODY": "Al completar la compra, la fuente se asocia al pedido en Firestore.",
+        "STEP4_TITLE": "Reporte generado",
+        "STEP4_BODY": "Este panel agrega todos los pedidos y calcula KPIs por canal."
+      }
+    }
   },
   "PRICING_STRATEGY": {
     "DASHBOARD": {

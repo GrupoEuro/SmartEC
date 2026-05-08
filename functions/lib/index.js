@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliBackfillOrders = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.snapshotProjections = exports.askEuroMind = exports.euromindWeeklyReport = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
-exports.queryGrowthMetrics = exports.queryPeriodData = exports.queryCustomerSegmentation = exports.queryCustomerMetrics = exports.queryCohortAnalysis = exports.queryCustomerInsights = exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.appendOrdersToBQForDate = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.queryMetrics = exports.backfillOrdersToBigQuery = exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.sitemapXml = exports.getPaidMediaInsights = void 0;
+exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.snapshotProjections = exports.askEuroMind = exports.euromindWeeklyReport = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
+exports.queryGrowthMetrics = exports.queryPeriodData = exports.queryCustomerSegmentation = exports.queryCustomerMetrics = exports.queryCohortAnalysis = exports.queryCustomerInsights = exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.appendOrdersToBQForDate = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.queryMetrics = exports.backfillOrdersToBigQuery = exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.sitemapXml = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -233,8 +233,10 @@ exports.processPayment = functions.https.onCall(async (data, context) => {
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }).catch(e => console.error('Failed to update order for 3DS:', e));
             }
-            return { success: false, requires3DS: true, challengeUrl, paymentId,
-                status: payStatus, statusDetail: payDetail };
+            return {
+                success: false, requires3DS: true, challengeUrl, paymentId,
+                status: payStatus, statusDetail: payDetail
+            };
         }
         // Normal result — update Firestore
         if (orderId) {
@@ -4066,72 +4068,6 @@ exports.prunePriceHistory = functions
         console.log(`[PruneHistory] ${fpDoc.id}: deleted ${oldDocs.size} old docs`);
     }
     console.log(`[PruneHistory] Done. Total deleted: ${totalDeleted}`);
-});
-// ─── Manual Backfill Callable ─────────────────────────────────────────────────
-// Admin-only: sweeps MeLi orders from a given ISO date range and upserts them.
-// Used to fill gaps caused by cron or webhook failures.
-// Input: { fromDate: '2026-05-06T23:30:00.000Z', toDate?: '2026-05-07T16:40:00.000Z' }
-exports.meliBackfillOrders = functions
-    .runWith({ timeoutSeconds: 300, memory: '512MB' })
-    .https.onCall(async (data, context) => {
-    var _a, _b, _c;
-    if (!context.auth)
-        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
-    const role = (_a = context.auth.token) === null || _a === void 0 ? void 0 : _a.role;
-    if (!['SUPER_ADMIN', 'ADMIN'].includes(role))
-        throw new functions.https.HttpsError('permission-denied', 'Admin required.');
-    const { fromDate, toDate } = data;
-    if (!fromDate)
-        throw new functions.https.HttpsError('invalid-argument', 'fromDate required (ISO string).');
-    const configDoc = await db.collection('config').doc('integrations').get();
-    const meliConfig = (_b = configDoc.data()) === null || _b === void 0 ? void 0 : _b.meli;
-    if (!(meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.accessToken) || !(meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.userId))
-        throw new functions.https.HttpsError('failed-precondition', 'MeLi not connected.');
-    const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
-    const dateFrom = encodeURIComponent(fromDate.replace('.000Z', '.000-00:00'));
-    const dateTo = toDate ? `&order.date_created.to=${encodeURIComponent(toDate.replace('.000Z', '.000-00:00'))}` : '';
-    const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50${dateTo}&order.date_created.from=${dateFrom}`;
-    console.log(`[MeliBackfill] Fetching: ${url}`);
-    const res = await fetch(url, { headers });
-    if (!res.ok)
-        throw new functions.https.HttpsError('internal', `MeLi API error: ${res.status}`);
-    const json = await res.json();
-    const meliOrders = json.results || [];
-    console.log(`[MeliBackfill] Found ${meliOrders.length} orders in range.`);
-    let saved = 0;
-    for (const mo of meliOrders) {
-        try {
-            let shipData = null;
-            if ((_c = mo.shipping) === null || _c === void 0 ? void 0 : _c.id) {
-                const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                    headers: Object.assign(Object.assign({}, headers), { 'x-format-new': 'true' })
-                });
-                if (sRes.ok)
-                    shipData = await sRes.json();
-            }
-            let billingData = null;
-            try {
-                const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
-                    headers: Object.assign(Object.assign({}, headers), { 'x-version': '2' })
-                });
-                if (bRes.ok)
-                    billingData = await bRes.json();
-            }
-            catch ( /* non-critical */_d) { /* non-critical */ }
-            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
-            await db.collection('orders').doc(`meli_${mo.id}`).set(newOrder, { merge: true });
-            saved++;
-        }
-        catch (e) {
-            console.warn(`[MeliBackfill] Skipped order ${mo.id}:`, e.message);
-        }
-    }
-    // Update lastSyncDate to end of backfill window so cron doesn't re-sweep unnecessarily
-    if (toDate) {
-        await db.collection('config').doc('integrations').set({ meli: { lastSyncDate: toDate } }, { merge: true });
-    }
-    console.log(`[MeliBackfill] Done. Saved ${saved}/${meliOrders.length} orders.`);
-    return { success: true, found: meliOrders.length, saved };
 });
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
 exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (_ctx) => {

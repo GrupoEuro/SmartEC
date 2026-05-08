@@ -83,16 +83,36 @@ async function evaluateConditions(
 
 // ── Gemini Caller ─────────────────────────────────────────────────────────────
 
+/**
+ * Calls the Gemini API with a system prompt and message history.
+ *
+ * @param forceJson - Set true only for structured-output calls (analyzeMeliInsights).
+ *                    Leave false for free-text responses (EuroMind chat, weekly report).
+ *                    Using responseMimeType:'application/json' on free-text calls causes
+ *                    internal errors when Gemini cannot produce valid JSON.
+ */
 async function callGemini(
     systemPrompt: string,
     history: Array<{ role: 'user'|'model'; parts: Array<{ text: string }> }>,
-    modelName = 'gemini-2.5-pro', temperature = 0.2, maxTokens = 8192
+    modelName = 'gemini-2.5-pro',
+    temperature = 0.2,
+    maxTokens = 8192,
+    forceJson = false
 ): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
     const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = await import('@google/generative-ai');
     const apiKey = functions.config().gemini?.apikey;
-    
+
     if (!apiKey) {
         throw new Error('Gemini API key is not configured in Firebase environment (gemini.apikey)');
+    }
+
+    // Must have at least one user turn
+    const contents = history.map(msg => ({
+        role: msg.role === 'model' ? 'model' : 'user',
+        parts: msg.parts.map(p => ({ text: p.text }))
+    }));
+    if (contents.length === 0) {
+        throw new Error('[callGemini] history cannot be empty — at least one user message is required.');
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -102,38 +122,28 @@ async function callGemini(
         generationConfig: {
             temperature,
             maxOutputTokens: maxTokens,
-            responseMimeType: "application/json"
+            // Only force JSON mode for structured-output calls.
+            // Free-text calls (EuroMind chat, weekly report) must NOT set this.
+            ...(forceJson ? { responseMimeType: 'application/json' } : {}),
         },
         safetySettings: [
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE }
-        ]
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT,        threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,        threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,  threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,  threshold: HarmBlockThreshold.BLOCK_NONE },
+        ],
     });
 
-    const formattedHistory = history.map(msg => ({
-        role: msg.role === 'model' ? 'model' : 'user',
-        parts: msg.parts.map(p => ({ text: p.text }))
-    }));
-
     try {
-        const chat = model.startChat({ history: formattedHistory });
-        // The last message should be sent using sendMessage, so we extract it if there is one.
-        // Wait, if it's a stateless completion call, we can just use generateContent with the history as contents!
-        
-        // Actually, generateContent accepts the full array of contents directly.
-        const contents = formattedHistory;
-        const result = await model.generateContent({ contents });
+        const result   = await model.generateContent({ contents });
         const response = await result.response;
-        
         return {
-            text: response.text(),
-            inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-            outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0
+            text:         response.text(),
+            inputTokens:  response.usageMetadata?.promptTokenCount     ?? 0,
+            outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
         };
     } catch (err: any) {
-        console.error('[callGemini] Google Generative AI SDK Error:', err.message);
+        console.error('[callGemini] Gemini SDK error:', err.message);
         throw err;
     }
 }
@@ -406,7 +416,7 @@ No devuelvas ningún texto fuera del JSON. Devuelve el JSON puro sin bloques mar
         }];
 
         try {
-            const { text } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.2, 8192);
+            const { text } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.2, 8192, true /* forceJson */);
             let parsedInsights;
             
             try {

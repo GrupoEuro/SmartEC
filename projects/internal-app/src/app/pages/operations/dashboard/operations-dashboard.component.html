@@ -127,12 +127,36 @@
             </div>
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">
                 {{ 'OPERATIONS.DASHBOARD.METRICS.SALES' | translate: { timeframe: timeframe() } }}</div>
-            @if (showProjection() && mtdProjection() !== null) {
-            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
-                <app-icon name="trending-up" [size]="14" class="text-teal-400 shrink-0"></app-icon>
-                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
-                <span class="text-xs font-semibold text-teal-300">{{ formatCurrency(mtdProjection()!) }}</span>
+            @if (showProjection() && timeframe() === 'MTD') {
+            <!-- Today actual + today projection -->
+            <div class="fdm-projection flex items-center justify-between gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <div class="flex items-center gap-1.5">
+                    <app-icon name="sun" [size]="13" class="text-amber-400 shrink-0"></app-icon>
+                    <span class="text-xs text-zinc-400">Hoy real</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-white font-mono">{{ formatCurrency(todaySalesActual()) }}</span>
+                    @if (todayProjection() !== null) {
+                    <span class="text-[10px] text-zinc-500">→</span>
+                    <span class="text-[10px] font-bold text-amber-400 font-mono" title="Proyección de cierre del día (fórmula LY × velocidad)">{{ formatCurrency(todayProjection()!) }}</span>
+                    }
+                </div>
             </div>
+            <!-- EOM projection -->
+            @if (mtdProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1">
+                <app-icon name="trending-up" [size]="13" class="text-teal-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-teal-300 ml-auto font-mono">{{ formatCurrency(mtdProjection()!) }}</span>
+            </div>
+            <!-- LY indicator -->
+            <div class="flex items-center gap-1 mt-0.5">
+                <app-icon name="zap" [size]="10" class="text-zinc-600 shrink-0"></app-icon>
+                <span class="text-[9px] text-zinc-600 italic">
+                    {{ lyDailyData().length > 0 ? 'Fórmula: velocidad × AA' : 'Fórmula: promedio diario (sin dato AA)' }}
+                </span>
+            </div>
+            }
             }
         </div>
 
@@ -412,6 +436,120 @@
         </div>
     </div>
 
+    <!-- ── Sales Velocity Pulse ──────────────────────────────────────────── -->
+    @if (salesVelocity() !== null && timeframe() === 'MTD') {
+    <div class="mb-6 rounded-xl border overflow-hidden shadow-lg transition-all"
+         [class]="salesVelocity()!.status === 'ahead'    ? 'bg-zinc-800 border-emerald-500/40' :
+                  salesVelocity()!.status === 'ok'        ? 'bg-zinc-800 border-zinc-600'       :
+                  salesVelocity()!.status === 'warning'   ? 'bg-zinc-800 border-amber-500/50'   :
+                  salesVelocity()!.status === 'critical'  ? 'bg-zinc-800 border-red-500/50'     :
+                                                            'bg-zinc-800 border-zinc-700'">
+
+        <!-- Header bar -->
+        <div class="flex items-center justify-between px-5 py-3 border-b"
+             [class]="salesVelocity()!.status === 'ahead'   ? 'bg-emerald-500/8 border-emerald-500/20' :
+                      salesVelocity()!.status === 'ok'       ? 'bg-zinc-900/40 border-zinc-700'        :
+                      salesVelocity()!.status === 'warning'  ? 'bg-amber-500/8  border-amber-500/20'   :
+                      salesVelocity()!.status === 'critical' ? 'bg-red-500/8    border-red-500/20'     :
+                                                               'bg-zinc-900/40 border-zinc-700'">
+            <div class="flex items-center gap-2">
+                <app-icon name="activity" [size]="16"
+                    [class]="salesVelocity()!.status === 'ahead'   ? 'text-emerald-400' :
+                             salesVelocity()!.status === 'ok'       ? 'text-zinc-400'    :
+                             salesVelocity()!.status === 'warning'  ? 'text-amber-400'   :
+                             salesVelocity()!.status === 'critical' ? 'text-red-400'     : 'text-zinc-500'">
+                </app-icon>
+                <span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Pulso de Ventas</span>
+                <!-- Live dot -->
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
+                          [class]="salesVelocity()!.status === 'ahead'   ? 'bg-emerald-400' :
+                                   salesVelocity()!.status === 'ok'       ? 'bg-zinc-400'    :
+                                   salesVelocity()!.status === 'warning'  ? 'bg-amber-400'   :
+                                   salesVelocity()!.status === 'critical' ? 'bg-red-400'     : 'bg-zinc-500'"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2"
+                          [class]="salesVelocity()!.status === 'ahead'   ? 'bg-emerald-400' :
+                                   salesVelocity()!.status === 'ok'       ? 'bg-zinc-400'    :
+                                   salesVelocity()!.status === 'warning'  ? 'bg-amber-400'   :
+                                   salesVelocity()!.status === 'critical' ? 'bg-red-400'     : 'bg-zinc-500'"></span>
+                </span>
+            </div>
+            <!-- Main status message -->
+            <span class="text-sm font-semibold"
+                  [class]="salesVelocity()!.status === 'ahead'   ? 'text-emerald-300' :
+                           salesVelocity()!.status === 'ok'       ? 'text-zinc-300'    :
+                           salesVelocity()!.status === 'warning'  ? 'text-amber-300'   :
+                           salesVelocity()!.status === 'critical' ? 'text-red-300'     : 'text-zinc-500'">
+                {{ salesVelocity()!.insight }}
+            </span>
+        </div>
+
+        <!-- Body: metric grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-zinc-700/60">
+
+            <!-- Hoy -->
+            <div class="px-5 py-4 flex flex-col gap-1">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Hoy (acumulado)</span>
+                <span class="text-xl font-black text-white font-mono">{{ formatCurrency(salesVelocity()!.todaySales) }}</span>
+                <span class="text-[10px] text-zinc-500">
+                    {{ salesVelocity()!.hoursElapsed | number:'1.1-1' }}h transcurridas
+                    · {{ formatCurrency(salesVelocity()!.todayRate) }}/hr
+                </span>
+            </div>
+
+            <!-- Ayer misma hora -->
+            <div class="px-5 py-4 flex flex-col gap-1">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Ayer (misma hora)</span>
+                <span class="text-xl font-black font-mono"
+                      [class]="salesVelocity()!.vsYesterdayPct !== null && salesVelocity()!.vsYesterdayPct! < 0 ? 'text-zinc-400' : 'text-zinc-200'">
+                    {{ formatCurrency(salesVelocity()!.yesterdayAtSameHour) }}
+                </span>
+                @if (salesVelocity()!.vsYesterdayPct !== null) {
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded-full self-start font-mono"
+                      [class]="salesVelocity()!.vsYesterdayPct! >= 0
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                          : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                    {{ salesVelocity()!.vsYesterdayPct! >= 0 ? '+' : '' }}{{ salesVelocity()!.vsYesterdayPct! | number:'1.1-1' }}%
+                </span>
+                }
+                <span class="text-[10px] text-zinc-600 font-mono">
+                    Cierre ayer: {{ formatCurrency(salesVelocity()!.yesterdayFull) }}
+                </span>
+            </div>
+
+            <!-- Año anterior mismo día -->
+            <div class="px-5 py-4 flex flex-col gap-1">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">AA mismo día (total)</span>
+                @if (salesVelocity()!.lyToday !== null) {
+                <span class="text-xl font-black text-zinc-400 font-mono">{{ formatCurrency(salesVelocity()!.lyToday!) }}</span>
+                @if (salesVelocity()!.vsLyPct !== null) {
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded-full self-start font-mono"
+                      [class]="salesVelocity()!.vsLyPct! >= 0
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                          : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                    {{ salesVelocity()!.vsLyPct! >= 0 ? '+' : '' }}{{ salesVelocity()!.vsLyPct! | number:'1.1-1' }}% vs AA
+                </span>
+                }
+                } @else {
+                <span class="text-sm text-zinc-600 italic">Sin dato AA</span>
+                }
+            </div>
+
+            <!-- Diagnóstico -->
+            <div class="px-5 py-4 flex flex-col gap-1 justify-center">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Diagnóstico</span>
+                <p class="text-xs leading-relaxed"
+                   [class]="salesVelocity()!.status === 'ahead'   ? 'text-emerald-300' :
+                            salesVelocity()!.status === 'ok'       ? 'text-zinc-300'    :
+                            salesVelocity()!.status === 'warning'  ? 'text-amber-300'   :
+                            salesVelocity()!.status === 'critical' ? 'text-red-300'     : 'text-zinc-500'">
+                    {{ salesVelocity()!.insightDetail }}
+                </p>
+            </div>
+
+        </div>
+    </div>
+    }
 
     <!-- Charts Section -->
     <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="charts-section transition-opacity duration-300">
@@ -1046,6 +1184,39 @@
             <app-ai-referrer-widget></app-ai-referrer-widget>
         </div>
     </div>
+
+    <!-- ── EuroMind Weekly Report ────────────────────────────────────────── -->
+    <div class="mt-10 mb-8">
+        <div class="section-header flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <app-icon name="cpu" [size]="20" class="text-indigo-400"></app-icon>
+                EuroMind Reporte Semanal
+            </h2>
+            <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">
+                Análisis Ejecutivo
+            </span>
+        </div>
+        
+        <div class="bg-zinc-800 rounded-xl border border-indigo-500/30 shadow-lg p-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+            
+            @if (euromindReport()) {
+                <div class="relative z-10 text-zinc-300 text-sm whitespace-pre-wrap leading-relaxed">
+                    {{ euromindReport().content }}
+                </div>
+                <div class="relative z-10 mt-4 text-[10px] text-zinc-500 font-mono">
+                    Generado: {{ euromindReport().createdAt?.toDate() | date:'short' }}
+                </div>
+            } @else {
+                <div class="relative z-10 flex flex-col items-center justify-center py-8 text-zinc-500">
+                    <app-icon name="loader" [size]="32" class="mb-3 opacity-40 animate-spin"></app-icon>
+                    <p class="text-sm">Buscando el reporte semanal de EuroMind...</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <app-euromind-chat></app-euromind-chat>
 
 
 </div>

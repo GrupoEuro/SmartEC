@@ -183,24 +183,23 @@ export class OrderPriorityService {
         approaching: number;
         complianceRate: number;
     }> {
+        // ✅ Single query — filter overdue/approaching in memory (saves 2 Firestore reads)
         const allSnapshot = await getDocs(this.prioritiesCollection);
-        const total = allSnapshot.size;
-
-        const overdueSnapshot = await getDocs(
-            query(this.prioritiesCollection, where('isOverdue', '==', true))
-        );
-        const overdue = overdueSnapshot.size;
-
         const sixHoursFromNow = Timestamp.fromMillis(Date.now() + (6 * 60 * 60 * 1000));
-        const approachingSnapshot = await getDocs(
-            query(
-                this.prioritiesCollection,
-                where('isOverdue', '==', false),
-                where('sla', '<=', sixHoursFromNow)
-            )
-        );
-        const approaching = approachingSnapshot.size;
 
+        let overdue = 0;
+        let approaching = 0;
+
+        allSnapshot.docs.forEach(doc => {
+            const p = doc.data();
+            if (p['isOverdue'] === true) {
+                overdue++;
+            } else if (p['sla'] && p['sla'].toMillis() <= sixHoursFromNow.toMillis()) {
+                approaching++;
+            }
+        });
+
+        const total = allSnapshot.size;
         const onTime = total - overdue - approaching;
         const complianceRate = total > 0 ? ((onTime + approaching) / total) * 100 : 100;
 

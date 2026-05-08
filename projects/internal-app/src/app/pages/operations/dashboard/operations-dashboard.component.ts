@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { Firestore, doc, getDoc, collection, getDocs } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, collection, getDocs, query, where, orderBy, limit } from '@angular/fire/firestore';
+import { Subscription } from 'rxjs';
 
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
@@ -83,6 +84,7 @@ import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.c
 import { ActiveCampaignsWidgetComponent } from '../shared/active-campaigns-widget/active-campaigns-widget.component';
 import { ActiveCouponsWidgetComponent } from '../shared/active-coupons-widget/active-coupons-widget.component';
 import { AiReferrerWidgetComponent } from '../shared/ai-referrer-widget/ai-referrer-widget.component';
+import { EuroMindChatComponent } from './euromind-chat/euromind-chat.component';
 
 const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
     'AGUASCALIENTES': { lat: 21.8853, lng: -102.2916 },
@@ -126,7 +128,7 @@ const MEXICO_STATES_COORDS: Record<string, { lat: number, lng: number }> = {
 @Component({
     selector: 'app-operations-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule, MapMarker, MapInfoWindow, ActiveCampaignsWidgetComponent, ActiveCouponsWidgetComponent, AiReferrerWidgetComponent],
+    imports: [CommonModule, RouterModule, FormsModule, TranslateModule, AdminPageHeaderComponent, AppIconComponent, GoogleMapsModule, MapMarker, MapInfoWindow, ActiveCampaignsWidgetComponent, ActiveCouponsWidgetComponent, AiReferrerWidgetComponent, EuroMindChatComponent],
     templateUrl: './operations-dashboard.component.html',
     styleUrls: ['./operations-dashboard.component.css'],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -139,6 +141,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private toast             = inject(ToastService);
     private translate         = inject(TranslateService);
     private bqService         = inject(MetricsBigqueryService);
+
+    euromindReport = signal<any>(null);
 
     timeframe = signal<'MTD' | 'PM' | 'YTD'>('MTD');
     channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf'>('ALL');
@@ -239,31 +243,81 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const now = new Date();
         const todayDay = now.getDate();
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
 
-        // If we have LY daily data, use Velocity Multiplier pattern
+        // ── Strategy A: Velocity Multiplier using LY daily data ────────────────
+        // velocityMultiplier = (CY MTD sales) / (LY sales over same elapsed period)
+        // Remaining projection = future LY days × multiplier
         const lyData = this.lyDailyData();
         if (lyData && lyData.length === totalDays) {
             let lySalesMTD = 0;
             for (let i = 0; i < todayDay - 1; i++) lySalesMTD += lyData[i];
-            
-            const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
             lySalesMTD += lyData[todayDay - 1] * fractionalDayPart;
 
             if (lySalesMTD > 0) {
                 const velocityMultiplier = mtdSales / lySalesMTD;
-                let futureLySales = 0;
-                futureLySales += lyData[todayDay - 1] * (1 - fractionalDayPart);
+                // Today's remaining portion + all future days, scaled by multiplier
+                let futureLySales = lyData[todayDay - 1] * (1 - fractionalDayPart);
                 for (let i = todayDay; i < totalDays; i++) futureLySales += lyData[i];
-
                 return mtdSales + (futureLySales * velocityMultiplier);
             }
         }
 
-        // Fallback to straight-line
-        const fractionalDay = todayDay - 1 + (now.getHours() / 24) + (now.getMinutes() / 1440);
+        // ── Strategy B: Straight-line run-rate (no LY data available) ──────────
+        // Elapsed = complete days + fraction of today consumed
+        const fractionalDay = (todayDay - 1) + fractionalDayPart;
         if (fractionalDay <= 0.1) return null;
         return (mtdSales / fractionalDay) * totalDays;
     });
+
+    /**
+     * Today's actual sales so far (CY).
+     * Reads directly from the stats signal which is always up-to-date.
+     * We keep a separate todayOrders signal that applyFilters() populates.
+     */
+    todayOrdersTotal = signal<number>(0);
+
+    todaySalesActual = computed<number>(() => this.todayOrdersTotal());
+
+    /**
+     * Today's full-day sales projection.
+     *
+     * Formula priority:
+     * 1. LY same calendar day × velocity multiplier → scales LY day by current run-rate
+     * 2. Straight-line hourly run-rate: (sales so far) / (hours elapsed) × 24
+     */
+    todayProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const todaySales = this.todaySalesActual();
+        const now = new Date();
+        const hoursElapsed = now.getHours() + now.getMinutes() / 60;
+        if (hoursElapsed < 0.5) return null; // too early, no meaningful data
+
+        // ── Strategy A: LY same day × velocity multiplier ─────────────────────
+        const lyData = this.lyDailyData();
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        if (lyData && lyData.length === totalDays) {
+            const lyToday = lyData[now.getDate() - 1]; // LY sales on the same calendar day
+            if (lyToday > 0) {
+                // Velocity multiplier from the full MTD picture
+                const mtdSales = this.stats().monthlySales;
+                const todayDay = now.getDate();
+                const fractionalDayPart = now.getHours() / 24 + now.getMinutes() / 1440;
+                let lySalesMTD = 0;
+                for (let i = 0; i < todayDay - 1; i++) lySalesMTD += lyData[i];
+                lySalesMTD += lyData[todayDay - 1] * fractionalDayPart;
+
+                if (lySalesMTD > 0 && mtdSales > 0) {
+                    const velocityMultiplier = mtdSales / lySalesMTD;
+                    return lyToday * velocityMultiplier;
+                }
+            }
+        }
+
+        // ── Strategy B: Straight-line hourly run-rate ──────────────────────────
+        return (todaySales / hoursElapsed) * 24;
+    });
+
 
     mtdPiecesProjection = computed<number | null>(() => {
         if (this.timeframe() !== 'MTD') return null;
@@ -301,6 +355,136 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         if (fractionalDay <= 0.1) return null;
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         return Math.round((mtdOrders / fractionalDay) * totalDays);
+    });
+
+    /**
+     * Sales Velocity Monitor — answers "Is everything OK today?"
+     *
+     * Compares today's cumulative sales vs. yesterday at the EXACT same hour
+     * (same-hour apples-to-apples), derives a health status, a % delta, and
+     * a specific actionable insight string for the operations team.
+     *
+     * Data sources:
+     *  - allFetchedOrders (live MTD orders from Firestore)
+     *  - lyDailyData      (last-year per-day totals from BigQuery)
+     *
+     * Status thresholds:
+     *  ahead    > +10%  of yesterday same-hour pace
+     *  ok       -15% to +10%
+     *  warning  -35% to -15%
+     *  critical < -35%
+     */
+    salesVelocity = computed<{
+        todaySales:           number;
+        todayRate:            number;   // $ per hour today
+        yesterdayAtSameHour:  number;   // yesterday's total up to this hour
+        yesterdayFull:        number;   // yesterday's complete day total
+        yesterdayRate:        number | null;
+        vsYesterdayPct:       number | null;
+        vsYesterdayAbs:       number | null;
+        lyToday:              number | null;
+        vsLyPct:              number | null;
+        hoursElapsed:         number;
+        status:               'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        insight:              string;
+        insightDetail:        string;
+    } | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+
+        const now          = new Date();
+        const hoursElapsed = now.getHours() + now.getMinutes() / 60;
+        if (hoursElapsed < 0.5) return null; // too early in the day
+
+        const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
+
+        const todayY = now.getFullYear();
+        const todayM = now.getMonth();
+        const todayD = now.getDate();
+
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestY = yest.getFullYear();
+        const yestM = yest.getMonth();
+        const yestD = yest.getDate();
+
+        let todaySales          = 0;
+        let yesterdayAtSameHour = 0;
+        let yesterdayFull       = 0;
+
+        this.allFetchedOrders.forEach(o => {
+            if (NON_REVENUE.includes(o.status as string)) return;
+            const d = this.getJsDate(o.createdAt);
+            const isToday     = d.getFullYear() === todayY && d.getMonth() === todayM && d.getDate() === todayD;
+            const isYesterday = d.getFullYear() === yestY  && d.getMonth() === yestM  && d.getDate() === yestD;
+
+            if (isToday) {
+                todaySales += o.total || 0;
+            }
+            if (isYesterday) {
+                yesterdayFull += o.total || 0;
+                // Same-hour comparison: only count yesterday orders up to the current hour/minute
+                if ((d.getHours() + d.getMinutes() / 60) <= hoursElapsed) {
+                    yesterdayAtSameHour += o.total || 0;
+                }
+            }
+        });
+
+        const todayRate     = todaySales / hoursElapsed;
+        const yesterdayRate = yesterdayAtSameHour > 0 ? yesterdayAtSameHour / hoursElapsed : null;
+
+        // LY same calendar day total
+        const lyData = this.lyDailyData();
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const lyToday = (lyData && lyData.length === totalDays) ? lyData[todayD - 1] : null;
+
+        // % deltas
+        const vsYesterdayPct = yesterdayAtSameHour > 0
+            ? ((todaySales - yesterdayAtSameHour) / yesterdayAtSameHour) * 100
+            : null;
+        const vsYesterdayAbs = yesterdayAtSameHour > 0
+            ? todaySales - yesterdayAtSameHour
+            : null;
+        const vsLyPct = lyToday && lyToday > 0
+            ? ((todaySales - lyToday) / lyToday) * 100
+            : null;
+
+        // Health status
+        let status: 'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        if (vsYesterdayPct === null)      status = 'no-data';
+        else if (vsYesterdayPct >= 10)    status = 'ahead';
+        else if (vsYesterdayPct >= -15)   status = 'ok';
+        else if (vsYesterdayPct >= -35)   status = 'warning';
+        else                              status = 'critical';
+
+        // Primary insight
+        const fmtCur = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+        let insight = '';
+        let insightDetail = '';
+
+        if (status === 'no-data') {
+            insight = 'Sin datos de ayer para comparar.';
+            insightDetail = 'Asegúrate de que los pedidos de ayer estén sincronizados.';
+        } else if (status === 'ahead') {
+            insight = `✅ Ritmo superior al de ayer — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por encima`;
+            insightDetail = `Ayer a las ${now.getHours()}h llevabas ${fmtCur(yesterdayAtSameHour)}. Hoy: ${fmtCur(todaySales)}.`;
+        } else if (status === 'ok') {
+            insight = `🟢 Ritmo normal — en línea con ayer`;
+            insightDetail = `Diferencia de ${fmtCur(Math.abs(vsYesterdayAbs!))} vs ayer a la misma hora. Ritmo: ${fmtCur(Math.round(todayRate))}/hr.`;
+        } else if (status === 'warning') {
+            insight = `⚠️ Ritmo lento — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
+            insightDetail = `Ayer a esta hora: ${fmtCur(yesterdayAtSameHour)} → hoy: ${fmtCur(todaySales)}. Faltan ${fmtCur(Math.abs(vsYesterdayAbs!))} para igualar el ritmo.`;
+        } else {
+            insight = `🚨 Ritmo crítico — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
+            insightDetail = `Ayer a esta hora cerrabas ${fmtCur(yesterdayAtSameHour)}. Hoy solo ${fmtCur(todaySales)}. Revisa canal MeLi y tienda.`;
+        }
+
+        return {
+            todaySales, todayRate,
+            yesterdayAtSameHour, yesterdayFull, yesterdayRate,
+            vsYesterdayPct, vsYesterdayAbs,
+            lyToday, vsLyPct,
+            hoursElapsed, status, insight, insightDetail
+        };
     });
 
     toggleProjection() {
@@ -453,6 +637,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private priorityChart?: Chart;
     private trendChart?: Chart;
 
+    /** Live Firestore subscription — unsubscribed on destroy or timeframe change. */
+    private liveOrdersSub?: Subscription;
+
     /** ALL products unsorted — set by calculateTopProducts(). */
     private allProductsSorted = signal<{ name: string; units: number; revenue: number }[]>([]);
     topProductsMode = signal<'units' | 'amount'>('units');
@@ -475,6 +662,24 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     ngOnInit() {
         this.loadDashboardData();
+        this.loadEuromindReport();
+    }
+
+    async loadEuromindReport() {
+        try {
+            const q = query(
+                collection(this.firestore, 'euromind_reports'), 
+                where('type', '==', 'weekly'), 
+                orderBy('createdAt', 'desc'), 
+                limit(1)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                this.euromindReport.set(snap.docs[0].data());
+            }
+        } catch (e) {
+            console.error('Error loading euromind report:', e);
+        }
     }
 
     ngAfterViewInit() {
@@ -487,6 +692,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.topProductsChart?.destroy();
         this.priorityChart?.destroy();
         this.trendChart?.destroy();
+        // Unsubscribe from live Firestore stream
+        this.liveOrdersSub?.unsubscribe();
     }
 
     private getJsDate(timestamp: any): Date {
@@ -553,20 +760,27 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             this.loadLyDailyForMTD();
         }
 
-        // Live stream — automatically reflects new orders from MercadoLibre
-        // and storefront webhooks without requiring a page refresh.
-        this.orderService.getOrdersByDateRange(startDate, endDate).subscribe({
-            next: (orders) => {
-                this.allFetchedOrders = orders;
-                this.applyFilters();
-                this.isLoading.set(false);
-            },
-            error: (error: any) => {
-                console.error('Error loading dashboard data:', error);
-                this.toast.error(this.translate.instant('OPERATIONS.DASHBOARD.ERROR_LOADING'));
-                this.isLoading.set(false);
-            }
-        });
+        // Cancel any previous live subscription before opening a new one.
+        this.liveOrdersSub?.unsubscribe();
+
+        // Real-time Firestore stream — auto-updates when MeLi webhook orders land.
+        // NOTE: no debounceTime here — we need isLoading to turn false quickly so
+        // the chart canvas becomes visible BEFORE Chart.js initializes. Debouncing
+        // was causing Chart.js to render on a 0-height invisible canvas.
+        this.liveOrdersSub = this.orderService
+            .getOrdersByDateRangeLive(startDate, endDate)
+            .subscribe({
+                next: (orders) => {
+                    this.allFetchedOrders = orders;
+                    this.isLoading.set(false);   // Make canvas visible FIRST
+                    this.applyFilters();          // Then schedule chart render
+                },
+                error: (error: any) => {
+                    console.error('Error loading dashboard data:', error);
+                    this.toast.error(this.translate.instant('OPERATIONS.DASHBOARD.ERROR_LOADING'));
+                    this.isLoading.set(false);
+                }
+            });
     }
 
     /**
@@ -718,13 +932,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             clearTimeout(this.chartRenderTimeout);
         }
 
-        this.chartRenderTimeout = setTimeout(() => {
-            if (document.getElementById('trendChart')) {
-                    this.createTopProductsChart();
-                    this.createPriorityChart();
-                    this.createTrendChart(filteredOrders);
-                }
-        }, 150);
+        // requestAnimationFrame ensures the DOM has been painted (isLoading = false
+        // → invisible class removed) before Chart.js reads canvas dimensions.
+        requestAnimationFrame(() => {
+            this.chartRenderTimeout = setTimeout(() => {
+                console.log('[Dashboard] Chart render tick — trendChart canvas:', !!document.getElementById('trendChart'));
+                try { if (document.getElementById('topProductsChart')) this.createTopProductsChart(); } catch(e) { console.error('[Dashboard] topProductsChart error:', e); }
+                try { if (document.getElementById('priorityChart'))    this.createPriorityChart(); }    catch(e) { console.error('[Dashboard] priorityChart error:', e); }
+                try { if (document.getElementById('trendChart'))       this.createTrendChart(filteredOrders); } catch(e) { console.error('[Dashboard] trendChart error:', e); }
+            }, 100);
+        });
     }
 
 
@@ -1024,7 +1241,20 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         };
 
         this.stats.set(stats);
-        
+
+        // Calculate today's actual sales total — feeds todaySalesActual / todayProjection signals.
+        const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
+        const todayTotal = orders
+            .filter(o => {
+                if (NON_REVENUE.includes(o.status as string)) return false;
+                const d = this.getJsDate(o.createdAt);
+                return d.getFullYear() === today.getFullYear()
+                    && d.getMonth()    === today.getMonth()
+                    && d.getDate()     === today.getDate();
+            })
+            .reduce((sum, o) => sum + (o.total || 0), 0);
+        this.todayOrdersTotal.set(todayTotal);
+
         // Populate specific widget stats respecting timeframe
         // These are now called directly from applyFilters
         // this.calculateSLAStats(orders);
@@ -1558,6 +1788,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     private createTrendChart(orders: Order[]) {
         const canvas = document.getElementById('trendChart') as HTMLCanvasElement;
+        console.log('[TrendChart] Called — orders:', orders.length, '| canvas found:', !!canvas);
         if (!canvas) return;
 
         if (this.trendChart) {
@@ -1635,22 +1866,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const cancelledData: number[] = new Array(dataLength).fill(0);
         const salesData: number[] = new Array(dataLength).fill(0);
 
-        let debugCount = 0;
         orders.forEach(o => {
             const orderDate = this.getJsDate(o.createdAt || o.updatedAt);
             const index = getIndexFn(orderDate);
-
-            // Isolate parsing logs specifically to January (Month index 0)
-            if (orderDate.getMonth() === 0 && debugCount++ < 5) {
-                console.log(`Debug YTD Chart [Jan Order] ${o.id}:`, {
-                    rawCreatedAt: o.createdAt,
-                    parsedDate: orderDate,
-                    year: orderDate.getFullYear(),
-                    month: orderDate.getMonth(),
-                    assignedIndex: index,
-                    expectedLength: dataLength
-                });
-            }
 
             if (index >= 0 && index < dataLength) {
                 // payment_failed = ghost order; skip all chart buckets
@@ -1669,6 +1887,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         });
 
         const safeSalesData = salesData.map(val => Number.isNaN(val) ? 0 : val);
+        console.log('[TrendChart] dataLength:', dataLength, '| salesData total:', safeSalesData.reduce((a, b) => a + b, 0).toFixed(0), '| first 7 days:', safeSalesData.slice(0, 7));
 
         const datasets: any[] = [
             {
@@ -1735,35 +1954,39 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         if (this.timeframe() === 'MTD' && this.showProjection()) {
             const now = new Date();
-            const todayIdx = now.getDate() - 1;
+            const todayIdx = now.getDate() - 1; // 0-based index of today
             const projData = new Array(dataLength).fill(null);
-            
-            // Start the projection line from yesterday's actual sales to make it continuous
-            if (todayIdx > 0 && (todayIdx - 1) < dataLength) {
-                projData[todayIdx - 1] = safeSalesData[todayIdx - 1];
+            const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
+
+            // Anchor projection line at today's actual (partial) sales.
+            // Projection starts TOMORROW (todayIdx + 1) to avoid double-counting today.
+            if (todayIdx < dataLength) {
+                projData[todayIdx] = safeSalesData[todayIdx];
             }
 
             const lyData = this.lyDailyData();
             if (lyData && lyData.length === dataLength) {
+                // Build LY MTD up-to-and-including today's fraction
                 let lySalesMTD = 0;
                 for (let i = 0; i < todayIdx; i++) lySalesMTD += lyData[i];
-                const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
                 lySalesMTD += lyData[todayIdx] * fractionalDayPart;
 
                 const mtdSales = this.stats().monthlySales;
-                let velocityMultiplier = 1;
-                if (lySalesMTD > 0 && mtdSales > 0) {
-                    velocityMultiplier = mtdSales / lySalesMTD;
-                }
+                const velocityMultiplier = lySalesMTD > 0 && mtdSales > 0
+                    ? mtdSales / lySalesMTD
+                    : 1;
 
-                for (let i = todayIdx; i < dataLength; i++) {
+                // Fill future days (starting from tomorrow)
+                for (let i = todayIdx + 1; i < dataLength; i++) {
                     projData[i] = lyData[i] * velocityMultiplier;
                 }
             } else {
+                // Fallback: straight-line average.
+                // Elapsed = complete days + today's fraction (same denominator as mtdProjection computed)
                 const mtdSales = this.stats().monthlySales;
-                const fractionalDay = todayIdx + (now.getHours() / 24) + (now.getMinutes() / 1440);
-                const averageDaily = mtdSales / Math.max(fractionalDay, 0.1);
-                for (let i = todayIdx; i < dataLength; i++) {
+                const elapsed = todayIdx + fractionalDayPart; // e.g. day 7 noon → 6.5
+                const averageDaily = mtdSales / Math.max(elapsed, 0.1);
+                for (let i = todayIdx + 1; i < dataLength; i++) {
                     projData[i] = averageDaily;
                 }
             }
@@ -1780,18 +2003,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 yAxisID: 'y1',
                 borderWidth: 2,
                 pointBackgroundColor: '#f59e0b',
-                pointRadius: 0,
+                pointRadius: 3,
                 order: 0
             });
         }
 
-        console.log(`Debug YTD Final Payload [Length: ${dataLength}]:`, {
-            labels,
-            salesData,
-            pendingData,
-            shippedData,
-            deliveredData
-        });
 
         const config: ChartConfiguration = {
             type: 'bar',

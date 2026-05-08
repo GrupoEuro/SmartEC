@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
 import { CouponService } from './coupon.service';
 import { UserManagementService } from './user-management.service';
+import { SettingsService } from './settings.service';
+import { ProductService } from './product.service';
 import {
     ApprovalRequest,
     ApprovalRequestType,
@@ -27,6 +29,9 @@ export class ApprovalWorkflowService {
     private notificationService = inject(NotificationService);
     private couponService = inject(CouponService);
     private userService = inject(UserManagementService);
+    private productService = inject(ProductService);
+
+    private settingsService = inject(SettingsService);
 
     private approvalsCollection = collection(this.firestore, 'approval_requests');
 
@@ -51,7 +56,7 @@ export class ApprovalWorkflowService {
         {
             type: 'PRICE_CHANGE',
             autoApproveConditions: {
-                maxPriceChangePercentage: 10
+                maxPriceChangePercentage: 15 // Default, will be updated via settings
             },
             requiresApproval: true,
             notifyOnAutoApprove: true,
@@ -76,6 +81,18 @@ export class ApprovalWorkflowService {
             expirationHours: 48
         }
     ];
+
+    constructor() {
+        this.settingsService.settings$.subscribe(settings => {
+            if (settings?.approvals?.priceChangeThreshold) {
+                const priceThreshold = this.thresholds.find(t => t.type === 'PRICE_CHANGE');
+                if (priceThreshold && priceThreshold.autoApproveConditions) {
+                    // Update the auto-approve condition based on settings (if change is LESS than threshold, it auto-approves)
+                    priceThreshold.autoApproveConditions.maxPriceChangePercentage = settings.approvals.priceChangeThreshold;
+                }
+            }
+        });
+    }
 
     /**
      * Create a new approval request
@@ -460,15 +477,32 @@ export class ApprovalWorkflowService {
             case 'COUPON_CREATION':
                 await this.executeCouponCreation(request.data as CouponApprovalData);
                 break;
+            case 'PRICE_CHANGE':
+                await this.executePriceChange(request.data);
+                break;
 
             // Other types will be implemented as we integrate
-            case 'PRICE_CHANGE':
             case 'BULK_DISCOUNT':
             case 'FLASH_SALE':
             case 'PROMOTION_CREATION':
                 console.log(`Execution for ${request.type} not yet implemented`);
                 break;
         }
+    }
+
+    /**
+     * Execute price change
+     */
+    private async executePriceChange(data: any): Promise<void> {
+        if (!data.productId || !data.field || data.newPrice === undefined) {
+            console.error('Invalid price change data', data);
+            return;
+        }
+
+        const updateData: any = {};
+        updateData[data.field] = data.newPrice; // field is 'price' or 'cog'
+
+        await this.productService.updateProduct(data.productId, updateData);
     }
 
     /**

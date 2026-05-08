@@ -27,7 +27,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     settingsForm: FormGroup;
     isLoading = true;
     isSaving = false;
-    activeTab: 'general' | 'social' | 'features' | 'hours' | 'seo' | 'shipping' = 'general';
+    activeTab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping' = 'general';
     daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
     // Character counters
@@ -76,6 +76,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
                 showPromoBanner: [false],
                 promoText: [''],
                 enableChatWidget: [true]
+            }),
+            approvals: this.fb.group({
+                priceChangeThreshold: [15, [Validators.required, Validators.min(1), Validators.max(100)]]
             }),
             seo: this.fb.group({
                 metaTitle: ['{{page_title}} | {{site_name}}'],
@@ -150,7 +153,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         });
     }
 
-    setActiveTab(tab: 'general' | 'social' | 'features' | 'hours' | 'seo' | 'shipping') {
+    setActiveTab(tab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping') {
         this.activeTab = tab;
     }
 

@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, query, where, getDocs, Timestamp } from '@angular/fire/firestore';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Observable, from, map } from 'rxjs';
 
 export interface CustomerProfile {
@@ -43,15 +44,24 @@ export interface InsightsData {
 })
 export class CustomerInsightsService {
     private firestore = inject(Firestore);
+    private functions = inject(Functions);
 
     getInsights(): Observable<InsightsData> {
         return from(this.calculateInsights());
     }
 
     private async calculateInsights(): Promise<InsightsData> {
-        // 1. Fetch ALL completed orders
-        // Note: In a real massive scale app, this would be a BigQuery job. 
-        // For now, Firestore client-side aggregation is acceptable for < 10k orders.
+        // ✅ Primary: BigQuery Cloud Function — avoids scanning ALL orders in Firestore
+        try {
+            const fn = httpsCallable(this.functions, 'queryCustomerInsights');
+            const result: any = await fn({});
+            return result.data as InsightsData;
+        } catch (bqError) {
+            console.warn('[CustomerInsightsService] BQ fallback to Firestore:', bqError);
+        }
+
+        // Firestore fallback (for < 10k orders)
+        // Note: once BQ function is deployed, this path will rarely execute
         const ordersRef = collection(this.firestore, 'orders');
         const q = query(ordersRef, where('status', 'in', ['processing', 'shipped', 'delivered', 'completed']));
         const snapshot = await getDocs(q);

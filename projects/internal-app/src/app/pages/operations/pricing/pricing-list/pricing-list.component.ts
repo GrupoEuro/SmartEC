@@ -20,6 +20,9 @@ import { PricingRule } from '../../../../core/models/pricing-rules.model';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { SparklineCellComponent } from './renderers/sparkline-cell/sparkline-cell.component'; // Import Sparkline
+import { SettingsService } from '../../../../core/services/settings.service';
+import { ApprovalWorkflowService } from '../../../../core/services/approval-workflow.service';
+import { ToastService } from '../../../../core/services/toast.service';
 
 interface PriceGridRow {
     sku: string;
@@ -65,6 +68,9 @@ export class PricingListComponent {
     private rulesService = inject(PricingRulesService);
     private productService = inject(ProductService);
     private categoryService = inject(CategoryService);
+    private settingsService = inject(SettingsService);
+    private approvalWorkflow = inject(ApprovalWorkflowService);
+    private toast = inject(ToastService);
 
     // Grid State
     loading = signal(true);
@@ -507,6 +513,46 @@ export class PricingListComponent {
                     // PricingHistory stores calc snapshots.
                 };
 
+                let requiresApproval = false;
+
+                // Check COG change for approval
+                if (colId === 'cog') {
+                    const oldCog = Number(event.oldValue) || 0;
+                    const newCog = Number(event.newValue) || 0;
+
+                    if (oldCog > 0 && newCog !== oldCog) {
+                        const changePct = Math.abs(newCog - oldCog) / oldCog * 100;
+                        const settings = await firstValueFrom(this.settingsService.settings$);
+                        const threshold = settings?.approvals?.priceChangeThreshold || 15;
+
+                        if (changePct >= threshold) {
+                            requiresApproval = true;
+                            
+                            // Revert visually
+                            event.node.setDataValue('cog', oldCog);
+                            strategyData.cog = oldCog;
+
+                            // Create approval request
+                            await this.approvalWorkflow.createApprovalRequest(
+                                'PRICE_CHANGE',
+                                {
+                                    productId: row.productId,
+                                    productName: row.name,
+                                    sku: row.sku,
+                                    oldPrice: oldCog,
+                                    newPrice: newCog,
+                                    changePercentage: changePct,
+                                    field: 'cog'
+                                },
+                                `Cambio de COG de $${oldCog} a $${newCog} (${changePct.toFixed(2)}%) supera el umbral.`,
+                                'HIGH'
+                            );
+
+                            this.toast.info('El cambio de costo supera el límite y fue enviado para aprobación.');
+                        }
+                    }
+                }
+
                 if (row.strategyId) {
                     await this.pricingCalculator.updatePricingStrategy(row.strategyId, strategyData);
                 } else {
@@ -516,11 +562,13 @@ export class PricingListComponent {
                 }
 
                 // Also update Product COG for consistency everywhere
-                if (colId === 'cog') {
+                if (colId === 'cog' && !requiresApproval) {
                     await this.productService.updateProduct(row.productId, { cog: row.cog } as any);
                 }
 
-                console.log('Strategy saved successfully');
+                if (!requiresApproval) {
+                    console.log('Strategy saved successfully');
+                }
 
             } catch (error) {
                 console.error('Error recalculating/saving:', error);

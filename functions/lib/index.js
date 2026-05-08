@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onCartAbandoned = exports.sitemapXml = exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.snapshotProjections = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
-exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.appendOrdersToBQForDate = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.queryMetrics = exports.backfillOrdersToBigQuery = exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = void 0;
+exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.meliBackfillOrders = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.backfillUserClaims = exports.syncUserClaims = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.snapshotProjections = exports.askEuroMind = exports.euromindWeeklyReport = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
+exports.queryGrowthMetrics = exports.queryPeriodData = exports.queryCustomerSegmentation = exports.queryCustomerMetrics = exports.queryCohortAnalysis = exports.queryCustomerInsights = exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.appendOrdersToBQForDate = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.queryMetrics = exports.backfillOrdersToBigQuery = exports.testMeliBilling = exports.generateInvoice = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.sitemapXml = exports.getPaidMediaInsights = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const mercadopago_1 = require("mercadopago");
@@ -9,6 +9,28 @@ const bigquery_1 = require("@google-cloud/bigquery");
 admin.initializeApp();
 const db = admin.firestore();
 const bigquery = new bigquery_1.BigQuery();
+// ── Config Cache ──────────────────────────────────────────────────────────────
+// Prevents config/integrations from being read on every function invocation.
+// Functions share the same Node.js process between warm invocations, so this
+// module-level cache persists across calls within the same function instance.
+let _cachedIntegrations = null;
+let _cacheExpiresAt = 0;
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+async function getIntegrationsConfig() {
+    var _a;
+    if (_cachedIntegrations && Date.now() < _cacheExpiresAt) {
+        return _cachedIntegrations;
+    }
+    const snap = await db.collection('config').doc('integrations').get();
+    _cachedIntegrations = (_a = snap.data()) !== null && _a !== void 0 ? _a : {};
+    _cacheExpiresAt = Date.now() + CONFIG_CACHE_TTL_MS;
+    return _cachedIntegrations;
+}
+/** Invalidate cache after writes that mutate config/integrations */
+function invalidateIntegrationsCache() {
+    _cachedIntegrations = null;
+    _cacheExpiresAt = 0;
+}
 // ── IA Agents (EuroMind) ──────────────────────────────────────────────────────
 var ai_agents_1 = require("./ai-agents");
 Object.defineProperty(exports, "inboxMessageRouter", { enumerable: true, get: function () { return ai_agents_1.inboxMessageRouter; } });
@@ -16,6 +38,8 @@ Object.defineProperty(exports, "agentOrchestrator", { enumerable: true, get: fun
 Object.defineProperty(exports, "agentHandoff", { enumerable: true, get: function () { return ai_agents_1.agentHandoff; } });
 Object.defineProperty(exports, "analyzeMeliInsights", { enumerable: true, get: function () { return ai_agents_1.analyzeMeliInsights; } });
 Object.defineProperty(exports, "testAnalyzeMeliInsights", { enumerable: true, get: function () { return ai_agents_1.testAnalyzeMeliInsights; } });
+Object.defineProperty(exports, "euromindWeeklyReport", { enumerable: true, get: function () { return ai_agents_1.euromindWeeklyReport; } });
+Object.defineProperty(exports, "askEuroMind", { enumerable: true, get: function () { return ai_agents_1.askEuroMind; } });
 // ── Analytics & Projections ───────────────────────────────────────────────────
 var analytics_1 = require("./analytics");
 Object.defineProperty(exports, "snapshotProjections", { enumerable: true, get: function () { return analytics_1.snapshotProjections; } });
@@ -4043,6 +4067,72 @@ exports.prunePriceHistory = functions
     }
     console.log(`[PruneHistory] Done. Total deleted: ${totalDeleted}`);
 });
+// ─── Manual Backfill Callable ─────────────────────────────────────────────────
+// Admin-only: sweeps MeLi orders from a given ISO date range and upserts them.
+// Used to fill gaps caused by cron or webhook failures.
+// Input: { fromDate: '2026-05-06T23:30:00.000Z', toDate?: '2026-05-07T16:40:00.000Z' }
+exports.meliBackfillOrders = functions
+    .runWith({ timeoutSeconds: 300, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const role = (_a = context.auth.token) === null || _a === void 0 ? void 0 : _a.role;
+    if (!['SUPER_ADMIN', 'ADMIN'].includes(role))
+        throw new functions.https.HttpsError('permission-denied', 'Admin required.');
+    const { fromDate, toDate } = data;
+    if (!fromDate)
+        throw new functions.https.HttpsError('invalid-argument', 'fromDate required (ISO string).');
+    const configDoc = await db.collection('config').doc('integrations').get();
+    const meliConfig = (_b = configDoc.data()) === null || _b === void 0 ? void 0 : _b.meli;
+    if (!(meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.accessToken) || !(meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.userId))
+        throw new functions.https.HttpsError('failed-precondition', 'MeLi not connected.');
+    const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
+    const dateFrom = encodeURIComponent(fromDate.replace('.000Z', '.000-00:00'));
+    const dateTo = toDate ? `&order.date_created.to=${encodeURIComponent(toDate.replace('.000Z', '.000-00:00'))}` : '';
+    const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50${dateTo}&order.date_created.from=${dateFrom}`;
+    console.log(`[MeliBackfill] Fetching: ${url}`);
+    const res = await fetch(url, { headers });
+    if (!res.ok)
+        throw new functions.https.HttpsError('internal', `MeLi API error: ${res.status}`);
+    const json = await res.json();
+    const meliOrders = json.results || [];
+    console.log(`[MeliBackfill] Found ${meliOrders.length} orders in range.`);
+    let saved = 0;
+    for (const mo of meliOrders) {
+        try {
+            let shipData = null;
+            if ((_c = mo.shipping) === null || _c === void 0 ? void 0 : _c.id) {
+                const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                    headers: Object.assign(Object.assign({}, headers), { 'x-format-new': 'true' })
+                });
+                if (sRes.ok)
+                    shipData = await sRes.json();
+            }
+            let billingData = null;
+            try {
+                const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                    headers: Object.assign(Object.assign({}, headers), { 'x-version': '2' })
+                });
+                if (bRes.ok)
+                    billingData = await bRes.json();
+            }
+            catch ( /* non-critical */_d) { /* non-critical */ }
+            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
+            await db.collection('orders').doc(`meli_${mo.id}`).set(newOrder, { merge: true });
+            saved++;
+        }
+        catch (e) {
+            console.warn(`[MeliBackfill] Skipped order ${mo.id}:`, e.message);
+        }
+    }
+    // Update lastSyncDate to end of backfill window so cron doesn't re-sweep unnecessarily
+    if (toDate) {
+        await db.collection('config').doc('integrations').set({ meli: { lastSyncDate: toDate } }, { merge: true });
+    }
+    console.log(`[MeliBackfill] Done. Saved ${saved}/${meliOrders.length} orders.`);
+    return { success: true, found: meliOrders.length, saved };
+});
 // 12. Automated Sync: Cron Sweep (Catch-all for missed webhooks)
 exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun(async (_ctx) => {
     var _a, _b;
@@ -4056,9 +4146,14 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
         const lastSyncDate = meliConfig.lastSyncDate
             ? new Date(meliConfig.lastSyncDate)
             : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const dateFrom = lastSyncDate.toISOString().replace('.000Z', '.000-00:00');
+        // Apply a 2-hour safety overlap so orders that were created just before the
+        // last sync boundary are always re-evaluated (catches edge cases where a
+        // payment confirmation arrives slightly after the cron cursor advanced).
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+        const sweepFrom = new Date(lastSyncDate.getTime() - TWO_HOURS_MS);
+        const dateFrom = sweepFrom.toISOString().replace('.000Z', '.000-00:00');
         const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50&order.date_created.from=${encodeURIComponent(dateFrom)}`;
-        console.log(`[Meli Cron] Sweeping orders since: ${dateFrom}`);
+        console.log(`[Meli Cron] Sweeping orders since: ${dateFrom} (2h overlap from ${lastSyncDate.toISOString()})`);
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
         if (!res.ok) {
             const errJson = await res.json();
@@ -4130,11 +4225,12 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
             await orderRef.set(newOrder, { merge: true });
             importedCount++;
         }
-        if (importedCount > 0) {
-            await db.collection('config').doc('integrations').set({
-                meli: { lastSyncDate: new Date().toISOString() }
-            }, { merge: true });
-        }
+        // Always advance the cursor — even when 0 orders found — so the next run
+        // doesn't redundantly re-scan the same window. The webhook is the real-time
+        // safety net; the cron is a catch-all for missed webhook events.
+        await db.collection('config').doc('integrations').set({
+            meli: { lastSyncDate: new Date().toISOString() }
+        }, { merge: true });
         console.log(`[Meli Cron] Success. Upserted ${importedCount} orders.`);
     }
     catch (err) {
@@ -4626,7 +4722,8 @@ exports.aggregateDailyStats = functions.pubsub
     // Force evaluation in Mexico City Timezone
     const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
     const today = new Date(nowStr);
-    const DAYS_TO_SYNC = 5;
+    const DAYS_TO_SYNC = 1; // ✅ Only sync TODAY on the hourly schedule.
+    // Historical backfill is handled by backfillMonthlyStats (callable).
     // ── Canonical non-revenue statuses (mirrors order.model.ts) ──────────
     const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
     // ── Canonical channel resolution (mirrors ops queue getLegacyChannel) ─
@@ -6441,6 +6538,7 @@ exports.testMeliBilling = functions.https.onRequest(async (req, res) => {
 // Returns: { ordersWritten, itemsWritten, dataset }
 // ─────────────────────────────────────────────────────────────────────────────
 const BQ_DATASET = 'euro_analytics';
+const BQ_PROJECT = 'importadora-euro'; // ← used by BQ analytics functions below
 const BQ_LOCATION = 'us-central1';
 const BQ_ORDERS_SCHEMA = [
     { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
@@ -8208,5 +8306,418 @@ exports.backfillMeliToInbox = functions
         console.error(error);
         res.status(500).send(error.message);
     }
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── BigQuery Analytics Functions ─────────────────────────────────────────────
+// These replace direct Firestore collection scans for heavy analytics queries.
+// BigQuery is billed by data scanned (not reads), and is ~100x more efficient
+// for aggregations over thousands of rows.
+//
+// Each function:
+//   1. Checks a short-lived Firestore result cache (5 min) to avoid BQ costs on
+//      repeated identical requests.
+//   2. Runs the BQ query.
+//   3. Writes the result back to the cache.
+// ═══════════════════════════════════════════════════════════════════════════════
+const BQ_RESULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+async function getBQCache(cacheKey) {
+    var _a, _b, _c;
+    try {
+        const ref = db.collection('_bq_cache').doc(cacheKey);
+        const snap = await ref.get();
+        if (!snap.exists)
+            return null;
+        const data = snap.data();
+        const age = Date.now() - ((_c = (_b = (_a = data.cachedAt) === null || _a === void 0 ? void 0 : _a.toMillis) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : 0);
+        if (age > BQ_RESULT_CACHE_TTL_MS)
+            return null;
+        return data.result;
+    }
+    catch (_d) {
+        return null;
+    }
+}
+async function setBQCache(cacheKey, result) {
+    try {
+        await db.collection('_bq_cache').doc(cacheKey).set({
+            result,
+            cachedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
+    catch ( /* non-critical */_a) { /* non-critical */ }
+}
+// ── 1. Customer Insights ──────────────────────────────────────────────────────
+exports.queryCustomerInsights = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+    var _a, _b, _c, _d;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const cacheKey = 'customer_insights_all';
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+            WITH customer_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'anonymous') AS uid,
+                    COALESCE(customer_name, 'Unknown') AS name,
+                    COALESCE(customer_email, '') AS email,
+                    COUNT(*) AS order_count,
+                    SUM(total) AS total_spent,
+                    MIN(TIMESTAMP_TRUNC(created_at, DAY)) AS first_order_date,
+                    MAX(TIMESTAMP_TRUNC(created_at, DAY)) AS last_order_date
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                GROUP BY 1, 2, 3
+            ),
+            scored AS (
+                SELECT *,
+                    DATE_DIFF(CURRENT_DATE(), DATE(last_order_date), DAY) AS days_since_last,
+                    SAFE_DIVIDE(
+                        DATE_DIFF(DATE(last_order_date), DATE(first_order_date), DAY),
+                        NULLIF(order_count - 1, 0)
+                    ) AS avg_days_between_orders
+                FROM customer_orders
+            ),
+            segmented AS (
+                SELECT *,
+                    CASE
+                        WHEN days_since_last > 365 THEN 'Lost'
+                        WHEN days_since_last > 180 THEN 'At Risk'
+                        WHEN total_spent > 10000 AND order_count > 5 THEN 'Champion'
+                        WHEN order_count >= 3 THEN 'Loyal'
+                        ELSE 'New'
+                    END AS segment,
+                    ROUND(total_spent / order_count, 2) AS avg_order_value
+                FROM scored
+            )
+            SELECT
+                segment,
+                COUNT(*) AS count,
+                ROUND(SUM(total_spent), 2) AS total_revenue,
+                ROUND(AVG(total_spent), 2) AS avg_ltv,
+                ROUND(AVG(avg_order_value), 2) AS avg_order_value,
+                ROUND(AVG(days_since_last), 1) AS avg_days_since_last_order
+            FROM segmented
+            GROUP BY segment
+            ORDER BY total_revenue DESC
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    const totalCLV = rows.reduce((s, r) => { var _a; return s + ((_a = r.total_revenue) !== null && _a !== void 0 ? _a : 0); }, 0);
+    const totalCustomers = rows.reduce((s, r) => { var _a; return s + ((_a = r.count) !== null && _a !== void 0 ? _a : 0); }, 0);
+    const atRiskValue = ((_b = (_a = rows.find((r) => r.segment === 'At Risk')) === null || _a === void 0 ? void 0 : _a.total_revenue) !== null && _b !== void 0 ? _b : 0) * 0.3;
+    const lostCount = (_d = (_c = rows.find((r) => r.segment === 'Lost')) === null || _c === void 0 ? void 0 : _c.count) !== null && _d !== void 0 ? _d : 0;
+    const result = {
+        profiles: rows.map((r) => {
+            var _a, _b, _c;
+            return ({
+                uid: r.segment,
+                name: r.segment,
+                email: '',
+                totalSpent: (_a = r.avg_ltv) !== null && _a !== void 0 ? _a : 0,
+                orderCount: Math.round((_b = r.count) !== null && _b !== void 0 ? _b : 0),
+                lastOrderDate: new Date(),
+                firstOrderDate: new Date(),
+                averageOrderValue: (_c = r.avg_order_value) !== null && _c !== void 0 ? _c : 0,
+                churnRiskScore: r.segment === 'Lost' ? 95 : r.segment === 'At Risk' ? 65 : 20,
+                segment: r.segment
+            });
+        }),
+        cohorts: [],
+        totalCLV,
+        avgCLV: totalCustomers > 0 ? totalCLV / totalCustomers : 0,
+        churnRate: totalCustomers > 0 ? (lostCount / totalCustomers) * 100 : 0,
+        atRiskValue
+    };
+    await setBQCache(cacheKey, result);
+    return result;
+});
+// ── 2. Cohort Analysis ────────────────────────────────────────────────────────
+exports.queryCohortAnalysis = functions
+    .runWith({ timeoutSeconds: 180, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+    var _a;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const months = (_a = data === null || data === void 0 ? void 0 : data.months) !== null && _a !== void 0 ? _a : 12;
+    const cacheKey = `cohort_analysis_${months}`;
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+            WITH first_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email) AS uid,
+                    FORMAT_DATE('%Y-%m', MIN(DATE(created_at))) AS cohort_month
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned')
+                  AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${months} MONTH)
+                  AND customer_id IS NOT NULL
+                GROUP BY 1
+            ),
+            all_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email) AS uid,
+                    FORMAT_DATE('%Y-%m', DATE(created_at)) AS order_month
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned')
+                  AND customer_id IS NOT NULL
+            ),
+            cohort_activity AS (
+                SELECT
+                    f.cohort_month,
+                    DATE_DIFF(
+                        DATE(PARSE_DATE('%Y-%m', a.order_month)),
+                        DATE(PARSE_DATE('%Y-%m', f.cohort_month)),
+                        MONTH
+                    ) AS period,
+                    COUNT(DISTINCT f.uid) AS active_users
+                FROM first_orders f
+                JOIN all_orders a ON f.uid = a.uid
+                GROUP BY 1, 2
+            ),
+            cohort_sizes AS (
+                SELECT cohort_month, COUNT(*) AS total_customers
+                FROM first_orders GROUP BY 1
+            )
+            SELECT
+                ca.cohort_month AS cohort,
+                cs.total_customers AS totalCustomers,
+                ca.period,
+                ROUND(ca.active_users / cs.total_customers * 100, 1) AS retention_pct
+            FROM cohort_activity ca
+            JOIN cohort_sizes cs ON ca.cohort_month = cs.cohort_month
+            WHERE ca.period >= 0 AND ca.period <= 5
+            ORDER BY cohort_month, period
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    // Pivot into CohortData[] format
+    const cohortMap = new Map();
+    rows.forEach((r) => {
+        if (!cohortMap.has(r.cohort)) {
+            cohortMap.set(r.cohort, { cohort: r.cohort, totalCustomers: r.totalCustomers, period0: 100 });
+        }
+        const c = cohortMap.get(r.cohort);
+        if (r.period > 0)
+            c[`period${r.period}`] = r.retention_pct;
+    });
+    const result = Array.from(cohortMap.values());
+    await setBQCache(cacheKey, result);
+    return result;
+});
+// ── 3. Customer Metrics ───────────────────────────────────────────────────────
+exports.queryCustomerMetrics = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const { startDate, endDate } = data !== null && data !== void 0 ? data : {};
+    const cacheKey = `customer_metrics_${startDate !== null && startDate !== void 0 ? startDate : 'all'}_${endDate !== null && endDate !== void 0 ? endDate : 'now'}`;
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const dateFilter = startDate && endDate
+        ? `AND created_at BETWEEN TIMESTAMP('${startDate}') AND TIMESTAMP('${endDate}')`
+        : '';
+    const newCustFilter = startDate && endDate
+        ? `WHERE first_order_date BETWEEN '${startDate.slice(0, 10)}' AND '${endDate.slice(0, 10)}'`
+        : 'WHERE FALSE';
+    const query = `
+            WITH customer_agg AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'guest') AS uid,
+                    MIN(DATE(created_at)) AS first_order_date,
+                    SUM(total) AS total_spent,
+                    COUNT(*) AS order_count
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                ${dateFilter}
+                GROUP BY 1
+            )
+            SELECT
+                COUNT(*) AS total_customers,
+                SUM(order_count) AS total_orders,
+                SUM(total_spent) AS total_revenue,
+                COUNTIF(${startDate ? `first_order_date >= '${startDate.slice(0, 10)}'` : 'FALSE'}) AS new_customers
+            FROM customer_agg
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    const row = (_a = rows[0]) !== null && _a !== void 0 ? _a : {};
+    const totalCustomers = Number((_b = row.total_customers) !== null && _b !== void 0 ? _b : 0);
+    const totalOrders = Number((_c = row.total_orders) !== null && _c !== void 0 ? _c : 0);
+    const totalRevenue = Number((_d = row.total_revenue) !== null && _d !== void 0 ? _d : 0);
+    const newCustomers = Number((_e = row.new_customers) !== null && _e !== void 0 ? _e : 0);
+    const result = {
+        totalCustomers,
+        newCustomers,
+        returningCustomers: totalCustomers - newCustomers,
+        averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+        customerLifetimeValue: totalCustomers > 0 ? totalRevenue / totalCustomers : 0
+    };
+    await setBQCache(cacheKey, result);
+    return result;
+});
+// ── 4. Customer Segmentation (RFM) ───────────────────────────────────────────
+exports.queryCustomerSegmentation = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const cacheKey = 'customer_segmentation_all';
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+            WITH customer_stats AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'guest') AS uid,
+                    COUNT(*) AS order_count,
+                    SUM(total) AS total_spent,
+                    DATE_DIFF(CURRENT_DATE(), MAX(DATE(created_at)), DAY) AS days_since_last
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                GROUP BY 1
+            ),
+            segmented AS (
+                SELECT *,
+                    CASE
+                        WHEN days_since_last > 365 THEN 'Lost'
+                        WHEN days_since_last > 180 THEN 'At Risk'
+                        WHEN total_spent > 10000 AND order_count > 5 THEN 'Champions'
+                        WHEN order_count >= 3 THEN 'Loyal'
+                        ELSE 'Potential'
+                    END AS segment
+                FROM customer_stats
+            )
+            SELECT
+                segment,
+                COUNT(*) AS count,
+                ROUND(SUM(total_spent), 2) AS totalRevenue,
+                ROUND(AVG(total_spent / NULLIF(order_count, 0)), 2) AS averageOrderValue,
+                ROUND(AVG(CASE WHEN days_since_last <= 30 THEN 5
+                               WHEN days_since_last <= 90 THEN 4
+                               WHEN days_since_last <= 180 THEN 3
+                               WHEN days_since_last <= 365 THEN 2
+                               ELSE 1 END), 2) AS recencyScore,
+                ROUND(AVG(CASE WHEN order_count >= 20 THEN 5
+                               WHEN order_count >= 10 THEN 4
+                               WHEN order_count >= 5 THEN 3
+                               WHEN order_count >= 2 THEN 2
+                               ELSE 1 END), 2) AS frequencyScore,
+                ROUND(AVG(CASE WHEN total_spent >= 10000 THEN 5
+                               WHEN total_spent >= 5000 THEN 4
+                               WHEN total_spent >= 1000 THEN 3
+                               WHEN total_spent >= 500 THEN 2
+                               ELSE 1 END), 2) AS monetaryScore
+            FROM segmented
+            GROUP BY segment
+            ORDER BY totalRevenue DESC
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    const result = rows.map((r) => {
+        var _a, _b, _c, _d, _e, _f;
+        return ({
+            segment: r.segment,
+            count: Number((_a = r.count) !== null && _a !== void 0 ? _a : 0),
+            totalRevenue: Number((_b = r.totalRevenue) !== null && _b !== void 0 ? _b : 0),
+            averageOrderValue: Number((_c = r.averageOrderValue) !== null && _c !== void 0 ? _c : 0),
+            recencyScore: Number((_d = r.recencyScore) !== null && _d !== void 0 ? _d : 0),
+            frequencyScore: Number((_e = r.frequencyScore) !== null && _e !== void 0 ? _e : 0),
+            monetaryScore: Number((_f = r.monetaryScore) !== null && _f !== void 0 ? _f : 0)
+        });
+    });
+    await setBQCache(cacheKey, result);
+    return result;
+});
+// ── 5. Period Data (for period comparison) ────────────────────────────────────
+exports.queryPeriodData = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c, _d;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const { startDate, endDate } = data !== null && data !== void 0 ? data : {};
+    if (!startDate || !endDate)
+        throw new functions.https.HttpsError('invalid-argument', 'startDate and endDate required.');
+    const cacheKey = `period_data_${startDate}_${endDate}`;
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+            SELECT
+                COUNT(*) AS orders,
+                ROUND(SUM(total), 2) AS revenue,
+                COUNT(DISTINCT COALESCE(customer_id, customer_email)) AS customers
+            FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+            WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+              AND created_at BETWEEN TIMESTAMP('${startDate}') AND TIMESTAMP('${endDate}')
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    const row = (_a = rows[0]) !== null && _a !== void 0 ? _a : {};
+    const ordersCount = Number((_b = row.orders) !== null && _b !== void 0 ? _b : 0);
+    const revenue = Number((_c = row.revenue) !== null && _c !== void 0 ? _c : 0);
+    const result = {
+        revenue,
+        orders: ordersCount,
+        averageOrderValue: ordersCount > 0 ? revenue / ordersCount : 0,
+        customers: Number((_d = row.customers) !== null && _d !== void 0 ? _d : 0)
+    };
+    await setBQCache(cacheKey, result);
+    return result;
+});
+// ── 6. Growth Metrics ─────────────────────────────────────────────────────────
+exports.queryGrowthMetrics = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+    var _a, _b, _c, _d, _e;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    const periods = (_a = data === null || data === void 0 ? void 0 : data.periods) !== null && _a !== void 0 ? _a : 12;
+    const cacheKey = `growth_metrics_${periods}`;
+    const cached = await getBQCache(cacheKey);
+    if (cached)
+        return cached;
+    const query = `
+            WITH monthly AS (
+                SELECT
+                    FORMAT_DATE('%Y-%m', DATE(created_at)) AS month,
+                    SUM(total) AS revenue,
+                    COUNT(*) AS orders,
+                    COUNT(DISTINCT COALESCE(customer_id, customer_email)) AS customers
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                  AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${periods} MONTH)
+                GROUP BY 1
+                ORDER BY 1
+            )
+            SELECT * FROM monthly
+        `;
+    const [rows] = await bigquery.query({ query, location: 'US' });
+    if (rows.length < 2) {
+        const empty = { revenueGrowth: 0, orderGrowth: 0, customerGrowth: 0, aovGrowth: 0, compoundGrowthRate: 0 };
+        await setBQCache(cacheKey, empty);
+        return empty;
+    }
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    const firstRevenue = Number((_b = first.revenue) !== null && _b !== void 0 ? _b : 0);
+    const lastRevenue = Number((_c = last.revenue) !== null && _c !== void 0 ? _c : 0);
+    const firstOrders = Number((_d = first.orders) !== null && _d !== void 0 ? _d : 0);
+    const lastOrders = Number((_e = last.orders) !== null && _e !== void 0 ? _e : 0);
+    const firstAOV = firstOrders > 0 ? firstRevenue / firstOrders : 0;
+    const lastAOV = lastOrders > 0 ? lastRevenue / lastOrders : 0;
+    const result = {
+        revenueGrowth: firstRevenue > 0 ? ((lastRevenue - firstRevenue) / firstRevenue) * 100 : 0,
+        orderGrowth: firstOrders > 0 ? ((lastOrders - firstOrders) / firstOrders) * 100 : 0,
+        customerGrowth: 0,
+        aovGrowth: firstAOV > 0 ? ((lastAOV - firstAOV) / firstAOV) * 100 : 0,
+        compoundGrowthRate: firstRevenue > 0
+            ? (Math.pow(lastRevenue / firstRevenue, 1 / periods) - 1) * 100
+            : 0
+    };
+    await setBQCache(cacheKey, result);
+    return result;
 });
 //# sourceMappingURL=index.js.map

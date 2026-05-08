@@ -85,6 +85,9 @@ export interface WebsiteSettings {
         promoText: string;
         enableChatWidget: boolean;
     };
+    approvals: {
+        priceChangeThreshold: number;
+    };
     seo: {
         metaTitle: string;
         metaDescription: string;
@@ -131,6 +134,9 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
         showPromoBanner: false,
         promoText: '',
         enableChatWidget: true
+    },
+    approvals: {
+        priceChangeThreshold: 15
     },
     seo: {
         metaTitle: '{{page_title}} | Importadora Eurollantas',
@@ -188,6 +194,7 @@ export class SettingsService {
                 social:        { ...DEFAULT_SETTINGS.social,         ...data['social'] },
                 businessHours: { ...DEFAULT_SETTINGS.businessHours,  ...data['businessHours'] },
                 features:      { ...DEFAULT_SETTINGS.features,       ...data['features'] },
+                approvals:     { ...DEFAULT_SETTINGS.approvals,      ...data['approvals'] },
                 seo:           { ...DEFAULT_SETTINGS.seo,            ...data['seo'] },
                 shipping: {
                     origin: { ...DEFAULT_SETTINGS.shipping.origin, ...(shipData['origin'] || {}) },

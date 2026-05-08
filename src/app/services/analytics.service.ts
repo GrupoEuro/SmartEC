@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Firestore, collection, query, where, getDocs, Timestamp, orderBy, limit, QuerySnapshot, DocumentData } from '@angular/fire/firestore';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Observable, from, map, catchError, of } from 'rxjs';
 
 export interface RevenueTrend {
@@ -159,8 +160,10 @@ export interface GrowthMetrics {
 export class AnalyticsService {
     private firestore = inject(Firestore);
     private auth = inject(Auth);
+    private functions = inject(Functions);
     private cache: Map<string, { data: any, timestamp: number }> = new Map();
-    private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    // ✅ 30-minute cache — historical analytics don't need sub-5-min freshness
+    private CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
     // Shared Cache for current request
     private sharedOrdersSnapshot: QuerySnapshot<DocumentData> | null = null;
@@ -546,38 +549,37 @@ export class AnalyticsService {
     }
 
     private async fetchCustomerMetrics(startDate?: Date, endDate?: Date): Promise<CustomerMetrics> {
-        const customersRef = collection(this.firestore, 'customers');
-        const customersSnapshot = await getDocs(customersRef);
-
-        let newCustomers = 0;
-        let totalRevenue = 0;
-        let totalOrders = 0;
-
-        customersSnapshot.docs.forEach(doc => {
-            const customer = doc.data();
-            const createdAt = customer['createdAt']?.toDate();
-
-            if (startDate && endDate && createdAt) {
-                if (createdAt >= startDate && createdAt <= endDate) {
-                    newCustomers++;
-                }
-            }
-
-            const stats = customer['stats'] || {};
-            totalRevenue += stats.totalSpend || 0;
-            totalOrders += stats.totalOrders || 0;
-        });
-
-        const totalCustomers = customersSnapshot.size;
-        const returningCustomers = totalCustomers - newCustomers;
-
-        return {
-            totalCustomers,
-            newCustomers,
-            returningCustomers,
-            averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
-            customerLifetimeValue: totalCustomers > 0 ? totalRevenue / totalCustomers : 0
-        };
+        // ✅ Route to BigQuery Cloud Function — avoids full customers collection scan
+        try {
+            const fn = httpsCallable(this.functions, 'queryCustomerMetrics');
+            const result: any = await fn({
+                startDate: startDate?.toISOString(),
+                endDate: endDate?.toISOString()
+            });
+            return result.data as CustomerMetrics;
+        } catch (bqError) {
+            console.warn('[AnalyticsService] BQ customer metrics fallback to Firestore:', bqError);
+            // Graceful Firestore fallback
+            const customersRef = collection(this.firestore, 'customers');
+            const customersSnapshot = await getDocs(customersRef);
+            let newCustomers = 0, totalRevenue = 0, totalOrders = 0;
+            customersSnapshot.docs.forEach(doc => {
+                const customer = doc.data();
+                const createdAt = customer['createdAt']?.toDate();
+                if (startDate && endDate && createdAt && createdAt >= startDate && createdAt <= endDate) newCustomers++;
+                const stats = customer['stats'] || {};
+                totalRevenue += stats.totalSpend || 0;
+                totalOrders += stats.totalOrders || 0;
+            });
+            const totalCustomers = customersSnapshot.size;
+            return {
+                totalCustomers,
+                newCustomers,
+                returningCustomers: totalCustomers - newCustomers,
+                averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+                customerLifetimeValue: totalCustomers > 0 ? totalRevenue / totalCustomers : 0
+            };
+        }
     }
 
     /**
@@ -1024,13 +1026,19 @@ export class AnalyticsService {
         const previousStart = new Date(currentStart.getTime() - periodLength);
         const previousEnd = new Date(currentStart.getTime());
 
-        // Optimize: Use shared data for current period if possible
-        await this.fetchSharedOrderData(currentStart, currentEnd);
+        // ✅ Route to BigQuery for the previous-period query (avoids a second Firestore scan)
+        let previousDataPromise: Promise<any>;
+        try {
+            const fn = httpsCallable(this.functions, 'queryPeriodData');
+            previousDataPromise = fn({ startDate: previousStart.toISOString(), endDate: previousEnd.toISOString() })
+                .then((r: any) => r.data);
+        } catch {
+            previousDataPromise = this.getPeriodData(previousStart, previousEnd);
+        }
 
-        // We reuse the logic of getPeriodData but passing the snapshot
+        // Use shared data for current period
+        await this.fetchSharedOrderData(currentStart, currentEnd);
         const currentDataPromise = this.processPeriodDataFromSnapshot(this.sharedOrdersSnapshot!, currentStart, currentEnd);
-        // Previous period still needs a fetch
-        const previousDataPromise = this.getPeriodData(previousStart, previousEnd);
 
         const [currentData, previousData] = await Promise.all([
             currentDataPromise,
@@ -1246,6 +1254,17 @@ export class AnalyticsService {
     }
 
     private async fetchCustomerSegmentation(startDate?: Date, endDate?: Date): Promise<CustomerSegment[]> {
+        // ✅ Route to BigQuery when no date range (full scan) — avoids reading ALL orders
+        if (!startDate || !endDate) {
+            try {
+                const fn = httpsCallable(this.functions, 'queryCustomerSegmentation');
+                const result: any = await fn({});
+                return result.data as CustomerSegment[];
+            } catch (bqError) {
+                console.warn('[AnalyticsService] BQ segmentation fallback to Firestore:', bqError);
+            }
+        }
+
         let orderDocs: DocumentData[] = [];
         if (startDate && endDate) {
             await this.fetchSharedOrderData(startDate, endDate);
@@ -1514,6 +1533,16 @@ export class AnalyticsService {
     }
 
     private async fetchCohortAnalysis(months: number): Promise<CohortData[]> {
+        // ✅ Route to BigQuery — avoids scanning ALL customers + ALL orders in Firestore
+        try {
+            const fn = httpsCallable(this.functions, 'queryCohortAnalysis');
+            const result: any = await fn({ months });
+            return result.data as CohortData[];
+        } catch (bqError) {
+            console.warn('[AnalyticsService] BQ cohort fallback to Firestore:', bqError);
+        }
+
+        // Graceful Firestore fallback
         const customersRef = collection(this.firestore, 'customers');
         const customersSnapshot = await getDocs(customersRef);
 
@@ -1615,6 +1644,15 @@ export class AnalyticsService {
     }
 
     private async fetchGrowthMetrics(periods: number): Promise<GrowthMetrics> {
+        // ✅ Route to BigQuery for multi-month growth analysis (avoids large Firestore range scan)
+        try {
+            const fn = httpsCallable(this.functions, 'queryGrowthMetrics');
+            const result: any = await fn({ periods });
+            return result.data as GrowthMetrics;
+        } catch (bqError) {
+            console.warn('[AnalyticsService] BQ growth metrics fallback to Firestore:', bqError);
+        }
+
         const endDate = new Date();
         const startDate = new Date();
         startDate.setMonth(endDate.getMonth() - periods);

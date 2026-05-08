@@ -86,6 +86,28 @@ export class OrderService {
     }
 
     /**
+     * Real-time live stream of orders in a date range.
+     * Uses collectionData so Firestore push updates are reflected automatically
+     * when webhook-created orders land. Use this for the Operations Dashboard.
+     * NOTE: produces one emission per Firestore write — the component must
+     * debounce chart re-renders to avoid thrashing.
+     */
+    getOrdersByDateRangeLive(startDate: Date, endDate: Date): Observable<Order[]> {
+        const q = query(
+            this.ordersCollection,
+            where('createdAt', '>=', Timestamp.fromDate(startDate)),
+            where('createdAt', '<=', Timestamp.fromDate(endDate)),
+            orderBy('createdAt', 'desc')
+        );
+        return collectionData(q, { idField: 'id' }).pipe(
+            map((orders: any[]) => {
+                console.log(`[OrderService] Live update: ${orders.length} orders`);
+                return orders.map((order: any) => this.convertTimestamps(order));
+            })
+        );
+    }
+
+    /**
      * Get orders by status
      */
     getOrdersByStatus(status: OrderStatus): Observable<Order[]> {

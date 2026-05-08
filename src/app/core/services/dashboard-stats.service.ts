@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, getDocs, query, where, orderBy, limit } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, query, where, orderBy, limit, getCountFromServer } from '@angular/fire/firestore';
 import { Observable, from, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -61,116 +61,88 @@ export class DashboardStatsService {
         });
     }
 
+    // ✅ Uses getCountFromServer() — does NOT download documents, only returns count
     private async getUserStats() {
         const usersCol = collection(this.firestore, 'users');
-        const snapshot = await getDocs(usersCol);
-
-        let active = 0;
-        let inactive = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data['isActive']) active++;
-            else inactive++;
-        });
-
+        const [total, active] = await Promise.all([
+            getCountFromServer(usersCol),
+            getCountFromServer(query(usersCol, where('isActive', '==', true)))
+        ]);
+        const totalCount = total.data().count;
+        const activeCount = active.data().count;
         return {
-            total: snapshot.size,
-            active,
-            inactive
+            total: totalCount,
+            active: activeCount,
+            inactive: totalCount - activeCount
         };
     }
 
     private async getPostStats() {
         const postsCol = collection(this.firestore, 'posts');
-        const snapshot = await getDocs(postsCol);
-
-        let published = 0;
-        let draft = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data['status'] === 'published') published++;
-            else draft++;
-        });
-
+        const [total, published] = await Promise.all([
+            getCountFromServer(postsCol),
+            getCountFromServer(query(postsCol, where('status', '==', 'published')))
+        ]);
+        const totalCount = total.data().count;
+        const publishedCount = published.data().count;
         return {
-            total: snapshot.size,
-            published,
-            draft
+            total: totalCount,
+            published: publishedCount,
+            draft: totalCount - publishedCount
         };
     }
 
     private async getPdfStats() {
         const pdfsCol = collection(this.firestore, 'pdfs');
-        const snapshot = await getDocs(pdfsCol);
-
-        let publicCount = 0;
-        let privateCount = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data['isPublic']) publicCount++;
-            else privateCount++;
-        });
-
+        const [total, publicCount] = await Promise.all([
+            getCountFromServer(pdfsCol),
+            getCountFromServer(query(pdfsCol, where('isPublic', '==', true)))
+        ]);
+        const totalCount = total.data().count;
+        const pubCount = publicCount.data().count;
         return {
-            total: snapshot.size,
-            public: publicCount,
-            private: privateCount
+            total: totalCount,
+            public: pubCount,
+            private: totalCount - pubCount
         };
     }
 
     private async getBannerStats() {
         const bannersCol = collection(this.firestore, 'banners');
-        const snapshot = await getDocs(bannersCol);
-
-        let active = 0;
-        let inactive = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data['active']) active++;
-            else inactive++;
-        });
-
+        const [total, active] = await Promise.all([
+            getCountFromServer(bannersCol),
+            getCountFromServer(query(bannersCol, where('active', '==', true)))
+        ]);
+        const totalCount = total.data().count;
+        const activeCount = active.data().count;
         return {
-            total: snapshot.size,
-            active,
-            inactive
+            total: totalCount,
+            active: activeCount,
+            inactive: totalCount - activeCount
         };
     }
 
     private async getDistributorStats() {
         const distributorsCol = collection(this.firestore, 'distributors');
-        const snapshot = await getDocs(distributorsCol);
-
-        let newCount = 0;
-        let contacted = 0;
-        let converted = 0;
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const status = data['status'] || 'new';
-            if (status === 'new') newCount++;
-            else if (status === 'contacted') contacted++;
-            else if (status === 'converted') converted++;
-        });
-
+        const [total, newCount, contacted, converted] = await Promise.all([
+            getCountFromServer(distributorsCol),
+            getCountFromServer(query(distributorsCol, where('status', '==', 'new'))),
+            getCountFromServer(query(distributorsCol, where('status', '==', 'contacted'))),
+            getCountFromServer(query(distributorsCol, where('status', '==', 'converted')))
+        ]);
         return {
-            total: snapshot.size,
-            new: newCount,
-            contacted,
-            converted
+            total: total.data().count,
+            new: newCount.data().count,
+            contacted: contacted.data().count,
+            converted: converted.data().count
         };
     }
 
     private async getNewsletterStats() {
         const newsletterCol = collection(this.firestore, 'newsletter');
-        const snapshot = await getDocs(newsletterCol);
-
+        const snap = await getCountFromServer(newsletterCol);
         return {
-            total: snapshot.size
+            total: snap.data().count
         };
     }
 

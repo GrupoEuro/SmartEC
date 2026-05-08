@@ -7,8 +7,32 @@ admin.initializeApp();
 const db = admin.firestore();
 const bigquery = new BigQuery();
 
+// ── Config Cache ──────────────────────────────────────────────────────────────
+// Prevents config/integrations from being read on every function invocation.
+// Functions share the same Node.js process between warm invocations, so this
+// module-level cache persists across calls within the same function instance.
+let _cachedIntegrations: any = null;
+let _cacheExpiresAt = 0;
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getIntegrationsConfig(): Promise<any> {
+    if (_cachedIntegrations && Date.now() < _cacheExpiresAt) {
+        return _cachedIntegrations;
+    }
+    const snap = await db.collection('config').doc('integrations').get();
+    _cachedIntegrations = snap.data() ?? {};
+    _cacheExpiresAt = Date.now() + CONFIG_CACHE_TTL_MS;
+    return _cachedIntegrations;
+}
+
+/** Invalidate cache after writes that mutate config/integrations */
+function invalidateIntegrationsCache() {
+    _cachedIntegrations = null;
+    _cacheExpiresAt = 0;
+}
+
 // ── IA Agents (EuroMind) ──────────────────────────────────────────────────────
-export { inboxMessageRouter, agentOrchestrator, agentHandoff, analyzeMeliInsights, testAnalyzeMeliInsights } from './ai-agents';
+export { inboxMessageRouter, agentOrchestrator, agentHandoff, analyzeMeliInsights, testAnalyzeMeliInsights, euromindWeeklyReport, askEuroMind } from './ai-agents';
 
 // ── Analytics & Projections ───────────────────────────────────────────────────
 export { snapshotProjections } from './analytics';
@@ -23,9 +47,9 @@ export const processPayment = functions.https.onCall(async (data, context) => {
     }
 
     const { token, amount, email, description, orderId, orderNumber,
-            installments, paymentMethodId, issuerId,
-            // Optional payer enrichment fields (passed from checkout form)
-            payerFirstName, payerLastName, payerPhone, payerZip, payerStreet } = data;
+        installments, paymentMethodId, issuerId,
+        // Optional payer enrichment fields (passed from checkout form)
+        payerFirstName, payerLastName, payerPhone, payerZip, payerStreet } = data;
 
     if (!token || !amount || !email) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing required payment parameters.');
@@ -33,10 +57,10 @@ export const processPayment = functions.https.onCall(async (data, context) => {
 
     // ── Throwaway Email Blocklist ───────────────────────────────────────────────
     const DISPOSABLE_DOMAINS = [
-        'mailinator.com','guerrillamail.com','guerrillamail.net','guerrillamail.org',
-        'throwam.com','trashmail.com','trashmail.net','yopmail.com','sharklasers.com',
-        'guerrillamailblock.com','grr.la','guerrillamail.info','spam4.me','10minutemail.com',
-        'tempmail.com','temp-mail.org','fakeinbox.com','mailnull.com','maildrop.cc',
+        'mailinator.com', 'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org',
+        'throwam.com', 'trashmail.com', 'trashmail.net', 'yopmail.com', 'sharklasers.com',
+        'guerrillamailblock.com', 'grr.la', 'guerrillamail.info', 'spam4.me', '10minutemail.com',
+        'tempmail.com', 'temp-mail.org', 'fakeinbox.com', 'mailnull.com', 'maildrop.cc',
     ];
     const emailDomain = (email as string).split('@')[1]?.toLowerCase() ?? '';
     if (DISPOSABLE_DOMAINS.includes(emailDomain)) {
@@ -46,11 +70,11 @@ export const processPayment = functions.https.onCall(async (data, context) => {
     // ── Velocity Rate Limiting ─────────────────────────────────────────────────
     // Max 3 payment attempts per email per 60 minutes — blocks card testing attacks.
     const RATE_LIMIT_MAX = 3;
-    const RATE_WINDOW_MS  = 60 * 60 * 1000; // 1 hour
+    const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
     try {
-        const emailKey    = Buffer.from(email as string).toString('base64').replace(/=/g,'');
+        const emailKey = Buffer.from(email as string).toString('base64').replace(/=/g, '');
         const rateLimitRef = db.collection('_rate_limits').doc(`pay_${emailKey}`);
-        const now          = Date.now();
+        const now = Date.now();
         await db.runTransaction(async (tx) => {
             const snap = await tx.get(rateLimitRef);
             if (!snap.exists) {
@@ -86,7 +110,7 @@ export const processPayment = functions.https.onCall(async (data, context) => {
             const mpConfig = integrationsDoc.data()?.mercadopago || {};
             if (mpConfig.accessToken) accessToken = mpConfig.accessToken;
             installmentsEnabled = mpConfig.installmentsEnabled ?? false;
-            maxInstallments     = mpConfig.maxInstallments ?? 1;
+            maxInstallments = mpConfig.maxInstallments ?? 1;
         }
     } catch (err) {
         console.warn('Could not read MP config from Firestore:', err);
@@ -114,10 +138,10 @@ export const processPayment = functions.https.onCall(async (data, context) => {
                 if (alreadyPaid) {
                     console.warn(`[processPayment] ⚠️ Order ${orderId} already paid — returning cached result.`);
                     return {
-                        success:          true,
+                        success: true,
                         alreadyProcessed: true,
-                        status:           'approved',
-                        paymentId:        orderData.paymentId ?? null,
+                        status: 'approved',
+                        paymentId: orderData.paymentId ?? null,
                     };
                 }
 
@@ -135,9 +159,9 @@ export const processPayment = functions.https.onCall(async (data, context) => {
                 }
 
                 const shippingCost: number = orderData.shippingCost ?? 0;
-                const discount:    number = orderData.discount    ?? 0;
+                const discount: number = orderData.discount ?? 0;
                 const serverTotal: number = Math.max(0, serverSubtotal + shippingCost - discount);
-                const submitted:   number = Number(amount);
+                const submitted: number = Number(amount);
 
                 if (Math.abs(serverTotal - submitted) > 1.0) {
                     console.error(
@@ -146,9 +170,9 @@ export const processPayment = functions.https.onCall(async (data, context) => {
                     // Update the order with an error note but don't charge
                     await db.collection('orders').doc(orderId).update({
                         paymentStatus: 'rejected',
-                        paymentError:  `Monto rechazado: enviado $${submitted} vs servidor $${serverTotal.toFixed(2)}`,
-                        updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
-                    }).catch(() => {});
+                        paymentError: `Monto rechazado: enviado $${submitted} vs servidor $${serverTotal.toFixed(2)}`,
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    }).catch(() => { });
                     throw new functions.https.HttpsError(
                         'invalid-argument',
                         `El monto del pedido no es válido. Por favor recarga y vuelve a intentar.`
@@ -170,7 +194,7 @@ export const processPayment = functions.https.onCall(async (data, context) => {
     }
 
 
-    const client      = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
+    const client = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
     const orderClient = new Order(client);
 
     try {
@@ -179,25 +203,25 @@ export const processPayment = functions.https.onCall(async (data, context) => {
         //   total_amount: string  (NOT number)
         //   transactions: { payments: PaymentRequest[] }  (NOT a raw array)
         //   payments[].amount: string  (NOT number)
-        const amountStr   = Number(amount).toFixed(2);   // '688.00'
+        const amountStr = Number(amount).toFixed(2);   // '688.00'
         const paymentType = (paymentMethodId ?? '').startsWith('deb') ? 'debit_card' : 'credit_card';
 
         const orderBody: any = {
-            type:               'online',
-            processing_mode:    'automatic',
-            total_amount:       amountStr,
+            type: 'online',
+            processing_mode: 'automatic',
+            total_amount: amountStr,
             external_reference: orderId || orderNumber || '',
             payer: {
                 email,
                 first_name: payerFirstName || '',
-                last_name:  payerLastName  || '',
+                last_name: payerLastName || '',
             },
             transactions: {
                 payments: [{
                     amount: amountStr,
                     payment_method: {
-                        id:           paymentMethodId,
-                        type:         paymentType,
+                        id: paymentMethodId,
+                        type: paymentType,
                         token,
                         installments: Number(finalInstallments),
                     },
@@ -205,19 +229,19 @@ export const processPayment = functions.https.onCall(async (data, context) => {
             },
         };
 
-        const result    = await orderClient.create({ body: orderBody });
+        const result = await orderClient.create({ body: orderBody });
         const resultAny = result as any;
 
         // Extract first payment — response mirrors request: transactions.payments[0]
-        const txPayment   = resultAny?.transactions?.payments?.[0] ?? {};
+        const txPayment = resultAny?.transactions?.payments?.[0] ?? {};
         const orderStatus = resultAny?.status ?? 'unknown';      // 'processed'|'pending'|'rejected'
-        const payStatus   = txPayment?.status ?? orderStatus;    // 'approved'|'rejected'|'pending'
-        const payDetail   = txPayment?.status_detail ?? '';
-        const paymentId   = txPayment?.id ?? resultAny?.id ?? null;
+        const payStatus = txPayment?.status ?? orderStatus;    // 'approved'|'rejected'|'pending'
+        const payDetail = txPayment?.status_detail ?? '';
+        const paymentId = txPayment?.id ?? resultAny?.id ?? null;
 
         // Map Orders API status to our internal statuses
-        const approved    = orderStatus === 'processed' || payStatus === 'approved';
-        const rejected    = orderStatus === 'rejected'  || payStatus === 'rejected';
+        const approved = orderStatus === 'processed' || payStatus === 'approved';
+        const rejected = orderStatus === 'rejected' || payStatus === 'rejected';
 
         // 3DS challenge (Orders API: status pending + status_detail pending_challenge)
         if (payDetail === 'pending_challenge') {
@@ -227,12 +251,14 @@ export const processPayment = functions.https.onCall(async (data, context) => {
                 await db.collection('orders').doc(orderId).update({
                     paymentStatus: 'pending_3ds',
                     paymentId,
-                    mpOrderId:     resultAny?.id,
-                    updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                    mpOrderId: resultAny?.id,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }).catch(e => console.error('Failed to update order for 3DS:', e));
             }
-            return { success: false, requires3DS: true, challengeUrl, paymentId,
-                     status: payStatus, statusDetail: payDetail };
+            return {
+                success: false, requires3DS: true, challengeUrl, paymentId,
+                status: payStatus, statusDetail: payDetail
+            };
         }
 
         // Normal result — update Firestore
@@ -240,18 +266,18 @@ export const processPayment = functions.https.onCall(async (data, context) => {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: approved ? 'approved' : rejected ? 'rejected' : payStatus,
                 paymentId,
-                mpOrderId:     resultAny?.id,
+                mpOrderId: resultAny?.id,
                 paymentMethod: paymentMethodId,
-                installments:  finalInstallments,
-                updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
-                ...(approved ? { status: 'paid' }            : {}),
-                ...(rejected ? { status: 'payment_failed' }  : {}),
+                installments: finalInstallments,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                ...(approved ? { status: 'paid' } : {}),
+                ...(rejected ? { status: 'payment_failed' } : {}),
             }).catch(e => console.error('Failed to update order status:', e));
         }
 
         return {
-            success:      approved,
-            status:       approved ? 'approved' : rejected ? 'rejected' : payStatus,
+            success: approved,
+            status: approved ? 'approved' : rejected ? 'rejected' : payStatus,
             paymentId,
             statusDetail: payDetail,
         };
@@ -264,28 +290,28 @@ export const processPayment = functions.https.onCall(async (data, context) => {
         const errorData = error?.data ?? error?.cause?.data ?? null;
 
         console.error('MercadoPago Orders API Error:', JSON.stringify({
-            errors:   error?.errors ?? error?.message,
-            status:   errorData?.status,
+            errors: error?.errors ?? error?.message,
+            status: errorData?.status,
             payments: errorData?.transactions?.payments,
         }, null, 2));
 
         // ── Case (a): MP rejected the payment (status=failed) ─────────────────
         if (errorData?.status === 'failed') {
             const failedPayment = errorData?.transactions?.payments?.[0] ?? {};
-            const failStatus    = failedPayment?.status        ?? 'rejected';
-            const failDetail    = failedPayment?.status_detail ?? errorData?.status_detail ?? 'failed';
-            const failPaymentId = failedPayment?.id            ?? errorData?.id ?? null;
+            const failStatus = failedPayment?.status ?? 'rejected';
+            const failDetail = failedPayment?.status_detail ?? errorData?.status_detail ?? 'failed';
+            const failPaymentId = failedPayment?.id ?? errorData?.id ?? null;
 
             console.warn(`[processPayment] Payment rejected — status: ${failStatus}, detail: ${failDetail}`);
 
             if (orderId) {
                 await db.collection('orders').doc(orderId).update({
                     paymentStatus: 'rejected',
-                    paymentError:  failDetail,
-                    paymentId:     failPaymentId,
-                    mpOrderId:     errorData?.id,
-                    status:        'payment_failed',
-                    updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                    paymentError: failDetail,
+                    paymentId: failPaymentId,
+                    mpOrderId: errorData?.id,
+                    status: 'payment_failed',
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }).catch(e => console.error('Failed to update rejected order:', e));
             }
             // Return clean 200 with rejection info — NOT a 500
@@ -296,8 +322,8 @@ export const processPayment = functions.https.onCall(async (data, context) => {
         if (orderId) {
             await db.collection('orders').doc(orderId).update({
                 paymentStatus: 'rejected',
-                paymentError:  error.message || 'Unknown error',
-                updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+                paymentError: error.message || 'Unknown error',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }).catch(e => console.error('Failed to update rejected status:', e));
         }
         throw new functions.https.HttpsError('internal', error.message || 'Payment processing failed.');
@@ -312,7 +338,7 @@ export const processPayment = functions.https.onCall(async (data, context) => {
 // - Staff path: caller passes role='staff' header via Firebase Admin context (future).
 
 const CANCEL_WINDOW_HOURS = 24;
-const CANCEL_WINDOW_MS    = CANCEL_WINDOW_HOURS * 60 * 60 * 1000;
+const CANCEL_WINDOW_MS = CANCEL_WINDOW_HOURS * 60 * 60 * 1000;
 
 export const cancelOrder = functions.https.onCall(async (data, context) => {
     const { orderId, reason } = data;
@@ -321,27 +347,27 @@ export const cancelOrder = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'orderId is required.');
     }
 
-    const orderRef  = db.collection('orders').doc(orderId);
+    const orderRef = db.collection('orders').doc(orderId);
     const orderSnap = await orderRef.get();
 
     if (!orderSnap.exists) {
         throw new functions.https.HttpsError('not-found', 'Order not found.');
     }
 
-    const order      = orderSnap.data()!;
-    const now        = Date.now();
-    const createdAt  = order.createdAt?.toMillis ? order.createdAt.toMillis() : Date.now();
+    const order = orderSnap.data()!;
+    const now = Date.now();
+    const createdAt = order.createdAt?.toMillis ? order.createdAt.toMillis() : Date.now();
 
     // ── Ownership check ────────────────────────────────────────────────────────
     // Authenticated user: uid must match order's customer uid.
     // Guest: sessionId from the stored order must match what the client sends.
-    const callerUid       = context.auth?.uid ?? null;
-    const orderUid        = order.customer?.uid ?? null;
-    const guestSessionId  = data.sessionId ?? null;
-    const orderSessionId  = order.sessionId ?? null;
+    const callerUid = context.auth?.uid ?? null;
+    const orderUid = order.customer?.uid ?? null;
+    const guestSessionId = data.sessionId ?? null;
+    const orderSessionId = order.sessionId ?? null;
 
     const isOwner = (callerUid && orderUid && callerUid === orderUid)
-                 || (guestSessionId && orderSessionId && guestSessionId === orderSessionId);
+        || (guestSessionId && orderSessionId && guestSessionId === orderSessionId);
 
     if (!isOwner) {
         throw new functions.https.HttpsError('permission-denied', 'No tienes permiso para cancelar este pedido.');
@@ -369,12 +395,12 @@ export const cancelOrder = functions.https.onCall(async (data, context) => {
     // We NEVER auto-refund without staff review — policy: review first, then refund.
     if (order.paymentStatus === 'approved' || order.status === 'paid') {
         await orderRef.update({
-            status:              'refund_pending',
-            cancelledAt:         admin.firestore.FieldValue.serverTimestamp(),
-            cancelledBy:         'customer',
-            cancelReason:        reason || 'Cancelación solicitada por el cliente',
-            refundStatus:        'pending_review',
-            updatedAt:           admin.firestore.FieldValue.serverTimestamp(),
+            status: 'refund_pending',
+            cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+            cancelledBy: 'customer',
+            cancelReason: reason || 'Cancelación solicitada por el cliente',
+            refundStatus: 'pending_review',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         console.log(`[cancelOrder] ✅ Order ${orderId} flagged for refund review (was paid).`);
         return { success: true, requiresRefund: true, message: 'Tu solicitud de cancelación fue recibida. Procesaremos el reembolso en 1-3 días hábiles.' };
@@ -382,12 +408,12 @@ export const cancelOrder = functions.https.onCall(async (data, context) => {
 
     // ── Unpaid orders → cancel immediately ────────────────────────────────────
     await orderRef.update({
-        status:       'cancelled',
+        status: 'cancelled',
         paymentStatus: order.paymentStatus === 'pending' ? 'cancelled' : order.paymentStatus,
-        cancelledAt:  admin.firestore.FieldValue.serverTimestamp(),
-        cancelledBy:  'customer',
+        cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+        cancelledBy: 'customer',
         cancelReason: reason || 'Cancelación solicitada por el cliente',
-        updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     console.log(`[cancelOrder] ✅ Order ${orderId} cancelled immediately (was unpaid).`);
@@ -458,19 +484,19 @@ export const refundOrder = functions.https.onCall(async (data, context) => {
     }
 
     // ── Update Firestore order ─────────────────────────────────────────────────
-    const staffUid         = context.auth.uid;
-    const staffEmail       = context.auth.token.email ?? 'staff';
+    const staffUid = context.auth.uid;
+    const staffEmail = context.auth.token.email ?? 'staff';
     const staffDisplayName = context.auth.token.name ?? staffEmail;
 
     const historyEntry = {
-        status:         'refunded',
-        timestamp:      admin.firestore.FieldValue.serverTimestamp(),
-        note:           reason || 'Reembolso aprobado y procesado por staff',
+        status: 'refunded',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        note: reason || 'Reembolso aprobado y procesado por staff',
         // Legacy field
-        updatedBy:      staffUid,
+        updatedBy: staffUid,
         // Structured audit actor
         updatedByActor: { uid: staffUid, displayName: staffDisplayName, role: 'OPERATIONS' },
-        action:         'refund_approved',
+        action: 'refund_approved',
         metadata: {
             mpRefundId: refundResult?.id ?? null,
             processedBy: staffEmail,
@@ -478,12 +504,12 @@ export const refundOrder = functions.https.onCall(async (data, context) => {
     };
 
     await orderRef.update({
-        status:         'refunded',
-        paymentStatus:  'refunded',
-        refundStatus:   'PROCESSED',
-        refundAmount:   order.total,
-        updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
-        history:        admin.firestore.FieldValue.arrayUnion(historyEntry),
+        status: 'refunded',
+        paymentStatus: 'refunded',
+        refundStatus: 'PROCESSED',
+        refundAmount: order.total,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        history: admin.firestore.FieldValue.arrayUnion(historyEntry),
     });
 
     console.log(`[refundOrder] ✅ Order ${orderId} marked as refunded by ${staffEmail}`);
@@ -502,12 +528,12 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
         // MP signs every webhook with HMAC-SHA256 using the app's Secret Key.
         // Validate before processing to prevent spoofed notifications.
         // Secret stored in Firestore: config/integrations → mercadopago.webhookSecret
-        const xSignature  = req.headers['x-signature']  as string | undefined;
-        const xRequestId  = req.headers['x-request-id'] as string | undefined;
+        const xSignature = req.headers['x-signature'] as string | undefined;
+        const xRequestId = req.headers['x-request-id'] as string | undefined;
         if (xSignature) {
             try {
                 const cfgSnap = await db.collection('config').doc('integrations').get();
-                const secret  = cfgSnap.data()?.mercadopago?.webhookSecret ?? '';
+                const secret = cfgSnap.data()?.mercadopago?.webhookSecret ?? '';
                 if (secret) {
                     const crypto = await import('crypto');
                     // Parse ts and v1 from x-signature header (format: "ts=xxx,v1=yyy")
@@ -532,7 +558,7 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
             }
         }
 
-        const topic      = req.body?.type || req.query['topic'];
+        const topic = req.body?.type || req.query['topic'];
         const resourceId = req.body?.data?.id || req.query['id'];
         console.log('[mpWebhook] Received:', topic, resourceId);
 
@@ -557,31 +583,31 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
         // Fetch from /v1/orders/{id} and map to our Firestore order.
         if (topic === 'order') {
             const orderClient = new Order(mpClient);
-            const orderData   = await (orderClient as any).get({ id: String(resourceId) });
-            const orderAny    = orderData as any;
+            const orderData = await (orderClient as any).get({ id: String(resourceId) });
+            const orderAny = orderData as any;
 
             // external_reference IS our Firestore orderId
             const orderId = orderAny?.external_reference;
             if (!orderId) { console.warn('[mpWebhook] Order topic but no external_reference'); res.status(200).send('OK'); return; }
 
             // Extract status from order + first transaction payment
-            const txPay       = orderAny?.transactions?.[0]?.payments?.[0] ?? {};
+            const txPay = orderAny?.transactions?.[0]?.payments?.[0] ?? {};
             const orderStatus = orderAny?.status ?? '';               // 'processed'|'pending'|'rejected'
-            const payStatus   = txPay?.status   ?? orderStatus;
-            const payId       = txPay?.id        ?? null;
+            const payStatus = txPay?.status ?? orderStatus;
+            const payId = txPay?.id ?? null;
 
-            const approved    = orderStatus === 'processed' || payStatus === 'approved';
-            const rejected    = orderStatus === 'rejected'  || payStatus === 'rejected';
-            const newStatus   = approved ? 'approved' : rejected ? 'rejected' : 'pending';
+            const approved = orderStatus === 'processed' || payStatus === 'approved';
+            const rejected = orderStatus === 'rejected' || payStatus === 'rejected';
+            const newStatus = approved ? 'approved' : rejected ? 'rejected' : 'pending';
 
             await db.collection('orders').doc(orderId).update({
-                paymentStatus:  newStatus,
-                paymentId:      payId,
-                mpOrderId:      orderAny?.id,
-                paymentMethod:  orderAny?.transactions?.[0]?.payment_method?.id ?? '',
-                installments:   orderAny?.transactions?.[0]?.payment_method?.installments ?? 1,
-                updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
-                ...(approved ? { status: 'paid' }           : {}),
+                paymentStatus: newStatus,
+                paymentId: payId,
+                mpOrderId: orderAny?.id,
+                paymentMethod: orderAny?.transactions?.[0]?.payment_method?.id ?? '',
+                installments: orderAny?.transactions?.[0]?.payment_method?.installments ?? 1,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                ...(approved ? { status: 'paid' } : {}),
                 ...(rejected ? { status: 'payment_failed' } : {}),
             });
 
@@ -591,7 +617,7 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
 
         // ── Legacy Payments API topic ('payment') ──────────────────────────────
         // Retained for backwards compatibility with any legacy payments.
-        const paymentApi  = new Payment(mpClient);
+        const paymentApi = new Payment(mpClient);
         const paymentData = await paymentApi.get({ id: String(resourceId) });
 
         const orderId = paymentData.metadata?.order_id;
@@ -605,10 +631,10 @@ export const mpWebhook = functions.https.onRequest(async (req, res) => {
 
         await db.collection('orders').doc(orderId).update({
             paymentStatus: newStatus,
-            paymentId:     paymentData.id,
+            paymentId: paymentData.id,
             paymentMethod: paymentData.payment_method_id,
-            installments:  paymentData.installments,
-            updatedAt:     admin.firestore.FieldValue.serverTimestamp(),
+            installments: paymentData.installments,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             ...(newStatus === 'approved' ? { status: 'paid' } : {}),
             ...(newStatus === 'rejected' ? { status: 'payment_failed' } : {}),
         });
@@ -634,8 +660,8 @@ export const mpAuthUrl = functions.https.onCall(async (data, context) => {
 
     try {
         const configDoc = await db.collection('config').doc('integrations').get();
-        const mpConfig  = configDoc.data()?.mercadopago || {};
-        const appId     = mpConfig.appId || mpConfig.clientId;
+        const mpConfig = configDoc.data()?.mercadopago || {};
+        const appId = mpConfig.appId || mpConfig.clientId;
 
         if (!appId) {
             throw new functions.https.HttpsError(
@@ -645,7 +671,7 @@ export const mpAuthUrl = functions.https.onCall(async (data, context) => {
         }
 
         const redirectUri = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback';
-        const state       = Math.random().toString(36).substring(2, 15);
+        const state = Math.random().toString(36).substring(2, 15);
 
         await db.collection('config').doc('integrations').set(
             { mercadopago: { oauthState: state } },
@@ -653,7 +679,7 @@ export const mpAuthUrl = functions.https.onCall(async (data, context) => {
         );
 
         const SCOPES = ['read', 'offline_access', 'write'].join(' ');
-        const url    = `https://auth.mercadopago.com.mx/authorization?client_id=${appId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(SCOPES)}&state=${state}`;
+        const url = `https://auth.mercadopago.com.mx/authorization?client_id=${appId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(SCOPES)}&state=${state}`;
         return { url, redirectUri };
     } catch (err: any) {
         throw new functions.https.HttpsError('internal', err.message);
@@ -672,7 +698,7 @@ export const mpAuthUrl = functions.https.onCall(async (data, context) => {
 export const mpCallback = functions.https.onRequest(async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
 
-    const code  = req.query['code']  as string;
+    const code = req.query['code'] as string;
     const state = req.query['state'] as string;
     const error = req.query['error'] as string;
 
@@ -691,11 +717,11 @@ export const mpCallback = functions.https.onRequest(async (req, res) => {
     }
 
     try {
-        const configDoc    = await db.collection('config').doc('integrations').get();
-        const mpConfig     = configDoc.data()?.mercadopago || {};
-        const appId        = mpConfig.appId        || mpConfig.clientId;
+        const configDoc = await db.collection('config').doc('integrations').get();
+        const mpConfig = configDoc.data()?.mercadopago || {};
+        const appId = mpConfig.appId || mpConfig.clientId;
         const clientSecret = mpConfig.clientSecret || mpConfig.appSecret;
-        const redirectUri  = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback';
+        const redirectUri = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpCallback';
 
         if (!appId || !clientSecret) {
             res.status(500).send('Missing MercadoPago App ID or Client Secret in Firestore.');
@@ -709,14 +735,14 @@ export const mpCallback = functions.https.onRequest(async (req, res) => {
         }
 
         const tokenRes = await fetch('https://api.mercadopago.com/oauth/token', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
             body: new URLSearchParams({
-                grant_type:    'authorization_code',
-                client_id:     appId,
+                grant_type: 'authorization_code',
+                client_id: appId,
                 client_secret: clientSecret,
                 code,
-                redirect_uri:  redirectUri,
+                redirect_uri: redirectUri,
             }).toString(),
         });
 
@@ -732,13 +758,13 @@ export const mpCallback = functions.https.onRequest(async (req, res) => {
 
         await db.collection('config').doc('integrations').set({
             mercadopago: {
-                accessToken:  tokenData.access_token,
+                accessToken: tokenData.access_token,
                 refreshToken: tokenData.refresh_token ?? null,
-                publicKey:    tokenData.public_key    ?? mpConfig.publicKey ?? '',
-                userId:       tokenData.user_id       ?? null,
+                publicKey: tokenData.public_key ?? mpConfig.publicKey ?? '',
+                userId: tokenData.user_id ?? null,
                 expiresAt,
-                connected:    true,
-                oauthState:   null,
+                connected: true,
+                oauthState: null,
             }
         }, { merge: true });
 
@@ -763,7 +789,7 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     const FN_VER = 'v6-2026-04-20'; // bump this on every deploy to confirm version
     // Load credentials from Firestore
     const configSnap = await db.collection('config').doc('integrations').get();
-    const mpConfig   = configSnap.data()?.mercadopago ?? {};
+    const mpConfig = configSnap.data()?.mercadopago ?? {};
     const accessToken: string = mpConfig.accessToken ?? process.env.MP_ACCESS_TOKEN ?? '';
 
     if (!accessToken) {
@@ -775,7 +801,7 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     // ── Step: save_credentials — persist AT + PK to Firestore ────────────────
     if (step === 'save_credentials') {
         const newAt = (data?.accessToken ?? '').trim();
-        const newPk = (data?.publicKey   ?? '').trim();
+        const newPk = (data?.publicKey ?? '').trim();
         if (!newAt || !newPk) {
             return { ok: false, error: 'Both accessToken and publicKey are required.', fnVer: FN_VER };
         }
@@ -790,19 +816,19 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     if (step === 'check_credentials') {
         const storedAt = accessToken;
         const storedPk = mpConfig.publicKey ?? '';
-        const mask     = (s: string) => s ? `${s.slice(0, 18)}…${s.slice(-6)}` : '(empty)';
+        const mask = (s: string) => s ? `${s.slice(0, 18)}…${s.slice(-6)}` : '(empty)';
         // Expected values from the user
         const expectedAt = 'TEST-398646544825942-022715-cbec23472732e892da3798593de42e85-1178500066';
         const expectedPk = 'TEST-26a04055-43d8-4f69-97c5-7829d3d413bf';
         const atMatch = storedAt === expectedAt;
         const pkMatch = storedPk === expectedPk;
         return {
-            ok:              atMatch && pkMatch,
-            accessToken:     { stored: mask(storedAt), expected: mask(expectedAt), match: atMatch },
-            publicKey:       { stored: mask(storedPk),  expected: mask(expectedPk),  match: pkMatch  },
-            summary:         `AT: ${atMatch ? '✅ Match' : '❌ MISMATCH'} | PK: ${pkMatch ? '✅ Match' : '❌ MISMATCH'}`,
-            updateNeeded:    !atMatch || !pkMatch,
-            fnVer:           FN_VER,
+            ok: atMatch && pkMatch,
+            accessToken: { stored: mask(storedAt), expected: mask(expectedAt), match: atMatch },
+            publicKey: { stored: mask(storedPk), expected: mask(expectedPk), match: pkMatch },
+            summary: `AT: ${atMatch ? '✅ Match' : '❌ MISMATCH'} | PK: ${pkMatch ? '✅ Match' : '❌ MISMATCH'}`,
+            updateNeeded: !atMatch || !pkMatch,
+            fnVer: FN_VER,
         };
     }
 
@@ -815,11 +841,11 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             const body = await r.json() as any;
             if (!r.ok) return { ok: false, error: body.message ?? body.error ?? 'Token rejected', status: r.status };
             return {
-                ok:       true,
-                userId:   body.id,
+                ok: true,
+                userId: body.id,
                 nickname: body.nickname,
-                email:    body.email,
-                site_id:  body.site_id,
+                email: body.email,
+                site_id: body.site_id,
             };
         } catch (e: any) {
             return { ok: false, error: e.message };
@@ -837,8 +863,8 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             if (!r.ok) return { ok: false, error: body.message ?? 'Could not retrieve payment methods', status: r.status };
             const methods: string[] = (Array.isArray(body) ? body : []).map((m: any) => m.id);
             return {
-                ok:     true,
-                count:  methods.length,
+                ok: true,
+                count: methods.length,
                 sample: methods.slice(0, 5),
             };
         } catch (e: any) {
@@ -853,21 +879,21 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         const { amount = 100, description = 'Diagnóstico integración — Eurollantas' } = data ?? {};
         try {
             const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
-                method:  'POST',
+                method: 'POST',
                 headers: {
-                    'Authorization':     `Bearer ${accessToken}`,
-                    'Content-Type':      'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
                     'X-Idempotency-Key': `mpdiag-pref-${Date.now()}`,
                 },
                 body: JSON.stringify({
                     items: [{
-                        id:          'mp-diag-001',
-                        title:       description,
-                        quantity:    1,
+                        id: 'mp-diag-001',
+                        title: description,
+                        quantity: 1,
                         currency_id: 'MXN',
-                        unit_price:  Number(amount),
+                        unit_price: Number(amount),
                     }],
-                    payer:              { email: 'test@eurollantas.com.mx' },
+                    payer: { email: 'test@eurollantas.com.mx' },
                     external_reference: `mp-diag-${Date.now()}`,
                     back_urls: {
                         success: 'https://eurollantas.com.mx',
@@ -881,24 +907,24 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             const pref = await prefRes.json() as any;
             if (!prefRes.ok || !pref.id) {
                 return {
-                    ok:    false,
+                    ok: false,
                     status: prefRes.status,
                     error: pref.message ?? pref.cause?.[0]?.description ?? 'Preference creation failed',
                     fnVer: FN_VER,
-                    raw:   pref,
+                    raw: pref,
                 };
             }
             return {
-                ok:           true,
+                ok: true,
                 preferenceId: pref.id,
-                initPoint:    pref.sandbox_init_point ?? pref.init_point,
-                status:       'preference_created',
-                fnVer:        FN_VER,
+                initPoint: pref.sandbox_init_point ?? pref.init_point,
+                status: 'preference_created',
+                fnVer: FN_VER,
                 raw: {
-                    id:           pref.id,
-                    sandbox_url:  pref.sandbox_init_point,
-                    expires:      pref.date_of_expiration,
-                    fnVer:        FN_VER,
+                    id: pref.id,
+                    sandbox_url: pref.sandbox_init_point,
+                    expires: pref.date_of_expiration,
+                    fnVer: FN_VER,
                 },
             };
         } catch (e: any) {
@@ -917,25 +943,25 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             return { ok: false, error: 'No Public Key found in config/integrations → mercadopago' };
         }
         const testCards = [
-            { label: 'Mastercard Crédito',  number: '5474925432670366', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
-            { label: 'Visa Crédito',        number: '4075595716483764', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
-            { label: 'Mastercard Débito',   number: '5579053461482647', cvv: '1234', expMonth: 11, expYear: 2030, holder: 'APRO' },
-            { label: 'Visa Débito',         number: '4189141221267633', cvv: '123',  expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Mastercard Crédito', number: '5474925432670366', cvv: '123', expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Visa Crédito', number: '4075595716483764', cvv: '123', expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Mastercard Débito', number: '5579053461482647', cvv: '1234', expMonth: 11, expYear: 2030, holder: 'APRO' },
+            { label: 'Visa Débito', number: '4189141221267633', cvv: '123', expMonth: 11, expYear: 2030, holder: 'APRO' },
         ];
         const cardResults: { label: string; ok: boolean; token?: string; error?: string }[] = [];
         for (const card of testCards) {
             try {
                 const r = await fetch('https://api.mercadopago.com/v1/card_tokens', {
-                    method:  'POST',
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type':  'application/json',
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        card_number:      card.number,
-                        security_code:    card.cvv,
+                        card_number: card.number,
+                        security_code: card.cvv,
                         expiration_month: card.expMonth,
-                        expiration_year:  card.expYear,
+                        expiration_year: card.expYear,
                         cardholder: { name: card.holder },
                     }),
                 });
@@ -967,25 +993,25 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             const body = await r.json() as any;
             if (!r.ok) {
                 return {
-                    ok:     false,
-                    error:  body.message ?? body.error ?? `HTTP ${r.status}`,
+                    ok: false,
+                    error: body.message ?? body.error ?? `HTTP ${r.status}`,
                     status: r.status,
-                    hint:   'If 404 the buyer account is not associated with this sandbox seller.',
-                    fnVer:  FN_VER,
+                    hint: 'If 404 the buyer account is not associated with this sandbox seller.',
+                    fnVer: FN_VER,
                 };
             }
             // email may appear as body.email or inside identification sub-objects
             const email = body.email ?? body.secure_email ?? body.alternative_phone?.area_code ?? null;
             return {
-                ok:        true,
-                buyerId:   body.id,
-                nickname:  body.nickname,
+                ok: true,
+                buyerId: body.id,
+                nickname: body.nickname,
                 email,
-                site_id:   body.site_id,
-                type:      body.user_type ?? body.account_type ?? 'unknown',
+                site_id: body.site_id,
+                type: body.user_type ?? body.account_type ?? 'unknown',
                 // Return full body so raw JSON reveals every available field
                 allFields: body,
-                fnVer:     FN_VER,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -997,9 +1023,9 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     // The buyer's token is then used to tokenize a card — this correctly
     // attributes the card token to the BUYER, resolving error 2034.
     if (step === 'buyer_token') {
-        const mpCfg        = configSnap.data()?.mercadopago ?? {};
+        const mpCfg = configSnap.data()?.mercadopago ?? {};
         // clientId 398646544825942 = app ID from the MP developer portal (not a secret)
-        const clientId     = mpCfg.clientId ?? mpCfg.client_id ?? '398646544825942';
+        const clientId = mpCfg.clientId ?? mpCfg.client_id ?? '398646544825942';
         const clientSecret = mpCfg.clientSecret ?? mpCfg.client_secret ?? '';
 
         // Strategy: try with client_secret first; if not available, try without.
@@ -1007,15 +1033,15 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         const tryGrant = async (includeSecret: boolean) => {
             const params: Record<string, string> = {
                 grant_type: 'password',
-                client_id:  clientId,
-                username:   'TESTUSER7146576788719579772',
-                password:   'aP0I8bxKiJ',
+                client_id: clientId,
+                username: 'TESTUSER7146576788719579772',
+                password: 'aP0I8bxKiJ',
             };
             if (includeSecret && clientSecret) params.client_secret = clientSecret;
             return fetch('https://api.mercadopago.com/oauth/token', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body:    new URLSearchParams(params).toString(),
+                body: new URLSearchParams(params).toString(),
             });
         };
 
@@ -1026,33 +1052,33 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
 
             // Second try: without secret (sandbox-only fallback)
             if (!r.ok && clientSecret) {
-                r    = await tryGrant(false);
+                r = await tryGrant(false);
                 body = await r.json() as any;
             }
 
             if (!r.ok || !body.access_token) {
                 return {
-                    ok:         false,
-                    error:      body.message ?? body.error ?? `HTTP ${r.status}`,
-                    hint:       'Add clientSecret to Firestore config/integrations → mercadopago.clientSecret (find it in the MP developer portal under your app credentials)',
+                    ok: false,
+                    error: body.message ?? body.error ?? `HTTP ${r.status}`,
+                    hint: 'Add clientSecret to Firestore config/integrations → mercadopago.clientSecret (find it in the MP developer portal under your app credentials)',
                     httpStatus: r.status,
-                    raw:        body,
-                    fnVer:      FN_VER,
+                    raw: body,
+                    fnVer: FN_VER,
                 };
             }
 
             // Get buyer profile with their own token
-            const meR    = await fetch('https://api.mercadopago.com/users/me', {
+            const meR = await fetch('https://api.mercadopago.com/users/me', {
                 headers: { 'Authorization': `Bearer ${body.access_token}` },
             });
             const meBody = await meR.json() as any;
             return {
-                ok:         true,
+                ok: true,
                 buyerToken: body.access_token,
                 buyerEmail: meBody.email,
-                buyerId:    meBody.id,
-                buyerNick:  meBody.nickname,
-                fnVer:      FN_VER,
+                buyerId: meBody.id,
+                buyerNick: meBody.nickname,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1088,22 +1114,22 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         let cardToken = '';
         try {
             const tr = await fetch('https://api.mercadopago.com/v1/card_tokens', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    card_number:      '5474925432670366',
-                    security_code:    '123',
+                    card_number: '5474925432670366',
+                    security_code: '123',
                     expiration_month: 11,
-                    expiration_year:  2030,
-                    cardholder:       { name: 'APRO' },
+                    expiration_year: 2030,
+                    cardholder: { name: 'APRO' },
                 }),
             });
             const tb = await tr.json() as any;
             if (!tr.ok || !tb.id) return {
                 ok: false,
-                error:     `Token error (HTTP ${tr.status}): ${tb.message ?? JSON.stringify(tb)}`,
-                rawToken:  tb,
-                fnVer:     FN_VER,
+                error: `Token error (HTTP ${tr.status}): ${tb.message ?? JSON.stringify(tb)}`,
+                rawToken: tb,
+                fnVer: FN_VER,
             };
             cardToken = tb.id;
         } catch (e: any) {
@@ -1113,36 +1139,36 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         // 2 — Create direct payment with that token
         try {
             const pr = await fetch('https://api.mercadopago.com/v1/payments', {
-                method:  'POST',
+                method: 'POST',
                 headers: {
-                    'Authorization':     `Bearer ${accessToken}`,
-                    'Content-Type':      'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
                     'X-Idempotency-Key': `mpdiag-pay-${Date.now()}`,
                 },
                 body: JSON.stringify({
                     transaction_amount: Number(amount),
-                    token:              cardToken,
-                    description:        'Diagnóstico pago directo — Eurollantas',
-                    installments:       1,
-                    payment_method_id:  'master',
-                    binary_mode:        true,
-                    payer:              { email: buyerEmail },
+                    token: cardToken,
+                    description: 'Diagnóstico pago directo — Eurollantas',
+                    installments: 1,
+                    payment_method_id: 'master',
+                    binary_mode: true,
+                    payer: { email: buyerEmail },
                 }),
             });
             const pb = await pr.json() as any;
             const approved = pb.status === 'approved';
             return {
-                ok:           approved,
-                paymentId:    pb.id ?? null,
-                status:       pb.status,
+                ok: approved,
+                paymentId: pb.id ?? null,
+                status: pb.status,
                 statusDetail: pb.status_detail,
-                amount:       pb.transaction_amount,
-                currency:     pb.currency_id,
+                amount: pb.transaction_amount,
+                currency: pb.currency_id,
                 buyerEmail,
-                httpStatus:   pr.status,
-                mpMessage:    approved ? undefined : (pb.message ?? pb.error),
-                mpCause:      approved ? undefined : pb.cause,
-                fnVer:        FN_VER,
+                httpStatus: pr.status,
+                mpMessage: approved ? undefined : (pb.message ?? pb.error),
+                mpCause: approved ? undefined : pb.cause,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: `Payment exception: ${e.message}`, fnVer: FN_VER };
@@ -1161,38 +1187,38 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         // with an actual card, which also generates the paymentId needed for Stage 3.
         try {
             const tr = await fetch('https://api.mercadopago.com/v1/card_tokens', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    card_number:      '5474925432670366',  // MP test Mastercard (tokenizable in both envs)
-                    security_code:    '123',
+                    card_number: '5474925432670366',  // MP test Mastercard (tokenizable in both envs)
+                    security_code: '123',
                     expiration_month: 11,
-                    expiration_year:  2030,
-                    cardholder:       { name: 'TEST CARD' },
+                    expiration_year: 2030,
+                    cardholder: { name: 'TEST CARD' },
                 }),
             });
             const tb = await tr.json() as any;
 
             if (!tr.ok || !tb.id) {
                 return {
-                    ok:         false,
-                    error:      `Tokenization failed (HTTP ${tr.status})`,
-                    detail:     tb.message ?? tb.error ?? JSON.stringify(tb),
+                    ok: false,
+                    error: `Tokenization failed (HTTP ${tr.status})`,
+                    detail: tb.message ?? tb.error ?? JSON.stringify(tb),
                     httpStatus: tr.status,
-                    fnVer:      FN_VER,
+                    fnVer: FN_VER,
                 };
             }
 
             return {
-                ok:          true,
-                tokenId:     tb.id,
-                lastFour:    tb.last_four_digits,
-                cardType:    tb.payment_method?.id ?? 'master',
+                ok: true,
+                tokenId: tb.id,
+                lastFour: tb.last_four_digits,
+                cardType: tb.payment_method?.id ?? 'master',
                 expiryMonth: tb.expiration_month,
-                expiryYear:  tb.expiration_year,
-                httpStatus:  tr.status,
-                note:        '✅ Card tokenization works — production AT valid. Real purchase must be done through the storefront with a real card (generates production paymentId for Stage 3).',
-                fnVer:       FN_VER,
+                expiryYear: tb.expiration_year,
+                httpStatus: tr.status,
+                note: '✅ Card tokenization works — production AT valid. Real purchase must be done through the storefront with a real card (generates production paymentId for Stage 3).',
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: `Tokenization exception: ${e.message}`, fnVer: FN_VER };
@@ -1206,19 +1232,19 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         const { paymentId } = data ?? {};
         if (!paymentId) return { ok: false, error: 'paymentId required', fnVer: FN_VER };
         try {
-            const r    = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+            const r = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
             });
             const body = await r.json() as any;
             return {
-                ok:           r.ok && !!body.id,
-                paymentId:    body.id,
-                status:       body.status,
+                ok: r.ok && !!body.id,
+                paymentId: body.id,
+                status: body.status,
                 statusDetail: body.status_detail,
-                amount:       body.transaction_amount,
-                currency:     body.currency_id,
+                amount: body.transaction_amount,
+                currency: body.currency_id,
                 dateApproved: body.date_approved,
-                fnVer:        FN_VER,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1231,21 +1257,21 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         if (!paymentId) return { ok: false, error: 'paymentId required', fnVer: FN_VER };
         try {
             const r = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}/refunds`, {
-                method:  'POST',
+                method: 'POST',
                 headers: {
-                    'Authorization':     `Bearer ${accessToken}`,
-                    'Content-Type':      'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
                     'X-Idempotency-Key': `mpdiag-refund-${Date.now()}`,
                 },
                 body: JSON.stringify({}), // empty body = full refund
             });
             const body = await r.json() as any;
             return {
-                ok:       r.ok && !!body.id,
+                ok: r.ok && !!body.id,
                 refundId: body.id,
-                status:   body.status,
-                amount:   body.amount,
-                fnVer:    FN_VER,
+                status: body.status,
+                amount: body.amount,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1259,21 +1285,21 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         try {
             const params = new URLSearchParams({
                 payment_method_id: 'master',
-                amount:            '1000',
-                bin:               '547492',
+                amount: '1000',
+                bin: '547492',
             });
             const r = await fetch(
                 `https://api.mercadopago.com/v1/payment_methods/installments?${params}`,
                 { headers: { 'Authorization': `Bearer ${accessToken}` } }
             );
             const body = await r.json() as any;
-            const arr  = Array.isArray(body) ? body : [];
+            const arr = Array.isArray(body) ? body : [];
             const installments: number[] = (arr[0]?.payer_costs ?? []).map((c: any) => c.installments);
             return {
-                ok:            r.ok && installments.length > 0,
+                ok: r.ok && installments.length > 0,
                 installments,
-                count:         installments.length,
-                fnVer:         FN_VER,
+                count: installments.length,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1285,7 +1311,7 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
     // This step registers the webhook subscription directly via the API.
     if (step === 'configure_webhook') {
         const webhookUrl = 'https://us-central1-tiendapraxis.cloudfunctions.net/mpWebhook';
-        const appId      = '398646544825942';
+        const appId = '398646544825942';
         try {
             // First: get existing subscriptions to avoid duplicates
             const listR = await fetch(`https://api.mercadopago.com/v2/notifications/webhooks?client_id=${appId}`, {
@@ -1307,16 +1333,16 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
 
             // Register new subscription
             const createR = await fetch('https://api.mercadopago.com/v2/notifications/webhooks', {
-                method:  'POST',
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type':  'application/json',
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    url:           webhookUrl,
-                    event_type:    ['payment', 'merchant_order'],
-                    client_id:     appId,
-                    active:        true,
+                    url: webhookUrl,
+                    event_type: ['payment', 'merchant_order'],
+                    client_id: appId,
+                    active: true,
                 }),
             });
             const createBody = await createR.json() as any;
@@ -1328,12 +1354,12 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             const listBody2 = await listR2.json() as any;
 
             return {
-                ok:         createR.ok,
-                message:    createR.ok ? '✅ Webhook registered via API' : `❌ HTTP ${createR.status}`,
-                created:    createBody,
+                ok: createR.ok,
+                message: createR.ok ? '✅ Webhook registered via API' : `❌ HTTP ${createR.status}`,
+                created: createBody,
                 existingV2: listBody,
                 existingV1: listBody2,
-                fnVer:      FN_VER,
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1360,11 +1386,11 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
             });
             const body2 = await r2.json() as any;
             return {
-                ok:        r.ok || r2.ok,
+                ok: r.ok || r2.ok,
                 v2_result: body,
                 v1_result: body2,
-                hint:      'Look for "secret" or "signature_secret" field in the raw results',
-                fnVer:     FN_VER,
+                hint: 'Look for "secret" or "signature_secret" field in the raw results',
+                fnVer: FN_VER,
             };
         } catch (e: any) {
             return { ok: false, error: e.message, fnVer: FN_VER };
@@ -1379,21 +1405,21 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         const secret = mpConfig.webhookSecret ?? '';
         if (!secret) {
             return {
-                ok:    false,
+                ok: false,
                 error: 'webhookSecret not configured in Firestore',
-                hint:  'Add mercadopago.webhookSecret to config/integrations → Firestore. Find it in developers.mercadopago.com → your app → Webhooks → Secret key.',
+                hint: 'Add mercadopago.webhookSecret to config/integrations → Firestore. Find it in developers.mercadopago.com → your app → Webhooks → Secret key.',
                 fnVer: FN_VER,
             };
         }
-        const crypto   = await import('crypto');
-        const testTs   = String(Date.now());
+        const crypto = await import('crypto');
+        const testTs = String(Date.now());
         const manifest = `id:99999999;request-id:diag-req;ts:${testTs};`;
-        const sig      = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+        const sig = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
         return {
-            ok:        true,
-            message:   'webhookSecret configured ✅ — HMAC-SHA256 signing works',
+            ok: true,
+            message: 'webhookSecret configured ✅ — HMAC-SHA256 signing works',
             sampleSig: sig.substring(0, 16) + '…',
-            fnVer:     FN_VER,
+            fnVer: FN_VER,
         };
     }
 
@@ -1404,11 +1430,11 @@ export const mpDiag = functions.https.onCall(async (data, context) => {
         try {
             // Send a GET — the webhook rejects non-POST but a 405 confirms it's alive
             const r = await fetch(webhookUrl, { method: 'GET' });
-            const alive  = r.status === 405 || r.status === 200; // 405 = correct (only POST allowed)
+            const alive = r.status === 405 || r.status === 200; // 405 = correct (only POST allowed)
             return {
-                ok:     alive,
+                ok: alive,
                 status: r.status,
-                url:    webhookUrl,
+                url: webhookUrl,
                 detail: alive ? 'Endpoint responds correctly (405 Method Not Allowed = ✅)' : `Unexpected status ${r.status}`,
             };
         } catch (e: any) {
@@ -1516,7 +1542,7 @@ export const backfillUserClaims = functions.https.onCall(async (data, context) =
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SKYDROPX_BASE     = 'https://pro.skydropx.com/api/v1';
+const SKYDROPX_BASE = 'https://pro.skydropx.com/api/v1';
 const SKYDROPX_OAUTH_URL = 'https://pro.skydropx.com/api/v1/oauth/token';
 
 /**
@@ -1524,21 +1550,21 @@ const SKYDROPX_OAUTH_URL = 'https://pro.skydropx.com/api/v1/oauth/token';
  * PRO API uses: Authorization: Bearer {access_token} via client_credentials OAuth.
  */
 async function skydropxHeaders(): Promise<Record<string, string>> {
-    let apiKey    = process.env.SKYDROPX_API_KEY;
+    let apiKey = process.env.SKYDROPX_API_KEY;
     let apiSecret = process.env.SKYDROPX_API_SECRET;
 
     try {
         const integrationsDoc = await db.collection('config').doc('integrations').get();
         if (integrationsDoc.exists) {
             const sky = integrationsDoc.data()?.skydropx || {};
-            if (sky.apiKey)    apiKey    = sky.apiKey;
+            if (sky.apiKey) apiKey = sky.apiKey;
             if (sky.apiSecret) apiSecret = sky.apiSecret;
         }
     } catch (err) {
         console.warn('[SkyDropX] Could not read credentials from Firestore:', err);
     }
 
-    if (!apiKey)    throw new functions.https.HttpsError('internal', 'SkyDropX API key not configured.');
+    if (!apiKey) throw new functions.https.HttpsError('internal', 'SkyDropX API key not configured.');
     if (!apiSecret) throw new functions.https.HttpsError('internal', 'SkyDropX API secret not configured.');
 
     // Exchange client credentials for a Bearer access token
@@ -1547,7 +1573,7 @@ async function skydropxHeaders(): Promise<Record<string, string>> {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             grant_type: 'client_credentials',
-            client_id:     apiKey,
+            client_id: apiKey,
             client_secret: apiSecret,
         }).toString(),
     });
@@ -1729,7 +1755,7 @@ export const skydropxGetRates = functions.https.onCall(async (data, context) => 
             const zipData = await zipRes.json() as any;
             if (zipData.places?.length > 0) {
                 const place = zipData.places[0];
-                destLevel1 = place.state         || destLevel1;
+                destLevel1 = place.state || destLevel1;
                 destLevel2 = place['place name'] || destLevel2;
                 destLevel3 = place['place name'] || destLevel3;
             }
@@ -1739,16 +1765,16 @@ export const skydropxGetRates = functions.https.onCall(async (data, context) => 
     // Official Skydropx PRO quotation body — Rails API requires quotation:{} root wrapper
     const quotationPayload = {
         address_from: { country_code: 'MX', postal_code: originZip, area_level1: 'San Luis Potosí', area_level2: 'San Luis Potosí', area_level3: 'Centro' },
-        address_to:   { country_code: 'MX', postal_code: String(destinationZip), area_level1: destLevel1, area_level2: destLevel2, area_level3: destLevel3 },
+        address_to: { country_code: 'MX', postal_code: String(destinationZip), area_level1: destLevel1, area_level2: destLevel2, area_level3: destLevel3 },
         parcels: [{
             weight: Math.max(1, Math.round(parcel.weight || 5)),
             height: Math.max(1, Math.round(parcel.height || 30)),
-            width:  Math.max(1, Math.round(parcel.width  || 30)),
+            width: Math.max(1, Math.round(parcel.width || 30)),
             length: Math.max(1, Math.round(parcel.length || 20)),
         }],
-        package_protected:  false,
-        declared_value:     0,
-        declared_amount:    0,
+        package_protected: false,
+        declared_value: 0,
+        declared_amount: 0,
         requested_carriers: [],
     };
     const body = { quotation: quotationPayload };
@@ -1794,10 +1820,10 @@ async function pollQuotation(quotationId: string, headers: Record<string, string
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         await sleep(intervalMs);
-        const res  = await fetch(`${SKYDROPX_BASE}/quotations/${quotationId}`, { headers });
+        const res = await fetch(`${SKYDROPX_BASE}/quotations/${quotationId}`, { headers });
         const text = await res.text();
         if (!res.ok) throw new Error(`Poll failed (${res.status}): ${text}`);
-        const json  = JSON.parse(text);
+        const json = JSON.parse(text);
         const hasPrice = Array.isArray(json.rates) && json.rates.some((r: any) => r.total || r.amount);
         console.log(`[SkyDropX] Poll ${attempt}/${maxAttempts}: is_completed=${json.is_completed}, priced=${hasPrice}`);
         if (json.is_completed || hasPrice) return json;
@@ -1815,19 +1841,19 @@ export const skydropxRawTest = functions.https.onCall(async (data: any, context)
     const result: any = { version: BUILD_VERSION, step1_credentials: null, step2_oauth: null, step3_quotation: null };
 
     // Step 1: Read credentials from Firestore
-    let apiKey    = process.env.SKYDROPX_API_KEY    || null;
+    let apiKey = process.env.SKYDROPX_API_KEY || null;
     let apiSecret = process.env.SKYDROPX_API_SECRET || null;
     try {
         const fsDoc = await db.collection('config').doc('integrations').get();
         if (fsDoc.exists) {
             const sky = fsDoc.data()?.skydropx || {};
-            if (sky.apiKey)    apiKey    = sky.apiKey;
+            if (sky.apiKey) apiKey = sky.apiKey;
             if (sky.apiSecret) apiSecret = sky.apiSecret;
         }
         result.step1_credentials = {
-            docExists:    fsDoc.exists,
-            hasApiKey:    !!apiKey,
-            apiKeyFirst8: apiKey    ? apiKey.substring(0, 8) + '...' : null,
+            docExists: fsDoc.exists,
+            hasApiKey: !!apiKey,
+            apiKeyFirst8: apiKey ? apiKey.substring(0, 8) + '...' : null,
             hasApiSecret: !!apiSecret,
         };
     } catch (e: any) {
@@ -1838,7 +1864,7 @@ export const skydropxRawTest = functions.https.onCall(async (data: any, context)
     let bearerToken: string | null = null;
     if (apiKey && apiSecret) {
         try {
-            const tokenRes  = await fetch(SKYDROPX_OAUTH_URL, {
+            const tokenRes = await fetch(SKYDROPX_OAUTH_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ grant_type: 'client_credentials', client_id: apiKey, client_secret: apiSecret }).toString(),
@@ -1860,20 +1886,20 @@ export const skydropxRawTest = functions.https.onCall(async (data: any, context)
         const zip_from = '78140';
         // Use a well-known zip as default to avoid address mismatch errors
         // 64000 = Monterrey, Nuevo León (Monterrey Centro)
-        const zip_to   = String(data?.zipTo || '64000');
-        const p        = data?.parcel || { weight: 5, height: 30, width: 30, length: 20 };
+        const zip_to = String(data?.zipTo || '64000');
+        const p = data?.parcel || { weight: 5, height: 30, width: 30, length: 20 };
 
         // Lookup zip_to area info (required to match SEPOMEX data)
         let destLevel1 = 'Nuevo León';
         let destLevel2 = 'Monterrey';
         let destLevel3 = 'Monterrey Centro';
         try {
-            const zipRes  = await fetch(`https://api.zippopotam.us/mx/${zip_to}`);
+            const zipRes = await fetch(`https://api.zippopotam.us/mx/${zip_to}`);
             if (zipRes.ok) {
                 const zipData = await zipRes.json() as any;
                 if (zipData.places?.length > 0) {
                     const place = zipData.places[0];
-                    destLevel1 = place.state       || destLevel1;
+                    destLevel1 = place.state || destLevel1;
                     destLevel2 = place['place name'] || destLevel2;
                     destLevel3 = place['place name'] || destLevel3;
                 }
@@ -1899,12 +1925,12 @@ export const skydropxRawTest = functions.https.onCall(async (data: any, context)
             parcels: [{
                 weight: Math.max(1, Math.round(p.weight || 5)),
                 height: Math.max(1, Math.round(p.height || 30)),
-                width:  Math.max(1, Math.round(p.width  || 30)),
+                width: Math.max(1, Math.round(p.width || 30)),
                 length: Math.max(1, Math.round(p.length || 20)),
             }],
-            package_protected:  false,
-            declared_value:     0,
-            declared_amount:    0,
+            package_protected: false,
+            declared_value: 0,
+            declared_amount: 0,
             requested_carriers: [],
         };
         const body = { quotation: quotationPayload };
@@ -1975,24 +2001,24 @@ export const skydropxRawTest = functions.https.onCall(async (data: any, context)
  */
 function extractRates(json: any): any[] {
     // PRO response: rates is a direct array inside the response object
-    const ratesArr: any[] = Array.isArray(json.rates)  ? json.rates
-                          : Array.isArray(json.data)   ? json.data
-                          : Array.isArray(json)        ? json
-                          : [];
+    const ratesArr: any[] = Array.isArray(json.rates) ? json.rates
+        : Array.isArray(json.data) ? json.data
+            : Array.isArray(json) ? json
+                : [];
 
     return ratesArr
         .filter((r: any) => r && r.id && (r.total !== undefined || r.amount !== undefined))
         .map((r: any) => {
             const price = parseFloat(String(r.total ?? r.amount ?? '0'));
             return {
-                rateId:       r.id,
-                carrier:      r.provider_name || r.provider_display_name || '',
-                serviceName:  r.provider_service_name || r.provider_service_code || '',
+                rateId: r.id,
+                carrier: r.provider_name || r.provider_display_name || '',
+                serviceName: r.provider_service_name || r.provider_service_code || '',
                 price,
-                currency:     r.currency_code || 'MXN',
+                currency: r.currency_code || 'MXN',
                 estimatedDays: r.days ?? null,
-                status:       r.status || '',
-                success:      r.success !== false,
+                status: r.status || '',
+                success: r.success !== false,
             };
         })
         .filter((r: any) => r.price > 0 && r.success)
@@ -2192,7 +2218,7 @@ async function getAppLevelToken(): Promise<string> {
     const configDoc = await db.collection('config').doc('integrations').get();
     const meliConfig = configDoc.data()?.meli ?? {};
 
-    const appId       = meliConfig.appId;
+    const appId = meliConfig.appId;
     const clientSecret = meliConfig.clientSecret;
 
     if (!appId || !clientSecret) {
@@ -2201,8 +2227,8 @@ async function getAppLevelToken(): Promise<string> {
     }
 
     // Check cached app token (valid for most of its 6h window)
-    const cached     = meliConfig.appAccessToken;
-    const cachedExp  = meliConfig.appTokenExpiresAt ?? 0;
+    const cached = meliConfig.appAccessToken;
+    const cachedExp = meliConfig.appTokenExpiresAt ?? 0;
     if (cached && (cachedExp - Date.now()) > 10 * 60 * 1000) {
         console.log('[Meli:AppToken] Cache HIT — reusing app token');
         return cached as string;
@@ -2213,8 +2239,8 @@ async function getAppLevelToken(): Promise<string> {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
         body: new URLSearchParams({
-            grant_type:    'client_credentials',
-            client_id:     appId,
+            grant_type: 'client_credentials',
+            client_id: appId,
             client_secret: clientSecret,
         }).toString(),
     });
@@ -2407,7 +2433,7 @@ function stripNullsAndUndefined(obj: any): any {
     for (const key of Object.keys(obj)) {
         const val = obj[key];
         if (val === null || val === undefined) continue;
-        
+
         if (typeof val === 'object' && !(val instanceof Date)) {
             const cleaned = stripNullsAndUndefined(val);
             if (cleaned !== undefined) {
@@ -2438,13 +2464,13 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
     // 3. order item logistic_type (item-level fallback when shipment fetch silently failed)
     const logisticType: string | undefined =
         shipData?.logistic?.type           // ← correct nested path
-     ?? shipData?.logistic_type            // ← top-level fallback
-     ?? mo.order_items?.[0]?.item?.logistic_type; // ← item-level last resort
+        ?? shipData?.logistic_type            // ← top-level fallback
+        ?? mo.order_items?.[0]?.item?.logistic_type; // ← item-level last resort
 
     const fType: 'platform' | 'flex' | 'merchant' =
-        logisticType === 'fulfillment'  ? 'platform' :  // MELI Full — ML warehouse packs & ships
-        logisticType === 'self_service' ? 'flex'     :  // MELI Flex — seller packs, same-day delivery
-        'merchant';                                      // Classic   — seller packs, standard MercadoEnvíos
+        logisticType === 'fulfillment' ? 'platform' :  // MELI Full — ML warehouse packs & ships
+            logisticType === 'self_service' ? 'flex' :  // MELI Flex — seller packs, same-day delivery
+                'merchant';                                      // Classic   — seller packs, standard MercadoEnvíos
 
     // ── Extract Handling Limit (Native MeLi SLA Dispatch Deadline) ──────────
     // With x-format-new:true, the field is shipping_option.estimated_handling_limit.date
@@ -2550,9 +2576,9 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
         !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
 
     const rawFirstName = mo.buyer?.first_name || '';
-    const rawLastName  = mo.buyer?.last_name  || '';
-    const rawFullName  = `${rawFirstName} ${rawLastName}`.trim();
-    const nickname     = mo.buyer?.nickname || '';
+    const rawLastName = mo.buyer?.last_name || '';
+    const rawFullName = `${rawFirstName} ${rawLastName}`.trim();
+    const nickname = mo.buyer?.nickname || '';
 
     // Priority: readable full name → readable nickname → anonymized code → fallback
     let buyerDisplayName: string;
@@ -2617,19 +2643,19 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
                 ?? null;
             if (!recvAddr) return {};  // no data → preserve existing Firestore value
             const state = recvAddr.state?.name || recvAddr.state || '';
-            if (!state)   return {};  // have addr object but no state → preserve
+            if (!state) return {};  // have addr object but no state → preserve
             return {
                 shippingAddress: {
-                    street:         recvAddr.street_name || recvAddr.address_line || 'MercadoEnvíos',
+                    street: recvAddr.street_name || recvAddr.address_line || 'MercadoEnvíos',
                     exteriorNumber: recvAddr.street_number || '',
                     interiorNumber: '',
-                    references:     recvAddr.comment || '',
-                    colonia:        recvAddr.neighborhood?.name || '',
-                    city:           recvAddr.city?.name || recvAddr.municipality?.name || '',
+                    references: recvAddr.comment || '',
+                    colonia: recvAddr.neighborhood?.name || '',
+                    city: recvAddr.city?.name || recvAddr.municipality?.name || '',
                     state,
-                    zipCode:        recvAddr.zip_code || '',
-                    country:        recvAddr.country?.id || 'MX',
-                    recipientName:  recvAddr.receiver_name || shipData?.destination?.receiver_name || ''
+                    zipCode: recvAddr.zip_code || '',
+                    country: recvAddr.country?.id || 'MX',
+                    recipientName: recvAddr.receiver_name || shipData?.destination?.receiver_name || ''
                 }
             };
         })(),
@@ -2651,7 +2677,7 @@ function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any) {
             const bi = billingData.billing_info || billingData;
             // In Mexico, the RFC is usually under doc_number
             const rfcNumber = bi?.doc_number || bi?.identification?.number || null;
-            
+
             // MeLi often places fiscal data in the additional_info array
             const addInfo = bi?.additional_info || [];
             const getAddInfo = (typeKey: string) => addInfo.find((a: any) => a.type === typeKey)?.value || null;
@@ -2838,10 +2864,10 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
             // Merge financials into the order via spread (avoids TS strict type errors)
             const orderWithFinancials = {
                 ...newOrder,
-                shipping_seller_cost:  shippingSellerCost,   // exact MXN deducted for shipping
+                shipping_seller_cost: shippingSellerCost,   // exact MXN deducted for shipping
                 shipping_gross_amount: shippingGrossAmount,  // full carrier rate (before subsidy)
                 shipping_meli_subsidy: shippingMeliSubsidy,  // what MeLi covers
-                net_receipt:           netReceipt,           // = total - commission - shipping
+                net_receipt: netReceipt,           // = total - commission - shipping
             };
 
 
@@ -2916,9 +2942,9 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
                     const avg = Math.round((stats.totalCost / stats.count) * 100) / 100;
                     const listingRef = db.collection('meli_listings').doc(itemId);
                     aggBatch.update(listingRef, {
-                        avg_shipping_cost:    avg,
-                        min_shipping_cost:    Math.round(stats.min * 100) / 100,
-                        max_shipping_cost:    Math.round(stats.max * 100) / 100,
+                        avg_shipping_cost: avg,
+                        min_shipping_cost: Math.round(stats.min * 100) / 100,
+                        max_shipping_cost: Math.round(stats.max * 100) / 100,
                         shipping_sample_size: stats.count,
                         avg_shipping_updated: admin.firestore.FieldValue.serverTimestamp()
                     });
@@ -2975,7 +3001,7 @@ export const meliBackfillShippingCosts = functions
             // Filter to those that need backfilling
             const toBackfill = ordersSnap.docs.filter(doc => {
                 const d = doc.data();
-                const hasCost   = d.shipping_seller_cost != null && d.shipping_seller_cost > 0;
+                const hasCost = d.shipping_seller_cost != null && d.shipping_seller_cost > 0;
                 const hasShipId = d.shipmentId || d.shippingId || d.meliShipmentId;
                 return hasShipId && !hasCost;
             });
@@ -3021,11 +3047,11 @@ export const meliBackfillShippingCosts = functions
                         const netReceipt: number = Math.max(0, total - commission - sellerCost);
 
                         await doc.ref.update({
-                            shipping_seller_cost:  sellerCost,
+                            shipping_seller_cost: sellerCost,
                             shipping_gross_amount: grossAmount,
                             shipping_meli_subsidy: meliSubsidy,
-                            net_receipt:           netReceipt,
-                            shipping_backfilled:   true,
+                            net_receipt: netReceipt,
+                            shipping_backfilled: true,
                         });
                         updatedCount++;
                     } catch (e) {
@@ -3076,9 +3102,9 @@ export const meliBackfillShippingCosts = functions
                     for (const [itemId, stats] of itemShippingMap) {
                         const avg = Math.round((stats.totalCost / stats.count) * 100) / 100;
                         aggBatch.update(db.collection('meli_listings').doc(itemId), {
-                            avg_shipping_cost:    avg,
-                            min_shipping_cost:    Math.round(stats.min * 100) / 100,
-                            max_shipping_cost:    Math.round(stats.max * 100) / 100,
+                            avg_shipping_cost: avg,
+                            min_shipping_cost: Math.round(stats.min * 100) / 100,
+                            max_shipping_cost: Math.round(stats.max * 100) / 100,
                             shipping_sample_size: stats.count,
                             avg_shipping_updated: admin.firestore.FieldValue.serverTimestamp()
                         });
@@ -3177,11 +3203,11 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
                                 headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
                             });
                             if (sRes.ok) {
-                                    shipmentsMap[mo.shipping.id] = await sRes.json();
-                                } else {
-                                    console.warn(`[Meli Historical] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
-                                    shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
-                                }
+                                shipmentsMap[mo.shipping.id] = await sRes.json();
+                            } else {
+                                console.warn(`[Meli Historical] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                                shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+                            }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -3611,25 +3637,25 @@ export const meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory:
 
                                 const rawDetails: any = feeEntry.sale_fee_details ?? {};
 
-                                let pct        = 0;
-                                let fixedFee   = 0;
-                                let financing  = 0;
+                                let pct = 0;
+                                let fixedFee = 0;
+                                let financing = 0;
 
                                 if (Array.isArray(rawDetails)) {
                                     // Older array format: [{name:'percentage_fee', value:16.5}, ...]
-                                    const pctEntry  = rawDetails.find((d: any) => d.name === 'percentage_fee');
-                                    const fixEntry  = rawDetails.find((d: any) => d.name === 'fixed_fee');
-                                    const finEntry  = rawDetails.find((d: any) =>
+                                    const pctEntry = rawDetails.find((d: any) => d.name === 'percentage_fee');
+                                    const fixEntry = rawDetails.find((d: any) => d.name === 'fixed_fee');
+                                    const finEntry = rawDetails.find((d: any) =>
                                         d.name === 'financing_add_on_fee' || d.name === 'financing_fee'
                                     );
-                                    pct       = Number(pctEntry?.percentage_fee ?? pctEntry?.value ?? 0);
-                                    fixedFee  = Number(fixEntry?.amount ?? fixEntry?.value ?? 0);
+                                    pct = Number(pctEntry?.percentage_fee ?? pctEntry?.value ?? 0);
+                                    fixedFee = Number(fixEntry?.amount ?? fixEntry?.value ?? 0);
                                     financing = Number(finEntry?.amount ?? finEntry?.value ?? 0);
                                 } else if (rawDetails && typeof rawDetails === 'object') {
                                     // Current object format: {percentage_fee: 16.5, fixed_fee: 0, ...}
                                     // Values are DIRECT NUMBERS, not nested objects
-                                    pct       = Number(rawDetails['percentage_fee'] ?? 0);
-                                    fixedFee  = Number(rawDetails['fixed_fee'] ?? 0);
+                                    pct = Number(rawDetails['percentage_fee'] ?? 0);
+                                    fixedFee = Number(rawDetails['fixed_fee'] ?? 0);
                                     financing = Number(
                                         rawDetails['financing_add_on_fee']
                                         ?? rawDetails['financing_fee']
@@ -3735,12 +3761,12 @@ export const meliSyncListings = functions.runWith({ timeoutSeconds: 300, memory:
                     && packContentAttr.value_name !== '1';
 
                 // ── Tire size attributes (for Price Intelligence cross-reference) ─
-                const tireWidthAttr      = itemAttributes.find((a: any) => a.id === 'TIRE_WIDTH');
-                const aspectRatioAttr   = itemAttributes.find((a: any) => a.id === 'ASPECT_RATIO');
-                const rimDiameterAttr   = itemAttributes.find((a: any) => a.id === 'RIM_DIAMETER');
-                const tireWidth_pi      = tireWidthAttr    ? (Number(tireWidthAttr.value_name)    || null) : null;
-                const tireAspectRatio_pi = aspectRatioAttr  ? (Number(aspectRatioAttr.value_name) || null) : null;
-                const tireDiameter_pi   = rimDiameterAttr  ? (Number(rimDiameterAttr.value_name)  || null) : null;
+                const tireWidthAttr = itemAttributes.find((a: any) => a.id === 'TIRE_WIDTH');
+                const aspectRatioAttr = itemAttributes.find((a: any) => a.id === 'ASPECT_RATIO');
+                const rimDiameterAttr = itemAttributes.find((a: any) => a.id === 'RIM_DIAMETER');
+                const tireWidth_pi = tireWidthAttr ? (Number(tireWidthAttr.value_name) || null) : null;
+                const tireAspectRatio_pi = aspectRatioAttr ? (Number(aspectRatioAttr.value_name) || null) : null;
+                const tireDiameter_pi = rimDiameterAttr ? (Number(rimDiameterAttr.value_name) || null) : null;
 
                 const itemRelations: any[] = item.item_relations || [];
                 const bundleItems: any[] = item.bundle_items || [];
@@ -3905,9 +3931,9 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     // userToken  → for seller-specific ops (our listings, mutations)
     // appToken   → for marketplace reads (search, item details)
     //              client_credentials grant; NOT blocked by ML's GCP IP filter
-    const accessToken    = await getValidMeliToken();
-    const appToken       = await getAppLevelToken();
-    const authHeaders:    Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
+    const accessToken = await getValidMeliToken();
+    const appToken = await getAppLevelToken();
+    const authHeaders: Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
     const appAuthHeaders: Record<string, string> = { 'Authorization': `Bearer ${appToken}` };
 
     // ── 3. Get our seller ID ──────────────────────────────────────────────────
@@ -4003,15 +4029,15 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
                             )?.value_name;
 
                             const titleHasWidth = item.title?.includes(String(width));
-                            const titleHasAR    = item.title?.includes(String(aspectRatio));
-                            const titleHasDiam  = item.title?.includes(String(diameter)) ||
-                                                  item.title?.toLowerCase().includes(`r${diameter}`) ||
-                                                  item.title?.toLowerCase().includes(`-${diameter}`);
+                            const titleHasAR = item.title?.includes(String(aspectRatio));
+                            const titleHasDiam = item.title?.includes(String(diameter)) ||
+                                item.title?.toLowerCase().includes(`r${diameter}`) ||
+                                item.title?.toLowerCase().includes(`-${diameter}`);
                             const titleMatch = titleHasWidth && titleHasAR && titleHasDiam;
 
                             const attrsMatch = atWidth && String(atWidth) === String(width) &&
-                                               atAR    && String(atAR)    === String(aspectRatio) &&
-                                               atDiam  && String(atDiam)  === String(diameter);
+                                atAR && String(atAR) === String(aspectRatio) &&
+                                atDiam && String(atDiam) === String(diameter);
 
                             if (attrsMatch || titleMatch) {
                                 ourItemIds.add(item.id);
@@ -4062,12 +4088,12 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     if (!sellerHasActiveItems && clientCompetitorIds.length === 0) {
         console.log(`[PriceIntel] No active items found for seller and no client IDs — returning noListing`);
         return {
-            cached:    false,
+            cached: false,
             fingerprint,
             noListing: true,
-            stats:     null,
-            count:     0,
-            message:   `No publicación activa en ML ni competidores para ${fingerprint}.`,
+            stats: null,
+            count: 0,
+            message: `No publicación activa en ML ni competidores para ${fingerprint}.`,
         };
     }
 
@@ -4185,26 +4211,26 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
             const ptwData = await ptwRes.json() as any;
             if (ptwRes.ok) {
                 priceToWinResults.push({
-                    itemId:      item.id,
-                    title:       item.title,
-                    ourPrice:    item.price,
-                    status:      ptwData.status ?? 'unknown',          // 'winner' | 'not_winner' | 'not_eligible'
-                    priceToWin:  ptwData.price_to_win ?? null,
+                    itemId: item.id,
+                    title: item.title,
+                    ourPrice: item.price,
+                    status: ptwData.status ?? 'unknown',          // 'winner' | 'not_winner' | 'not_eligible'
+                    priceToWin: ptwData.price_to_win ?? null,
                     catalogProductId: item.catalog_product_id ?? ptwData.catalog_product_id ?? null,
-                    actions:     ptwData.actions ?? [],
-                    raw:         ptwData,
+                    actions: ptwData.actions ?? [],
+                    raw: ptwData,
                 });
                 console.log(`[PriceIntel] price_to_win ${item.id}: status=${ptwData.status}, ptw=${ptwData.price_to_win}`);
             } else {
                 console.warn(`[PriceIntel] price_to_win ${item.id} HTTP ${ptwRes.status}:`, JSON.stringify(ptwData).slice(0, 200));
                 priceToWinResults.push({
-                    itemId:   item.id,
-                    title:    item.title,
+                    itemId: item.id,
+                    title: item.title,
                     ourPrice: item.price,
-                    status:   'api_error',
+                    status: 'api_error',
                     priceToWin: null,
                     catalogProductId: item.catalog_product_id ?? null,
-                    raw:      ptwData,
+                    raw: ptwData,
                 });
             }
         } catch (err: any) {
@@ -4256,21 +4282,21 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
                         } catch { /* non-fatal */ }
 
                         competitorListingsMap.set(bbWinner.item_id, {
-                            itemId:          bbItem.id,
-                            title:           bbItem.title || '',
-                            price:           bbItem.price || 0,
-                            sellerId:        String(bbItem.seller_id ?? ''),
+                            itemId: bbItem.id,
+                            title: bbItem.title || '',
+                            price: bbItem.price || 0,
+                            sellerId: String(bbItem.seller_id ?? ''),
                             sellerNickname,
-                            sellerReputation:'unknown',
-                            soldQuantity:    bbItem.sold_quantity || 0,
-                            listingType:     bbItem.listing_type_id || 'free',
-                            isFreeShipping:  bbItem.shipping?.free_shipping === true,
-                            isOurListing:    false,
-                            isBuyBoxWinner:  true,
-                            permalink:       bbItem.permalink || '',
-                            thumbnail:       bbItem.thumbnail || '',
-                            rank:            1,
-                            scrapedAt:       new Date(),
+                            sellerReputation: 'unknown',
+                            soldQuantity: bbItem.sold_quantity || 0,
+                            listingType: bbItem.listing_type_id || 'free',
+                            isFreeShipping: bbItem.shipping?.free_shipping === true,
+                            isOurListing: false,
+                            isBuyBoxWinner: true,
+                            permalink: bbItem.permalink || '',
+                            thumbnail: bbItem.thumbnail || '',
+                            rank: 1,
+                            scrapedAt: new Date(),
                         });
                         console.log(`[PriceIntel] Buy-box winner for catalog ${cpId}: ${bbItem.id} @ $${bbItem.price}`);
                     }
@@ -4285,22 +4311,22 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     const ourListingsForDb: any[] = ourMatchingItems.map((item, idx) => {
         const ptw = priceToWinResults.find(r => r.itemId === item.id);
         return {
-            itemId:          item.id,
-            title:           item.title || '',
-            price:           item.price || 0,
-            sellerId:        sellerId,
-            sellerNickname:  'PRAXIS MEXICO',
-            sellerReputation:'unknown',
-            soldQuantity:    item.sold_quantity || 0,
-            listingType:     item.listing_type_id || 'free',
-            isFreeShipping:  item.shipping?.free_shipping === true,
-            isOurListing:    true,
-            isWinner:        ptw?.status === 'winner',
-            priceToWin:      ptw?.priceToWin ?? null,
-            permalink:       item.permalink || '',
-            thumbnail:       item.thumbnail || '',
-            rank:            idx + 1,
-            scrapedAt:       new Date(),
+            itemId: item.id,
+            title: item.title || '',
+            price: item.price || 0,
+            sellerId: sellerId,
+            sellerNickname: 'PRAXIS MEXICO',
+            sellerReputation: 'unknown',
+            soldQuantity: item.sold_quantity || 0,
+            listingType: item.listing_type_id || 'free',
+            isFreeShipping: item.shipping?.free_shipping === true,
+            isOurListing: true,
+            isWinner: ptw?.status === 'winner',
+            priceToWin: ptw?.priceToWin ?? null,
+            permalink: item.permalink || '',
+            thumbnail: item.thumbnail || '',
+            rank: idx + 1,
+            scrapedAt: new Date(),
         };
     });
 
@@ -4311,21 +4337,21 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     const browserCompetitorListings: any[] = competitorRawItems
         .filter(item => !ourItemIds.has(item.id))
         .map((item, idx) => ({
-            itemId:          item.id,
-            title:           item.title || '',
-            price:           item.price || 0,
-            sellerId:        String(item.seller_id ?? ''),
-            sellerNickname:  (item as any)._sellerNickname ?? null,
-            sellerReputation:'unknown',
-            soldQuantity:    item.sold_quantity || 0,
-            listingType:     item.listing_type_id || 'free',
-            isFreeShipping:  item.shipping?.free_shipping === true,
-            isOurListing:    false,
-            isBuyBoxWinner:  false,
-            permalink:       item.permalink || '',
-            thumbnail:       item.thumbnail || '',
-            rank:            idx + 1,
-            scrapedAt:       new Date(),
+            itemId: item.id,
+            title: item.title || '',
+            price: item.price || 0,
+            sellerId: String(item.seller_id ?? ''),
+            sellerNickname: (item as any)._sellerNickname ?? null,
+            sellerReputation: 'unknown',
+            soldQuantity: item.sold_quantity || 0,
+            listingType: item.listing_type_id || 'free',
+            isFreeShipping: item.shipping?.free_shipping === true,
+            isOurListing: false,
+            isBuyBoxWinner: false,
+            permalink: item.permalink || '',
+            thumbnail: item.thumbnail || '',
+            rank: idx + 1,
+            scrapedAt: new Date(),
         }));
 
     const allListings = [...ourListingsForDb, ...browserCompetitorListings, ...catalogCompetitorListings]
@@ -4337,18 +4363,18 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     console.log(`[PriceIntel] ${allListings.length} total listings (${ourListingsForDb.length} ours, ${browserCompetitorListings.length} browser, ${catalogCompetitorListings.length} catalog)`);
 
     // ── 10. Compute market statistics ─────────────────────────────────────────
-    const ourPrices    = ourMatchingItems.map(i => i.price).filter(p => p > 0);
+    const ourPrices = ourMatchingItems.map(i => i.price).filter(p => p > 0);
     const ourPrice: number | null = ourPrices.length > 0 ? Math.min(...ourPrices) : null;
 
     // Competitor prices: browser search is primary; ptw & catalog are supplementary
-    const eligiblePtw        = priceToWinResults.filter(r => r.priceToWin && r.priceToWin > 0).map(r => r.priceToWin as number);
-    const catalogPrices      = catalogCompetitorListings.map(l => l.price).filter(p => p > 0);
-    const browserPrices      = browserCompetitorListings.map(l => l.price).filter(p => p > 0);
+    const eligiblePtw = priceToWinResults.filter(r => r.priceToWin && r.priceToWin > 0).map(r => r.priceToWin as number);
+    const catalogPrices = catalogCompetitorListings.map(l => l.price).filter(p => p > 0);
+    const browserPrices = browserCompetitorListings.map(l => l.price).filter(p => p > 0);
     const allCompetitorPrices = [...browserPrices, ...catalogPrices, ...eligiblePtw];
 
     const marketFloor: number = allCompetitorPrices.length > 0 ? Math.min(...allCompetitorPrices) : 0;
-    const marketMax:   number = allCompetitorPrices.length > 0 ? Math.max(...allCompetitorPrices) : 0;
-    const marketMid:   number = allCompetitorPrices.length > 0
+    const marketMax: number = allCompetitorPrices.length > 0 ? Math.max(...allCompetitorPrices) : 0;
+    const marketMid: number = allCompetitorPrices.length > 0
         ? allCompetitorPrices.reduce((s, v) => s + v, 0) / allCompetitorPrices.length
         : 0;
 
@@ -4358,13 +4384,13 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     const positionInMarket: number | null = isWinning ? 1 : (ourPrice !== null ? 2 : null);
 
     const stats = {
-        lowestPrice:      marketFloor,
-        medianPrice:      Math.round(marketMid * 100) / 100,
-        highestPrice:     marketMax || (ourPrice ?? 0),
+        lowestPrice: marketFloor,
+        medianPrice: Math.round(marketMid * 100) / 100,
+        highestPrice: marketMax || (ourPrice ?? 0),
         ourPrice,
         positionInMarket,
         totalCompetitors: totalCompetitorCount,
-        priceToWin:       marketFloor || (priceToWinResults.find(r => r.priceToWin)?.priceToWin ?? null),
+        priceToWin: marketFloor || (priceToWinResults.find(r => r.priceToWin)?.priceToWin ?? null),
         isWinning,
         // dataSource tells the UI what drove the competitive intelligence:
         // 'price_to_win_api'  → only ML's own endpoint was used (no proxy/scraper)
@@ -4372,14 +4398,14 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
         // 'scraper_search'    → ScraperAPI / Apify returned real search results
         dataSource: (
             browserCompetitorListings.length > 0 ? 'scraper_search' :
-            catalogCompetitorListings.length > 0 ? 'catalog_buy_box' :
-            priceToWinResults.some(r => r.priceToWin) ? 'price_to_win_api' :
-            'own_listings_only'
+                catalogCompetitorListings.length > 0 ? 'catalog_buy_box' :
+                    priceToWinResults.some(r => r.priceToWin) ? 'price_to_win_api' :
+                        'own_listings_only'
         ),
         priceToWinDetails: priceToWinResults.map(r => ({
-            itemId:     r.itemId,
-            ourPrice:   r.ourPrice,
-            status:     r.status,
+            itemId: r.itemId,
+            ourPrice: r.ourPrice,
+            status: r.status,
             priceToWin: r.priceToWin,
         })),
     };
@@ -4417,22 +4443,22 @@ export const meliPriceScan = functions.runWith({ timeoutSeconds: 120, memory: '5
     if (!isWinning && ourPrice !== null && marketFloor > 0 && marketFloor < ourPrice * 0.95) {
         const gapPct = ((marketFloor - ourPrice) / ourPrice * 100);
         await db.collection('price_alerts').add({
-            tireSize:        fingerprint,
+            tireSize: fingerprint,
             ourPrice,
             competitorPrice: marketFloor,
-            gap:             `${gapPct.toFixed(1)}%`,
-            alertType:       'undercut',
-            createdAt:       admin.firestore.FieldValue.serverTimestamp(),
-            isRead:          false,
+            gap: `${gapPct.toFixed(1)}%`,
+            alertType: 'undercut',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            isRead: false,
         });
         console.log(`[PriceIntel] 🚨 Alert: ${fingerprint} market floor $${marketFloor} vs ours $${ourPrice} (${gapPct.toFixed(1)}%)`);
     }
 
     return {
-        cached:     false,
+        cached: false,
         fingerprint,
         stats,
-        count:      allListings.length,
+        count: allListings.length,
         isBaseline,
     };
 });
@@ -4501,10 +4527,16 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
             ? new Date(meliConfig.lastSyncDate)
             : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        const dateFrom = lastSyncDate.toISOString().replace('.000Z', '.000-00:00');
+        // Apply a 2-hour safety overlap so orders that were created just before the
+        // last sync boundary are always re-evaluated (catches edge cases where a
+        // payment confirmation arrives slightly after the cron cursor advanced).
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+        const sweepFrom = new Date(lastSyncDate.getTime() - TWO_HOURS_MS);
+
+        const dateFrom = sweepFrom.toISOString().replace('.000Z', '.000-00:00');
         const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50&order.date_created.from=${encodeURIComponent(dateFrom)}`;
 
-        console.log(`[Meli Cron] Sweeping orders since: ${dateFrom}`);
+        console.log(`[Meli Cron] Sweeping orders since: ${dateFrom} (2h overlap from ${lastSyncDate.toISOString()})`);
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
 
         if (!res.ok) {
@@ -4526,11 +4558,11 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
                                 headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
                             });
                             if (sRes.ok) {
-                                    shipmentsMap[mo.shipping.id] = await sRes.json();
-                                } else {
-                                    console.warn(`[Meli Cron] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
-                                    shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
-                                }
+                                shipmentsMap[mo.shipping.id] = await sRes.json();
+                            } else {
+                                console.warn(`[Meli Cron] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
+                                shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+                            }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -4579,11 +4611,12 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
             importedCount++;
         }
 
-        if (importedCount > 0) {
-            await db.collection('config').doc('integrations').set({
-                meli: { lastSyncDate: new Date().toISOString() }
-            }, { merge: true });
-        }
+        // Always advance the cursor — even when 0 orders found — so the next run
+        // doesn't redundantly re-scan the same window. The webhook is the real-time
+        // safety net; the cron is a catch-all for missed webhook events.
+        await db.collection('config').doc('integrations').set({
+            meli: { lastSyncDate: new Date().toISOString() }
+        }, { merge: true });
 
         console.log(`[Meli Cron] Success. Upserted ${importedCount} orders.`);
     } catch (err: any) {
@@ -4664,15 +4697,15 @@ export const meliWebhook = functions.https.onRequest(async (req, res) => {
 
             const headers = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
             const resourceUrl = `https://api.mercadolibre.com${payload.resource}`;
-            
+
             try {
                 const resourceRes = await fetch(resourceUrl, { headers });
                 if (resourceRes.ok) {
                     const messageData = await resourceRes.json() as any;
-                    
+
                     // Generate a safe document ID from the resource path (e.g., /messages/123 -> _messages_123)
                     const docId = payload.resource.replace(/[^a-zA-Z0-9]/g, '_');
-                    
+
                     await db.collection('meli_communications').doc(docId).set({
                         topic: payload.topic,
                         resource: payload.resource,
@@ -4684,7 +4717,7 @@ export const meliWebhook = functions.https.onRequest(async (req, res) => {
                         itemId: messageData.item_id || null,
                         status: messageData.status || null
                     }, { merge: true }); // merge: true guarantees we never erase data if ML pings twice
-                    
+
                     console.log(`[Meli Webhook] Successfully stored ${payload.topic} data for ${payload.resource}`);
                 } else {
                     console.error(`[Meli Webhook] Failed to fetch ${payload.topic}: ${resourceRes.status}`);
@@ -4804,10 +4837,10 @@ export const getMeliRawOrderDebug = functions.https.onRequest(async (req: any, r
             if (!dateStr) continue;
 
             const dateUTC = new Date(dateStr);
-            const dateMX = new Date(dateUTC.getTime() - (6 * 60 * 60 * 1000)); 
-            
+            const dateMX = new Date(dateUTC.getTime() - (6 * 60 * 60 * 1000));
+
             if (dateMX.getUTCFullYear() !== 2026) continue; // Only care about 2026
-            
+
             const monthName = months[dateMX.getUTCMonth()];
             if (!analysis[monthName]) {
                 analysis[monthName] = {
@@ -4826,7 +4859,7 @@ export const getMeliRawOrderDebug = functions.https.onRequest(async (req: any, r
             const m = analysis[monthName];
 
             m.totalAmountIncCancelled += (mo.total_amount || 0);
-            
+
             let itemsQty = 0;
             let itemsSubtotal = 0;
             if (mo.order_items && Array.isArray(mo.order_items)) {
@@ -4848,8 +4881,8 @@ export const getMeliRawOrderDebug = functions.https.onRequest(async (req: any, r
             }
         }
 
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             totalScanned: allOrders.length,
             targetMatches: {
                 "User Requested Jan": { sales: 275408, units: 343 },
@@ -4880,10 +4913,10 @@ export const getMeliRawOrderDebug = functions.https.onRequest(async (req: any, r
 const ABANDON_THRESHOLD_MS = 60 * 60 * 1000; // 60 minutes
 
 async function runAbandonedCartDetection(): Promise<{ carts: number; guests: number; total: number }> {
-    const now      = Date.now();
-    const cutoff   = admin.firestore.Timestamp.fromMillis(now - ABANDON_THRESHOLD_MS);
-    const batch    = db.batch();
-    let cartCount  = 0;
+    const now = Date.now();
+    const cutoff = admin.firestore.Timestamp.fromMillis(now - ABANDON_THRESHOLD_MS);
+    const batch = db.batch();
+    let cartCount = 0;
     let guestCount = 0;
 
     // Helper: write a cartSnapshot event doc
@@ -4894,15 +4927,15 @@ async function runAbandonedCartDetection(): Promise<{ carts: number; guests: num
                 ? items.reduce((sum: number, i: any) => sum + (i.product?.price || 0) * (i.quantity || 1), 0)
                 : 0;
             await db.collection('cartSnapshots').add({
-                sessionId:  data.sessionId ?? 'unknown',
-                userId:     data.userId    ?? null,
-                email:      data.email     ?? null,
-                event:      'abandoned_detected',
-                items:      items,
+                sessionId: data.sessionId ?? 'unknown',
+                userId: data.userId ?? null,
+                email: data.email ?? null,
+                event: 'abandoned_detected',
+                items: items,
                 cartValue,
                 attribution: data.attribution ?? null,
-                createdAt:  admin.firestore.Timestamp.now(),
-                source:     collection_,
+                createdAt: admin.firestore.Timestamp.now(),
+                source: collection_,
             });
         } catch (e) {
             console.warn('[AbandonDetect] Snapshot write failed:', e);
@@ -4921,9 +4954,9 @@ async function runAbandonedCartDetection(): Promise<{ carts: number; guests: num
         // Guard: require at least one item
         if (!Array.isArray(data.items) || data.items.length === 0) continue;
         batch.update(docSnap.ref, {
-            status:          'abandoned',
-            abandonedAt:     admin.firestore.Timestamp.now(),
-            lastUpdated:     admin.firestore.Timestamp.now(),
+            status: 'abandoned',
+            abandonedAt: admin.firestore.Timestamp.now(),
+            lastUpdated: admin.firestore.Timestamp.now(),
         });
         await writeAbandonedSnapshot(data, 'carts');
         cartCount++;
@@ -4940,9 +4973,9 @@ async function runAbandonedCartDetection(): Promise<{ carts: number; guests: num
         const data = docSnap.data();
         if (!Array.isArray(data.items) || data.items.length === 0) continue;
         batch.update(docSnap.ref, {
-            status:          'abandoned',
-            abandonedAt:     admin.firestore.Timestamp.now(),
-            lastUpdated:     admin.firestore.Timestamp.now(),
+            status: 'abandoned',
+            abandonedAt: admin.firestore.Timestamp.now(),
+            lastUpdated: admin.firestore.Timestamp.now(),
         });
         await writeAbandonedSnapshot(data, 'guestCarts');
         guestCount++;
@@ -5023,7 +5056,7 @@ export const backfillMonthlyStats = functions
         for (const monthStr of months) {
             const [y, m] = monthStr.split('-').map(Number);
             const startDate = new Date(y, m - 1, 1, 0, 0, 0, 0);
-            const endDate   = new Date(y, m,     0, 23, 59, 59, 999); // last ms of month
+            const endDate = new Date(y, m, 0, 23, 59, 59, 999); // last ms of month
 
             const ordersSnap = await db.collection('orders')
                 .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startDate))
@@ -5042,16 +5075,16 @@ export const backfillMonthlyStats = functions
                 const orderDate: Date = order['createdAt']?.toDate?.() ?? new Date();
                 const dayKey = String(orderDate.getDate()).padStart(2, '0');
 
-                const total  = Number(order['total'] ?? 0);
+                const total = Number(order['total'] ?? 0);
                 const pieces = (order['items'] as any[] ?? [])
                     .reduce((s: number, item: any) => s + (Number(item.quantity) || 1), 0);
 
                 if (!dayMap[dayKey]) dayMap[dayKey] = { sales: 0, orders: 0, pieces: 0 };
-                dayMap[dayKey].sales  += total;
+                dayMap[dayKey].sales += total;
                 dayMap[dayKey].orders += 1;
                 dayMap[dayKey].pieces += pieces;
 
-                monthSales  += total;
+                monthSales += total;
                 monthOrders += 1;
                 monthPieces += pieces;
             });
@@ -5062,10 +5095,10 @@ export const backfillMonthlyStats = functions
 
             // Parent month aggregate
             batch.set(monthRef, {
-                month:     monthStr,
-                sales:     monthSales,
-                orders:    monthOrders,
-                pieces:    monthPieces,
+                month: monthStr,
+                sales: monthSales,
+                orders: monthOrders,
+                pieces: monthPieces,
                 backfilled: true,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
@@ -5076,7 +5109,7 @@ export const backfillMonthlyStats = functions
                 batch.set(dayRef, {
                     day,
                     month: monthStr,
-                    sales:  dayData.sales,
+                    sales: dayData.sales,
                     orders: dayData.orders,
                     pieces: dayData.pieces,
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -5106,20 +5139,21 @@ export const aggregateDailyStats = functions.pubsub
         // Force evaluation in Mexico City Timezone
         const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
         const today = new Date(nowStr);
-        const DAYS_TO_SYNC = 5;
+        const DAYS_TO_SYNC = 1; // ✅ Only sync TODAY on the hourly schedule.
+        // Historical backfill is handled by backfillMonthlyStats (callable).
 
         // ── Canonical non-revenue statuses (mirrors order.model.ts) ──────────
         const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
 
         // ── Canonical channel resolution (mirrors ops queue getLegacyChannel) ─
         const resolveChannel = (order: any): string => {
-            const sc  = order.sourceChannel;
-            const ft  = order.fulfillmentType;
+            const sc = order.sourceChannel;
+            const ft = order.fulfillmentType;
             if (!sc || sc === 'storefront') return 'WEB';
-            if (sc === 'pos')               return 'POS';
-            if (sc === 'on_behalf')         return 'ON_BEHALF';
-            if (sc === 'amazon')            return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
-            if (sc === 'mercadolibre')      return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
+            if (sc === 'pos') return 'POS';
+            if (sc === 'on_behalf') return 'ON_BEHALF';
+            if (sc === 'amazon') return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+            if (sc === 'mercadolibre') return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
             return 'WEB';
         };
 
@@ -5130,18 +5164,18 @@ export const aggregateDailyStats = functions.pubsub
             const now = new Date(today);
             now.setDate(now.getDate() - i);
 
-            const year  = now.getFullYear();
+            const year = now.getFullYear();
             const month = now.getMonth();   // 0-based
-            const day   = now.getDate();    // 1-based
+            const day = now.getDate();    // 1-based
 
-            const monthStr   = `${year}-${String(month + 1).padStart(2, '0')}`;
-            const dayStr     = String(day).padStart(2, '0');
-            const dateStr    = `${monthStr}-${dayStr}`;   // YYYY-MM-DD
-            lastSyncDateStr  = dateStr;
+            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+            const dayStr = String(day).padStart(2, '0');
+            const dateStr = `${monthStr}-${dayStr}`;   // YYYY-MM-DD
+            lastSyncDateStr = dateStr;
 
             // Construct boundaries explicitly using UTC-6 (Mexico City Standard Time)
             const startOfDay = new Date(`${dateStr}T00:00:00-06:00`);
-            const endOfDay   = new Date(`${dateStr}T23:59:59.999-06:00`);
+            const endOfDay = new Date(`${dateStr}T23:59:59.999-06:00`);
 
             // ── Read target day's orders ───────────────────────────────────────────────
             const ordersSnap = await db.collection('orders')
@@ -5158,18 +5192,18 @@ export const aggregateDailyStats = functions.pubsub
                 if (NON_REVENUE.includes(order['status'])) return;   // skip ghost & void orders
 
                 const revenue = Number(order['total'] ?? 0);
-                const units   = (order['items'] as any[] ?? [])
+                const units = (order['items'] as any[] ?? [])
                     .reduce((s: number, item: any) => s + (Number(item.quantity) || 1), 0);
                 const channel = resolveChannel(order);
 
-                totalSales  += revenue;
+                totalSales += revenue;
                 totalOrders += 1;
                 totalPieces += units;
 
                 if (!byChannel[channel]) byChannel[channel] = { revenue: 0, orders: 0, units: 0 };
                 byChannel[channel].revenue += revenue;
-                byChannel[channel].orders  += 1;
-                byChannel[channel].units   += units;
+                byChannel[channel].orders += 1;
+                byChannel[channel].units += units;
             });
 
             const avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
@@ -5177,7 +5211,7 @@ export const aggregateDailyStats = functions.pubsub
 
             // ── 1. Legacy monthly_stats (backward compat) ─────────────────────────
             const monthRef = db.collection('monthly_stats').doc(monthStr);
-            const dayRef   = monthRef.collection('days').doc(dayStr);
+            const dayRef = monthRef.collection('days').doc(dayStr);
             await dayRef.set({
                 day: dayStr, month: monthStr,
                 sales: totalSales, orders: totalOrders, pieces: totalPieces,
@@ -5187,15 +5221,15 @@ export const aggregateDailyStats = functions.pubsub
             // ── 2. analytics_daily/{YYYY-MM-DD} ──────────────────────────────────
             const dt = new Date(`${dateStr}T12:00:00`);
             await db.collection('analytics_daily').doc(dateStr).set({
-                date:         dateStr,
-                month:        monthStr,
-                dayOfWeek:    (dt.getDay() + 6) % 7,   // 0=Mon … 6=Sun (ISO)
+                date: dateStr,
+                month: monthStr,
+                dayOfWeek: (dt.getDay() + 6) % 7,   // 0=Mon … 6=Sun (ISO)
                 totalRevenue: totalSales,
                 totalOrders,
-                totalUnits:   totalPieces,
+                totalUnits: totalPieces,
                 avgTicket,
                 byChannel,
-                updatedAt:    ts,
+                updatedAt: ts,
             }, { merge: true });
 
             // ── 3. analytics_channel_snapshots/{channel}/{YYYY-MM-DD} ─────────────
@@ -5209,8 +5243,8 @@ export const aggregateDailyStats = functions.pubsub
                 batch.set(snapRef, {
                     channel, date: dateStr, month: monthStr,
                     revenue: data.revenue,
-                    orders:  data.orders,
-                    units:   data.units,
+                    orders: data.orders,
+                    units: data.units,
                     avgPrice: data.orders > 0 ? data.revenue / data.orders : 0,
                     updatedAt: ts,
                 }, { merge: true });
@@ -5259,7 +5293,7 @@ export const aggregateDailyStats = functions.pubsub
                     .filter(docSnap => !NON_REVENUE.includes(docSnap.data()['status']))
                     .map(docSnap => ({
                         orderId: docSnap.id,
-                        order:   docSnap.data(),
+                        order: docSnap.data(),
                         channel: resolveChannel(docSnap.data()),
                     }));
                 await appendOrdersToBQForDate(dateStr, bqPayload);
@@ -5280,7 +5314,7 @@ export const aggregateDailyStats = functions.pubsub
             const allDaysSnap = await monthRef.collection('days').get();
             let mSales = 0, mOrders = 0, mPieces = 0;
             allDaysSnap.docs.forEach(d => {
-                mSales  += Number(d.data()['sales']  ?? 0);
+                mSales += Number(d.data()['sales'] ?? 0);
                 mOrders += Number(d.data()['orders'] ?? 0);
                 mPieces += Number(d.data()['pieces'] ?? 0);
             });
@@ -5290,28 +5324,28 @@ export const aggregateDailyStats = functions.pubsub
             await db.collection('analytics_monthly').doc(currentMonthStr).set({
                 month: currentMonthStr,
                 totalRevenue: mSales,
-                totalOrders:  mOrders,
-                totalUnits:   mPieces,
-                updatedAt:    ts,
+                totalOrders: mOrders,
+                totalUnits: mPieces,
+                updatedAt: ts,
             }, { merge: true });
-            
+
             // ── 7. Write BQ sync status ───────────────────────────────────────────────
             await db.collection('system_logs').doc('bq_sync_status').set({
-                lastSyncDate:   lastSyncDateStr,
-                syncedAt:       admin.firestore.FieldValue.serverTimestamp(),
+                lastSyncDate: lastSyncDateStr,
+                syncedAt: admin.firestore.FieldValue.serverTimestamp(),
                 ordersAppended: totalBqOrdersAppended,
-                status:         'success',
-                errorMessage:   null,
+                status: 'success',
+                errorMessage: null,
             }, { merge: true });
 
         } catch (err: any) {
             console.warn('[DailyStats] Aggregate monthly/status write failed:', err);
             await db.collection('system_logs').doc('bq_sync_status').set({
-                lastSyncDate:   lastSyncDateStr,
-                syncedAt:       admin.firestore.FieldValue.serverTimestamp(),
+                lastSyncDate: lastSyncDateStr,
+                syncedAt: admin.firestore.FieldValue.serverTimestamp(),
                 ordersAppended: 0,
-                status:         'error',
-                errorMessage:   err?.message ?? 'unknown',
+                status: 'error',
+                errorMessage: err?.message ?? 'unknown',
             }, { merge: true });
         }
     });
@@ -5334,8 +5368,8 @@ export const cleanupAbandonedCheckouts = functions.pubsub
     .schedule('5,35 * * * *')      // every 30 min at :05 and :35
     .timeZone('America/Mexico_City')
     .onRun(async (_context) => {
-        const now     = new Date();
-        const cutoff  = new Date(now.getTime() - 35 * 60 * 1000); // 35 minutes ago
+        const now = new Date();
+        const cutoff = new Date(now.getTime() - 35 * 60 * 1000); // 35 minutes ago
 
         const snap = await db.collection('orders')
             .where('status', '==', 'pending_payment')
@@ -5355,12 +5389,12 @@ export const cleanupAbandonedCheckouts = functions.pubsub
             const data = orderDoc.data();
             const history = data['history'] ?? [];
             batch.update(orderDoc.ref, {
-                status:    'cancelled',
+                status: 'cancelled',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                history:   [...history, {
-                    status:    'cancelled',
+                history: [...history, {
+                    status: 'cancelled',
                     timestamp: admin.firestore.Timestamp.now(),
-                    note:      'Pago no completado — cancelación automática (35 min)',
+                    note: 'Pago no completado — cancelación automática (35 min)',
                     updatedBy: 'system',
                 }],
             });
@@ -5377,7 +5411,7 @@ export const cleanupAbandonedCheckouts = functions.pubsub
                 .replace(/-/g, '_');  // → "2026_04_28"
             await db.collection('system_logs').doc('abandon_stats').set({
                 [`daily.${today}`]: admin.firestore.FieldValue.increment(snap.size),
-                lastUpdated:        admin.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
         } catch (logErr) {
             console.warn('[CleanupCheckouts] Failed to write abandon stats (non-critical):', logErr);
@@ -5404,7 +5438,7 @@ async function computeInventoryVelocity(): Promise<{ updated: number; errors: st
     const NON_REVENUE = ['pending_payment', 'payment_failed', 'cancelled', 'refunded', 'returned'];
     const now = new Date();
     const start30 = new Date(now); start30.setDate(now.getDate() - 30);
-    const start7  = new Date(now); start7.setDate(now.getDate() - 7);
+    const start7 = new Date(now); start7.setDate(now.getDate() - 7);
 
     // 1. Load all MELI_FULL revenue orders from last 30 days
     const ordersSnap = await db.collection('orders')
@@ -5415,20 +5449,20 @@ async function computeInventoryVelocity(): Promise<{ updated: number; errors: st
 
     // 2. Build SKU velocity maps: { sku → { units30d, units7d } }
     const velocityMap: Record<string, { units30d: number; units7d: number }> = {};
-    const itemIdMap:   Record<string, { units30d: number; units7d: number }> = {};
+    const itemIdMap: Record<string, { units30d: number; units7d: number }> = {};
 
     for (const snap of ordersSnap.docs) {
         const order = snap.data();
         if (NON_REVENUE.includes(order['status'])) continue;
 
         const orderDate = (order['createdAt'] as admin.firestore.Timestamp).toDate();
-        const inLast7   = orderDate >= start7;
+        const inLast7 = orderDate >= start7;
 
         const items = (order['items'] as any[] ?? []);
         for (const item of items) {
-            const sku    = (item.sku ?? '').trim();
-            const mlId   = (item.mlItemId ?? item.productId ?? '').trim();
-            const qty    = Number(item.quantity) || 1;
+            const sku = (item.sku ?? '').trim();
+            const mlId = (item.mlItemId ?? item.productId ?? '').trim();
+            const qty = Number(item.quantity) || 1;
 
             if (sku) {
                 if (!velocityMap[sku]) velocityMap[sku] = { units30d: 0, units7d: 0 };
@@ -5452,30 +5486,30 @@ async function computeInventoryVelocity(): Promise<{ updated: number; errors: st
     for (const invDoc of invSnap.docs) {
         try {
             const data = invDoc.data();
-            const sku   = (data['sku'] ?? '').trim();
-            const mlId  = (data['mlItemId'] ?? '').trim();
+            const sku = (data['sku'] ?? '').trim();
+            const mlId = (data['mlItemId'] ?? '').trim();
 
             // Prefer SKU match, fall back to ML Item ID
-            const vel = (sku && velocityMap[sku])   ? velocityMap[sku]
-                      : (mlId && itemIdMap[mlId])    ? itemIdMap[mlId]
-                      : null;
+            const vel = (sku && velocityMap[sku]) ? velocityMap[sku]
+                : (mlId && itemIdMap[mlId]) ? itemIdMap[mlId]
+                    : null;
 
-            const units30d    = vel?.units30d ?? 0;
-            const units7d     = vel?.units7d  ?? 0;
-            const vel30       = units30d / 30;
-            const vel7        = units7d  / 7;
-            const available   = Number(data['availableQuantity'] ?? data['fullStock'] ?? 0);
+            const units30d = vel?.units30d ?? 0;
+            const units7d = vel?.units7d ?? 0;
+            const vel30 = units30d / 30;
+            const vel7 = units7d / 7;
+            const available = Number(data['availableQuantity'] ?? data['fullStock'] ?? 0);
             const daysOfCoverage = vel30 > 0 ? Math.floor(available / vel30) : 9999;
-            const targetDays  = 45;
-            const replenish   = vel30 > 0
+            const targetDays = 45;
+            const replenish = vel30 > 0
                 ? Math.max(0, Math.ceil((targetDays * vel30) - available))
                 : 0;
 
             let alertLevel: 'ok' | 'low' | 'critical' | 'stockout';
-            if (available === 0)        alertLevel = 'stockout';
-            else if (daysOfCoverage < 7)  alertLevel = 'critical';
+            if (available === 0) alertLevel = 'stockout';
+            else if (daysOfCoverage < 7) alertLevel = 'critical';
             else if (daysOfCoverage < 21) alertLevel = 'low';
-            else                          alertLevel = 'ok';
+            else alertLevel = 'ok';
 
             const stockoutDate = vel30 > 0 && available > 0
                 ? new Date(now.getTime() + (daysOfCoverage * 86400000))
@@ -5483,13 +5517,13 @@ async function computeInventoryVelocity(): Promise<{ updated: number; errors: st
                 : null;
 
             batch.update(invDoc.ref, {
-                salesVelocity30d:         parseFloat(vel30.toFixed(2)),
-                salesVelocity7d:          parseFloat(vel7.toFixed(2)),
+                salesVelocity30d: parseFloat(vel30.toFixed(2)),
+                salesVelocity7d: parseFloat(vel7.toFixed(2)),
                 daysOfCoverage,
-                reorderAlertLevel:        alertLevel,
-                recommendedReplenishQty:  replenish,
-                projectedStockoutDate:    stockoutDate,
-                lastVelocityCalc:         admin.firestore.FieldValue.serverTimestamp(),
+                reorderAlertLevel: alertLevel,
+                recommendedReplenishQty: replenish,
+                projectedStockoutDate: stockoutDate,
+                lastVelocityCalc: admin.firestore.FieldValue.serverTimestamp(),
             });
             updated++;
         } catch (err: any) {
@@ -5543,9 +5577,9 @@ export const backfillAnalytics = functions
         const resolveChannel = (order: any): string => {
             const sc = order.sourceChannel; const ft = order.fulfillmentType;
             if (!sc || sc === 'storefront') return 'WEB';
-            if (sc === 'pos')     return 'POS';
+            if (sc === 'pos') return 'POS';
             if (sc === 'on_behalf') return 'ON_BEHALF';
-            if (sc === 'amazon')  return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+            if (sc === 'amazon') return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
             if (sc === 'mercadolibre') return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
             return 'WEB';
         };
@@ -5580,17 +5614,17 @@ export const backfillAnalytics = functions
             if (NON_REVENUE.includes(order['status'])) continue;
 
             const orderDate = (order['createdAt'] as admin.firestore.Timestamp).toDate();
-            const dateKey   = toMxDateStr(orderDate);
-            const channel   = resolveChannel(order);
-            const revenue   = Number(order['total'] ?? 0);
-            const units     = (order['items'] as any[] ?? [])
+            const dateKey = toMxDateStr(orderDate);
+            const channel = resolveChannel(order);
+            const revenue = Number(order['total'] ?? 0);
+            const units = (order['items'] as any[] ?? [])
                 .reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
 
             if (!dateMap[dateKey]) dateMap[dateKey] = {};
             if (!dateMap[dateKey][channel]) dateMap[dateKey][channel] = { revenue: 0, orders: 0, units: 0 };
             dateMap[dateKey][channel].revenue += revenue;
-            dateMap[dateKey][channel].orders  += 1;
-            dateMap[dateKey][channel].units   += units;
+            dateMap[dateKey][channel].orders += 1;
+            dateMap[dateKey][channel].units += units;
         }
 
         // Write analytics_daily and analytics_channel_snapshots in batches of 400
@@ -5665,300 +5699,300 @@ export const backfillAnalytics = functions
 export const meliPriceScanDiag = functions
     .runWith({ timeoutSeconds: 60, memory: '256MB' })
     .https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
-    }
+        if (!context.auth) {
+            throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+        }
 
-    const width       = data?.width       ?? 120;
-    const aspectRatio = data?.aspectRatio ?? 70;
-    const diameter    = data?.diameter    ?? 17;
-    const categoryId  = data?.categoryId  ?? 'MLM169975';
+        const width = data?.width ?? 120;
+        const aspectRatio = data?.aspectRatio ?? 70;
+        const diameter = data?.diameter ?? 17;
+        const categoryId = data?.categoryId ?? 'MLM169975';
 
-    const report: Record<string, any> = {
-        version:    '2026-04-17-v1',
-        testedSize: `${width}/${aspectRatio}R${diameter}`,
-        ranAt:      new Date().toISOString(),
-    };
-
-    // Step 1: Read integrations config
-    let meliConfig: any = null;
-    try {
-        const configDoc = await db.collection('config').doc('integrations').get();
-        const raw = configDoc.data()?.meli ?? null;
-        meliConfig = raw;
-        report.step1_config = {
-            ok:               !!raw,
-            docExists:        configDoc.exists,
-            hasAccessToken:   !!(raw?.accessToken),
-            hasRefreshToken:  !!(raw?.refreshToken),
-            hasAppId:         !!(raw?.appId),
-            hasClientSecret:  !!(raw?.clientSecret),
-            hasUserId:        !!(raw?.userId),
-            connected:        raw?.connected ?? false,
-            expiresAt:        raw?.expiresAt ? new Date(raw.expiresAt).toISOString() : null,
-            tokenExpiresIn:   raw?.expiresAt
-                ? `${Math.round((raw.expiresAt - Date.now()) / 60000)} min`
-                : 'unknown',
-            accessTokenFirst8: raw?.accessToken
-                ? `${String(raw.accessToken).substring(0, 8)}...`
-                : null,
+        const report: Record<string, any> = {
+            version: '2026-04-17-v1',
+            testedSize: `${width}/${aspectRatio}R${diameter}`,
+            ranAt: new Date().toISOString(),
         };
-    } catch (err: any) {
-        report.step1_config = { ok: false, error: err.message };
-    }
 
-    // Step 0: Test app-level token (client_credentials) — the key fix for GCP IP blocking
-    let appToken: string | null = null;
-    try {
-        appToken = await getAppLevelToken();
-        report.step0_app_token = {
-            ok:          true,
-            tokenFirst8: appToken.substring(0, 8) + '...',
-            message:     'App token (client_credentials) obtained — search calls will use this token',
-        };
-    } catch (err: any) {
-        report.step0_app_token = { ok: false, error: err.message, message: 'App token failed — will fall back to user token for searches' };
-        // Not fatal — we continue with user token
-    }
+        // Step 1: Read integrations config
+        let meliConfig: any = null;
+        try {
+            const configDoc = await db.collection('config').doc('integrations').get();
+            const raw = configDoc.data()?.meli ?? null;
+            meliConfig = raw;
+            report.step1_config = {
+                ok: !!raw,
+                docExists: configDoc.exists,
+                hasAccessToken: !!(raw?.accessToken),
+                hasRefreshToken: !!(raw?.refreshToken),
+                hasAppId: !!(raw?.appId),
+                hasClientSecret: !!(raw?.clientSecret),
+                hasUserId: !!(raw?.userId),
+                connected: raw?.connected ?? false,
+                expiresAt: raw?.expiresAt ? new Date(raw.expiresAt).toISOString() : null,
+                tokenExpiresIn: raw?.expiresAt
+                    ? `${Math.round((raw.expiresAt - Date.now()) / 60000)} min`
+                    : 'unknown',
+                accessTokenFirst8: raw?.accessToken
+                    ? `${String(raw.accessToken).substring(0, 8)}...`
+                    : null,
+            };
+        } catch (err: any) {
+            report.step1_config = { ok: false, error: err.message };
+        }
 
-    // Step 2: Get valid token (with auto-refresh)
-    let accessToken: string | null = null;
-    try {
-        accessToken = await getValidMeliToken();
-        report.step2_token = {
-            ok:          true,
-            tokenFirst8: accessToken.substring(0, 8) + '...',
-            message:     'User token obtained successfully',
-        };
-    } catch (err: any) {
-        report.step2_token = { ok: false, error: err.message };
-        report.verdict = '❌ BLOCKED at Step 2: Cannot get a valid ML access token. Re-authenticate at /admin/integrations.';
-        return report;
-    }
+        // Step 0: Test app-level token (client_credentials) — the key fix for GCP IP blocking
+        let appToken: string | null = null;
+        try {
+            appToken = await getAppLevelToken();
+            report.step0_app_token = {
+                ok: true,
+                tokenFirst8: appToken.substring(0, 8) + '...',
+                message: 'App token (client_credentials) obtained — search calls will use this token',
+            };
+        } catch (err: any) {
+            report.step0_app_token = { ok: false, error: err.message, message: 'App token failed — will fall back to user token for searches' };
+            // Not fatal — we continue with user token
+        }
 
-    const authHeaders:    Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
-    const appAuthHeaders: Record<string, string> = { 'Authorization': `Bearer ${appToken ?? accessToken}` };
-
-    // Step 3: Verify token via /users/me
-    try {
-        const meRes  = await fetch('https://api.mercadolibre.com/users/me', { headers: authHeaders });
-        const meData = await meRes.json() as any;
-        report.step3_users_me = {
-            ok:         meRes.ok,
-            httpStatus: meRes.status,
-            userId:     meData?.id ?? null,
-            nickname:   meData?.nickname ?? null,
-            siteId:     meData?.site_id ?? null,
-            error:      !meRes.ok ? (meData?.message || `HTTP ${meRes.status}`) : null,
-        };
-        if (!meRes.ok) {
-            report.verdict = `❌ BLOCKED at Step 3: Token rejected (${meRes.status}: ${meData?.message}). Re-authenticate.`;
+        // Step 2: Get valid token (with auto-refresh)
+        let accessToken: string | null = null;
+        try {
+            accessToken = await getValidMeliToken();
+            report.step2_token = {
+                ok: true,
+                tokenFirst8: accessToken.substring(0, 8) + '...',
+                message: 'User token obtained successfully',
+            };
+        } catch (err: any) {
+            report.step2_token = { ok: false, error: err.message };
+            report.verdict = '❌ BLOCKED at Step 2: Cannot get a valid ML access token. Re-authenticate at /admin/integrations.';
             return report;
         }
-    } catch (err: any) {
-        report.step3_users_me = { ok: false, error: err.message };
-        report.verdict = '❌ BLOCKED at Step 3: Network error reaching ML API.';
-        return report;
-    }
 
-    // Step 4: Check category attribute names
-    try {
-        const catRes  = await fetch(
-            `https://api.mercadolibre.com/categories/${categoryId}/attributes`,
-            { headers: authHeaders }
-        );
-        const catData = await catRes.json() as any[];
-        const attrIds = Array.isArray(catData) ? catData.map((a: any) => a.id) : [];
-        const hasWidth   = attrIds.includes('SECTION_WIDTH');
-        const hasAR      = attrIds.includes('AUTOMOTIVE_TIRE_ASPECT_RATIO');
-        const hasRim     = attrIds.includes('RIM_DIAMETER');
-        const hasMfgSize = attrIds.includes('MANUFACTURER_TIRE_SIZE');
-        report.step4_category_attrs = {
-            ok:              catRes.ok,
-            httpStatus:      catRes.status,
-            categoryId,
-            totalAttributes: attrIds.length,
-            hasSECTION_WIDTH:                hasWidth,
-            hasAUTOMOTIVE_TIRE_ASPECT_RATIO: hasAR,
-            hasRIM_DIAMETER:                 hasRim,
-            hasMANUFACTURER_TIRE_SIZE:       hasMfgSize,
-            verdict: (hasWidth && hasAR && hasRim)
-                ? 'All 3 size attributes present'
-                : 'SOME SIZE ATTRIBUTES MISSING — ML may have renamed them, causing zero results',
-        };
-    } catch (err: any) {
-        report.step4_category_attrs = { ok: false, error: err.message };
-    }
+        const authHeaders: Record<string, string> = { 'Authorization': `Bearer ${accessToken}` };
+        const appAuthHeaders: Record<string, string> = { 'Authorization': `Bearer ${appToken ?? accessToken}` };
 
-    // Step 5: Strategy S1 — keyword search WITH APP TOKEN (the fixed approach)
-    try {
-        const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=5&sort=price_asc`;
-        const r    = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN — key fix
-        const body = await r.json() as any;
-        report.step5_attr_search = {
-            ok:            r.ok,
-            httpStatus:    r.status,
-            url,
-            totalResults:  body?.paging?.total ?? null,
-            returnedCount: (body?.results ?? []).length,
-            firstItem: body?.results?.[0]
-                ? { id: body.results[0].id, title: body.results[0].title, price: body.results[0].price }
-                : null,
-            rawError: !r.ok ? body : null,
-            error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
-        };
-    } catch (err: any) {
-        report.step5_attr_search = { ok: false, error: err.message };
-    }
+        // Step 3: Verify token via /users/me
+        try {
+            const meRes = await fetch('https://api.mercadolibre.com/users/me', { headers: authHeaders });
+            const meData = await meRes.json() as any;
+            report.step3_users_me = {
+                ok: meRes.ok,
+                httpStatus: meRes.status,
+                userId: meData?.id ?? null,
+                nickname: meData?.nickname ?? null,
+                siteId: meData?.site_id ?? null,
+                error: !meRes.ok ? (meData?.message || `HTTP ${meRes.status}`) : null,
+            };
+            if (!meRes.ok) {
+                report.verdict = `❌ BLOCKED at Step 3: Token rejected (${meRes.status}: ${meData?.message}). Re-authenticate.`;
+                return report;
+            }
+        } catch (err: any) {
+            report.step3_users_me = { ok: false, error: err.message };
+            report.verdict = '❌ BLOCKED at Step 3: Network error reaching ML API.';
+            return report;
+        }
 
-    // Step 5b: Strategy D — catalog product items (WITH auth, avoids search endpoint)
-    try {
-        // Try first discovered productId, or a known catalog product for 120/70R17
-        const testProductId = report.step5_attr_search?.ok === false ? 'MLAP9213' : null; // fallback known product
-        const prodRes = await fetch(
-            `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=3`,
-            { headers: appAuthHeaders }
-        );
-        if (prodRes.ok) {
-            const prodData = await prodRes.json() as any;
-            const firstProd = (prodData.results || [])[0];
-            if (firstProd?.id) {
-                const itemsRes = await fetch(
-                    `https://api.mercadolibre.com/products/${firstProd.id}/items?site_id=MLM&limit=5`,
-                    { headers: appAuthHeaders }
-                );
-                const itemsBody = await itemsRes.json() as any;
-                const items: any[] = itemsBody.results ?? itemsBody.items ?? (Array.isArray(itemsBody) ? itemsBody : []);
-                report.step5b_catalog_items = {
-                    ok:           itemsRes.ok,
-                    httpStatus:   itemsRes.status,
-                    catalogProductId: firstProd.id,
-                    returnedCount: items.length,
-                    firstItem:    items[0] ? { id: items[0].id, title: items[0].title, price: items[0].price } : null,
-                    rawError:     !itemsRes.ok ? itemsBody : null,
-                    error:        !itemsRes.ok ? (itemsBody?.message ?? itemsBody?.error ?? `HTTP ${itemsRes.status}`) : null,
-                };
+        // Step 4: Check category attribute names
+        try {
+            const catRes = await fetch(
+                `https://api.mercadolibre.com/categories/${categoryId}/attributes`,
+                { headers: authHeaders }
+            );
+            const catData = await catRes.json() as any[];
+            const attrIds = Array.isArray(catData) ? catData.map((a: any) => a.id) : [];
+            const hasWidth = attrIds.includes('SECTION_WIDTH');
+            const hasAR = attrIds.includes('AUTOMOTIVE_TIRE_ASPECT_RATIO');
+            const hasRim = attrIds.includes('RIM_DIAMETER');
+            const hasMfgSize = attrIds.includes('MANUFACTURER_TIRE_SIZE');
+            report.step4_category_attrs = {
+                ok: catRes.ok,
+                httpStatus: catRes.status,
+                categoryId,
+                totalAttributes: attrIds.length,
+                hasSECTION_WIDTH: hasWidth,
+                hasAUTOMOTIVE_TIRE_ASPECT_RATIO: hasAR,
+                hasRIM_DIAMETER: hasRim,
+                hasMANUFACTURER_TIRE_SIZE: hasMfgSize,
+                verdict: (hasWidth && hasAR && hasRim)
+                    ? 'All 3 size attributes present'
+                    : 'SOME SIZE ATTRIBUTES MISSING — ML may have renamed them, causing zero results',
+            };
+        } catch (err: any) {
+            report.step4_category_attrs = { ok: false, error: err.message };
+        }
+
+        // Step 5: Strategy S1 — keyword search WITH APP TOKEN (the fixed approach)
+        try {
+            const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=5&sort=price_asc`;
+            const r = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN — key fix
+            const body = await r.json() as any;
+            report.step5_attr_search = {
+                ok: r.ok,
+                httpStatus: r.status,
+                url,
+                totalResults: body?.paging?.total ?? null,
+                returnedCount: (body?.results ?? []).length,
+                firstItem: body?.results?.[0]
+                    ? { id: body.results[0].id, title: body.results[0].title, price: body.results[0].price }
+                    : null,
+                rawError: !r.ok ? body : null,
+                error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
+            };
+        } catch (err: any) {
+            report.step5_attr_search = { ok: false, error: err.message };
+        }
+
+        // Step 5b: Strategy D — catalog product items (WITH auth, avoids search endpoint)
+        try {
+            // Try first discovered productId, or a known catalog product for 120/70R17
+            const testProductId = report.step5_attr_search?.ok === false ? 'MLAP9213' : null; // fallback known product
+            const prodRes = await fetch(
+                `https://api.mercadolibre.com/products/search?site_id=MLM&q=${encodeURIComponent(`${width}/${aspectRatio}R${diameter}`)}&category=${categoryId}&limit=3`,
+                { headers: appAuthHeaders }
+            );
+            if (prodRes.ok) {
+                const prodData = await prodRes.json() as any;
+                const firstProd = (prodData.results || [])[0];
+                if (firstProd?.id) {
+                    const itemsRes = await fetch(
+                        `https://api.mercadolibre.com/products/${firstProd.id}/items?site_id=MLM&limit=5`,
+                        { headers: appAuthHeaders }
+                    );
+                    const itemsBody = await itemsRes.json() as any;
+                    const items: any[] = itemsBody.results ?? itemsBody.items ?? (Array.isArray(itemsBody) ? itemsBody : []);
+                    report.step5b_catalog_items = {
+                        ok: itemsRes.ok,
+                        httpStatus: itemsRes.status,
+                        catalogProductId: firstProd.id,
+                        returnedCount: items.length,
+                        firstItem: items[0] ? { id: items[0].id, title: items[0].title, price: items[0].price } : null,
+                        rawError: !itemsRes.ok ? itemsBody : null,
+                        error: !itemsRes.ok ? (itemsBody?.message ?? itemsBody?.error ?? `HTTP ${itemsRes.status}`) : null,
+                    };
+                } else {
+                    report.step5b_catalog_items = { ok: false, error: 'No catalog products found for this size' };
+                }
             } else {
-                report.step5b_catalog_items = { ok: false, error: 'No catalog products found for this size' };
+                const errBody = await prodRes.json().catch(() => ({})) as any;
+                report.step5b_catalog_items = { ok: false, httpStatus: prodRes.status, error: errBody?.message ?? `HTTP ${prodRes.status}` };
+            }
+        } catch (err: any) {
+            report.step5b_catalog_items = { ok: false, error: err.message };
+        }
+        // Step 6: Strategy S2 — attribute search WITH APP TOKEN
+        try {
+            const sizeStr = `${width}/${aspectRatio}R${diameter}`;
+            const url = `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=5&sort=price_asc`;
+            const r = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN
+            const body = await r.json() as any;
+            report.step6_size_string_search = {
+                ok: r.ok,
+                httpStatus: r.status,
+                sizeStr,
+                url,
+                totalResults: body?.paging?.total ?? null,
+                returnedCount: (body?.results ?? []).length,
+                rawError: !r.ok ? body : null,
+                error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
+            };
+        } catch (err: any) {
+            report.step6_size_string_search = { ok: false, error: err.message };
+        }
+
+        // Step 7: Our seller items
+        const sellerId = meliConfig?.userId ? String(meliConfig.userId) : null;
+        let firstItemId: string | null = null;
+        if (sellerId) {
+            try {
+                const url = `https://api.mercadolibre.com/users/${sellerId}/items/search?status=active&limit=5`;
+                const r = await fetch(url, { headers: authHeaders });
+                const body = await r.json() as any;
+                firstItemId = (body?.results ?? [])[0] ?? null;
+                report.step7_seller_items = {
+                    ok: r.ok,
+                    httpStatus: r.status,
+                    sellerId,
+                    totalItems: body?.paging?.total ?? null,
+                    firstIds: (body?.results ?? []).slice(0, 5),
+                    error: !r.ok ? (body?.message || body?.error || `HTTP ${r.status}`) : null,
+                };
+            } catch (err: any) {
+                report.step7_seller_items = { ok: false, sellerId, error: err.message };
             }
         } else {
-            const errBody = await prodRes.json().catch(() => ({})) as any;
-            report.step5b_catalog_items = { ok: false, httpStatus: prodRes.status, error: errBody?.message ?? `HTTP ${prodRes.status}` };
-        }
-    } catch (err: any) {
-        report.step5b_catalog_items = { ok: false, error: err.message };
-    }
-    // Step 6: Strategy S2 — attribute search WITH APP TOKEN
-    try {
-        const sizeStr = `${width}/${aspectRatio}R${diameter}`;
-        const url = `https://api.mercadolibre.com/sites/MLM/search?category=${categoryId}&SECTION_WIDTH=${width}&AUTOMOTIVE_TIRE_ASPECT_RATIO=${aspectRatio}&RIM_DIAMETER=${diameter}&limit=5&sort=price_asc`;
-        const r    = await fetch(url, { headers: appAuthHeaders }); // APP TOKEN
-        const body = await r.json() as any;
-        report.step6_size_string_search = {
-            ok:            r.ok,
-            httpStatus:    r.status,
-            sizeStr,
-            url,
-            totalResults:  body?.paging?.total ?? null,
-            returnedCount: (body?.results ?? []).length,
-            rawError:      !r.ok ? body : null,
-            error: !r.ok ? (body?.message ?? body?.error ?? `HTTP ${r.status}`) : null,
-        };
-    } catch (err: any) {
-        report.step6_size_string_search = { ok: false, error: err.message };
-    }
-
-    // Step 7: Our seller items
-    const sellerId = meliConfig?.userId ? String(meliConfig.userId) : null;
-    let firstItemId: string | null = null;
-    if (sellerId) {
-        try {
-            const url  = `https://api.mercadolibre.com/users/${sellerId}/items/search?status=active&limit=5`;
-            const r    = await fetch(url, { headers: authHeaders });
-            const body = await r.json() as any;
-            firstItemId = (body?.results ?? [])[0] ?? null;
             report.step7_seller_items = {
-                ok:         r.ok,
-                httpStatus: r.status,
-                sellerId,
-                totalItems: body?.paging?.total ?? null,
-                firstIds:   (body?.results ?? []).slice(0, 5),
-                error: !r.ok ? (body?.message || body?.error || `HTTP ${r.status}`) : null,
+                ok: false,
+                error: 'No sellerId in config/integrations.meli',
             };
-        } catch (err: any) {
-            report.step7_seller_items = { ok: false, sellerId, error: err.message };
         }
-    } else {
-        report.step7_seller_items = {
-            ok:    false,
-            error: 'No sellerId in config/integrations.meli',
-        };
-    }
 
-    // Step 7b: Test price_to_win on the first of our active items
-    // This is the CORE endpoint of the new implementation — must be ✅ for scans to work.
-    if (firstItemId) {
+        // Step 7b: Test price_to_win on the first of our active items
+        // This is the CORE endpoint of the new implementation — must be ✅ for scans to work.
+        if (firstItemId) {
+            try {
+                const ptwRes = await fetch(
+                    `https://api.mercadolibre.com/items/${firstItemId}/price_to_win`,
+                    { headers: authHeaders }  // seller user token required
+                );
+                const ptwBody = await ptwRes.json() as any;
+                report.step7b_price_to_win = {
+                    ok: ptwRes.ok,
+                    httpStatus: ptwRes.status,
+                    testedItemId: firstItemId,
+                    status: ptwBody.status ?? null,          // 'winner' | 'not_winner' | 'not_eligible'
+                    priceToWin: ptwBody.price_to_win ?? null,
+                    rawResponse: ptwBody,
+                    error: !ptwRes.ok ? (ptwBody.message ?? ptwBody.error ?? `HTTP ${ptwRes.status}`) : null,
+                    note: ptwRes.ok
+                        ? (ptwBody.status === 'not_eligible'
+                            ? 'Item not part of ML catalog — price_to_win not available for this listing'
+                            : 'price_to_win endpoint working correctly')
+                        : 'price_to_win failed — scans will not return competitive data',
+                };
+            } catch (err: any) {
+                report.step7b_price_to_win = { ok: false, testedItemId: firstItemId, error: err.message };
+            }
+        } else {
+            report.step7b_price_to_win = { ok: false, error: 'No active items found to test price_to_win' };
+        }
+
+        // Step 8: Firestore write/read round-trip
         try {
-            const ptwRes  = await fetch(
-                `https://api.mercadolibre.com/items/${firstItemId}/price_to_win`,
-                { headers: authHeaders }  // seller user token required
-            );
-            const ptwBody = await ptwRes.json() as any;
-            report.step7b_price_to_win = {
-                ok:          ptwRes.ok,
-                httpStatus:  ptwRes.status,
-                testedItemId: firstItemId,
-                status:      ptwBody.status ?? null,          // 'winner' | 'not_winner' | 'not_eligible'
-                priceToWin:  ptwBody.price_to_win ?? null,
-                rawResponse: ptwBody,
-                error:       !ptwRes.ok ? (ptwBody.message ?? ptwBody.error ?? `HTTP ${ptwRes.status}`) : null,
-                note:        ptwRes.ok
-                    ? (ptwBody.status === 'not_eligible'
-                        ? 'Item not part of ML catalog — price_to_win not available for this listing'
-                        : 'price_to_win endpoint working correctly')
-                    : 'price_to_win failed — scans will not return competitive data',
+            const testRef = db.collection('price_intelligence').doc('diag-test-tmp');
+            await testRef.set({ _diagTest: true, ranAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            const check = await testRef.get();
+            await testRef.delete();
+            report.step8_firestore = {
+                ok: check.exists,
+                message: check.exists ? 'Firestore write/read OK' : 'Write ok but read failed',
             };
         } catch (err: any) {
-            report.step7b_price_to_win = { ok: false, testedItemId: firstItemId, error: err.message };
+            report.step8_firestore = { ok: false, error: err.message };
         }
-    } else {
-        report.step7b_price_to_win = { ok: false, error: 'No active items found to test price_to_win' };
-    }
 
-    // Step 8: Firestore write/read round-trip
-    try {
-        const testRef = db.collection('price_intelligence').doc('diag-test-tmp');
-        await testRef.set({ _diagTest: true, ranAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        const check = await testRef.get();
-        await testRef.delete();
-        report.step8_firestore = {
-            ok:      check.exists,
-            message: check.exists ? 'Firestore write/read OK' : 'Write ok but read failed',
-        };
-    } catch (err: any) {
-        report.step8_firestore = { ok: false, error: err.message };
-    }
+        // Final verdict — based on price_to_win approach (new authoritative method)
+        const ptwOk = report.step7b_price_to_win?.ok === true;
+        const ptwElig = report.step7b_price_to_win?.status !== 'not_eligible';
+        const authOk = report.step2_token?.ok && report.step3_users_me?.ok;
 
-    // Final verdict — based on price_to_win approach (new authoritative method)
-    const ptwOk   = report.step7b_price_to_win?.ok === true;
-    const ptwElig = report.step7b_price_to_win?.status !== 'not_eligible';
-    const authOk  = report.step2_token?.ok && report.step3_users_me?.ok;
+        if (!authOk) {
+            report.verdict = '❌ BLOCKED: Authentication broken — reconnect MercadoLibre in /admin/integrations.';
+        } else if (!report.step7_seller_items?.ok || !report.step7_seller_items?.totalItems) {
+            report.verdict = '⚠️ No active items found. Add a MercadoLibre listing to enable Price Intelligence.';
+        } else if (!ptwOk) {
+            report.verdict = `⚠️ price_to_win endpoint failed (HTTP ${report.step7b_price_to_win?.httpStatus}). Check seller permissions or re-authenticate.`;
+        } else if (!ptwElig) {
+            report.verdict = '⚠️ Tested item is not in ML catalog so price_to_win returned not_eligible. Scan the correct tire size (one you have listed in the catalog).';
+        } else {
+            report.verdict = `✅ Pipeline OK — price_to_win working (status: ${report.step7b_price_to_win?.status}, ptw: $${report.step7b_price_to_win?.priceToWin ?? 'N/A'}). Ready to scan.`;
+        }
 
-    if (!authOk) {
-        report.verdict = '❌ BLOCKED: Authentication broken — reconnect MercadoLibre in /admin/integrations.';
-    } else if (!report.step7_seller_items?.ok || !report.step7_seller_items?.totalItems) {
-        report.verdict = '⚠️ No active items found. Add a MercadoLibre listing to enable Price Intelligence.';
-    } else if (!ptwOk) {
-        report.verdict = `⚠️ price_to_win endpoint failed (HTTP ${report.step7b_price_to_win?.httpStatus}). Check seller permissions or re-authenticate.`;
-    } else if (!ptwElig) {
-        report.verdict = '⚠️ Tested item is not in ML catalog so price_to_win returned not_eligible. Scan the correct tire size (one you have listed in the catalog).';
-    } else {
-        report.verdict = `✅ Pipeline OK — price_to_win working (status: ${report.step7b_price_to_win?.status}, ptw: $${report.step7b_price_to_win?.priceToWin ?? 'N/A'}). Ready to scan.`;
-    }
-
-    console.log('[PriceIntelDiag]', report.verdict);
-    return report;
-});
+        console.log('[PriceIntelDiag]', report.verdict);
+        return report;
+    });
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5998,8 +6032,8 @@ async function fetchMetaCampaigns(adAccountId: string, accessToken: string, date
         'id', 'name', 'status',
         `insights.date_preset(${datePreset}){spend,impressions,clicks,reach,frequency,cpm,cpc,ctr,purchase_roas,actions,action_values}`,
     ].join(',');
-    const url  = `${META_GRAPH_BASE}/${adAccountId}/campaigns?fields=${encodeURIComponent(fields)}&access_token=${accessToken}&limit=100`;
-    const res  = await fetch(url);
+    const url = `${META_GRAPH_BASE}/${adAccountId}/campaigns?fields=${encodeURIComponent(fields)}&access_token=${accessToken}&limit=100`;
+    const res = await fetch(url);
     const body = await res.json() as any;
     if (!res.ok) throw new Error(`Meta API: ${body?.error?.message ?? JSON.stringify(body)}`);
     return body.data ?? [];
@@ -6013,10 +6047,10 @@ async function getGoogleToken(cfg: any): Promise<string> {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-            client_id:     cfg.clientId,
+            client_id: cfg.clientId,
             client_secret: cfg.clientSecret,
             refresh_token: cfg.refreshToken,
-            grant_type:    'refresh_token',
+            grant_type: 'refresh_token',
         }).toString(),
     });
     const d = await r.json() as any;
@@ -6051,15 +6085,15 @@ async function fetchGoogleCampaigns(customerId: string, developerToken: string, 
 
 // ── Core sync logic ───────────────────────────────────────────────────────────
 async function runPaidMediaSync(targetDate: Date) {
-    const dateStr  = toDateStr(targetDate);
+    const dateStr = toDateStr(targetDate);
     const errors: string[] = [];
     let metaCount = 0, googleCount = 0;
 
-    const cfg         = await getPaidMediaConfig();
-    const batch       = db.batch();
-    const snapsBase   = db.collection('advertising_snapshots').doc(dateStr);
-    const pulledAt    = admin.firestore.FieldValue.serverTimestamp();
-    const cacheRef    = db.collection('advertising_cache').doc('latest');
+    const cfg = await getPaidMediaConfig();
+    const batch = db.batch();
+    const snapsBase = db.collection('advertising_snapshots').doc(dateStr);
+    const pulledAt = admin.firestore.FieldValue.serverTimestamp();
+    const cacheRef = db.collection('advertising_cache').doc('latest');
 
     // ── Meta ─────────────────────────────────────────────────────────────────
     const metaCfg = cfg.meta;
@@ -6071,18 +6105,18 @@ async function runPaidMediaSync(targetDate: Date) {
             for (const camp of camps) {
                 const ins = (camp.insights?.data ?? [])[0];
                 if (!ins) continue;
-                const spend       = parseFloat(ins.spend)      || 0;
-                const impressions = parseInt(ins.impressions)   || 0;
-                const clicks      = parseInt(ins.clicks)        || 0;
-                const reach       = parseInt(ins.reach)         || 0;
-                const frequency   = parseFloat(ins.frequency)   || 0;
-                const cpm         = parseFloat(ins.cpm)         || 0;
-                const cpc         = parseFloat(ins.cpc)         || 0;
-                const ctr         = parseFloat(ins.ctr)         || 0;
-                const purchases   = actionVal(ins.actions,       'purchase');
+                const spend = parseFloat(ins.spend) || 0;
+                const impressions = parseInt(ins.impressions) || 0;
+                const clicks = parseInt(ins.clicks) || 0;
+                const reach = parseInt(ins.reach) || 0;
+                const frequency = parseFloat(ins.frequency) || 0;
+                const cpm = parseFloat(ins.cpm) || 0;
+                const cpc = parseFloat(ins.cpc) || 0;
+                const ctr = parseFloat(ins.ctr) || 0;
+                const purchases = actionVal(ins.actions, 'purchase');
                 const purchaseValue = actionVal(ins.action_values, 'purchase');
-                const addToCart   = actionVal(ins.actions,       'add_to_cart');
-                const viewContent = actionVal(ins.actions,       'view_content');
+                const addToCart = actionVal(ins.actions, 'add_to_cart');
+                const viewContent = actionVal(ins.actions, 'view_content');
                 const purchaseRoas = ins.purchase_roas?.[0] ? parseFloat(ins.purchase_roas[0].value) : 0;
 
                 batch.set(snapsBase.collection('meta').doc(camp.id), {
@@ -6111,8 +6145,8 @@ async function runPaidMediaSync(targetDate: Date) {
     const gCfg = cfg.google;
     if (gCfg?.clientId && gCfg?.clientSecret && gCfg?.refreshToken && gCfg?.customerId && gCfg?.developerToken) {
         try {
-            const gToken     = await getGoogleToken(gCfg);
-            const yesterday  = new Date(targetDate);
+            const gToken = await getGoogleToken(gCfg);
+            const yesterday = new Date(targetDate);
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = toDateStr(yesterday);
 
@@ -6121,16 +6155,16 @@ async function runPaidMediaSync(targetDate: Date) {
 
             for (const row of results) {
                 const camp = row.campaign, m = row.metrics;
-                const spend            = (m.costMicros ?? 0) / 1_000_000;
-                const impressions      = m.impressions   ?? 0;
-                const clicks           = m.clicks        ?? 0;
-                const ctr              = (m.ctr          ?? 0) * 100;
-                const avgCpc           = (m.averageCpc   ?? 0) / 1_000_000;
-                const conversions      = m.conversions   ?? 0;
-                const allConversions   = m.allConversions ?? 0;
+                const spend = (m.costMicros ?? 0) / 1_000_000;
+                const impressions = m.impressions ?? 0;
+                const clicks = m.clicks ?? 0;
+                const ctr = (m.ctr ?? 0) * 100;
+                const avgCpc = (m.averageCpc ?? 0) / 1_000_000;
+                const conversions = m.conversions ?? 0;
+                const allConversions = m.allConversions ?? 0;
                 const conversionsValue = m.conversionsValue ?? 0;
                 const costPerConversion = conversions > 0 ? spend / conversions : 0;
-                const impressionShare  = m.searchImpressionShare ?? null;
+                const impressionShare = m.searchImpressionShare ?? null;
 
                 batch.set(snapsBase.collection('google').doc(String(camp.id)), {
                     campaignId: String(camp.id), campaignName: camp.name, status: camp.status,
@@ -6188,7 +6222,7 @@ export const getPaidMediaInsights = functions.https.onCall(async (data, context)
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
 
     const { campaignName, metaCampaignId, googleCampaignId, days = 30 } = data ?? {};
-    const today   = new Date();
+    const today = new Date();
     const history: any[] = [];
     let latestMeta: any = null, latestGoogle: any = null;
 
@@ -6196,15 +6230,15 @@ export const getPaidMediaInsights = functions.https.onCall(async (data, context)
     await Promise.all(Array.from({ length: days }, (_, i) => {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const dateStr   = toDateStr(d);
+        const dateStr = toDateStr(d);
         const snapsBase = db.collection('advertising_snapshots').doc(dateStr);
 
         return Promise.all([
-            metaCampaignId   ? snapsBase.collection('meta').doc(metaCampaignId).get()    : Promise.resolve(null),
+            metaCampaignId ? snapsBase.collection('meta').doc(metaCampaignId).get() : Promise.resolve(null),
             googleCampaignId ? snapsBase.collection('google').doc(googleCampaignId).get() : Promise.resolve(null),
         ]).then(([ms, gs]) => {
-            const md = ms?.exists  ? ms.data()  : null;
-            const gd = gs?.exists  ? gs.data()  : null;
+            const md = ms?.exists ? ms.data() : null;
+            const gd = gs?.exists ? gs.data() : null;
             if (i === 0) { latestMeta = md; latestGoogle = gd; }
             history.push({
                 date: dateStr, metaSpend: md?.spend ?? 0, googleSpend: gd?.spend ?? 0,
@@ -6237,7 +6271,7 @@ export const getPaidMediaInsights = functions.https.onCall(async (data, context)
 
         for (const pt of history) {
             pt.revenue = revByDate.get(pt.date) ?? 0;
-            pt.roas    = pt.totalSpend > 0 ? pt.revenue / pt.totalSpend : null;
+            pt.roas = pt.totalSpend > 0 ? pt.revenue / pt.totalSpend : null;
         }
     }
 
@@ -6248,8 +6282,8 @@ export const getPaidMediaInsights = functions.https.onCall(async (data, context)
         internalOrders: totalOrders, internalRevenue: totalRevenue,
         meta: latestMeta, google: latestGoogle,
         totalSpend,
-        realRoas:         totalSpend > 0 ? totalRevenue / totalSpend : null,
-        realCpa:          totalOrders > 0 ? totalSpend / totalOrders  : null,
+        realRoas: totalSpend > 0 ? totalRevenue / totalSpend : null,
+        realCpa: totalOrders > 0 ? totalSpend / totalOrders : null,
         frequencyWarning: (latestMeta?.frequency ?? 0) > 4.5,
         history,
     };
@@ -6274,16 +6308,16 @@ export const sitemapXml = functions.https.onRequest(async (req, res) => {
 
         // Static pages
         const staticUrls = [
-            { loc: `${DOMAIN}/`,           priority: '1.0', changefreq: 'weekly'  },
+            { loc: `${DOMAIN}/`, priority: '1.0', changefreq: 'weekly' },
             // ── Catalog: /catalogo is canonical ──────────────────────────────────
-            { loc: `${DOMAIN}/catalogo`,   priority: '0.9', changefreq: 'daily'   },
-            { loc: `${DOMAIN}/catalog`,    priority: '0.3', changefreq: 'monthly' }, // 301 → /catalogo
+            { loc: `${DOMAIN}/catalogo`, priority: '0.9', changefreq: 'daily' },
+            { loc: `${DOMAIN}/catalog`, priority: '0.3', changefreq: 'monthly' }, // 301 → /catalogo
             // ── Other pages ───────────────────────────────────────────────────────
-            { loc: `${DOMAIN}/praxis`,     priority: '0.7', changefreq: 'monthly' },
-            { loc: `${DOMAIN}/blog`,       priority: '0.7', changefreq: 'weekly'  },
-            { loc: `${DOMAIN}/help`,       priority: '0.5', changefreq: 'monthly' },
-            { loc: `${DOMAIN}/terms`,      priority: '0.3', changefreq: 'yearly'  },
-            { loc: `${DOMAIN}/privacy`,    priority: '0.3', changefreq: 'yearly'  },
+            { loc: `${DOMAIN}/praxis`, priority: '0.7', changefreq: 'monthly' },
+            { loc: `${DOMAIN}/blog`, priority: '0.7', changefreq: 'weekly' },
+            { loc: `${DOMAIN}/help`, priority: '0.5', changefreq: 'monthly' },
+            { loc: `${DOMAIN}/terms`, priority: '0.3', changefreq: 'yearly' },
+            { loc: `${DOMAIN}/privacy`, priority: '0.3', changefreq: 'yearly' },
         ];
 
         const urlEntries: string[] = [];
@@ -6362,12 +6396,12 @@ export const onCartAbandoned = functions.firestore
         if (data?.event !== 'abandoned_detected') return null;
 
         const sessionId = data.sessionId || context.params.snapId;
-        const email     = data.customerEmail || data.attribution?.email || null;
-        const phone     = data.customerPhone || null;
-        const name      = data.customerName  || data.attribution?.name || 'Cliente';
-        const items     = data.items || [];
+        const email = data.customerEmail || data.attribution?.email || null;
+        const phone = data.customerPhone || null;
+        const name = data.customerName || data.attribution?.name || 'Cliente';
+        const items = data.items || [];
         const cartValue = data.cartValue || 0;
-        const cartLink  = 'https://importadoraeuro.com/checkout';
+        const cartLink = 'https://importadoraeuro.com/checkout';
 
         if (!email && !phone) {
             // Cannot recover anonymous guest with no contact info — skip
@@ -6380,19 +6414,19 @@ export const onCartAbandoned = functions.firestore
             .limit(1).get();
         if (!existing.empty) return null; // already queued
 
-        const now   = Date.now();
+        const now = Date.now();
         const batch = db.batch();
 
         // Step 1: 1 hour from now — friendly reminder
         const step1Ref = db.collection('recovery_queue').doc();
         batch.set(step1Ref, {
             sessionId, email, phone, name, items, cartValue,
-            step:        1,
-            sendAt:      admin.firestore.Timestamp.fromMillis(now + 60 * 60 * 1000),
-            status:      'pending',
-            type:        'cart_recovery',
-            message:     `Hola ${name}, dejaste tu carrito con ${items.length} producto(s) por $${cartValue} MXN. ¿Te ayudamos a completar tu compra? 👉 ${cartLink}`,
-            createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+            step: 1,
+            sendAt: admin.firestore.Timestamp.fromMillis(now + 60 * 60 * 1000),
+            status: 'pending',
+            type: 'cart_recovery',
+            message: `Hola ${name}, dejaste tu carrito con ${items.length} producto(s) por $${cartValue} MXN. ¿Te ayudamos a completar tu compra? 👉 ${cartLink}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         // Step 2: 24 hours from now — with coupon
@@ -6401,13 +6435,13 @@ export const onCartAbandoned = functions.firestore
         const step2Ref = db.collection('recovery_queue').doc();
         batch.set(step2Ref, {
             sessionId, email, phone, name, items, cartValue,
-            step:        2,
-            sendAt:      admin.firestore.Timestamp.fromMillis(now + 24 * 60 * 60 * 1000),
-            status:      'pending',
-            type:        'cart_recovery',
+            step: 2,
+            sendAt: admin.firestore.Timestamp.fromMillis(now + 24 * 60 * 60 * 1000),
+            status: 'pending',
+            type: 'cart_recovery',
             couponCode,
-            message:     `${name}, aquí tienes un 5% de descuento exclusivo: ${couponCode}. Válido por 48 horas. Completa tu compra → ${cartLink}`,
-            createdAt:   admin.firestore.FieldValue.serverTimestamp(),
+            message: `${name}, aquí tienes un 5% de descuento exclusivo: ${couponCode}. Válido por 48 horas. Completa tu compra → ${cartLink}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         await batch.commit();
@@ -6415,20 +6449,20 @@ export const onCartAbandoned = functions.firestore
         // Pre-create the coupon in Firestore so it's ready when the customer arrives
         const couponEndDate = new Date(now + 48 * 60 * 60 * 1000);
         await db.collection('coupons').doc(couponCode).set({
-            code:              couponCode,
-            type:              'percentage',
-            value:             5,
-            isActive:          true,
-            usageLimit:        1,
-            usageCount:        0,
+            code: couponCode,
+            type: 'percentage',
+            value: 5,
+            isActive: true,
+            usageLimit: 1,
+            usageCount: 0,
             minPurchaseAmount: 0,
-            startDate:         admin.firestore.Timestamp.now(),
-            endDate:           admin.firestore.Timestamp.fromDate(couponEndDate),
-            description:       `Recuperación de carrito — sesión ${sessionId}`,
-            createdAt:         admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt:         admin.firestore.FieldValue.serverTimestamp(),
-            autoGenerated:     true,
-            source:            'cart_recovery',
+            startDate: admin.firestore.Timestamp.now(),
+            endDate: admin.firestore.Timestamp.fromDate(couponEndDate),
+            description: `Recuperación de carrito — sesión ${sessionId}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            autoGenerated: true,
+            source: 'cart_recovery',
         }, { merge: true });
 
         console.log(`[CartRecovery] Queued 2-step recovery for session ${sessionId}`);
@@ -6456,22 +6490,22 @@ export const processRecoveryQueue = functions.pubsub
             // Write to notification_outbox — provider (WhatsApp/email) picks this up
             const outboxRef = db.collection('notification_outbox').doc();
             batch.set(outboxRef, {
-                channel:   task.phone ? 'whatsapp' : 'email',
-                to:        task.phone || task.email,
-                name:      task.name,
-                message:   task.message,
-                type:      task.type,
-                step:      task.step,
-                couponCode:task.couponCode || null,
+                channel: task.phone ? 'whatsapp' : 'email',
+                to: task.phone || task.email,
+                name: task.name,
+                message: task.message,
+                type: task.type,
+                step: task.step,
+                couponCode: task.couponCode || null,
                 sessionId: task.sessionId,
-                status:    'queued',
+                status: 'queued',
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
             // Mark task as sent
             batch.update(docSnap.ref, {
-                status:   'sent',
-                sentAt:   admin.firestore.FieldValue.serverTimestamp(),
+                status: 'sent',
+                sentAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         }
 
@@ -6490,13 +6524,13 @@ export const onOrderCompleted = functions.firestore
         const order = snap.data();
         if (!order) return null;
 
-        const email    = order.customerEmail || order.email;
-        const phone    = order.customerPhone || null;
-        const name     = order.customerName  || order.name || 'Cliente';
-        const items    = (order.items || []).map((i: any) => ({
-            productId:   i.productId || i.id,
+        const email = order.customerEmail || order.email;
+        const phone = order.customerPhone || null;
+        const name = order.customerName || order.name || 'Cliente';
+        const items = (order.items || []).map((i: any) => ({
+            productId: i.productId || i.id,
             productName: i.name || i.productName,
-            slug:        i.slug,
+            slug: i.slug,
         }));
 
         if (!email && !phone) return null; // no contact info
@@ -6508,10 +6542,10 @@ export const onOrderCompleted = functions.firestore
         );
 
         await db.collection('review_requests').doc(context.params.orderId).set({
-            orderId:   context.params.orderId,
+            orderId: context.params.orderId,
             email, phone, name, items,
             sendAt,
-            status:   'pending',
+            status: 'pending',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -6544,14 +6578,14 @@ export const processReviewRequests = functions.pubsub
 
             const outboxRef = db.collection('notification_outbox').doc();
             batch.set(outboxRef, {
-                channel:   req.phone ? 'whatsapp' : 'email',
-                to:        req.phone || req.email,
-                name:      req.name,
-                type:      'review_request',
-                orderId:   req.orderId,
+                channel: req.phone ? 'whatsapp' : 'email',
+                to: req.phone || req.email,
+                name: req.name,
+                type: 'review_request',
+                orderId: req.orderId,
                 reviewUrl,
-                message:   `Hola ${req.name}, ¿cómo quedó tu llanta? Nos encantaría saber tu opinión. Deja tu reseña en 1 minuto: ${reviewUrl}`,
-                status:    'queued',
+                message: `Hola ${req.name}, ¿cómo quedó tu llanta? Nos encantaría saber tu opinión. Deja tu reseña en 1 minuto: ${reviewUrl}`,
+                status: 'queued',
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
@@ -6591,7 +6625,7 @@ export const onReferralOrderCompleted = functions.firestore
         if (!existing.empty) return null; // already rewarded
 
         // Generate unique coupon code for the referrer
-        const couponCode  = `REF${referrerId.slice(-5).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-3)}`;
+        const couponCode = `REF${referrerId.slice(-5).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-3)}`;
         const couponEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
         const batch = db.batch();
@@ -6599,20 +6633,20 @@ export const onReferralOrderCompleted = functions.firestore
         // Create referrer reward coupon
         const couponRef = db.collection('coupons').doc(couponCode);
         batch.set(couponRef, {
-            code:              couponCode,
-            type:              'fixed',
-            value:             100,
-            isActive:          true,
-            usageLimit:        1,
-            usageCount:        0,
+            code: couponCode,
+            type: 'fixed',
+            value: 100,
+            isActive: true,
+            usageLimit: 1,
+            usageCount: 0,
             minPurchaseAmount: 0,
-            startDate:         admin.firestore.Timestamp.now(),
-            endDate:           admin.firestore.Timestamp.fromDate(couponEndDate),
-            description:       `Premio de referido — referidor: ${referrerId}`,
-            createdAt:         admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt:         admin.firestore.FieldValue.serverTimestamp(),
-            autoGenerated:     true,
-            source:            'referral',
+            startDate: admin.firestore.Timestamp.now(),
+            endDate: admin.firestore.Timestamp.fromDate(couponEndDate),
+            description: `Premio de referido — referidor: ${referrerId}`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            autoGenerated: true,
+            source: 'referral',
         });
 
         // Log the referral reward
@@ -6620,12 +6654,12 @@ export const onReferralOrderCompleted = functions.firestore
         batch.set(rewardRef, {
             referrerId,
             refereeOrderId: context.params.orderId,
-            refereeEmail:   order.customerEmail || order.email || null,
+            refereeEmail: order.customerEmail || order.email || null,
             couponCode,
-            value:          100,
-            currency:       'MXN',
-            status:         'issued',
-            createdAt:      admin.firestore.FieldValue.serverTimestamp(),
+            value: 100,
+            currency: 'MXN',
+            status: 'issued',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         // Queue notification to referrer
@@ -6639,13 +6673,13 @@ export const onReferralOrderCompleted = functions.firestore
         if (referrerEmail) {
             const outboxRef = db.collection('notification_outbox').doc();
             batch.set(outboxRef, {
-                channel:    'email',
-                to:         referrerEmail,
-                type:       'referral_reward',
+                channel: 'email',
+                to: referrerEmail,
+                type: 'referral_reward',
                 couponCode,
-                message:    `¡Tu amigo realizó su primera compra! Aquí está tu recompensa de $100 MXN: ${couponCode}. Válido por 30 días.`,
-                status:     'queued',
-                createdAt:  admin.firestore.FieldValue.serverTimestamp(),
+                message: `¡Tu amigo realizó su primera compra! Aquí está tu recompensa de $100 MXN: ${couponCode}. Válido por 30 días.`,
+                status: 'queued',
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
         }
 
@@ -6663,7 +6697,7 @@ export const onReferralOrderCompleted = functions.firestore
 
 const AMAZON_SP_BASE = 'https://sellingpartnerapi-na.amazon.com';
 const AMAZON_LWA_URL = 'https://api.amazon.com/auth/o2/token';
-const AMAZON_MX_MKT  = 'A1AM78C64UM0Y8';
+const AMAZON_MX_MKT = 'A1AM78C64UM0Y8';
 
 /** Reads Amazon SP-API config from config/integrations.amazon */
 async function getAmazonConfig() {
@@ -6697,16 +6731,16 @@ async function getAmazonAccessToken(): Promise<string> {
 
     const cfg = await getAmazonConfig();
     const body = new URLSearchParams({
-        grant_type:    'refresh_token',
+        grant_type: 'refresh_token',
         refresh_token: cfg.refreshToken,
-        client_id:     cfg.clientId,
+        client_id: cfg.clientId,
         client_secret: cfg.clientSecret,
     });
 
     const res = await fetch(AMAZON_LWA_URL, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    body.toString(),
+        body: body.toString(),
     });
 
     if (!res.ok) {
@@ -6719,8 +6753,8 @@ async function getAmazonAccessToken(): Promise<string> {
 
     await cacheRef.set({
         accessToken: json.access_token,
-        expiresAt:   admin.firestore.Timestamp.fromDate(expiresAt),
-        updatedAt:   admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     console.log('[Amazon] Access token refreshed, expires at', expiresAt.toISOString());
@@ -6730,13 +6764,13 @@ async function getAmazonAccessToken(): Promise<string> {
 /** Maps Amazon OrderStatus → our internal status */
 function mapAmazonStatus(s: string): string {
     const MAP: Record<string, string> = {
-        Pending:          'pending',
-        Unshipped:        'processing',
+        Pending: 'pending',
+        Unshipped: 'processing',
         PartiallyShipped: 'processing',
-        Shipped:          'shipped',
-        Delivered:        'delivered',
-        Canceled:         'cancelled',
-        Unfulfillable:    'cancelled',
+        Shipped: 'shipped',
+        Delivered: 'delivered',
+        Canceled: 'cancelled',
+        Unfulfillable: 'cancelled',
     };
     return MAP[s] ?? 'pending';
 }
@@ -6753,10 +6787,10 @@ function mapFulfillmentChannel(ch: string): string {
 async function runAmazonSync(daysBack: number): Promise<{
     imported: number; updated: number; errors: number;
 }> {
-    const cfg         = await getAmazonConfig();
-    const token       = await getAmazonAccessToken();
-    const mktId       = cfg.marketplaceId ?? AMAZON_MX_MKT;
-    const since       = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+    const cfg = await getAmazonConfig();
+    const token = await getAmazonAccessToken();
+    const mktId = cfg.marketplaceId ?? AMAZON_MX_MKT;
+    const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
 
     let imported = 0, updated = 0, errors = 0;
     let nextToken: string | undefined;
@@ -6791,48 +6825,48 @@ async function runAmazonSync(daysBack: number): Promise<{
                 if (itemsRes.ok) {
                     const itemsJson = await itemsRes.json() as any;
                     items = (itemsJson?.payload?.OrderItems ?? []).map((i: any) => ({
-                        sku:         i.SellerSKU   || i.ASIN || '',
-                        name:        i.Title       || '',   // legacy field
-                        productName: i.Title       || '',   // matches OrderItem interface
-                        quantity:    i.QuantityOrdered ?? 1,
-                        price:       parseFloat(i.ItemPrice?.Amount ?? '0'),
-                        asin:        i.ASIN        || '',
+                        sku: i.SellerSKU || i.ASIN || '',
+                        name: i.Title || '',   // legacy field
+                        productName: i.Title || '',   // matches OrderItem interface
+                        quantity: i.QuantityOrdered ?? 1,
+                        price: parseFloat(i.ItemPrice?.Amount ?? '0'),
+                        asin: i.ASIN || '',
                     }));
                 }
 
                 // ── Build Firestore document ───────────────────────────────────
-                const addr  = amzOrder.ShippingAddress ?? {};
+                const addr = amzOrder.ShippingAddress ?? {};
                 const total = parseFloat(amzOrder.OrderTotal?.Amount ?? '0');
 
                 const orderDoc = {
-                    orderNumber:     amzOrder.AmazonOrderId,
-                    amazonOrderId:   amzOrder.AmazonOrderId,
-                    sourceChannel:   'amazon',
+                    orderNumber: amzOrder.AmazonOrderId,
+                    amazonOrderId: amzOrder.AmazonOrderId,
+                    sourceChannel: 'amazon',
                     fulfillmentType: mapFulfillmentChannel(amzOrder.FulfillmentChannel ?? 'MFN'),
-                    status:          mapAmazonStatus(amzOrder.OrderStatus ?? 'Pending'),
+                    status: mapAmazonStatus(amzOrder.OrderStatus ?? 'Pending'),
                     total,
-                    currency:        amzOrder.OrderTotal?.CurrencyCode ?? 'MXN',
+                    currency: amzOrder.OrderTotal?.CurrencyCode ?? 'MXN',
                     items,
                     shippingAddress: {
-                        name:    addr.Name           ?? '',
-                        city:    addr.City           ?? '',
-                        state:   addr.StateOrRegion  ?? '',
-                        zipCode: addr.PostalCode      ?? '',
-                        country: addr.CountryCode    ?? 'MX',
+                        name: addr.Name ?? '',
+                        city: addr.City ?? '',
+                        state: addr.StateOrRegion ?? '',
+                        zipCode: addr.PostalCode ?? '',
+                        country: addr.CountryCode ?? 'MX',
                     },
-                    buyerEmail:    amzOrder.BuyerInfo?.BuyerEmail ?? '',
-                    createdAt:     amzOrder.PurchaseDate
+                    buyerEmail: amzOrder.BuyerInfo?.BuyerEmail ?? '',
+                    createdAt: amzOrder.PurchaseDate
                         ? new Date(amzOrder.PurchaseDate) : admin.firestore.FieldValue.serverTimestamp(),
-                    updatedAt:     amzOrder.LastUpdateDate
+                    updatedAt: amzOrder.LastUpdateDate
                         ? new Date(amzOrder.LastUpdateDate) : admin.firestore.FieldValue.serverTimestamp(),
-                    shipByDate:    amzOrder.LatestShipDate     ? new Date(amzOrder.LatestShipDate)     : null,
+                    shipByDate: amzOrder.LatestShipDate ? new Date(amzOrder.LatestShipDate) : null,
                     deliverByDate: amzOrder.LatestDeliveryDate ? new Date(amzOrder.LatestDeliveryDate) : null,
                     marketplaceId: mktId,
-                    syncedAt:      admin.firestore.FieldValue.serverTimestamp(),
+                    syncedAt: admin.firestore.FieldValue.serverTimestamp(),
                 };
 
-                const docRef  = db.collection('orders').doc(`amz-${amzOrder.AmazonOrderId}`);
-                const snap    = await docRef.get();
+                const docRef = db.collection('orders').doc(`amz-${amzOrder.AmazonOrderId}`);
+                const snap = await docRef.get();
                 await docRef.set(orderDoc, { merge: true });
                 if (snap.exists) updated++; else imported++;
 
@@ -6934,17 +6968,17 @@ export const amazonOAuthCallback = functions.https.onRequest(async (req, res) =>
         const CALLBACK_URL = 'https://us-central1-tiendapraxis.cloudfunctions.net/amazonOAuthCallback';
 
         const body = new URLSearchParams({
-            grant_type:    'authorization_code',
-            code:          spapi_oauth_code,
-            redirect_uri:  CALLBACK_URL,
-            client_id:     cfg.clientId,
+            grant_type: 'authorization_code',
+            code: spapi_oauth_code,
+            redirect_uri: CALLBACK_URL,
+            client_id: cfg.clientId,
             client_secret: cfg.clientSecret,
         });
 
         const tokenRes = await fetch(AMAZON_LWA_URL, {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body:    body.toString(),
+            body: body.toString(),
         });
 
         const tokenJson = await tokenRes.json() as any;
@@ -6959,9 +6993,9 @@ export const amazonOAuthCallback = functions.https.onRequest(async (req, res) =>
         await db.collection('config').doc('integrations').set({
             amazon: {
                 refreshToken: tokenJson.refresh_token,
-                sellerId:     selling_partner_id ?? cfg.sellerId ?? '',
-                connected:    true,
-                connectedAt:  admin.firestore.FieldValue.serverTimestamp(),
+                sellerId: selling_partner_id ?? cfg.sellerId ?? '',
+                connected: true,
+                connectedAt: admin.firestore.FieldValue.serverTimestamp(),
             }
         }, { merge: true });
 
@@ -7079,40 +7113,41 @@ export const testMeliBilling = functions.https.onRequest(async (req: any, res: a
 // Returns: { ordersWritten, itemsWritten, dataset }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BQ_DATASET  = 'euro_analytics';
+const BQ_DATASET = 'euro_analytics';
+const BQ_PROJECT = 'importadora-euro';  // ← used by BQ analytics functions below
 const BQ_LOCATION = 'us-central1';
 
 const BQ_ORDERS_SCHEMA = [
-    { name: 'order_id',        type: 'STRING',    mode: 'REQUIRED' },
-    { name: 'order_date',      type: 'DATE',      mode: 'REQUIRED' },
-    { name: 'created_at',      type: 'TIMESTAMP', mode: 'NULLABLE' },
-    { name: 'source_channel',  type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'status',          type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'total',           type: 'FLOAT64',   mode: 'NULLABLE' },
-    { name: 'state',           type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'city',            type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'customer_id',     type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'customer_name',   type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'item_count',      type: 'INT64',     mode: 'NULLABLE' },
-    { name: 'fulfillment_type',type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'payment_method',  type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'external_order_id', type: 'STRING',  mode: 'NULLABLE' },
+    { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'order_date', type: 'DATE', mode: 'REQUIRED' },
+    { name: 'created_at', type: 'TIMESTAMP', mode: 'NULLABLE' },
+    { name: 'source_channel', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'status', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'total', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'state', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'city', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'customer_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'customer_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'item_count', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'fulfillment_type', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'payment_method', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'external_order_id', type: 'STRING', mode: 'NULLABLE' },
 ];
 
 const BQ_ITEMS_SCHEMA = [
-    { name: 'order_id',       type: 'STRING',  mode: 'REQUIRED' },
-    { name: 'order_date',     type: 'DATE',    mode: 'REQUIRED' },
-    { name: 'source_channel', type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'status',         type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'sku',            type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'product_name',   type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'quantity',       type: 'INT64',   mode: 'NULLABLE' },
-    { name: 'unit_price',     type: 'FLOAT64', mode: 'NULLABLE' },
-    { name: 'subtotal',       type: 'FLOAT64', mode: 'NULLABLE' },
-    { name: 'brand',          type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'product_id',     type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'asin',           type: 'STRING',  mode: 'NULLABLE' },
-    { name: 'ml_item_id',     type: 'STRING',  mode: 'NULLABLE' },
+    { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'order_date', type: 'DATE', mode: 'REQUIRED' },
+    { name: 'source_channel', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'status', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'sku', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'quantity', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'unit_price', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'subtotal', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'brand', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'asin', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'ml_item_id', type: 'STRING', mode: 'NULLABLE' },
 ];
 
 /** Resolves sourceChannel+fulfillmentType into the canonical BQ channel key. */
@@ -7120,10 +7155,10 @@ function resolveChannelBQ(order: any): string {
     const sc = order.sourceChannel;
     const ft = order.fulfillmentType;
     if (!sc || sc === 'storefront') return 'WEB';
-    if (sc === 'pos')          return 'POS';
-    if (sc === 'on_behalf')    return 'ON_BEHALF';
-    if (sc === 'amazon')       return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
-    if (sc === 'mercadolibre') return ft === 'platform' ? 'MELI_FULL'  : 'MELI_CLASSIC';
+    if (sc === 'pos') return 'POS';
+    if (sc === 'on_behalf') return 'ON_BEHALF';
+    if (sc === 'amazon') return ft === 'platform' ? 'AMAZON_FBA' : 'AMAZON_MFN';
+    if (sc === 'mercadolibre') return ft === 'platform' ? 'MELI_FULL' : 'MELI_CLASSIC';
     return 'WEB';
 }
 
@@ -7142,7 +7177,7 @@ async function ensureBQSchema(): Promise<void> {
         await ordersTable.create({
             schema: BQ_ORDERS_SCHEMA,
             timePartitioning: { type: 'DAY', field: 'order_date' },
-            clustering:       { fields: ['source_channel', 'status'] },
+            clustering: { fields: ['source_channel', 'status'] },
         });
         console.log('[BQ] Created table orders');
     }
@@ -7153,7 +7188,7 @@ async function ensureBQSchema(): Promise<void> {
         await itemsTable.create({
             schema: BQ_ITEMS_SCHEMA,
             timePartitioning: { type: 'DAY', field: 'order_date' },
-            clustering:       { fields: ['source_channel', 'sku'] },
+            clustering: { fields: ['source_channel', 'sku'] },
         });
         console.log('[BQ] Created table order_items');
     }
@@ -7204,56 +7239,56 @@ export const backfillOrdersToBigQuery = functions
 
         console.log(`[BQ Backfill] Loaded ${snap.size} orders from Firestore`);
 
-        const orderRows:  any[] = [];
-        const itemRows:   any[] = [];
+        const orderRows: any[] = [];
+        const itemRows: any[] = [];
 
         for (const docSnap of snap.docs) {
-            const o       = docSnap.data();
+            const o = docSnap.data();
             const orderId = docSnap.id;
 
             // Skip truly ghost orders — but keep cancelled/refunded so analytics
             // can answer "what % of orders were cancelled?"
             if (NON_REVENUE.includes(o['status'])) continue;
 
-            const createdAt   = (o['createdAt'] as admin.firestore.Timestamp)?.toDate();
-            const orderDate   = toMxDate(createdAt ?? new Date());
-            const channel     = resolveChannelBQ(o);
+            const createdAt = (o['createdAt'] as admin.firestore.Timestamp)?.toDate();
+            const orderDate = toMxDate(createdAt ?? new Date());
+            const channel = resolveChannelBQ(o);
             const items: any[] = o['items'] ?? [];
 
             orderRows.push({
-                order_id:         orderId,
-                order_date:       orderDate,
-                created_at:       createdAt?.toISOString() ?? null,
-                source_channel:   channel,
-                status:           o['status'] ?? null,
-                total:            Number(o['total'] ?? 0),
-                state:            o['shippingAddress']?.state  ?? null,
-                city:             o['shippingAddress']?.city   ?? null,
-                customer_id:      o['customer']?.id            ?? null,
-                customer_name:    o['customer']?.name          ?? null,
-                item_count:       items.length,
-                fulfillment_type: o['fulfillmentType']         ?? null,
-                payment_method:   o['paymentMethod']           ?? null,
-                external_order_id: o['externalOrderId']        ?? null,
+                order_id: orderId,
+                order_date: orderDate,
+                created_at: createdAt?.toISOString() ?? null,
+                source_channel: channel,
+                status: o['status'] ?? null,
+                total: Number(o['total'] ?? 0),
+                state: o['shippingAddress']?.state ?? null,
+                city: o['shippingAddress']?.city ?? null,
+                customer_id: o['customer']?.id ?? null,
+                customer_name: o['customer']?.name ?? null,
+                item_count: items.length,
+                fulfillment_type: o['fulfillmentType'] ?? null,
+                payment_method: o['paymentMethod'] ?? null,
+                external_order_id: o['externalOrderId'] ?? null,
             });
 
             for (const item of items) {
                 const unitPrice = Number(item.price ?? item.unitPrice ?? 0);
-                const qty       = Number(item.quantity ?? 1);
+                const qty = Number(item.quantity ?? 1);
                 itemRows.push({
-                    order_id:     orderId,
-                    order_date:   orderDate,
+                    order_id: orderId,
+                    order_date: orderDate,
                     source_channel: channel,
-                    status:       o['status'] ?? null,
-                    sku:          item.sku          ?? null,
-                    product_name: item.productName  ?? item.name ?? null,
-                    quantity:     qty,
-                    unit_price:   unitPrice,
-                    subtotal:     Number(item.subtotal ?? (unitPrice * qty)),
-                    brand:        item.brand         ?? null,
-                    product_id:   item.productId     ?? null,
-                    asin:         item.asin          ?? null,
-                    ml_item_id:   item.mlItemId      ?? null,
+                    status: o['status'] ?? null,
+                    sku: item.sku ?? null,
+                    product_name: item.productName ?? item.name ?? null,
+                    quantity: qty,
+                    unit_price: unitPrice,
+                    subtotal: Number(item.subtotal ?? (unitPrice * qty)),
+                    brand: item.brand ?? null,
+                    product_id: item.productId ?? null,
+                    asin: item.asin ?? null,
+                    ml_item_id: item.mlItemId ?? null,
                 });
             }
         }
@@ -7261,7 +7296,7 @@ export const backfillOrdersToBigQuery = functions
         // Insert in batches of 500 (BQ streaming insert limit)
         const BATCH = 500;
         const ordersTable = bigquery.dataset(BQ_DATASET).table('orders');
-        const itemsTable  = bigquery.dataset(BQ_DATASET).table('order_items');
+        const itemsTable = bigquery.dataset(BQ_DATASET).table('order_items');
 
         for (let i = 0; i < orderRows.length; i += BATCH) {
             await ordersTable.insert(orderRows.slice(i, i + BATCH), { skipInvalidRows: true });
@@ -7293,10 +7328,10 @@ export const queryMetrics = functions
     .runWith({ timeoutSeconds: 60, memory: '512MB' })
     .https.onCall(async (data: {
         queryType: 'productRevenue' | 'geoBreakdown' | 'channelSku' | 'customerCohorts' | 'summaryKpis' | 'dailyTrend' | 'cancellationRate';
-        fromDate:  string;   // YYYY-MM-DD
-        toDate:    string;   // YYYY-MM-DD
-        channel?:  string;   // optional channel filter (e.g. 'MELI_FULL')
-        limit?:    number;
+        fromDate: string;   // YYYY-MM-DD
+        toDate: string;   // YYYY-MM-DD
+        channel?: string;   // optional channel filter (e.g. 'MELI_FULL')
+        limit?: number;
     }, context) => {
         if (!context.auth) {
             throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
@@ -7304,7 +7339,7 @@ export const queryMetrics = functions
 
         const { queryType, fromDate, toDate, channel, limit = 50 } = data;
         const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
-        const DS      = BQ_DATASET;
+        const DS = BQ_DATASET;
 
         // Revenue-positive statuses only — 'paid' = web/MP orders confirmed by webhook
         const REVENUE_STATUSES = `('pending','processing','shipped','delivered','completed','in_transit','picked_up','paid','refund_pending')`;
@@ -7460,7 +7495,7 @@ export const queryMetrics = functions
                     FROM \`${PROJECT}.${DS}.orders\`
                     WHERE order_date BETWEEN @fromDate AND @toDate
                       AND status IN ${REVENUE_STATUSES}
-                      ${ channel ? 'AND source_channel = @channel' : '' }
+                      ${channel ? 'AND source_channel = @channel' : ''}
                     GROUP BY order_date, source_channel
                     ORDER BY order_date
                 `;
@@ -7472,7 +7507,7 @@ export const queryMetrics = functions
         }
 
         const [rows] = await bigquery.query({
-            query:    sql,
+            query: sql,
             params,
             location: BQ_LOCATION,
         });
@@ -7530,37 +7565,37 @@ async function upsertConversation(data: {
         const ref = snap.docs[0].ref;
         // Refresh name/avatar in case they changed
         await ref.update({
-            customerName:   data.customerName,
+            customerName: data.customerName,
             customerHandle: data.customerHandle,
-            updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         return ref.id;
     }
 
     const ref = await db.collection('customer_conversations').add({
         ...data,
-        status:      'open',
-        priority:    'normal',
-        tags:        [],
+        status: 'open',
+        priority: 'normal',
+        tags: [],
         unreadCount: 0,
         lastMessage: { text: '', direction: 'inbound', timestamp: admin.firestore.Timestamp.now() },
-        createdAt:   admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt:   admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return ref.id;
 }
 
 /** Add a message to a conversation's subcollection and update the parent's lastMessage preview. */
 async function addMessage(conversationId: string, msg: {
-    direction:         'inbound' | 'outbound';
-    type:              'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'comment';
-    content:           string;
-    mediaUrl?:         string;
+    direction: 'inbound' | 'outbound';
+    type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'comment';
+    content: string;
+    mediaUrl?: string;
     platformMessageId: string;
-    status:            'received' | 'sent' | 'delivered' | 'read' | 'failed';
-    sentBy?:           string;
-    sentByName?:       string;
-    errorReason?:      string;
+    status: 'received' | 'sent' | 'delivered' | 'read' | 'failed';
+    sentBy?: string;
+    sentByName?: string;
+    errorReason?: string;
 }): Promise<void> {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const msgRef = db.collection(`customer_conversations/${conversationId}/messages`).doc();
@@ -7569,7 +7604,7 @@ async function addMessage(conversationId: string, msg: {
     const preview = msg.content.length > 80 ? msg.content.slice(0, 80) + '…' : msg.content;
     await db.collection('customer_conversations').doc(conversationId).update({
         lastMessage: {
-            text:      preview || (msg.type !== 'text' ? `[${msg.type}]` : ''),
+            text: preview || (msg.type !== 'text' ? `[${msg.type}]` : ''),
             direction: msg.direction,
             timestamp: admin.firestore.Timestamp.now(),
             agentName: msg.sentByName ?? null,
@@ -7623,26 +7658,26 @@ export const metaInboxWebhook = functions.https.onRequest(async (req, res) => {
                 for (const change of entry.changes ?? []) {
                     const value = change.value;
                     for (const msg of value?.messages ?? []) {
-                        const phone       = msg.from as string;
+                        const phone = msg.from as string;
                         const contactName = (value.contacts?.[0]?.profile?.name as string) ?? phone;
 
                         const convId = await upsertConversation({
                             channel: 'whatsapp',
                             channelConversationId: phone,
                             customerHandle: phone,
-                            customerName:   contactName,
+                            customerName: contactName,
                         });
 
                         let mediaUrl: string | undefined;
-                        if (msg.image?.id)    mediaUrl = await resolveMetaMedia(msg.image.id, waToken);
+                        if (msg.image?.id) mediaUrl = await resolveMetaMedia(msg.image.id, waToken);
                         if (msg.document?.id) mediaUrl = await resolveMetaMedia(msg.document.id, waToken);
-                        if (msg.audio?.id)    mediaUrl = await resolveMetaMedia(msg.audio.id, waToken);
-                        if (msg.video?.id)    mediaUrl = await resolveMetaMedia(msg.video.id, waToken);
+                        if (msg.audio?.id) mediaUrl = await resolveMetaMedia(msg.audio.id, waToken);
+                        if (msg.video?.id) mediaUrl = await resolveMetaMedia(msg.video.id, waToken);
 
                         await addMessage(convId, {
                             direction: 'inbound',
                             type: msg.image ? 'image' : msg.document ? 'document' : msg.audio ? 'audio' : msg.video ? 'video' : 'text',
-                            content:   msg.text?.body ?? msg.caption ?? '',
+                            content: msg.text?.body ?? msg.caption ?? '',
                             mediaUrl,
                             platformMessageId: msg.id,
                             status: 'received',
@@ -7653,7 +7688,7 @@ export const metaInboxWebhook = functions.https.onRequest(async (req, res) => {
         } else if (body.object === 'instagram') {
             for (const entry of body.entry ?? []) {
                 for (const msgEvent of entry.messaging ?? []) {
-                    const senderId   = String(msgEvent.sender?.id ?? '');
+                    const senderId = String(msgEvent.sender?.id ?? '');
                     const senderName = msgEvent.sender?.name ?? `IG ${senderId}`;
                     if (!senderId) continue;
 
@@ -7661,14 +7696,14 @@ export const metaInboxWebhook = functions.https.onRequest(async (req, res) => {
                         channel: 'instagram',
                         channelConversationId: senderId,
                         customerHandle: senderId,
-                        customerName:   senderName,
+                        customerName: senderName,
                     });
 
                     await addMessage(convId, {
                         direction: 'inbound',
-                        type:      msgEvent.message?.attachments?.[0]?.type === 'image' ? 'image' : 'text',
-                        content:   msgEvent.message?.text ?? '',
-                        mediaUrl:  msgEvent.message?.attachments?.[0]?.payload?.url,
+                        type: msgEvent.message?.attachments?.[0]?.type === 'image' ? 'image' : 'text',
+                        content: msgEvent.message?.text ?? '',
+                        mediaUrl: msgEvent.message?.attachments?.[0]?.payload?.url,
                         platformMessageId: msgEvent.message?.mid ?? `ig_${Date.now()}`,
                         status: 'received',
                     });
@@ -7684,14 +7719,14 @@ export const metaInboxWebhook = functions.https.onRequest(async (req, res) => {
                         channel: 'facebook',
                         channelConversationId: senderId,
                         customerHandle: senderId,
-                        customerName:   `FB ${senderId}`,
+                        customerName: `FB ${senderId}`,
                     });
 
                     await addMessage(convId, {
                         direction: 'inbound',
-                        type:      msgEvent.message?.attachments?.[0]?.type === 'image' ? 'image' : 'text',
-                        content:   msgEvent.message?.text ?? '',
-                        mediaUrl:  msgEvent.message?.attachments?.[0]?.payload?.url,
+                        type: msgEvent.message?.attachments?.[0]?.type === 'image' ? 'image' : 'text',
+                        content: msgEvent.message?.text ?? '',
+                        mediaUrl: msgEvent.message?.attachments?.[0]?.payload?.url,
                         platformMessageId: msgEvent.message?.mid ?? `fb_${Date.now()}`,
                         status: 'received',
                     });
@@ -7712,29 +7747,29 @@ export const telegramInboxWebhook = functions.https.onRequest(async (req, res) =
     res.sendStatus(200);
 
     const update = req.body;
-    const msg    = update.message || update.channel_post;
+    const msg = update.message || update.channel_post;
     if (!msg) return;
 
-    const chatId     = String(msg.chat.id);
-    const firstName  = msg.from?.first_name ?? '';
-    const lastName   = msg.from?.last_name  ?? '';
+    const chatId = String(msg.chat.id);
+    const firstName = msg.from?.first_name ?? '';
+    const lastName = msg.from?.last_name ?? '';
     const senderName = `${firstName} ${lastName}`.trim() || `Telegram ${chatId}`;
-    const username   = msg.from?.username ? `@${msg.from.username}` : chatId;
+    const username = msg.from?.username ? `@${msg.from.username}` : chatId;
 
     try {
         const convId = await upsertConversation({
             channel: 'telegram',
             channelConversationId: chatId,
             customerHandle: username,
-            customerName:   senderName,
+            customerName: senderName,
         });
 
         await addMessage(convId, {
-            direction:         'inbound',
-            type:              msg.photo ? 'image' : msg.document ? 'document' : msg.voice ? 'audio' : 'text',
-            content:           msg.text ?? msg.caption ?? '',
+            direction: 'inbound',
+            type: msg.photo ? 'image' : msg.document ? 'document' : msg.voice ? 'audio' : 'text',
+            content: msg.text ?? msg.caption ?? '',
             platformMessageId: String(msg.message_id),
-            status:            'received',
+            status: 'received',
         });
     } catch (err) {
         console.error('[telegramInboxWebhook] Error:', err);
@@ -7750,9 +7785,9 @@ export const emailInboxWebhook = functions.https.onRequest(async (req, res) => {
     res.sendStatus(200);
 
     try {
-        const from     = String(req.body.from    ?? '');
-        const subject  = String(req.body.subject ?? '(Sin asunto)');
-        const text     = String(req.body.text    ?? req.body.html ?? '');
+        const from = String(req.body.from ?? '');
+        const subject = String(req.body.subject ?? '(Sin asunto)');
+        const text = String(req.body.text ?? req.body.html ?? '');
         const envelope = JSON.parse(req.body.envelope || '{}');
         const fromEmail = String(envelope.from ?? from);
 
@@ -7764,15 +7799,15 @@ export const emailInboxWebhook = functions.https.onRequest(async (req, res) => {
             channel: 'email',
             channelConversationId: fromEmail,
             customerHandle: fromEmail,
-            customerName:   displayName || fromEmail,
+            customerName: displayName || fromEmail,
         });
 
         await addMessage(convId, {
-            direction:         'inbound',
-            type:              'text',
-            content:           `**${subject}**\n\n${text.slice(0, 2000)}`,
+            direction: 'inbound',
+            type: 'text',
+            content: `**${subject}**\n\n${text.slice(0, 2000)}`,
             platformMessageId: String(req.body['message-id'] ?? `email_${Date.now()}`),
-            status:            'received',
+            status: 'received',
         });
     } catch (err) {
         console.error('[emailInboxWebhook] Error:', err);
@@ -7840,11 +7875,11 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
     const convSnap = await db.collection('customer_conversations').doc(conversationId).get();
     if (!convSnap.exists) throw new functions.https.HttpsError('not-found', 'Conversation not found.');
 
-    const conv      = convSnap.data()!;
-    const channel   = conv.channel  as InboxChannel;
-    const handle    = conv.customerHandle as string;
+    const conv = convSnap.data()!;
+    const channel = conv.channel as InboxChannel;
+    const handle = conv.customerHandle as string;
     const agentName = context.auth.token.name ?? context.auth.token.email ?? 'Soporte';
-    const agentUid  = context.auth.uid;
+    const agentUid = context.auth.uid;
 
     // ── Send via platform ──────────────────────────────────────────────────────
     let sent = false;
@@ -7853,13 +7888,13 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
     // The storefront chat widget listens in real time — no external API needed.
     if (channel === 'website') {
         await addMessage(conversationId, {
-            direction:         'outbound',
-            type:              'text',
-            content:           message,
-            sentBy:            agentUid,
-            sentByName:        agentName,
+            direction: 'outbound',
+            type: 'text',
+            content: message,
+            sentBy: agentUid,
+            sentByName: agentName,
             platformMessageId: `web_reply_${Date.now()}`,
-            status:            'sent',
+            status: 'sent',
         });
         // Keep conversation open (visitor may reply further)
         await db.collection('customer_conversations').doc(conversationId).update({
@@ -7879,14 +7914,14 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
         firestoreCreds[channel]?.[key] ?? functions.config()[channel]?.[key] ?? process.env[envFallback] ?? '';
 
     if (channel === 'whatsapp') {
-        const waToken   = getCred('whatsapp', 'waToken',   'WA_TOKEN') || getCred('meta', 'wa_token', 'WA_TOKEN');
+        const waToken = getCred('whatsapp', 'waToken', 'WA_TOKEN') || getCred('meta', 'wa_token', 'WA_TOKEN');
         const waPhoneId = getCred('whatsapp', 'waPhoneId', 'WA_PHONE_ID') || getCred('meta', 'wa_phone_id', 'WA_PHONE_ID');
         const r = await fetch(`https://graph.facebook.com/v19.0/${waPhoneId}/messages`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${waToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messaging_product: 'whatsapp',
-                to:   handle,
+                to: handle,
                 type: 'text',
                 text: { body: message }
             })
@@ -7901,14 +7936,14 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
         });
         sent = r.ok;
     } else if (channel === 'email') {
-        const sgKey     = getCred('email', 'sendgridKey', 'SENDGRID_API_KEY') || getCred('sendgrid', 'api_key', 'SENDGRID_API_KEY');
-        const replyFrom = getCred('email', 'replyFrom',   'SENDGRID_REPLY_FROM') || getCred('sendgrid', 'reply_from', 'SENDGRID_REPLY_FROM') || 'soporte@importadoraeuro.com';
+        const sgKey = getCred('email', 'sendgridKey', 'SENDGRID_API_KEY') || getCred('sendgrid', 'api_key', 'SENDGRID_API_KEY');
+        const replyFrom = getCred('email', 'replyFrom', 'SENDGRID_REPLY_FROM') || getCred('sendgrid', 'reply_from', 'SENDGRID_REPLY_FROM') || 'soporte@importadoraeuro.com';
         const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${sgKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 personalizations: [{ to: [{ email: handle }] }],
-                from:    { email: replyFrom, name: 'Importadora Euro' },
+                from: { email: replyFrom, name: 'Importadora Euro' },
                 subject: 'Re: Tu consulta',
                 content: [{ type: 'text/plain', value: message }]
             })
@@ -7923,7 +7958,7 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
             headers: { 'Authorization': `Bearer ${pageToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 recipient: { id: handle },
-                message:   { text: message }
+                message: { text: message }
             })
         });
         sent = r.ok;
@@ -7931,19 +7966,19 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
 
     // ── Log outbound message ───────────────────────────────────────────────────
     await addMessage(conversationId, {
-        direction:         'outbound',
-        type:              'text',
-        content:           message,
-        sentBy:            agentUid,
-        sentByName:        agentName,
+        direction: 'outbound',
+        type: 'text',
+        content: message,
+        sentBy: agentUid,
+        sentByName: agentName,
         platformMessageId: `out_${Date.now()}`,
-        status:            sent ? 'sent' : 'failed',
-        errorReason:       sent ? undefined : 'Platform API error',
+        status: sent ? 'sent' : 'failed',
+        errorReason: sent ? undefined : 'Platform API error',
     });
 
     // Move conversation to pending (awaiting customer reply)
     await db.collection('customer_conversations').doc(conversationId).update({
-        status:    'pending',
+        status: 'pending',
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -7959,7 +7994,7 @@ export const sendInboxReply = functions.https.onCall(async (data, context) => {
 
 export async function appendOrdersToBQForDate(dateStr: string, ordersData: Array<{
     orderId: string;
-    order:   any;
+    order: any;
     channel: string;
 }>): Promise<void> {
     try {
@@ -7990,47 +8025,47 @@ export async function appendOrdersToBQForDate(dateStr: string, ordersData: Array
             return;
         }
 
-        const orderRows:  any[] = [];
-        const itemRows:   any[] = [];
+        const orderRows: any[] = [];
+        const itemRows: any[] = [];
 
         for (const { orderId, order, channel } of ordersData) {
             const createdAt = (order['createdAt'] as admin.firestore.Timestamp)?.toDate();
             const items: any[] = order['items'] ?? [];
 
             orderRows.push({
-                order_id:         orderId,
-                order_date:       dateStr,
-                created_at:       createdAt?.toISOString() ?? null,
-                source_channel:   channel,
-                status:           order['status'] ?? null,
-                total:            Number(order['total'] ?? 0),
-                state:            order['shippingAddress']?.state  ?? null,
-                city:             order['shippingAddress']?.city   ?? null,
-                customer_id:      order['customer']?.id            ?? null,
-                customer_name:    order['customer']?.name          ?? null,
-                item_count:       items.length,
-                fulfillment_type: order['fulfillmentType']         ?? null,
-                payment_method:   order['paymentMethod']           ?? null,
-                external_order_id: order['externalOrderId']        ?? null,
+                order_id: orderId,
+                order_date: dateStr,
+                created_at: createdAt?.toISOString() ?? null,
+                source_channel: channel,
+                status: order['status'] ?? null,
+                total: Number(order['total'] ?? 0),
+                state: order['shippingAddress']?.state ?? null,
+                city: order['shippingAddress']?.city ?? null,
+                customer_id: order['customer']?.id ?? null,
+                customer_name: order['customer']?.name ?? null,
+                item_count: items.length,
+                fulfillment_type: order['fulfillmentType'] ?? null,
+                payment_method: order['paymentMethod'] ?? null,
+                external_order_id: order['externalOrderId'] ?? null,
             });
 
             for (const item of items) {
                 const unitPrice = Number(item.price ?? item.unitPrice ?? 0);
-                const qty       = Number(item.quantity ?? 1);
+                const qty = Number(item.quantity ?? 1);
                 itemRows.push({
-                    order_id:     orderId,
-                    order_date:   dateStr,
+                    order_id: orderId,
+                    order_date: dateStr,
                     source_channel: channel,
-                    status:       order['status'] ?? null,
-                    sku:          item.sku          ?? null,
-                    product_name: item.productName  ?? item.name ?? null,
-                    quantity:     qty,
-                    unit_price:   unitPrice,
-                    subtotal:     Number(item.subtotal ?? (unitPrice * qty)),
-                    brand:        item.brand         ?? null,
-                    product_id:   item.productId     ?? null,
-                    asin:         item.asin          ?? null,
-                    ml_item_id:   item.mlItemId      ?? null,
+                    status: order['status'] ?? null,
+                    sku: item.sku ?? null,
+                    product_name: item.productName ?? item.name ?? null,
+                    quantity: qty,
+                    unit_price: unitPrice,
+                    subtotal: Number(item.subtotal ?? (unitPrice * qty)),
+                    brand: item.brand ?? null,
+                    product_id: item.productId ?? null,
+                    asin: item.asin ?? null,
+                    ml_item_id: item.mlItemId ?? null,
                 });
             }
         }
@@ -8071,32 +8106,32 @@ export async function appendOrdersToBQForDate(dateStr: string, ordersData: Array
 const BQ_SEARCH_TABLE = 'search_events';
 
 const BQ_SEARCH_SCHEMA = [
-    { name: 'event_id',         type: 'STRING',    mode: 'REQUIRED' },
-    { name: 'event_date',       type: 'DATE',      mode: 'REQUIRED' },  // partition key
-    { name: 'event_timestamp',  type: 'TIMESTAMP', mode: 'REQUIRED' },
-    { name: 'event_type',       type: 'STRING',    mode: 'REQUIRED' },  // query|click|exit|add_to_cart|purchase
-    { name: 'term',             type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'normalized_term',  type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'session_id',       type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'user_id',          type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'source',           type: 'STRING',    mode: 'NULLABLE' },  // navbar|catalog_page|mobile
-    { name: 'channel',          type: 'STRING',    mode: 'NULLABLE' },  // WEB|POS
+    { name: 'event_id', type: 'STRING', mode: 'REQUIRED' },
+    { name: 'event_date', type: 'DATE', mode: 'REQUIRED' },  // partition key
+    { name: 'event_timestamp', type: 'TIMESTAMP', mode: 'REQUIRED' },
+    { name: 'event_type', type: 'STRING', mode: 'REQUIRED' },  // query|click|exit|add_to_cart|purchase
+    { name: 'term', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'normalized_term', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'session_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'user_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'source', type: 'STRING', mode: 'NULLABLE' },  // navbar|catalog_page|mobile
+    { name: 'channel', type: 'STRING', mode: 'NULLABLE' },  // WEB|POS
     // query fields
-    { name: 'result_count',     type: 'INT64',     mode: 'NULLABLE' },
-    { name: 'has_results',      type: 'BOOL',      mode: 'NULLABLE' },
+    { name: 'result_count', type: 'INT64', mode: 'NULLABLE' },
+    { name: 'has_results', type: 'BOOL', mode: 'NULLABLE' },
     // click fields
-    { name: 'product_id',       type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'product_name',     type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'click_position',   type: 'INT64',     mode: 'NULLABLE' },
+    { name: 'product_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'product_name', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'click_position', type: 'INT64', mode: 'NULLABLE' },
     // exit fields
-    { name: 'exit_reason',      type: 'STRING',    mode: 'NULLABLE' },  // blur|clear|navigate_away
-    { name: 'dwell_ms',         type: 'INT64',     mode: 'NULLABLE' },
+    { name: 'exit_reason', type: 'STRING', mode: 'NULLABLE' },  // blur|clear|navigate_away
+    { name: 'dwell_ms', type: 'INT64', mode: 'NULLABLE' },
     // add_to_cart fields
-    { name: 'cart_value',       type: 'FLOAT64',   mode: 'NULLABLE' },
-    { name: 'quantity',         type: 'INT64',     mode: 'NULLABLE' },
+    { name: 'cart_value', type: 'FLOAT64', mode: 'NULLABLE' },
+    { name: 'quantity', type: 'INT64', mode: 'NULLABLE' },
     // purchase fields
-    { name: 'order_id',         type: 'STRING',    mode: 'NULLABLE' },
-    { name: 'revenue',          type: 'FLOAT64',   mode: 'NULLABLE' },
+    { name: 'order_id', type: 'STRING', mode: 'NULLABLE' },
+    { name: 'revenue', type: 'FLOAT64', mode: 'NULLABLE' },
 ];
 
 /** Ensures the euro_analytics.search_events table exists with the full schema (idempotent). */
@@ -8112,10 +8147,10 @@ async function ensureSearchBQSchema(): Promise<void> {
     const [tblExists] = await table.exists();
     if (!tblExists) {
         await table.create({
-            schema:           BQ_SEARCH_SCHEMA,
+            schema: BQ_SEARCH_SCHEMA,
             timePartitioning: { type: 'DAY', field: 'event_date' },
-            clustering:       { fields: ['event_type', 'normalized_term'] },
-            location:         BQ_LOCATION,
+            clustering: { fields: ['event_type', 'normalized_term'] },
+            location: BQ_LOCATION,
         });
         console.log(`[SearchBQ] Created table ${BQ_DATASET}.${BQ_SEARCH_TABLE}`);
     }
@@ -8129,32 +8164,32 @@ function searchEventToBQRow(docId: string, data: any): Record<string, any> {
     const eventDate = date.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
 
     return {
-        event_id:        docId,
-        event_date:      eventDate,
+        event_id: docId,
+        event_date: eventDate,
         event_timestamp: date.toISOString(),
-        event_type:      data.type        ?? null,
-        term:            data.term        ?? null,
+        event_type: data.type ?? null,
+        term: data.term ?? null,
         normalized_term: data.normalizedTerm ?? null,
-        session_id:      data.sessionId   ?? null,
-        user_id:         data.userId      ?? null,
-        source:          data.source      ?? null,
-        channel:         data.channel     ?? null,
+        session_id: data.sessionId ?? null,
+        user_id: data.userId ?? null,
+        source: data.source ?? null,
+        channel: data.channel ?? null,
         // query
-        result_count:    data.resultCount  != null ? Number(data.resultCount)  : null,
-        has_results:     data.hasResults   != null ? Boolean(data.hasResults)  : null,
+        result_count: data.resultCount != null ? Number(data.resultCount) : null,
+        has_results: data.hasResults != null ? Boolean(data.hasResults) : null,
         // click
-        product_id:      data.productId   ?? null,
-        product_name:    data.productName ?? null,
-        click_position:  data.position    != null ? Number(data.position)    : null,
+        product_id: data.productId ?? null,
+        product_name: data.productName ?? null,
+        click_position: data.position != null ? Number(data.position) : null,
         // exit
-        exit_reason:     data.exitReason  ?? null,
-        dwell_ms:        data.dwellMs     != null ? Number(data.dwellMs)     : null,
+        exit_reason: data.exitReason ?? null,
+        dwell_ms: data.dwellMs != null ? Number(data.dwellMs) : null,
         // add_to_cart
-        cart_value:      data.cartValue   != null ? Number(data.cartValue)   : null,
-        quantity:        data.quantity    != null ? Number(data.quantity)    : null,
+        cart_value: data.cartValue != null ? Number(data.cartValue) : null,
+        quantity: data.quantity != null ? Number(data.quantity) : null,
         // purchase
-        order_id:        data.orderId     ?? null,
-        revenue:         data.revenue     != null ? Number(data.revenue)     : null,
+        order_id: data.orderId ?? null,
+        revenue: data.revenue != null ? Number(data.revenue) : null,
     };
 }
 
@@ -8169,7 +8204,7 @@ export const onSearchEventCreated = functions
     .firestore
     .document('search_events/{eventId}')
     .onCreate(async (snap, context) => {
-        const data  = snap.data();
+        const data = snap.data();
         const docId = context.params.eventId;
 
         try {
@@ -8204,8 +8239,8 @@ export const backfillSearchEventsToBigQuery = functions
         const table = bigquery.dataset(BQ_DATASET).table(BQ_SEARCH_TABLE);
         const BATCH_SIZE = 500;
         let inserted = 0;
-        let skipped  = 0;
-        let errors   = 0;
+        let skipped = 0;
+        let errors = 0;
 
         // Paginate through all search_events docs
         let query = db.collection('search_events').orderBy('timestamp').limit(BATCH_SIZE);
@@ -8226,7 +8261,7 @@ export const backfillSearchEventsToBigQuery = functions
             } catch (err: any) {
                 // BigQuery insert errors are per-row — count them but continue
                 const rowErrors = err?.errors?.length ?? rows.length;
-                errors   += rowErrors;
+                errors += rowErrors;
                 inserted += rows.length - rowErrors;
                 console.error(`[SearchBQ Backfill] Batch error:`, err?.message);
             }
@@ -8256,10 +8291,10 @@ export const backfillSearchEventsToBigQuery = functions
 export const querySearchAnalytics = functions
     .runWith({ timeoutSeconds: 60, memory: '512MB' })
     .https.onCall(async (data: {
-        queryType:  'funnel' | 'topTerms' | 'zeroResults' | 'heatmap' | 'dailyVolume' | 'trendingTerms' | 'revenueAttribution';
-        fromDate:   string;   // YYYY-MM-DD
-        toDate:     string;   // YYYY-MM-DD
-        limit?:     number;
+        queryType: 'funnel' | 'topTerms' | 'zeroResults' | 'heatmap' | 'dailyVolume' | 'trendingTerms' | 'revenueAttribution';
+        fromDate: string;   // YYYY-MM-DD
+        toDate: string;   // YYYY-MM-DD
+        limit?: number;
     }, context) => {
         if (!context.auth) {
             throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
@@ -8267,8 +8302,8 @@ export const querySearchAnalytics = functions
 
         const { queryType, fromDate, toDate, limit = 50 } = data;
         const PROJECT = JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId || process.env.GCLOUD_PROJECT || 'importadora-euro';
-        const DS      = BQ_DATASET;
-        const TBL     = `\`${PROJECT}.${DS}.${BQ_SEARCH_TABLE}\``;
+        const DS = BQ_DATASET;
+        const TBL = `\`${PROJECT}.${DS}.${BQ_SEARCH_TABLE}\``;
 
         let sql = '';
         const params: Record<string, any> = { fromDate, toDate, limit };
@@ -8544,7 +8579,7 @@ export const querySearchAnalytics = functions
         }
 
         const [rows] = await bigquery.query({
-            query:    sql,
+            query: sql,
             params,
             location: BQ_LOCATION,
         });
@@ -8602,15 +8637,15 @@ export const googleShoppingFeed = functions
 
             const items = snap.docs.map(doc => {
                 const p = doc.data();
-                const id     = doc.id;
-                const sku    = p['sku']   ?? id;
-                const brand  = p['brand'] ?? 'Importadora Euro';
-                const price  = Number(p['price'] ?? 0);
-                const slug   = p['slug']  ?? id;
+                const id = doc.id;
+                const sku = p['sku'] ?? id;
+                const brand = p['brand'] ?? 'Importadora Euro';
+                const price = Number(p['price'] ?? 0);
+                const slug = p['slug'] ?? id;
 
                 // Build human-readable title with size specs
                 const namePart = (p['name']?.es ?? p['name'] ?? 'Llanta Motocicleta') as string;
-                const specs    = p['specifications'] as Record<string, any> ?? {};
+                const specs = p['specifications'] as Record<string, any> ?? {};
                 const sizePart = specs['width'] && specs['aspectRatio'] && specs['diameter']
                     ? ` ${specs['width']}/${specs['aspectRatio']}${specs['construction'] === 'radial' ? 'R' : '-'}${specs['diameter']}`
                     : '';
@@ -8627,8 +8662,8 @@ export const googleShoppingFeed = functions
                 const productTypeBreadcrumb = brand === 'Michelin'
                     ? 'Llantas para Motocicleta > Michelin'
                     : brand === 'Praxis'
-                    ? 'Llantas para Motocicleta > Praxis'
-                    : 'Llantas para Motocicleta';
+                        ? 'Llantas para Motocicleta > Praxis'
+                        : 'Llantas para Motocicleta';
 
                 if (price <= 0 || !imageLink) return null; // skip incomplete products
 
@@ -8735,20 +8770,20 @@ export const notifyIndexNow = functions
                 'https://importadoraeuro.com/llms.txt',
                 'https://importadoraeuro.com/llms-full.txt',
                 'https://importadoraeuro.com/sitemap.xml',
-              ];
+            ];
 
         const payload = {
-            host:    'importadoraeuro.com',
-            key:     indexNowKey,
+            host: 'importadoraeuro.com',
+            key: indexNowKey,
             keyLocation: `https://importadoraeuro.com/${indexNowKey}.txt`,
             urlList: urlsToNotify,
         };
 
         try {
             const r = await fetch('https://api.indexnow.org/indexnow', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body:    JSON.stringify(payload),
+                body: JSON.stringify(payload),
             });
 
             console.log(`[IndexNow] Response: ${r.status} for ${urlsToNotify.length} URLs`);
@@ -8772,7 +8807,7 @@ export const onProductWriteIndexNow = functions
         if (!change.after.exists) return;
 
         const product = change.after.data()!;
-        const slug    = product['slug'] ?? context.params.productId;
+        const slug = product['slug'] ?? context.params.productId;
 
         const configSnap = await db.collection('config').doc('seo').get();
         const indexNowKey: string = configSnap.data()?.indexNowKey ?? '';
@@ -8786,13 +8821,13 @@ export const onProductWriteIndexNow = functions
 
         try {
             await fetch('https://api.indexnow.org/indexnow', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({
-                    host:        'importadoraeuro.com',
-                    key:         indexNowKey,
+                    host: 'importadoraeuro.com',
+                    key: indexNowKey,
                     keyLocation: `https://importadoraeuro.com/${indexNowKey}.txt`,
-                    urlList:     urlsToNotify,
+                    urlList: urlsToNotify,
                 }),
             });
             console.log(`[IndexNow] Product ${slug} notified to Bing`);
@@ -8808,12 +8843,12 @@ export const syncMeliToInbox = functions
     .document('meli_communications/{docId}')
     .onWrite(async (change, context) => {
         if (!change.after.exists) return; // Ignore deletes
-        
+
         const commData = change.after.data()!;
         const topic = commData.topic; // 'messages' or 'questions'
         const rawData = commData.data;
         if (!rawData) return;
-        
+
         let conversationId = '';
         let channelConversationId = '';
         let customerName = 'Cliente ML';
@@ -8822,15 +8857,15 @@ export const syncMeliToInbox = functions
         let platformMessageId = '';
         let msgTimestamp: any = admin.firestore.FieldValue.serverTimestamp();
         let tag = '';
-        
+
         if (topic === 'messages') {
             // Post-sale message
             const packId = rawData.message_attachments?.pack_id || rawData.message_attachments?.order_id || rawData.resource_id;
             const senderId = rawData.from?.user_id || rawData.from?.id || rawData.sender_id;
-            
+
             // To prevent errors if payload is missing key IDs
             if (!packId || !senderId) return;
-            
+
             conversationId = `meli_msg_${packId}`;
             channelConversationId = String(packId);
             customerHandle = String(senderId);
@@ -8843,14 +8878,14 @@ export const syncMeliToInbox = functions
                 msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
             }
             tag = 'Post-Venta';
-            
+
         } else if (topic === 'questions') {
             // Pre-sale question
             const itemId = rawData.item_id;
             const senderId = rawData.from?.id;
-            
+
             if (!itemId || !senderId) return;
-            
+
             conversationId = `meli_q_${itemId}_${senderId}`;
             channelConversationId = `${itemId}_${senderId}`;
             customerHandle = String(senderId);
@@ -8863,11 +8898,11 @@ export const syncMeliToInbox = functions
         } else {
             return; // Not a message or question
         }
-        
+
         if (!messageText) return;
-        
+
         const convRef = db.collection('customer_conversations').doc(conversationId);
-        
+
         // Upsert conversation
         await convRef.set({
             id: conversationId,
@@ -8886,13 +8921,13 @@ export const syncMeliToInbox = functions
             },
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
-        
+
         // Check if createdAt is missing
         const convSnap = await convRef.get();
         if (convSnap.exists && !convSnap.data()?.createdAt) {
-             await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
         }
-        
+
         // Insert message
         const msgRef = convRef.collection('messages').doc(String(platformMessageId));
         await msgRef.set({
@@ -8904,7 +8939,7 @@ export const syncMeliToInbox = functions
             status: 'delivered',
             timestamp: msgTimestamp
         });
-        
+
         console.log(`[syncMeliToInbox] Synced ${topic} into Universal Inbox: ${conversationId}`);
     });
 
@@ -8915,13 +8950,13 @@ export const backfillMeliToInbox = functions
         try {
             const snapshot = await db.collection('meli_communications').get();
             let count = 0;
-            
+
             for (const doc of snapshot.docs) {
                 const commData = doc.data();
                 const topic = commData.topic;
                 const rawData = commData.data;
                 if (!rawData) continue;
-                
+
                 let conversationId = '';
                 let channelConversationId = '';
                 let customerName = 'Cliente ML';
@@ -8930,12 +8965,12 @@ export const backfillMeliToInbox = functions
                 let platformMessageId = '';
                 let msgTimestamp: any = admin.firestore.FieldValue.serverTimestamp();
                 let tag = '';
-                
+
                 if (topic === 'messages') {
                     const packId = rawData.message_attachments?.pack_id || rawData.message_attachments?.order_id || rawData.resource_id;
                     const senderId = rawData.from?.user_id || rawData.from?.id || rawData.sender_id;
                     if (!packId || !senderId) continue;
-                    
+
                     conversationId = `meli_msg_${packId}`;
                     channelConversationId = String(packId);
                     customerHandle = String(senderId);
@@ -8948,12 +8983,12 @@ export const backfillMeliToInbox = functions
                         msgTimestamp = admin.firestore.Timestamp.fromDate(new Date(rawData.date_created));
                     }
                     tag = 'Post-Venta';
-                    
+
                 } else if (topic === 'questions') {
                     const itemId = rawData.item_id;
                     const senderId = rawData.from?.id;
                     if (!itemId || !senderId) continue;
-                    
+
                     conversationId = `meli_q_${itemId}_${senderId}`;
                     channelConversationId = `${itemId}_${senderId}`;
                     customerHandle = String(senderId);
@@ -8966,11 +9001,11 @@ export const backfillMeliToInbox = functions
                 } else {
                     continue;
                 }
-                
+
                 if (!messageText) continue;
-                
+
                 const convRef = db.collection('customer_conversations').doc(conversationId);
-                
+
                 await convRef.set({
                     id: conversationId,
                     channel: 'mercadolibre',
@@ -8988,12 +9023,12 @@ export const backfillMeliToInbox = functions
                     },
                     updatedAt: admin.firestore.FieldValue.serverTimestamp()
                 }, { merge: true });
-                
+
                 const convSnap = await convRef.get();
                 if (convSnap.exists && !convSnap.data()?.createdAt) {
-                     await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                    await convRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
                 }
-                
+
                 const msgRef = convRef.collection('messages').doc(String(platformMessageId));
                 await msgRef.set({
                     id: String(platformMessageId),
@@ -9011,4 +9046,432 @@ export const backfillMeliToInbox = functions
             console.error(error);
             res.status(500).send(error.message);
         }
+    });
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── BigQuery Analytics Functions ─────────────────────────────────────────────
+// These replace direct Firestore collection scans for heavy analytics queries.
+// BigQuery is billed by data scanned (not reads), and is ~100x more efficient
+// for aggregations over thousands of rows.
+//
+// Each function:
+//   1. Checks a short-lived Firestore result cache (5 min) to avoid BQ costs on
+//      repeated identical requests.
+//   2. Runs the BQ query.
+//   3. Writes the result back to the cache.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const BQ_RESULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getBQCache(cacheKey: string): Promise<any | null> {
+    try {
+        const ref = db.collection('_bq_cache').doc(cacheKey);
+        const snap = await ref.get();
+        if (!snap.exists) return null;
+        const data = snap.data()!;
+        const age = Date.now() - (data.cachedAt?.toMillis?.() ?? 0);
+        if (age > BQ_RESULT_CACHE_TTL_MS) return null;
+        return data.result;
+    } catch { return null; }
+}
+
+async function setBQCache(cacheKey: string, result: any): Promise<void> {
+    try {
+        await db.collection('_bq_cache').doc(cacheKey).set({
+            result,
+            cachedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch { /* non-critical */ }
+}
+
+// ── 1. Customer Insights ──────────────────────────────────────────────────────
+export const queryCustomerInsights = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const cacheKey = 'customer_insights_all';
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const query = `
+            WITH customer_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'anonymous') AS uid,
+                    COALESCE(customer_name, 'Unknown') AS name,
+                    COALESCE(customer_email, '') AS email,
+                    COUNT(*) AS order_count,
+                    SUM(total) AS total_spent,
+                    MIN(TIMESTAMP_TRUNC(created_at, DAY)) AS first_order_date,
+                    MAX(TIMESTAMP_TRUNC(created_at, DAY)) AS last_order_date
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                GROUP BY 1, 2, 3
+            ),
+            scored AS (
+                SELECT *,
+                    DATE_DIFF(CURRENT_DATE(), DATE(last_order_date), DAY) AS days_since_last,
+                    SAFE_DIVIDE(
+                        DATE_DIFF(DATE(last_order_date), DATE(first_order_date), DAY),
+                        NULLIF(order_count - 1, 0)
+                    ) AS avg_days_between_orders
+                FROM customer_orders
+            ),
+            segmented AS (
+                SELECT *,
+                    CASE
+                        WHEN days_since_last > 365 THEN 'Lost'
+                        WHEN days_since_last > 180 THEN 'At Risk'
+                        WHEN total_spent > 10000 AND order_count > 5 THEN 'Champion'
+                        WHEN order_count >= 3 THEN 'Loyal'
+                        ELSE 'New'
+                    END AS segment,
+                    ROUND(total_spent / order_count, 2) AS avg_order_value
+                FROM scored
+            )
+            SELECT
+                segment,
+                COUNT(*) AS count,
+                ROUND(SUM(total_spent), 2) AS total_revenue,
+                ROUND(AVG(total_spent), 2) AS avg_ltv,
+                ROUND(AVG(avg_order_value), 2) AS avg_order_value,
+                ROUND(AVG(days_since_last), 1) AS avg_days_since_last_order
+            FROM segmented
+            GROUP BY segment
+            ORDER BY total_revenue DESC
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+
+        const totalCLV = rows.reduce((s: number, r: any) => s + (r.total_revenue ?? 0), 0);
+        const totalCustomers = rows.reduce((s: number, r: any) => s + (r.count ?? 0), 0);
+        const atRiskValue = (rows.find((r: any) => r.segment === 'At Risk')?.total_revenue ?? 0) * 0.3;
+        const lostCount = rows.find((r: any) => r.segment === 'Lost')?.count ?? 0;
+
+        const result = {
+            profiles: rows.map((r: any) => ({
+                uid: r.segment,
+                name: r.segment,
+                email: '',
+                totalSpent: r.avg_ltv ?? 0,
+                orderCount: Math.round(r.count ?? 0),
+                lastOrderDate: new Date(),
+                firstOrderDate: new Date(),
+                averageOrderValue: r.avg_order_value ?? 0,
+                churnRiskScore: r.segment === 'Lost' ? 95 : r.segment === 'At Risk' ? 65 : 20,
+                segment: r.segment
+            })),
+            cohorts: [],
+            totalCLV,
+            avgCLV: totalCustomers > 0 ? totalCLV / totalCustomers : 0,
+            churnRate: totalCustomers > 0 ? (lostCount / totalCustomers) * 100 : 0,
+            atRiskValue
+        };
+
+        await setBQCache(cacheKey, result);
+        return result;
+    });
+
+// ── 2. Cohort Analysis ────────────────────────────────────────────────────────
+export const queryCohortAnalysis = functions
+    .runWith({ timeoutSeconds: 180, memory: '512MB' })
+    .https.onCall(async (data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const months = data?.months ?? 12;
+        const cacheKey = `cohort_analysis_${months}`;
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const query = `
+            WITH first_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email) AS uid,
+                    FORMAT_DATE('%Y-%m', MIN(DATE(created_at))) AS cohort_month
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned')
+                  AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${months} MONTH)
+                  AND customer_id IS NOT NULL
+                GROUP BY 1
+            ),
+            all_orders AS (
+                SELECT
+                    COALESCE(customer_id, customer_email) AS uid,
+                    FORMAT_DATE('%Y-%m', DATE(created_at)) AS order_month
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned')
+                  AND customer_id IS NOT NULL
+            ),
+            cohort_activity AS (
+                SELECT
+                    f.cohort_month,
+                    DATE_DIFF(
+                        DATE(PARSE_DATE('%Y-%m', a.order_month)),
+                        DATE(PARSE_DATE('%Y-%m', f.cohort_month)),
+                        MONTH
+                    ) AS period,
+                    COUNT(DISTINCT f.uid) AS active_users
+                FROM first_orders f
+                JOIN all_orders a ON f.uid = a.uid
+                GROUP BY 1, 2
+            ),
+            cohort_sizes AS (
+                SELECT cohort_month, COUNT(*) AS total_customers
+                FROM first_orders GROUP BY 1
+            )
+            SELECT
+                ca.cohort_month AS cohort,
+                cs.total_customers AS totalCustomers,
+                ca.period,
+                ROUND(ca.active_users / cs.total_customers * 100, 1) AS retention_pct
+            FROM cohort_activity ca
+            JOIN cohort_sizes cs ON ca.cohort_month = cs.cohort_month
+            WHERE ca.period >= 0 AND ca.period <= 5
+            ORDER BY cohort_month, period
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+
+        // Pivot into CohortData[] format
+        const cohortMap = new Map<string, any>();
+        rows.forEach((r: any) => {
+            if (!cohortMap.has(r.cohort)) {
+                cohortMap.set(r.cohort, { cohort: r.cohort, totalCustomers: r.totalCustomers, period0: 100 });
+            }
+            const c = cohortMap.get(r.cohort);
+            if (r.period > 0) c[`period${r.period}`] = r.retention_pct;
+        });
+
+        const result = Array.from(cohortMap.values());
+        await setBQCache(cacheKey, result);
+        return result;
+    });
+
+// ── 3. Customer Metrics ───────────────────────────────────────────────────────
+export const queryCustomerMetrics = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const { startDate, endDate } = data ?? {};
+        const cacheKey = `customer_metrics_${startDate ?? 'all'}_${endDate ?? 'now'}`;
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const dateFilter = startDate && endDate
+            ? `AND created_at BETWEEN TIMESTAMP('${startDate}') AND TIMESTAMP('${endDate}')`
+            : '';
+
+        const newCustFilter = startDate && endDate
+            ? `WHERE first_order_date BETWEEN '${startDate.slice(0, 10)}' AND '${endDate.slice(0, 10)}'`
+            : 'WHERE FALSE';
+
+        const query = `
+            WITH customer_agg AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'guest') AS uid,
+                    MIN(DATE(created_at)) AS first_order_date,
+                    SUM(total) AS total_spent,
+                    COUNT(*) AS order_count
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                ${dateFilter}
+                GROUP BY 1
+            )
+            SELECT
+                COUNT(*) AS total_customers,
+                SUM(order_count) AS total_orders,
+                SUM(total_spent) AS total_revenue,
+                COUNTIF(${startDate ? `first_order_date >= '${startDate.slice(0, 10)}'` : 'FALSE'}) AS new_customers
+            FROM customer_agg
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+        const row = rows[0] ?? {};
+        const totalCustomers = Number(row.total_customers ?? 0);
+        const totalOrders = Number(row.total_orders ?? 0);
+        const totalRevenue = Number(row.total_revenue ?? 0);
+        const newCustomers = Number(row.new_customers ?? 0);
+
+        const result = {
+            totalCustomers,
+            newCustomers,
+            returningCustomers: totalCustomers - newCustomers,
+            averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+            customerLifetimeValue: totalCustomers > 0 ? totalRevenue / totalCustomers : 0
+        };
+
+        await setBQCache(cacheKey, result);
+        return result;
+    });
+
+// ── 4. Customer Segmentation (RFM) ───────────────────────────────────────────
+export const queryCustomerSegmentation = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const cacheKey = 'customer_segmentation_all';
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const query = `
+            WITH customer_stats AS (
+                SELECT
+                    COALESCE(customer_id, customer_email, 'guest') AS uid,
+                    COUNT(*) AS order_count,
+                    SUM(total) AS total_spent,
+                    DATE_DIFF(CURRENT_DATE(), MAX(DATE(created_at)), DAY) AS days_since_last
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                GROUP BY 1
+            ),
+            segmented AS (
+                SELECT *,
+                    CASE
+                        WHEN days_since_last > 365 THEN 'Lost'
+                        WHEN days_since_last > 180 THEN 'At Risk'
+                        WHEN total_spent > 10000 AND order_count > 5 THEN 'Champions'
+                        WHEN order_count >= 3 THEN 'Loyal'
+                        ELSE 'Potential'
+                    END AS segment
+                FROM customer_stats
+            )
+            SELECT
+                segment,
+                COUNT(*) AS count,
+                ROUND(SUM(total_spent), 2) AS totalRevenue,
+                ROUND(AVG(total_spent / NULLIF(order_count, 0)), 2) AS averageOrderValue,
+                ROUND(AVG(CASE WHEN days_since_last <= 30 THEN 5
+                               WHEN days_since_last <= 90 THEN 4
+                               WHEN days_since_last <= 180 THEN 3
+                               WHEN days_since_last <= 365 THEN 2
+                               ELSE 1 END), 2) AS recencyScore,
+                ROUND(AVG(CASE WHEN order_count >= 20 THEN 5
+                               WHEN order_count >= 10 THEN 4
+                               WHEN order_count >= 5 THEN 3
+                               WHEN order_count >= 2 THEN 2
+                               ELSE 1 END), 2) AS frequencyScore,
+                ROUND(AVG(CASE WHEN total_spent >= 10000 THEN 5
+                               WHEN total_spent >= 5000 THEN 4
+                               WHEN total_spent >= 1000 THEN 3
+                               WHEN total_spent >= 500 THEN 2
+                               ELSE 1 END), 2) AS monetaryScore
+            FROM segmented
+            GROUP BY segment
+            ORDER BY totalRevenue DESC
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+
+        const result = rows.map((r: any) => ({
+            segment: r.segment,
+            count: Number(r.count ?? 0),
+            totalRevenue: Number(r.totalRevenue ?? 0),
+            averageOrderValue: Number(r.averageOrderValue ?? 0),
+            recencyScore: Number(r.recencyScore ?? 0),
+            frequencyScore: Number(r.frequencyScore ?? 0),
+            monetaryScore: Number(r.monetaryScore ?? 0)
+        }));
+
+        await setBQCache(cacheKey, result);
+        return result;
+    });
+
+// ── 5. Period Data (for period comparison) ────────────────────────────────────
+export const queryPeriodData = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const { startDate, endDate } = data ?? {};
+        if (!startDate || !endDate) throw new functions.https.HttpsError('invalid-argument', 'startDate and endDate required.');
+
+        const cacheKey = `period_data_${startDate}_${endDate}`;
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const query = `
+            SELECT
+                COUNT(*) AS orders,
+                ROUND(SUM(total), 2) AS revenue,
+                COUNT(DISTINCT COALESCE(customer_id, customer_email)) AS customers
+            FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+            WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+              AND created_at BETWEEN TIMESTAMP('${startDate}') AND TIMESTAMP('${endDate}')
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+        const row = rows[0] ?? {};
+        const ordersCount = Number(row.orders ?? 0);
+        const revenue = Number(row.revenue ?? 0);
+
+        const result = {
+            revenue,
+            orders: ordersCount,
+            averageOrderValue: ordersCount > 0 ? revenue / ordersCount : 0,
+            customers: Number(row.customers ?? 0)
+        };
+
+        await setBQCache(cacheKey, result);
+        return result;
+    });
+
+// ── 6. Growth Metrics ─────────────────────────────────────────────────────────
+export const queryGrowthMetrics = functions
+    .runWith({ timeoutSeconds: 60, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+
+        const periods = data?.periods ?? 12;
+        const cacheKey = `growth_metrics_${periods}`;
+        const cached = await getBQCache(cacheKey);
+        if (cached) return cached;
+
+        const query = `
+            WITH monthly AS (
+                SELECT
+                    FORMAT_DATE('%Y-%m', DATE(created_at)) AS month,
+                    SUM(total) AS revenue,
+                    COUNT(*) AS orders,
+                    COUNT(DISTINCT COALESCE(customer_id, customer_email)) AS customers
+                FROM \`${BQ_PROJECT}.${BQ_DATASET}.orders\`
+                WHERE status NOT IN ('cancelled', 'refunded', 'returned', 'pending_payment', 'payment_failed')
+                  AND created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL ${periods} MONTH)
+                GROUP BY 1
+                ORDER BY 1
+            )
+            SELECT * FROM monthly
+        `;
+
+        const [rows] = await bigquery.query({ query, location: 'US' });
+
+        if (rows.length < 2) {
+            const empty = { revenueGrowth: 0, orderGrowth: 0, customerGrowth: 0, aovGrowth: 0, compoundGrowthRate: 0 };
+            await setBQCache(cacheKey, empty);
+            return empty;
+        }
+
+        const first = rows[0];
+        const last = rows[rows.length - 1];
+        const firstRevenue = Number(first.revenue ?? 0);
+        const lastRevenue = Number(last.revenue ?? 0);
+        const firstOrders = Number(first.orders ?? 0);
+        const lastOrders = Number(last.orders ?? 0);
+        const firstAOV = firstOrders > 0 ? firstRevenue / firstOrders : 0;
+        const lastAOV = lastOrders > 0 ? lastRevenue / lastOrders : 0;
+
+        const result = {
+            revenueGrowth: firstRevenue > 0 ? ((lastRevenue - firstRevenue) / firstRevenue) * 100 : 0,
+            orderGrowth: firstOrders > 0 ? ((lastOrders - firstOrders) / firstOrders) * 100 : 0,
+            customerGrowth: 0,
+            aovGrowth: firstAOV > 0 ? ((lastAOV - firstAOV) / firstAOV) * 100 : 0,
+            compoundGrowthRate: firstRevenue > 0
+                ? (Math.pow(lastRevenue / firstRevenue, 1 / periods) - 1) * 100
+                : 0
+        };
+
+        await setBQCache(cacheKey, result);
+        return result;
     });

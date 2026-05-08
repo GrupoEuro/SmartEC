@@ -740,5 +740,36 @@ service cloud.firestore {
       allow write: if false; // Cloud Function (Admin SDK) only
     }
 
+    // ── EuroMind AI — Weekly Reports ─────────────────────────────────────────
+    // Generated every Sunday by the euromindWeeklyReport Cloud Function (Admin SDK).
+    // On-demand reports written by askEuroMind callable (also Admin SDK).
+    // Staff can read for the Operations Dashboard weekly report panel.
+    // No client-side writes.
+
+    match /euromind_reports/{reportId} {
+      allow read:  if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    // ── EuroMind AI — Interaction Logs ───────────────────────────────────────
+    // Written by askEuroMind and euromindWeeklyReport Cloud Functions (Admin SDK).
+    // Managers and above can read for AI usage analytics and latency reporting.
+
+    match /ai_interactions/{interactionId} {
+      allow read:  if isManager();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
+    // ── BigQuery Result Cache ──────────────────────────────────────────────────
+    // Short-lived (5 min TTL) Firestore cache used by BQ analytics Cloud Functions
+    // to avoid redundant BigQuery scans on repeated requests.
+    // Written exclusively by Cloud Functions via Admin SDK.
+    // Staff can read (the BQ analytics callables return data from cache or BQ).
+
+    match /_bq_cache/{cacheKey} {
+      allow read:  if isStaff();
+      allow write: if false; // Cloud Function (Admin SDK) only
+    }
+
   }
 }

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, query, where, getDocs, collectionData, Timestamp, limit } from '@angular/fire/firestore';
+import { Firestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, query, where, getDocs, Timestamp, limit } from '@angular/fire/firestore';
 import { Observable, from, map } from 'rxjs';
 import { Warehouse, WarehouseZone, StorageStructure, StorageLocation } from '../models/warehouse.model';
 
@@ -19,9 +19,10 @@ export class WarehouseService {
 
     // --- Warehouses ---
 
+    // ✅ One-time read — warehouses are static config, real-time not needed
     getWarehouses(): Observable<Warehouse[]> {
-        return collectionData(query(this.warehousesColl, where('isActive', '==', true)), { idField: 'id' }).pipe(
-            map(data => data.map(item => this.convertTimestamps(item) as Warehouse))
+        return from(getDocs(query(this.warehousesColl, where('isActive', '==', true)))).pipe(
+            map(snap => snap.docs.map(d => this.convertTimestamps({ id: d.id, ...d.data() }) as Warehouse))
         );
     }
 
@@ -45,7 +46,6 @@ export class WarehouseService {
     }
 
     async deleteWarehouse(id: string): Promise<void> {
-        // Soft delete usually, but here simple active flag update
         const ref = doc(this.firestore, `warehouses/${id}`);
         await updateDoc(ref, {
             isActive: false,
@@ -55,10 +55,11 @@ export class WarehouseService {
 
     // --- Zones ---
 
+    // ✅ One-time read — zones don't change while user views the page
     getZones(warehouseId: string): Observable<WarehouseZone[]> {
         const q = query(this.zonesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(data => data.map(item => this.convertTimestamps(item) as WarehouseZone))
+        return from(getDocs(q)).pipe(
+            map(snap => snap.docs.map(d => this.convertTimestamps({ id: d.id, ...d.data() }) as WarehouseZone))
         );
     }
 
@@ -84,10 +85,11 @@ export class WarehouseService {
 
     // --- Obstacles ---
 
+    // ✅ One-time read — obstacles are layout data
     getObstacles(warehouseId: string): Observable<any[]> {
         const q = query(this.obstaclesColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(data => data.map(item => this.convertTimestamps(item)))
+        return from(getDocs(q)).pipe(
+            map(snap => snap.docs.map(d => this.convertTimestamps({ id: d.id, ...d.data() })))
         );
     }
 
@@ -113,10 +115,11 @@ export class WarehouseService {
 
     // --- Doors ---
 
+    // ✅ One-time read — doors are layout data
     getDoors(warehouseId: string): Observable<any[]> {
         const q = query(this.doorsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(data => data.map(item => this.convertTimestamps(item)))
+        return from(getDocs(q)).pipe(
+            map(snap => snap.docs.map(d => this.convertTimestamps({ id: d.id, ...d.data() })))
         );
     }
 
@@ -142,13 +145,14 @@ export class WarehouseService {
 
     // --- Structures (Racks) ---
 
+    // ✅ One-time read — structures are layout config
     getStructures(warehouseId: string, zoneId?: string): Observable<StorageStructure[]> {
         let q = query(this.structuresColl, where('warehouseId', '==', warehouseId));
         if (zoneId) {
             q = query(q, where('zoneId', '==', zoneId));
         }
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(data => data.map(item => this.convertTimestamps(item) as StorageStructure))
+        return from(getDocs(q)).pipe(
+            map(snap => snap.docs.map(d => this.convertTimestamps({ id: d.id, ...d.data() }) as StorageStructure))
         );
     }
 
@@ -174,38 +178,33 @@ export class WarehouseService {
 
     // --- Locations (Bins) ---
 
-    // NOTE: This can return thousands of docs. Use with caution/limits.
+    // NOTE: Can return thousands of docs. Use with caution/limits.
     async getLocations(structureId: string): Promise<StorageLocation[]> {
         const q = query(this.locationsColl, where('structureId', '==', structureId));
         const snap = await getDocs(q);
         return snap.docs.map(d => ({ id: d.id, ...d.data() } as StorageLocation));
     }
 
+    // ✅ One-time read — filter occupied in memory (avoids composite index requirement)
     getOccupiedLocations(warehouseId: string): Observable<StorageLocation[]> {
-        // Query ALL locations for warehouse (avoid composite index requirement)
         const q = query(this.locationsColl, where('warehouseId', '==', warehouseId));
-        return collectionData(q, { idField: 'id' }).pipe(
-            map(locs => (locs as StorageLocation[]).filter(l => l.status === 'full'))
+        return from(getDocs(q)).pipe(
+            map(snap => (snap.docs.map(d => ({ id: d.id, ...d.data() } as StorageLocation))).filter(l => l.status === 'full'))
         );
     }
 
     async getProductLocation(warehouseId: string, productId: string): Promise<StorageLocation | null> {
-        // Query across all locations in this warehouse (requires collection group index or root collection query usually)
-        // But here locations are in root `warehouse_locations`.
-        // So we filter by warehouseId AND productId.
         const q = query(this.locationsColl, where('warehouseId', '==', warehouseId), where('productId', '==', productId), limit(1));
         const snap = await getDocs(q);
         if (snap.empty) return null;
-        const doc = snap.docs[0];
-        return { id: doc.id, ...doc.data() } as StorageLocation;
+        const d = snap.docs[0];
+        return { id: d.id, ...d.data() } as StorageLocation;
     }
 
-    // Bulk create locations (batching handled by implementation usually, here simple loop for MVP)
     async createLocation(location: Partial<StorageLocation>): Promise<string> {
         const ref = await addDoc(this.locationsColl, location);
         return ref.id;
     }
-
 
     // Helper
     private convertTimestamps(item: any): any {

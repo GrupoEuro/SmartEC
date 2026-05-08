@@ -1020,6 +1020,38 @@
                     "order": "ASCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "carts",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status",      "order": "ASCENDING" },
+                { "fieldPath": "lastUpdated", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "guestCarts",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status",      "order": "ASCENDING" },
+                { "fieldPath": "lastUpdated", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "orderPriorities",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "isOverdue", "order": "ASCENDING" },
+                { "fieldPath": "sla",       "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "recovery_queue",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status",    "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "ASCENDING" }
+            ]
         }
     ],
     "fieldOverrides": []

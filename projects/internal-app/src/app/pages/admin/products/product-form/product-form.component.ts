@@ -23,6 +23,8 @@ import { MediaPickerDialogComponent } from '../../../../shared/components/media-
 import { MediaAsset } from '../../../../core/models/media.model';
 import { firstValueFrom } from 'rxjs';
 import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
+import { SettingsService } from '../../../../core/services/settings.service';
+import { ApprovalWorkflowService } from '../../../../core/services/approval-workflow.service';
 
 // Image metadata interface
 interface ImageMetadata {
@@ -68,6 +70,8 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
     private formHelper = inject(FormHelperService);
     private toast = inject(ToastService);
     private confirmDialog = inject(ConfirmDialogService);
+    private settingsService = inject(SettingsService);
+    private approvalWorkflow = inject(ApprovalWorkflowService);
 
     productForm!: FormGroup;
     isEditing = false;
@@ -661,13 +665,56 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
             if (this.isEditing && this.productId) {
                 const mainImage = this.productImages[0];
                 const galleryImages = this.productImages.slice(1);
+
+                // Fetch current product to compare prices
+                const currentProduct = await firstValueFrom(this.productService.getProductById(this.productId));
+                const oldPrice = currentProduct?.price || 0;
+                const newPrice = formValue.price;
+                
+                let requiresApproval = false;
+                let priceChangePct = 0;
+
+                if (oldPrice > 0 && newPrice !== oldPrice) {
+                    priceChangePct = Math.abs(newPrice - oldPrice) / oldPrice * 100;
+                    const settings = await firstValueFrom(this.settingsService.settings$);
+                    const threshold = settings?.approvals?.priceChangeThreshold || 15;
+
+                    if (priceChangePct >= threshold) {
+                        requiresApproval = true;
+                    }
+                }
+
+                if (requiresApproval && currentProduct) {
+                    // Create approval request
+                    await this.approvalWorkflow.createApprovalRequest(
+                        'PRICE_CHANGE',
+                        {
+                            productId: this.productId,
+                            productName: currentProduct.name.en,
+                            sku: currentProduct.sku,
+                            oldPrice: oldPrice,
+                            newPrice: newPrice,
+                            changePercentage: priceChangePct,
+                            field: 'price'
+                        },
+                        `Cambio de precio de $${oldPrice} a $${newPrice} (${priceChangePct.toFixed(2)}%) supera el umbral del sistema.`,
+                        'HIGH'
+                    );
+
+                    // Restore old price for this update
+                    productData.price = oldPrice;
+                    this.toast.info('Cambio de precio enviado para aprobación. Otros cambios fueron guardados.');
+                }
+
                 await this.productService.updateProduct(
                     this.productId,
                     productData as any,
                     mainImage?.file || undefined,
                     galleryImages.length > 0 ? galleryImages.map(img => img.file!).filter(f => f) : []
                 );
-                this.toast.success('Product updated successfully!');
+                if (!requiresApproval) {
+                    this.toast.success('Product updated successfully!');
+                }
             } else {
                 const mainImage = this.productImages[0];
                 if (mainImage?.file) {

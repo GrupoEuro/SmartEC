@@ -36,6 +36,11 @@
                 <app-icon name="truck" [size]="18"></app-icon>
                 <span>{{ 'WEBSITE_SETTINGS.TABS.SHIPPING' | translate }}</span>
             </button>
+            <button type="button" class="tab-link" [class.active]="activeTab === 'approvals'"
+                (click)="setActiveTab('approvals')">
+                <app-icon name="check-circle" [size]="18"></app-icon>
+                <span>Aprobaciones</span>
+            </button>
         </div>
 
         <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()" class="admin-form">
@@ -573,6 +578,39 @@
                                     }}</label>
                                 <input type="text" formControlName="promoText" class="form-control"
                                     [placeholder]="'WEBSITE_SETTINGS.FEATURES.PROMO_TEXT_PLACEHOLDER' | translate">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approvals Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'approvals'" formGroupName="approvals">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <app-icon name="check-circle" [size]="24" class="text-blue-500"></app-icon>
+                        Reglas de Aprobación
+                    </h3>
+
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="feature-card">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 rounded-lg bg-red-500/10 text-red-500">
+                                    <app-icon name="dollar-sign" [size]="24"></app-icon>
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block font-semibold mb-2">Umbral de Cambio de Precio (%)</label>
+                                    <p class="text-sm text-[var(--admin-text-secondary)] mb-4">
+                                        Cualquier cambio de precio (retail o costo) que supere este porcentaje requerirá aprobación manual en el Command Center antes de aplicarse.
+                                    </p>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" formControlName="priceChangeThreshold" class="form-control w-24" min="1" max="100">
+                                        <span class="font-medium text-[var(--admin-text-secondary)]">%</span>
+                                    </div>
+                                    <div class="error-message text-red-500 text-sm mt-1" *ngIf="isFieldInvalid('approvals.priceChangeThreshold')">
+                                        Valor inválido (1-100%).
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

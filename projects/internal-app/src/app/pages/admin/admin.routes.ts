@@ -329,6 +329,14 @@ export const ADMIN_ROUTES: Routes = [
                 loadComponent: () => import('./marketing/campaigns/campaign-form/campaign-form.component').then(m => m.CampaignFormComponent),
                 title: 'Edit Campaign'
             },
+            // ── Competitor Intelligence (MercadoLibre) ────────────────────────────
+            {
+                path: 'marketing/competitor-intel',
+                loadComponent: () => import('./marketing/competitor-intel/competitor-intel.component').then(m => m.CompetitorIntelComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] },
+                title: 'Inteligencia Competitiva — MercadoLibre'
+            },
             // ── Legacy redirects (bookmark safety) ────────────────────────────────
             { path: 'marketing/abandoned-carts', redirectTo: '/marketing/abandoned-carts', pathMatch: 'full' },
             { path: 'marketing/attribution',     redirectTo: '/marketing/attribution',     pathMatch: 'full' },

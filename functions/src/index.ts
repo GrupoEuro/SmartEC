@@ -37,6 +37,9 @@ export { inboxMessageRouter, agentOrchestrator, agentHandoff, analyzeMeliInsight
 // ── Analytics & Projections ───────────────────────────────────────────────────
 export { snapshotProjections } from './analytics';
 
+// ── Competitor Intelligence ───────────────────────────────────────────────────
+export { meliCompetitorScanCron, meliCompetitorScanManual, getCompetitorIntelligence, updateCompetitorConfig } from './competitor-intelligence';
+
 
 
 // ─── MercadoPago Payment Processing ─────────────────────────────────────────

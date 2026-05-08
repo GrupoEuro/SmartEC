@@ -1,0 +1,312 @@
+<header class="page-header">
+  <div class="header-content">
+    <div class="header-left">
+      <app-icon name="radar" [size]="40" class="text-violet-400"></app-icon>
+      <div class="header-text">
+        <h1>{{ 'ADMIN.COMPETITOR_INTEL.TITLE' | translate }}</h1>
+        <p>{{ 'ADMIN.COMPETITOR_INTEL.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <!-- Period selector -->
+      <div class="period-selector">
+        <button [class.active]="periodDays() === 7"  (click)="changePeriod(7)">7d</button>
+        <button [class.active]="periodDays() === 14" (click)="changePeriod(14)">14d</button>
+        <button [class.active]="periodDays() === 30" (click)="changePeriod(30)">30d</button>
+      </div>
+      <!-- Manual scan -->
+      <button class="btn-scan" (click)="runScan()" [disabled]="scanning()">
+        <app-icon [name]="scanning() ? 'loader' : 'refresh-cw'" [size]="16" [class.spin]="scanning()"></app-icon>
+        {{ scanning() ? ('ADMIN.COMPETITOR_INTEL.SCANNING' | translate) : ('ADMIN.COMPETITOR_INTEL.SCAN_NOW' | translate) }}
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Snapshot metadata banner -->
+<div class="snapshot-banner" *ngIf="snapshot()">
+  <app-icon name="clock" [size]="14"></app-icon>
+  <span>{{ 'ADMIN.COMPETITOR_INTEL.LAST_SCAN' | translate }}: <strong>{{ snapshot()!.date }}</strong></span>
+  <span class="sep">·</span>
+  <span>{{ snapshot()!.totalScanned | number }} {{ 'ADMIN.COMPETITOR_INTEL.ITEMS_SCANNED' | translate }}</span>
+  <span class="sep">·</span>
+  <span>{{ 'ADMIN.COMPETITOR_INTEL.PERIOD_VS' | translate }} {{ snapshot()!.priorDate }}</span>
+  <span class="sep">·</span>
+  <span>{{ (snapshot()!.durationMs / 1000) | number:'1.1-1' }}s</span>
+</div>
+
+<!-- Loading state -->
+<div class="loading-state" *ngIf="loading()">
+  <div class="spinner"></div>
+  <p>{{ 'ADMIN.COMPETITOR_INTEL.LOADING' | translate }}</p>
+</div>
+
+<!-- No data state -->
+<div class="empty-state" *ngIf="!loading() && !hasData()">
+  <app-icon name="radar" [size]="56" class="text-slate-600"></app-icon>
+  <h2>{{ 'ADMIN.COMPETITOR_INTEL.NO_DATA_TITLE' | translate }}</h2>
+  <p>{{ 'ADMIN.COMPETITOR_INTEL.NO_DATA_DESC' | translate }}</p>
+  <button class="btn-scan large" (click)="runScan()" [disabled]="scanning()">
+    <app-icon name="play" [size]="18"></app-icon>
+    {{ 'ADMIN.COMPETITOR_INTEL.RUN_FIRST_SCAN' | translate }}
+  </button>
+</div>
+
+<!-- Main content -->
+<div class="intel-layout" *ngIf="!loading() && hasData()">
+
+  <!-- Tab nav -->
+  <nav class="tab-nav">
+    <button (click)="setTab('velocity')"  [class.active]="activeTab() === 'velocity'">
+      <app-icon name="zap" [size]="16"></app-icon>
+      {{ 'ADMIN.COMPETITOR_INTEL.TAB_VELOCITY' | translate }}
+    </button>
+    <button (click)="setTab('pricing')"   [class.active]="activeTab() === 'pricing'">
+      <app-icon name="dollar-sign" [size]="16"></app-icon>
+      {{ 'ADMIN.COMPETITOR_INTEL.TAB_PRICING' | translate }}
+    </button>
+    <button (click)="setTab('keywords')"  [class.active]="activeTab() === 'keywords'">
+      <app-icon name="search" [size]="16"></app-icon>
+      {{ 'ADMIN.COMPETITOR_INTEL.TAB_KEYWORDS' | translate }}
+    </button>
+    <button (click)="setTab('config')"    [class.active]="activeTab() === 'config'">
+      <app-icon name="settings" [size]="16"></app-icon>
+      {{ 'ADMIN.COMPETITOR_INTEL.TAB_CONFIG' | translate }}
+    </button>
+  </nav>
+
+  <!-- ── TAB: Velocity Ranking ─────────────────────────────────────────── -->
+  <div class="tab-panel" *ngIf="activeTab() === 'velocity'">
+    <div class="panel-header">
+      <div>
+        <h2>{{ 'ADMIN.COMPETITOR_INTEL.VELOCITY_TITLE' | translate }}</h2>
+        <p class="panel-subtitle">{{ 'ADMIN.COMPETITOR_INTEL.VELOCITY_SUBTITLE' | translate : { days: periodDays() } }}</p>
+      </div>
+      <input class="search-input" type="text"
+        [placeholder]="'ADMIN.COMPETITOR_INTEL.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="velocitySearch()"
+        (ngModelChange)="velocitySearch.set($event)">
+    </div>
+
+    <div class="velocity-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>{{ 'ADMIN.COMPETITOR_INTEL.COL_PRODUCT' | translate }}</th>
+            <th>{{ 'ADMIN.COMPETITOR_INTEL.COL_SELLER' | translate }}</th>
+            <th class="num">{{ 'ADMIN.COMPETITOR_INTEL.COL_PRICE' | translate }}</th>
+            <th class="num">{{ 'ADMIN.COMPETITOR_INTEL.COL_UNITS_SOLD' | translate }}</th>
+            <th class="num">{{ 'ADMIN.COMPETITOR_INTEL.COL_REVENUE_EST' | translate }}</th>
+            <th>{{ 'ADMIN.COMPETITOR_INTEL.COL_KEYWORD' | translate }}</th>
+            <th>{{ 'ADMIN.COMPETITOR_INTEL.COL_ACTIONS' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredVelocity(); let i = index; trackBy: trackByItem"
+              [class.top3]="i < 3">
+            <td class="rank">
+              <span *ngIf="i === 0" class="medal gold">🥇</span>
+              <span *ngIf="i === 1" class="medal silver">🥈</span>
+              <span *ngIf="i === 2" class="medal bronze">🥉</span>
+              <span *ngIf="i >= 3" class="rank-num">{{ i + 1 }}</span>
+            </td>
+            <td class="product-cell">
+              <img *ngIf="item.thumbnail" [src]="item.thumbnail" class="thumb" alt="" loading="lazy">
+              <span class="product-title">{{ item.title }}</span>
+            </td>
+            <td class="seller-cell">
+              <span class="seller-name">{{ item.sellerNickname }}</span>
+              <span class="seller-badge" [style.color]="sellerLevelColor(item.sellerLevel)">
+                {{ sellerLevelLabel(item.sellerLevel) }}
+              </span>
+            </td>
+            <td class="num price-cell">{{ item.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+            <td class="num">
+              <span class="units-sold" [class.high]="item.soldQtyDelta > 20">
+                {{ item.soldQtyDelta | number }}
+              </span>
+              <span class="units-total">/ {{ item.soldQtyTotal | number }} total</span>
+            </td>
+            <td class="num revenue-cell">{{ item.revenueEstimate | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+            <td>
+              <span class="keyword-tag">{{ item.keyword }}</span>
+            </td>
+            <td>
+              <button class="btn-icon-sm" (click)="openListing(item.permalink)" title="Ver en MercadoLibre">
+                <app-icon name="external-link" [size]="14"></app-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── TAB: Pricing Map ───────────────────────────────────────────────── -->
+  <div class="tab-panel" *ngIf="activeTab() === 'pricing'">
+    <div class="panel-header">
+      <div>
+        <h2>{{ 'ADMIN.COMPETITOR_INTEL.PRICING_TITLE' | translate }}</h2>
+        <p class="panel-subtitle">{{ 'ADMIN.COMPETITOR_INTEL.PRICING_SUBTITLE' | translate }}</p>
+      </div>
+      <select class="select-filter" [ngModel]="pricingKeyword()" (ngModelChange)="pricingKeyword.set($event)">
+        <option *ngFor="let kw of keywords()" [value]="kw">
+          {{ kw === 'all' ? ('ADMIN.COMPETITOR_INTEL.ALL_KEYWORDS' | translate) : kw }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Price stats cards -->
+    <div class="price-stats" *ngIf="priceStats()">
+      <div class="stat-card min-card">
+        <span class="stat-label">{{ 'ADMIN.COMPETITOR_INTEL.PRICE_MIN' | translate }}</span>
+        <span class="stat-value">{{ priceStats()!.min | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="stat-card median-card">
+        <span class="stat-label">{{ 'ADMIN.COMPETITOR_INTEL.PRICE_MEDIAN' | translate }}</span>
+        <span class="stat-value">{{ priceStats()!.median | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="stat-card avg-card">
+        <span class="stat-label">{{ 'ADMIN.COMPETITOR_INTEL.PRICE_AVG' | translate }}</span>
+        <span class="stat-value">{{ priceStats()!.avg | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+      <div class="stat-card max-card">
+        <span class="stat-label">{{ 'ADMIN.COMPETITOR_INTEL.PRICE_MAX' | translate }}</span>
+        <span class="stat-value">{{ priceStats()!.max | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <!-- Price bar chart table -->
+    <div class="price-bars">
+      <div class="price-bar-row" *ngFor="let item of pricingItems(); trackBy: trackByItem">
+        <img *ngIf="item.thumbnail" [src]="item.thumbnail" class="thumb-sm" alt="" loading="lazy">
+        <div class="bar-info">
+          <span class="bar-title">{{ item.title }}</span>
+          <span class="bar-seller">{{ item.sellerNickname }}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" [style.width.%]="priceBar(item.price)"
+               [class.bar-cheap]="priceBar(item.price) < 30"
+               [class.bar-mid]="priceBar(item.price) >= 30 && priceBar(item.price) < 70"
+               [class.bar-exp]="priceBar(item.price) >= 70"></div>
+        </div>
+        <span class="bar-price">{{ item.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        <button class="btn-icon-sm" (click)="openListing(item.permalink)">
+          <app-icon name="external-link" [size]="12"></app-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Keyword Trends ────────────────────────────────────────────── -->
+  <div class="tab-panel" *ngIf="activeTab() === 'keywords'">
+    <div class="panel-header">
+      <h2>{{ 'ADMIN.COMPETITOR_INTEL.KEYWORDS_TITLE' | translate }}</h2>
+      <p class="panel-subtitle">{{ 'ADMIN.COMPETITOR_INTEL.KEYWORDS_SUBTITLE' | translate }}</p>
+    </div>
+
+    <div class="keyword-cards">
+      <div class="keyword-card" *ngFor="let kw of data()!.trends; trackBy: trackByKw">
+        <div class="kw-header">
+          <app-icon name="search" [size]="16" class="text-violet-400"></app-icon>
+          <h3 class="kw-name">{{ kw.keyword }}</h3>
+        </div>
+        <div class="kw-stats">
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_LISTINGS' | translate }}</span>
+            <span class="kw-stat-value">{{ kw.listingCount | number }}</span>
+          </div>
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_SELLERS' | translate }}</span>
+            <span class="kw-stat-value">{{ kw.uniqueSellers | number }}</span>
+          </div>
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_MIN_PRICE' | translate }}</span>
+            <span class="kw-stat-value green">{{ kw.minPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_MEDIAN' | translate }}</span>
+            <span class="kw-stat-value">{{ kw.medianPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_MAX_PRICE' | translate }}</span>
+            <span class="kw-stat-value red">{{ kw.maxPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+          <div class="kw-stat">
+            <span class="kw-stat-label">{{ 'ADMIN.COMPETITOR_INTEL.KW_FREE_SHIP' | translate }}</span>
+            <span class="kw-stat-value">{{ kw.freeShippingPct | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+        <!-- Price range bar -->
+        <div class="kw-range">
+          <span class="range-label">{{ kw.minPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+          <div class="range-bar">
+            <div class="range-median" [style.left.%]="((kw.medianPrice - kw.minPrice) / (kw.maxPrice - kw.minPrice || 1)) * 100"></div>
+          </div>
+          <span class="range-label">{{ kw.maxPrice | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Configuration ─────────────────────────────────────────────── -->
+  <div class="tab-panel config-panel" *ngIf="activeTab() === 'config'">
+    <div class="panel-header">
+      <h2>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_TITLE' | translate }}</h2>
+      <p class="panel-subtitle">{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_SUBTITLE' | translate }}</p>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-field">
+        <label>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_KEYWORDS' | translate }}</label>
+        <p class="field-hint">{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_KEYWORDS_HINT' | translate }}</p>
+        <textarea class="config-textarea" rows="7"
+          [ngModel]="configKeywords()"
+          (ngModelChange)="configKeywords.set($event)"
+          placeholder="llantas moto&#10;llanta moto 110/70-17&#10;llanta scooter"></textarea>
+      </div>
+
+      <div class="config-field">
+        <label>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_TRACKED_SELLERS' | translate }}</label>
+        <p class="field-hint">{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_TRACKED_SELLERS_HINT' | translate }}</p>
+        <textarea class="config-textarea" rows="4"
+          [ngModel]="configSellers()"
+          (ngModelChange)="configSellers.set($event)"
+          placeholder="123456789&#10;987654321"></textarea>
+      </div>
+
+      <div class="config-field">
+        <label>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_OUR_SELLER_ID' | translate }}</label>
+        <p class="field-hint">{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_OUR_SELLER_ID_HINT' | translate }}</p>
+        <input class="config-input" type="text"
+          [ngModel]="configOurSellerId()"
+          (ngModelChange)="configOurSellerId.set($event)"
+          placeholder="Tu Seller ID de MercadoLibre">
+      </div>
+
+      <div class="config-field">
+        <label>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_MAX_RESULTS' | translate }}</label>
+        <input class="config-input" type="number" min="10" max="50"
+          [ngModel]="configMaxResults()"
+          (ngModelChange)="configMaxResults.set($event)">
+      </div>
+
+      <div class="config-field toggle-field">
+        <label>{{ 'ADMIN.COMPETITOR_INTEL.CONFIG_ENABLED' | translate }}</label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="configEnabled()" (ngModelChange)="configEnabled.set($event)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="config-actions">
+      <button class="btn-save" (click)="saveConfig()" [disabled]="savingConfig()">
+        <app-icon [name]="savingConfig() ? 'loader' : 'save'" [size]="16" [class.spin]="savingConfig()"></app-icon>
+        {{ savingConfig() ? ('ADMIN.COMPETITOR_INTEL.SAVING' | translate) : ('ADMIN.COMPETITOR_INTEL.SAVE_CONFIG' | translate) }}
+      </button>
+    </div>
+  </div>
+
+</div>

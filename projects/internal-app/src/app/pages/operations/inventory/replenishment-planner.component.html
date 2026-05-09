@@ -1,176 +1,328 @@
-<div class="h-full flex flex-col bg-zinc-950">
-    <!-- Header -->
-    <div class="bg-zinc-900/50 border-b border-zinc-800 px-6 py-4">
-        <div class="flex items-center justify-between">
+<div class="replenishment-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="rp-header">
+        <div class="rp-header-left">
+            <div class="rp-header-icon">
+                <app-icon name="trending-up" [size]="22"></app-icon>
+            </div>
             <div>
-                <h1 class="text-2xl font-bold text-white flex items-center gap-3">
-                    <app-icon name="trending-up" [size]="28" class="text-emerald-400"></app-icon>
-                    Replenishment Planner
-                </h1>
-                <p class="text-zinc-400 text-sm mt-1">
-                    Smart inventory replenishment based on demand forecasting & safety stock
+                <h1 class="rp-title">Reposición de Inventario</h1>
+                <p class="rp-subtitle">
+                    Multi-canal · Burn rate en tiempo real · MeliFull · Amazon FBA · Almacén
+                    <span *ngIf="globalStats()?.lastRefreshed" class="rp-updated">
+                        · Actualizado {{ globalStats()!.lastRefreshed | date:'HH:mm' }}
+                    </span>
                 </p>
             </div>
-
-            <div class="flex items-center gap-3">
-                <button (click)="analyzeReplenishment()" [disabled]="isLoading()"
-                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 text-white rounded-lg flex items-center gap-2 transition-colors">
-                    <app-icon [name]="isLoading() ? 'loader' : 'refresh-cw'" [size]="16"
-                        [class.animate-spin]="isLoading()"></app-icon>
-                    {{ isLoading() ? 'Analyzing...' : 'Refresh Analysis' }}
-                </button>
-            </div>
+        </div>
+        <div class="rp-header-actions">
+            <button class="btn-outline" (click)="load()" [disabled]="isLoading()">
+                <app-icon [name]="isLoading() ? 'loader' : 'refresh-cw'" [size]="14" [class.spin]="isLoading()"></app-icon>
+                {{ isLoading() ? 'Cargando...' : 'Actualizar' }}
+            </button>
+            <button class="btn-primary" (click)="generatePO()"
+                [disabled]="!globalStats()?.selected">
+                <app-icon name="file-text" [size]="14"></app-icon>
+                Generar OC
+                <span *ngIf="globalStats()?.selected" class="btn-badge">{{ globalStats()!.selected }}</span>
+            </button>
         </div>
     </div>
 
-    <!-- Stats Bar -->
-    <div class="bg-zinc-900/30 border-b border-zinc-800 px-6 py-4">
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div class="bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
-                <div class="text-xs text-zinc-500 mb-1">Total Items</div>
-                <div class="text-2xl font-bold text-white">{{ stats().total }}</div>
+    <!-- ── Channel Summary Cards ──────────────────────────────────────── -->
+    <div class="channel-cards" *ngIf="summary()">
+        <!-- Global -->
+        <div class="channel-card channel-card--all" [class.active]="channelFilter() === 'ALL'"
+            (click)="channelFilter.set('ALL')">
+            <div class="cc-icon cc-icon--all">
+                <app-icon name="layers" [size]="18"></app-icon>
             </div>
-            <div class="bg-red-900/20 rounded-lg p-3 border border-red-500/30">
-                <div class="text-xs text-red-400 mb-1">Critical</div>
-                <div class="text-2xl font-bold text-red-400">{{ stats().critical }}</div>
-            </div>
-            <div class="bg-orange-900/20 rounded-lg p-3 border border-orange-500/30">
-                <div class="text-xs text-orange-400 mb-1">High Priority</div>
-                <div class="text-2xl font-bold text-orange-400">{{ stats().high }}</div>
-            </div>
-            <div class="bg-purple-900/20 rounded-lg p-3 border border-purple-500/30">
-                <div class="text-xs text-purple-400 mb-1">Selected</div>
-                <div class="text-2xl font-bold text-purple-400">{{ stats().selected }}</div>
-            </div>
-            <div class="bg-emerald-900/20 rounded-lg p-3 border border-emerald-500/30">
-                <div class="text-xs text-emerald-400 mb-1">Estimated Cost</div>
-                <div class="text-lg font-bold text-emerald-400">{{ formatCurrency(stats().totalCost) }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters & Actions -->
-    <div class="bg-zinc-900/20 border-b border-zinc-800 px-6 py-3">
-        <div class="flex flex-wrap items-center gap-3">
-            <!-- Search -->
-            <div class="flex-1 min-w-[200px]">
-                <div class="relative">
-                    <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="searchQuery.set($event)"
-                        placeholder="Search products..."
-                        class="w-full px-4 py-2 pl-10 bg-zinc-900 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none">
-                    <app-icon name="search" [size]="16"
-                        class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"></app-icon>
+            <div class="cc-body">
+                <div class="cc-label">Todos los canales</div>
+                <div class="cc-value">{{ globalStats()?.total }}</div>
+                <div class="cc-pills">
+                    <span class="pill-critical" *ngIf="globalStats()?.critical">{{ globalStats()!.critical }} CRÍTICO</span>
+                    <span class="pill-high"     *ngIf="globalStats()?.high">{{ globalStats()!.high }} ALTO</span>
                 </div>
             </div>
+        </div>
 
-            <!-- Urgency Filter -->
-            <select [(ngModel)]="urgencyFilter" (ngModelChange)="urgencyFilter.set($event)"
-                class="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white focus:border-purple-500 focus:outline-none">
-                <option value="ALL">All Urgency</option>
-                <option value="CRITICAL">Critical Only</option>
-                <option value="HIGH">High Priority</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-            </select>
+        <!-- MeliFull -->
+        <div class="channel-card channel-card--meli" [class.active]="channelFilter() === 'MELI_FULL'"
+            (click)="channelFilter.set('MELI_FULL')">
+            <div class="cc-icon cc-icon--meli">
+                <app-icon name="shopping-bag" [size]="18"></app-icon>
+            </div>
+            <div class="cc-body">
+                <div class="cc-label">MercadoLibre Full</div>
+                <div class="cc-value">{{ channelStats()?.['MELI_FULL']?.items ?? 0 }}</div>
+                <div class="cc-pills">
+                    <span class="pill-critical" *ngIf="channelStats()?.['MELI_FULL']?.critical">
+                        {{ channelStats()!['MELI_FULL'].critical }} crítico
+                    </span>
+                    <span class="pill-high" *ngIf="channelStats()?.['MELI_FULL']?.high">
+                        {{ channelStats()!['MELI_FULL'].high }} alto
+                    </span>
+                </div>
+            </div>
+        </div>
 
-            <!-- Selection Actions -->
-            <div class="flex items-center gap-2 ml-auto">
-                <button (click)="selectAll()"
-                    class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors">
-                    Select All
-                </button>
-                <button (click)="clearSelection()"
-                    class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm transition-colors">
-                    Clear
-                </button>
-                <button (click)="generatePurchaseOrders()" [disabled]="stats().selected === 0"
-                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-700 text-white rounded-lg flex items-center gap-2 transition-colors font-medium">
-                    <app-icon name="shopping-cart" [size]="16"></app-icon>
-                    Generate POs ({{ stats().selected }})
-                </button>
+        <!-- Amazon FBA -->
+        <div class="channel-card channel-card--amazon" [class.active]="channelFilter() === 'AMAZON_FBA'"
+            (click)="channelFilter.set('AMAZON_FBA')">
+            <div class="cc-icon cc-icon--amazon">
+                <app-icon name="package" [size]="18"></app-icon>
+            </div>
+            <div class="cc-body">
+                <div class="cc-label">Amazon FBA</div>
+                <div class="cc-value">{{ channelStats()?.['AMAZON_FBA']?.items ?? 0 }}</div>
+                <div class="cc-pills">
+                    <span class="pill-critical" *ngIf="channelStats()?.['AMAZON_FBA']?.critical">
+                        {{ channelStats()!['AMAZON_FBA'].critical }} crítico
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Almacén Principal -->
+        <div class="channel-card channel-card--main" [class.active]="channelFilter() === 'MAIN'"
+            (click)="channelFilter.set('MAIN')">
+            <div class="cc-icon cc-icon--main">
+                <app-icon name="home" [size]="18"></app-icon>
+            </div>
+            <div class="cc-body">
+                <div class="cc-label">Almacén Principal</div>
+                <div class="cc-value">{{ channelStats()?.['MAIN']?.items ?? 0 }}</div>
+                <div class="cc-pills">
+                    <span class="pill-critical" *ngIf="channelStats()?.['MAIN']?.critical">
+                        {{ channelStats()!['MAIN'].critical }} crítico
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected cost summary -->
+        <div class="channel-card channel-card--cost" *ngIf="globalStats()?.selected">
+            <div class="cc-icon cc-icon--cost">
+                <app-icon name="shopping-cart" [size]="18"></app-icon>
+            </div>
+            <div class="cc-body">
+                <div class="cc-label">Costo estimado OC</div>
+                <div class="cc-value cc-value--small">
+                    {{ globalStats()!.selectedCost | number:'1.0-0' }} MXN
+                </div>
+                <div class="cc-pills">
+                    <span class="pill-selected">{{ globalStats()!.selected }} productos</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Replenishment Table -->
-    <div class="flex-1 overflow-auto">
-        <div *ngIf="isLoading()" class="flex items-center justify-center h-full">
-            <div class="text-center">
-                <app-icon name="loader" [size]="48" class="text-purple-400 animate-spin mx-auto mb-4"></app-icon>
-                <p class="text-zinc-400">Analyzing inventory levels...</p>
-            </div>
+    <!-- ── Filter Bar ──────────────────────────────────────────────────── -->
+    <div class="filter-bar">
+        <div class="filter-search">
+            <app-icon name="search" [size]="14" class="filter-search-icon"></app-icon>
+            <input type="text" class="filter-input" placeholder="Buscar por SKU o descripción..."
+                [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)">
         </div>
 
-        <div *ngIf="!isLoading() && filteredItems().length === 0" class="flex items-center justify-center h-full">
-            <div class="text-center">
-                <app-icon name="check-circle" [size]="64" class="text-emerald-400 mx-auto mb-4"></app-icon>
-                <h3 class="text-xl font-bold text-white mb-2">All Clear! ✅</h3>
-                <p class="text-zinc-400">No products require replenishment at this time.</p>
-            </div>
+        <div class="filter-urgency">
+            <button *ngFor="let u of ['ALL','CRITICAL','HIGH','MEDIUM','LOW','OK']"
+                class="urgency-tab" [class.active]="urgencyFilter() === u"
+                (click)="urgencyFilter.set(u)">
+                <span class="urgency-dot" [attr.data-level]="u"></span>
+                {{ u === 'ALL' ? 'Todos' : u === 'CRITICAL' ? 'Crítico' : u === 'HIGH' ? 'Alto' : u === 'MEDIUM' ? 'Medio' : u === 'LOW' ? 'Bajo' : 'OK' }}
+            </button>
         </div>
 
-        <table *ngIf="!isLoading() && filteredItems().length > 0" class="w-full">
-            <thead class="bg-zinc-900/50 sticky top-0">
-                <tr class="border-b border-zinc-800">
-                    <th class="px-4 py-3 text-left">
-                        <input type="checkbox" [checked]="stats().selected === filteredItems().length"
-                            (change)="stats().selected === filteredItems().length ? clearSelection() : selectAll()"
-                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-purple-600">
+        <div class="filter-actions">
+            <button class="btn-text" (click)="selectAll()">Selec. todo</button>
+            <button class="btn-text" (click)="clearSelection()" *ngIf="globalStats()?.selected">
+                Limpiar ({{ globalStats()!.selected }})
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────────────── -->
+    <div class="loading-state" *ngIf="isLoading()">
+        <div class="loading-spinner"></div>
+        <p>Analizando inventario multi-canal...</p>
+    </div>
+
+    <!-- ── Empty State ────────────────────────────────────────────────── -->
+    <div class="empty-state" *ngIf="!isLoading() && summary() && filteredItems().length === 0">
+        <app-icon name="check-circle" [size]="48" class="empty-icon"></app-icon>
+        <h3>¡Inventario en orden!</h3>
+        <p>Todos los productos cumplen sus niveles mínimos en los canales seleccionados.</p>
+    </div>
+
+    <!-- ── Table ──────────────────────────────────────────────────────── -->
+    <div class="rp-table-wrap" *ngIf="!isLoading() && filteredItems().length > 0">
+        <table class="rp-table">
+            <thead>
+                <tr>
+                    <th class="col-check">
+                        <input type="checkbox" class="cb"
+                            [checked]="globalStats()?.selected === filteredItems().length && filteredItems().length > 0"
+                            (change)="globalStats()?.selected === filteredItems().length ? clearSelection() : selectAll()">
                     </th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Urgency</th>
-                    <th class="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Product</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Current Stock</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Safety Stock</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Reorder Point</th>
-                    <th class="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Stockout In</th>
-                    <th class="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Order Qty</th>
-                    <th class="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Est. Cost</th>
+                    <th class="col-product">Producto / SKU</th>
+                    <th class="col-channels">Canales · Stock · Cobertura</th>
+                    <th class="col-velocity">Burn Rate (30d)</th>
+                    <th class="col-urgency">Urgencia</th>
+                    <th class="col-replenish">Reposición</th>
+                    <th class="col-action"></th>
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let item of filteredItems()"
-                    class="border-b border-zinc-800 hover:bg-zinc-900/30 transition-colors cursor-pointer"
-                    (click)="toggleSelection(item.product.id!)">
-                    <td class="px-4 py-3">
-                        <input type="checkbox" [checked]="selectedItems().has(item.product.id!)"
-                            (click)="$event.stopPropagation()" (change)="toggleSelection(item.product.id!)"
-                            class="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-purple-600">
+                <tr *ngFor="let item of filteredItems(); trackBy: trackBySku"
+                    class="rp-row" [class.selected]="selectedItems().has(item.sku)"
+                    [attr.data-urgency]="item.worstUrgency">
+                    <!-- Checkbox -->
+                    <td class="col-check" (click)="$event.stopPropagation()">
+                        <input type="checkbox" class="cb"
+                            [checked]="selectedItems().has(item.sku)"
+                            (change)="toggleItem(item.sku)">
                     </td>
-                    <td class="px-4 py-3">
-                        <span
-                            [class]="'px-3 py-1 rounded-full text-xs font-bold border ' + getUrgencyClass(item.urgencyLevel)">
-                            {{ item.urgencyLevel }}
-                        </span>
+
+                    <!-- Product -->
+                    <td class="col-product">
+                        <div class="prod-thumb-wrap" *ngIf="item.channels['MELI_FULL']?.thumbnail">
+                            <img [src]="item.channels['MELI_FULL']!.thumbnail" class="prod-thumb" alt="">
+                        </div>
+                        <div class="prod-thumb-placeholder" *ngIf="!item.channels['MELI_FULL']?.thumbnail">
+                            <app-icon name="image" [size]="16"></app-icon>
+                        </div>
+                        <div class="prod-info">
+                            <div class="prod-title" [title]="item.title">{{ item.title | slice:0:55 }}{{ item.title.length > 55 ? '…' : '' }}</div>
+                            <div class="prod-sku">{{ item.sku | slice:0:40 }}</div>
+                            <div class="prod-meta" *ngIf="item.channels['MELI_FULL']?.price">
+                                <span class="price-tag">MeLi ${{ item.channels['MELI_FULL']!.price! | number:'1.2-2' }}</span>
+                            </div>
+                        </div>
                     </td>
-                    <td class="px-4 py-3">
-                        <div class="font-medium text-white">{{ item.product.name.es }}</div>
-                        <div class="text-xs text-zinc-500">SKU: {{ item.product.sku }}</div>
+
+                    <!-- Channels -->
+                    <td class="col-channels">
+                        <div class="channel-rows">
+                            <div *ngFor="let ch of channelEntries(item)" class="ch-row">
+                                <!-- Channel badge -->
+                                <div class="ch-badge" [attr.data-channel]="ch.channelId">
+                                    <app-icon [name]="ch.icon" [size]="10"></app-icon>
+                                    <span>{{ ch.shortLabel }}</span>
+                                </div>
+                                <!-- Stock number -->
+                                <div class="ch-stock">
+                                    <span class="ch-stock-num" [class.stock-zero]="ch.available === 0">
+                                        {{ ch.available }}
+                                    </span>
+                                    <span class="ch-stock-label">uds</span>
+                                    <span class="ch-reserved" *ngIf="ch.reserved > 0">+{{ ch.reserved }} res.</span>
+                                </div>
+                                <!-- Coverage bar -->
+                                <div class="ch-coverage-wrap">
+                                    <div class="ch-coverage-bar">
+                                        <div class="ch-coverage-fill"
+                                            [style.width]="coverageBarWidth(ch.daysOfCoverage)"
+                                            [style.background]="coverageBarColor(ch.daysOfCoverage)">
+                                        </div>
+                                    </div>
+                                    <span class="ch-days" [class]="daysClass(ch.daysOfCoverage)">
+                                        {{ fmtDays(ch.daysOfCoverage) }}
+                                    </span>
+                                </div>
+                                <!-- ROP indicator -->
+                                <div class="ch-rop" *ngIf="ch.reorderPoint > 0">
+                                    <span class="rop-label">ROP</span>
+                                    <span class="rop-val">{{ ch.reorderPoint }}</span>
+                                    <span class="rop-arrow" [class.below-rop]="ch.available <= ch.reorderPoint">
+                                        {{ ch.available <= ch.reorderPoint ? '↓' : '↑' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </td>
-                    <td class="px-4 py-3 text-center">
-                        <span [class]="item.currentStock === 0 ? 'text-red-400 font-bold' : 'text-white'">
-                            {{ item.currentStock }}
-                        </span>
+
+                    <!-- Velocity -->
+                    <td class="col-velocity">
+                        <ng-container *ngIf="item.channels['MELI_FULL'] as meli">
+                            <div class="velocity-block">
+                                <div class="vel-row">
+                                    <span class="vel-label">30d</span>
+                                    <span class="vel-value">{{ fmtVelocity(meli.salesVelocity30d) }}</span>
+                                </div>
+                                <div class="vel-row" *ngIf="meli.salesVelocity7d">
+                                    <span class="vel-label">7d</span>
+                                    <span class="vel-value vel-7d"
+                                        [class.vel-rising]="meli.salesVelocity7d > meli.salesVelocity30d"
+                                        [class.vel-falling]="meli.salesVelocity7d < meli.salesVelocity30d">
+                                        {{ fmtVelocity(meli.salesVelocity7d) }}
+                                        <app-icon *ngIf="meli.salesVelocity7d > meli.salesVelocity30d" name="trending-up" [size]="10"></app-icon>
+                                        <app-icon *ngIf="meli.salesVelocity7d < meli.salesVelocity30d" name="trending-down" [size]="10"></app-icon>
+                                    </span>
+                                </div>
+                                <div class="vel-sold">{{ meli.unitsSold30d }} vendidos (30d)</div>
+                            </div>
+                        </ng-container>
+                        <div class="no-data" *ngIf="!item.channels['MELI_FULL']">— sin datos MeLi</div>
                     </td>
-                    <td class="px-4 py-3 text-center text-emerald-400">
-                        {{ item.safetyStock }}
+
+                    <!-- Urgency -->
+                    <td class="col-urgency">
+                        <div class="urgency-badge" [class]="urgencyClass(item.worstUrgency)">
+                            {{ urgencyLabel(item.worstUrgency) }}
+                        </div>
+                        <div class="stockout-date" *ngIf="item.channels['MELI_FULL']?.projectedStockoutDate as sd">
+                            <app-icon name="calendar" [size]="10"></app-icon>
+                            {{ sd }}
+                        </div>
                     </td>
-                    <td class="px-4 py-3 text-center text-purple-400">
-                        {{ item.reorderPoint }}
+
+                    <!-- Replenishment -->
+                    <td class="col-replenish">
+                        <ng-container *ngFor="let ch of channelEntries(item)">
+                            <div class="replenish-row" *ngIf="ch.reorderQuantity > 0">
+                                <span class="replenish-ch" [attr.data-channel]="ch.channelId">
+                                    <app-icon [name]="ch.icon" [size]="10"></app-icon>
+                                </span>
+                                <span class="replenish-qty">{{ ch.reorderQuantity }} uds</span>
+                                <span class="replenish-cost" *ngIf="item.unitCost">
+                                    ${{ (ch.reorderQuantity * item.unitCost!) | number:'1.0-0' }}
+                                </span>
+                            </div>
+                        </ng-container>
+                        <div class="no-replenish" *ngIf="hasNoReplenishment(item)">
+                            <app-icon name="check" [size]="12"></app-icon> En orden
+                        </div>
                     </td>
-                    <td class="px-4 py-3 text-center">
-                        <span
-                            [class]="item.projectedStockout < 3 ? 'text-red-400 font-bold' : item.projectedStockout < 7 ? 'text-orange-400' : 'text-zinc-300'">
-                            {{ item.projectedStockout }} days
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-right text-white font-medium">
-                        {{ item.recommendedOrderQty }}
-                    </td>
-                    <td class="px-4 py-3 text-right text-emerald-400 font-medium">
-                        {{ formatCurrency(item.estimatedCost) }}
+
+                    <!-- Action -->
+                    <td class="col-action">
+                        <a *ngIf="item.channels['MELI_FULL']?.permalink"
+                            [href]="item.channels['MELI_FULL']!.permalink"
+                            target="_blank" class="action-link" title="Ver en MercadoLibre">
+                            <app-icon name="external-link" [size]="14"></app-icon>
+                        </a>
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
+
+    <!-- ── Bottom action bar ──────────────────────────────────────────── -->
+    <div class="bottom-bar" *ngIf="globalStats()?.selected">
+        <div class="bottom-bar-info">
+            <strong>{{ globalStats()!.selected }}</strong> productos seleccionados ·
+            Costo estimado: <strong>${{ globalStats()!.selectedCost | number:'1.0-0' }} MXN</strong>
+        </div>
+        <div class="bottom-bar-actions">
+            <button class="btn-outline" (click)="clearSelection()">Cancelar</button>
+            <button class="btn-primary" (click)="generatePO()">
+                <app-icon name="file-plus" [size]="14"></app-icon>
+                Crear Órdenes de Compra
+            </button>
+        </div>
+    </div>
+
 </div>

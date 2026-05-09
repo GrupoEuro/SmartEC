@@ -52,10 +52,12 @@ export interface CompetitorIntelligenceData {
 export interface CompetitorConfig {
     keywords:             string[];
     trackedSellers:       string[];
+    seedItemIds:          string[];    // direct competitor listing IDs (MLM + 10 digits)
     ourSellerId:          string;
     maxResultsPerKeyword: number;
     enabled:              boolean;
 }
+
 
 @Injectable({ providedIn: 'root' })
 export class CompetitorIntelligenceService {

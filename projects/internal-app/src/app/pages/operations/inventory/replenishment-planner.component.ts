@@ -1,255 +1,225 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
 import { TranslateModule } from '@ngx-translate/core';
-import { ProductService } from '../../../core/services/product.service';
-import { DemandForecastingService } from '../../../core/services/demand-forecasting.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Product } from '../../../core/models/product.model';
-import { firstValueFrom } from 'rxjs';
+import {
+    MultiChannelInventoryService,
+    ChannelInventoryItem,
+    ChannelStock,
+    ChannelId,
+    CHANNELS,
+    ReplenishmentSummary,
+} from '../../../core/services/multi-channel-inventory.service';
 
-interface ReplenishmentItem {
-    product: any; // Product + optional Firestore extended fields (inventoryPolicy, supplierId, etc.)
-    currentStock: number;
-    safetyStock: number;
-    reorderPoint: number;
-    onOrder: number; // In-transit from existing POs
-    projectedStockout: number; // Days until stockout
-    recommendedOrderQty: number;
-    urgencyLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-    estimatedCost: number;
-}
+type FilterChannel = 'ALL' | ChannelId;
 
 @Component({
     selector: 'app-replenishment-planner',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, AppIconComponent, TranslateModule],
+    imports: [CommonModule, FormsModule, RouterLink, AppIconComponent, TranslateModule, DecimalPipe, DatePipe],
     templateUrl: './replenishment-planner.component.html',
-    styleUrls: ['./replenishment-planner.component.css']
+    styleUrls: ['./replenishment-planner.component.css'],
 })
 export class ReplenishmentPlannerComponent implements OnInit {
-    private productService = inject(ProductService);
-    private demandService = inject(DemandForecastingService);
-    private toast = inject(ToastService);
-    private router = inject(Router);
+    private inventorySvc = inject(MultiChannelInventoryService);
+    private toast        = inject(ToastService);
 
-    isLoading = signal(false);
-    replenishmentItems = signal<ReplenishmentItem[]>([]);
-    selectedItems = signal<Set<string>>(new Set());
+    // ── State ───────────────────────────────────────────────────────────────
+    isLoading      = signal(false);
+    summary        = signal<ReplenishmentSummary | null>(null);
+    selectedItems  = signal<Set<string>>(new Set());
 
     // Filters
-    urgencyFilter = signal<string>('ALL');
-    searchQuery = signal<string>('');
+    channelFilter  = signal<FilterChannel>('ALL');
+    urgencyFilter  = signal<string>('ALL');
+    searchQuery    = signal<string>('');
 
-    // Computed
+    // Expose constants to template
+    readonly CHANNELS       = CHANNELS;
+    readonly CHANNEL_IDS    = Object.keys(CHANNELS) as ChannelId[];
+
+    readonly CHANNEL_TABS: { id: FilterChannel; label: string; icon: string }[] = [
+        { id: 'ALL',        label: 'Todos',           icon: 'layers' },
+        { id: 'MELI_FULL',  label: 'MercadoLibre Full', icon: 'shopping-bag' },
+        { id: 'AMAZON_FBA', label: 'Amazon FBA',      icon: 'package' },
+        { id: 'MAIN',       label: 'Almacén',         icon: 'home' },
+    ];
+
+    // ── Computed ─────────────────────────────────────────────────────────────
     filteredItems = computed(() => {
-        let items = this.replenishmentItems();
+        const s = this.summary();
+        if (!s) return [];
 
-        // Urgency filter
-        if (this.urgencyFilter() !== 'ALL') {
-            items = items.filter(item => item.urgencyLevel === this.urgencyFilter());
+        let items = s.items;
+
+        // Channel filter — only show items that have data for the selected channel
+        const ch = this.channelFilter();
+        if (ch !== 'ALL') {
+            items = items.filter(i => i.channels[ch as ChannelId]);
         }
 
-        // Search filter
-        const query = this.searchQuery().toLowerCase();
-        if (query) {
-            items = items.filter(item =>
-                item.product.name.es.toLowerCase().includes(query) ||
-                item.product.sku.toLowerCase().includes(query)
+        // Urgency filter
+        const urgF = this.urgencyFilter();
+        if (urgF !== 'ALL') {
+            items = items.filter(i => i.worstUrgency === urgF);
+        }
+
+        // Search
+        const q = this.searchQuery().toLowerCase().trim();
+        if (q) {
+            items = items.filter(i =>
+                i.sku.toLowerCase().includes(q) ||
+                i.title.toLowerCase().includes(q)
             );
         }
 
-        return items.sort((a, b) => {
-            // Sort by urgency then by projected stockout
-            const urgencyOrder = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
-            const aOrder = urgencyOrder[a.urgencyLevel];
-            const bOrder = urgencyOrder[b.urgencyLevel];
-
-            if (aOrder !== bOrder) return aOrder - bOrder;
-            return a.projectedStockout - b.projectedStockout;
-        });
+        return items;
     });
 
-    stats = computed(() => {
-        const items = this.replenishmentItems();
+    globalStats = computed(() => {
+        const s = this.summary();
+        if (!s) return null;
+        const all = s.items;
         return {
-            total: items.length,
-            critical: items.filter(i => i.urgencyLevel === 'CRITICAL').length,
-            high: items.filter(i => i.urgencyLevel === 'HIGH').length,
+            total:    all.length,
+            critical: all.filter(i => i.worstUrgency === 'CRITICAL').length,
+            high:     all.filter(i => i.worstUrgency === 'HIGH').length,
+            medium:   all.filter(i => i.worstUrgency === 'MEDIUM').length,
             selected: this.selectedItems().size,
-            totalCost: Array.from(this.selectedItems())
-                .map(id => items.find(i => i.product.id === id))
-                .filter(i => i !== undefined)
-                .reduce((sum, item) => sum + (item?.estimatedCost || 0), 0)
+            selectedCost: this.selectedCost(),
+            lastRefreshed: s.lastRefreshed,
         };
     });
 
-    ngOnInit() {
-        this.analyzeReplenishment();
-    }
+    channelStats = computed(() => {
+        const s = this.summary();
+        if (!s) return null;
+        return s.byChannel;
+    });
 
-    async analyzeReplenishment() {
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    ngOnInit() { this.load(); }
+
+    async load() {
         this.isLoading.set(true);
-
+        this.selectedItems.set(new Set());
         try {
-            // Fetch all active products
-            const products = await firstValueFrom(this.productService.getProducts());
+            const result = await this.inventorySvc.loadReplenishmentData();
+            this.summary.set(result);
 
-            const replenishmentItems: ReplenishmentItem[] = [];
-
-            for (const rawProduct of products) {
-                const product = rawProduct as any;
-                // Only analyze products with inventory policy or below reorder point
-                if (!product.inventoryPolicy && product.stockQuantity > 10) continue;
-
-                let policy = product.inventoryPolicy;
-
-                // If no policy exists, generate one on-the-fly
-                if (!policy) {
-                    const generatedPolicy = await this.demandService.generateInventoryPolicy(
-                        product.id!,
-                        30, // Default 30-day lead time
-                        0.95, // 95% service level
-                        500, // $500 MXN order cost
-                        0.20, // 20% holding cost
-                        product.costPrice || product.price * 0.6 // Estimate cost if unknown
-                    );
-
-                    policy = {
-                        targetServiceLevel: generatedPolicy.targetServiceLevel,
-                        safetyStock: generatedPolicy.safetyStock,
-                        safetyStockDays: Math.ceil(generatedPolicy.safetyStock / (generatedPolicy.safetyStock / 7)), // Estimate
-                        reorderPoint: generatedPolicy.reorderPoint,
-                        orderQuantity: generatedPolicy.orderQuantity,
-                        maxStockLevel: generatedPolicy.maxStockLevel,
-                        minStockLevel: generatedPolicy.safetyStock,
-                        leadTimeDays: generatedPolicy.leadTimeDays,
-                        leadTimeVariability: 0,
-                        reviewFrequencyDays: 30,
-                        autoReplenishmentEnabled: false
-                    };
-                }
-
-                const currentStock = product.stockQuantity || 0;
-                const onOrder = 0; // TODO: Fetch from pending POs
-                const projectedStock = currentStock + onOrder;
-
-                // Check if below reorder point
-                if (projectedStock <= policy.reorderPoint) {
-                    const avgDailyDemand = policy.avgDailyDemand || (product.stockQuantity / 90); // Estimate
-                    const projectedStockout = avgDailyDemand > 0 ? Math.floor(currentStock / avgDailyDemand) : 999;
-
-                    // Determine urgency
-                    let urgencyLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-                    if (currentStock === 0) urgencyLevel = 'CRITICAL';
-                    else if (projectedStockout < 3) urgencyLevel = 'CRITICAL';
-                    else if (projectedStockout < 7) urgencyLevel = 'HIGH';
-                    else if (projectedStockout < 14) urgencyLevel = 'MEDIUM';
-
-                    const recommendedOrderQty = policy.orderQuantity || 10;
-                    const unitCost = product.costPrice || product.price * 0.6;
-
-                    replenishmentItems.push({
-                        product,
-                        currentStock,
-                        safetyStock: policy.safetyStock,
-                        reorderPoint: policy.reorderPoint,
-                        onOrder,
-                        projectedStockout,
-                        recommendedOrderQty,
-                        urgencyLevel,
-                        estimatedCost: recommendedOrderQty * unitCost
-                    });
-                }
-            }
-
-            this.replenishmentItems.set(replenishmentItems);
-
-            if (replenishmentItems.length === 0) {
-                this.toast.success('✅ All products are well-stocked!');
+            const critical = result.items.filter(i => i.worstUrgency === 'CRITICAL').length;
+            const high     = result.items.filter(i => i.worstUrgency === 'HIGH').length;
+            if (critical > 0) {
+                this.toast.error(`⚠️ ${critical} producto(s) en estado CRÍTICO`);
+            } else if (high > 0) {
+                this.toast.info(`📦 ${high} producto(s) requieren reposición pronto`);
             } else {
-                this.toast.info(`Found ${replenishmentItems.length} products needing replenishment`);
+                this.toast.success('✅ Inventario en niveles saludables');
             }
-
-        } catch (error: any) {
-            this.toast.error('Error analyzing replenishment: ' + error.message);
-            console.error(error);
+        } catch (err: any) {
+            this.toast.error('Error cargando inventario: ' + err.message);
         } finally {
             this.isLoading.set(false);
         }
     }
 
-    toggleSelection(productId: string) {
-        const selected = new Set(this.selectedItems());
-        if (selected.has(productId)) {
-            selected.delete(productId);
-        } else {
-            selected.add(productId);
-        }
-        this.selectedItems.set(selected);
+    // ── Selection ─────────────────────────────────────────────────────────────
+    toggleItem(sku: string) {
+        const s = new Set(this.selectedItems());
+        s.has(sku) ? s.delete(sku) : s.add(sku);
+        this.selectedItems.set(s);
     }
 
     selectAll() {
-        const allIds = this.filteredItems().map(item => item.product.id!);
-        this.selectedItems.set(new Set(allIds));
+        this.selectedItems.set(new Set(this.filteredItems().map(i => i.sku)));
     }
 
-    clearSelection() {
-        this.selectedItems.set(new Set());
+    clearSelection() { this.selectedItems.set(new Set()); }
+
+    private selectedCost(): number {
+        const s = this.summary();
+        if (!s) return 0;
+        return Array.from(this.selectedItems())
+            .map(sku => s.items.find(i => i.sku === sku))
+            .filter(Boolean)
+            .reduce((sum, i) => sum + (i?.estimatedReplenishCost ?? 0), 0);
     }
 
-    async generatePurchaseOrders() {
+    generatePO() {
         const selected = this.selectedItems();
-        if (selected.size === 0) {
-            this.toast.warning('Please select at least one product');
-            return;
+        if (!selected.size) { this.toast.warning('Selecciona al menos un producto'); return; }
+
+        const items = this.summary()?.items.filter(i => selected.has(i.sku)) ?? [];
+
+        // Group by channel for PO creation
+        const byChannel = new Map<string, typeof items>();
+        for (const item of items) {
+            const ch = this.channelFilter() !== 'ALL'
+                ? this.channelFilter()
+                : Object.keys(item.channels)[0];
+            if (!byChannel.has(ch)) byChannel.set(ch, []);
+            byChannel.get(ch)!.push(item);
         }
 
-        // Group by supplier
-        const items = this.replenishmentItems();
-        const selectedProducts = items.filter(item => selected.has(item.product.id!));
-
-        const bySupplier = new Map<string, ReplenishmentItem[]>();
-
-        selectedProducts.forEach(item => {
-            const supplierId = item.product.supplierId || 'UNKNOWN';
-            if (!bySupplier.has(supplierId)) {
-                bySupplier.set(supplierId, []);
-            }
-            bySupplier.get(supplierId)!.push(item);
-        });
-
-        // TODO: Actually create POs in database
-        // For now, just show summary
-        const poCount = bySupplier.size;
-        const totalItems = selected.size;
-        const totalCost = this.stats().totalCost;
-
+        const cost = this.selectedCost();
         this.toast.success(
-            `✅ Ready to generate ${poCount} Purchase Order(s) for ${totalItems} products. Total: $${totalCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
+            `📋 ${byChannel.size} Orden(es) de Compra para ${items.length} productos — $${cost.toLocaleString('es-MX', { minimumFractionDigits: 0 })} MXN`
         );
-
-        // Navigate to procurement (in real implementation, create draft POs)
-        // this.router.navigate(['/operations/procurement']);
     }
 
-    getUrgencyClass(level: string): string {
-        const classes: Record<string, string> = {
-            'CRITICAL': 'bg-red-900/30 text-red-400 border-red-500/30',
-            'HIGH': 'bg-orange-900/30 text-orange-400 border-orange-500/30',
-            'MEDIUM': 'bg-yellow-900/30 text-yellow-400 border-yellow-500/30',
-            'LOW': 'bg-blue-900/30 text-blue-400 border-blue-500/30'
+    // ── Formatters (delegate to service) ─────────────────────────────────────
+    fmtVelocity(vel: number): string { return this.inventorySvc.formatVelocity(vel); }
+    fmtDays(days: number): string    { return this.inventorySvc.formatDays(days); }
+    urgencyLabel(lvl: string): string{ return this.inventorySvc.urgencyLabel(lvl); }
+
+    urgencyClass(level: string): string {
+        const map: Record<string, string> = {
+            CRITICAL: 'urgency-critical',
+            HIGH:     'urgency-high',
+            MEDIUM:   'urgency-medium',
+            LOW:      'urgency-low',
+            OK:       'urgency-ok',
         };
-        return classes[level] || '';
+        return map[level] ?? 'urgency-ok';
     }
 
-    formatCurrency(amount: number): string {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-            minimumFractionDigits: 0
-        }).format(amount);
+    daysClass(days: number): string {
+        if (days <= 0)   return 'days-critical';
+        if (days < 7)    return 'days-critical';
+        if (days < 14)   return 'days-high';
+        if (days < 30)   return 'days-medium';
+        return 'days-ok';
+    }
+
+    channelEntries(item: ChannelInventoryItem): ChannelStock[] {
+        return (Object.keys(CHANNELS) as ChannelId[])
+            .map(id => item.channels[id])
+            .filter((c): c is ChannelStock => !!c);
+    }
+
+    trackBySku(_: number, item: ChannelInventoryItem) { return item.sku; }
+
+    hasNoReplenishment(item: ChannelInventoryItem): boolean {
+        return this.channelEntries(item).every(c => c.reorderQuantity <= 0);
+    }
+
+    stockBarWidth(stock: number, total: number): string {
+        if (!total) return '0%';
+        return Math.min(100, Math.round((stock / total) * 100)) + '%';
+    }
+
+    coverageBarWidth(days: number): string {
+        if (days >= 9999) return '100%';
+        return Math.min(100, Math.round((days / 60) * 100)) + '%';
+    }
+
+    coverageBarColor(days: number): string {
+        if (days < 7)  return '#ef4444';
+        if (days < 14) return '#f97316';
+        if (days < 30) return '#eab308';
+        return '#10b981';
     }
 }

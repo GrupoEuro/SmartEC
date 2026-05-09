@@ -324,77 +324,28 @@ export const meliCompetitorScanCron = functions
         }
     });
 
-// ─── CORS helper ─────────────────────────────────────────────────────────────
-
-const ALLOWED_ORIGINS = [
-    'https://app-importadora-euro.web.app',
-    'https://app-importadora-euro.firebaseapp.com',
-    'http://localhost:4200',
-    'http://localhost:4000',
-];
-
-function setCors(req: functions.https.Request, res: any): boolean {
-    const origin = req.headers.origin as string | undefined;
-    if (origin && ALLOWED_ORIGINS.includes(origin)) {
-        res.set('Access-Control-Allow-Origin', origin);
-    } else {
-        res.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
-    }
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Max-Age', '3600');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return true;
-    }
-    return false;
-}
-
-/** Verify Firebase ID token from Authorization header */
-async function verifyToken(req: functions.https.Request): Promise<admin.auth.DecodedIdToken> {
-    const authHeader = req.headers.authorization ?? '';
-    const idToken    = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (!idToken) throw new Error('unauthenticated');
-    return admin.auth().verifyIdToken(idToken);
-}
-
-// ─── Manual scan trigger ─────────────────────────────────────────────────────
-
-/** Manual trigger from admin UI */
+/** Manual trigger — from Operations UI */
 export const meliCompetitorScanManual = functions
     .runWith({ timeoutSeconds: 540, memory: '512MB' })
-    .https.onRequest(async (req, res) => {
-        if (setCors(req, res)) return;
-        try {
-            await verifyToken(req);
-        } catch {
-            res.status(401).json({ error: 'unauthenticated' });
-            return;
-        }
+    .https.onCall(async (_data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
         try {
             const result = await runCompetitorScan('manual');
-            res.status(200).json({ ok: true, ...result });
+            return { ok: true, ...result };
         } catch (err: any) {
-            console.error('[CompetitorIntel:Manual] Error:', err.message);
-            res.status(500).json({ error: err.message });
+            throw new functions.https.HttpsError('internal', err.message);
         }
     });
 
-// ─── Get intelligence data ────────────────────────────────────────────────────
-
+/**
+ * Callable: returns aggregated competitor intelligence for the dashboard.
+ */
 export const getCompetitorIntelligence = functions
     .runWith({ timeoutSeconds: 60, memory: '256MB' })
-    .https.onRequest(async (req, res) => {
-        if (setCors(req, res)) return;
-        try {
-            await verifyToken(req);
-        } catch {
-            res.status(401).json({ error: 'unauthenticated' });
-            return;
-        }
+    .https.onCall(async (data, context) => {
+        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
 
-        const body = req.body ?? {};
-        const days = Math.min(Number(body.days ?? 7), 30);
+        const days = Math.min(Number(data?.days ?? 7), 30);
 
         const snapshotsQuery = await db.collection('competitor_snapshots')
             .orderBy('date', 'desc')
@@ -402,7 +353,7 @@ export const getCompetitorIntelligence = functions
             .get();
 
         if (snapshotsQuery.empty) {
-            res.status(200).json({
+            return {
                 ok:              true,
                 hasData:         false,
                 latestSnapshot:  null,
@@ -410,8 +361,7 @@ export const getCompetitorIntelligence = functions
                 priceMap:        [],
                 trends:          [],
                 trackedSellers:  [],
-            });
-            return;
+            };
         }
 
         const latestDoc  = snapshotsQuery.docs[0];
@@ -437,7 +387,7 @@ export const getCompetitorIntelligence = functions
             });
         }
 
-        // ── Velocity Ranking ─────────────────────────────────────────────
+        // ── Velocity Ranking ──────────────────────────────────────────────
         const velocityMap = new Map<string, VelocityEntry>();
         for (const item of latestItems) {
             const priorSold = priorItemMap.get(item.itemId) ?? item.soldQuantity;
@@ -528,7 +478,7 @@ export const getCompetitorIntelligence = functions
             avgPrice: s.prices.length ? s.prices.reduce((a, b) => a + b, 0) / s.prices.length : 0,
         }));
 
-        res.status(200).json({
+        return {
             ok:             true,
             hasData:        true,
             latestSnapshot: { ...latestMeta, date: latestDate, priorDate },
@@ -536,30 +486,20 @@ export const getCompetitorIntelligence = functions
             trends,
             trackedSellers,
             periodDays:     days,
-        });
+        };
     });
 
-// ─── Update config ────────────────────────────────────────────────────────────
-
-export const updateCompetitorConfig = functions
-    .https.onRequest(async (req, res) => {
-        if (setCors(req, res)) return;
-        try {
-            await verifyToken(req);
-        } catch {
-            res.status(401).json({ error: 'unauthenticated' });
-            return;
-        }
-        const { keywords, trackedSellers, ourSellerId, maxResultsPerKeyword, enabled } = req.body ?? {};
-        await db.collection('competitor_config').doc('default').set({
-            keywords:             keywords ?? [],
-            trackedSellers:       trackedSellers ?? [],
-            ourSellerId:          ourSellerId ?? '',
-            site:                 'MLM',
-            maxResultsPerKeyword: Math.min(Number(maxResultsPerKeyword ?? 50), 50),
-            enabled:              enabled !== false,
-        }, { merge: true });
-        res.status(200).json({ ok: true });
-    });
-
-
+/** Update competitor scan configuration */
+export const updateCompetitorConfig = functions.https.onCall(async (data, context) => {
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+    const { keywords, trackedSellers, ourSellerId, maxResultsPerKeyword, enabled } = data;
+    await db.collection('competitor_config').doc('default').set({
+        keywords:             keywords ?? [],
+        trackedSellers:       trackedSellers ?? [],
+        ourSellerId:          ourSellerId ?? '',
+        site:                 'MLM',
+        maxResultsPerKeyword: Math.min(Number(maxResultsPerKeyword ?? 50), 50),
+        enabled:              enabled !== false,
+    }, { merge: true });
+    return { ok: true };
+});

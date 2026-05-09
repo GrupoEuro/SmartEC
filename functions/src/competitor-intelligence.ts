@@ -81,33 +81,55 @@ async function getAppToken(): Promise<string> {
     const configDoc = await db.collection('config').doc('integrations').get();
     const meli = configDoc.data()?.meli ?? {};
 
-    // Prefer app-level (client_credentials) token — better for public data reads
-    const cached    = meli.appAccessToken;
-    const cachedExp = meli.appTokenExpiresAt ?? 0;
-    if (cached && (cachedExp - Date.now()) > 10 * 60 * 1000) return cached as string;
-
-    const appId       = meli.appId;
-    const clientSecret = meli.clientSecret;
-    if (!appId || !clientSecret) {
-        // Fallback: user OAuth token
-        if (meli.accessToken) return meli.accessToken as string;
-        throw new Error('[CompetitorIntel] No MeLi credentials configured. Connect MeLi in /admin/integrations.');
+    // 1. Use cached access token if still fresh (> 10 min remaining)
+    const cached    = meli.accessToken as string | undefined;
+    const cachedExp = meli.expiresAt ?? 0;  // stored as Unix ms
+    if (cached && (Number(cachedExp) - Date.now()) > 10 * 60 * 1000) {
+        return cached;
     }
 
-    const res  = await fetch('https://api.mercadolibre.com/oauth/token', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-        body:    new URLSearchParams({ grant_type: 'client_credentials', client_id: appId, client_secret: clientSecret }).toString(),
-    });
-    const data = await res.json() as any;
-    if (!res.ok || !data.access_token) throw new Error('[CompetitorIntel] Token fetch failed: ' + JSON.stringify(data));
+    // 2. Refresh via refresh_token if available
+    const appId       = meli.appId       as string | undefined;
+    const clientSecret = meli.clientSecret as string | undefined;
+    const refreshToken = meli.refreshToken as string | undefined;
 
-    const expiresAt = Date.now() + (data.expires_in * 1000);
-    await db.collection('config').doc('integrations').set(
-        { meli: { appAccessToken: data.access_token, appTokenExpiresAt: expiresAt } },
-        { merge: true }
-    );
-    return data.access_token as string;
+    if (appId && clientSecret && refreshToken) {
+        console.log('[CompetitorIntel] Refreshing MeLi access token...');
+        const res  = await fetch('https://api.mercadolibre.com/oauth/token', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body:    new URLSearchParams({
+                grant_type:    'refresh_token',
+                client_id:     appId,
+                client_secret: clientSecret,
+                refresh_token: refreshToken,
+            }).toString(),
+        });
+        const data = await res.json() as any;
+        if (res.ok && data.access_token) {
+            const expiresAt = Date.now() + (data.expires_in * 1000);
+            await db.collection('config').doc('integrations').set(
+                { meli: {
+                    accessToken:  data.access_token,
+                    refreshToken: data.refresh_token ?? refreshToken,
+                    expiresAt,
+                    appAccessToken:     data.access_token,
+                    appTokenExpiresAt:  expiresAt,
+                } },
+                { merge: true }
+            );
+            console.log('[CompetitorIntel] Token refreshed successfully.');
+            return data.access_token as string;
+        }
+        console.warn('[CompetitorIntel] Token refresh failed:', JSON.stringify(data).slice(0, 200));
+    }
+
+    // 3. Final fallback: use whatever token is stored even if potentially expired
+    if (cached) {
+        console.warn('[CompetitorIntel] Using potentially-expired token as fallback.');
+        return cached;
+    }
+    throw new Error('[CompetitorIntel] No MeLi credentials configured. Connect MeLi in /admin/integrations.');
 }
 
 async function meliGet(path: string, token: string): Promise<any> {
@@ -133,6 +155,12 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // ─── Core scan logic ────────────────────────────────────────────────────────
 
+/**
+ * Scan strategy (avoids the blocked /sites/MLM/search endpoint):
+ * 1. For each keyword → /products/search (catalog products, always accessible)
+ * 2. Batch fetch actual listings via /items?ids=...
+ * 3. For each tracked seller → /users/{sellerId}/items/search + /items?ids=...
+ */
 async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promise<{
     date: string; totalScanned: number; keywords: string[]; durationMs: number;
 }> {
@@ -141,21 +169,15 @@ async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promi
 
     // Load config
     const configDoc = await db.collection('competitor_config').doc('default').get();
+
     if (!configDoc.exists) {
-        // Create default config on first run
         await db.collection('competitor_config').doc('default').set({
-            keywords: [
-                'llantas moto',
-                'llanta moto 110/70-17',
-                'llanta moto 130/70-17',
-                'llanta scooter',
-                'llantas auto económicas',
-            ],
-            trackedSellers: [],
-            ourSellerId:    '',
-            site:           'MLM',
+            keywords:             ['llantas moto', 'llanta moto 110/70-17', 'llanta moto 130/70-17', 'llanta scooter', 'llantas auto económicas'],
+            trackedSellers:       [],
+            ourSellerId:          '',
+            site:                 'MLM',
             maxResultsPerKeyword: 50,
-            enabled:        true,
+            enabled:              true,
         } satisfies CompetitorConfig);
         console.log('[CompetitorIntel] Default config created.');
     }
@@ -166,114 +188,134 @@ async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promi
         return { date: '', totalScanned: 0, keywords: [], durationMs: 0 };
     }
 
-    const token   = await getAppToken();
-    const site    = config.site || 'MLM';
-    const limit   = Math.min(config.maxResultsPerKeyword || 50, 50);
-    const ourId   = config.ourSellerId || '';
+    const token  = await getAppToken();
+    const site   = config.site || 'MLM';
+    const ourId  = config.ourSellerId || '';
 
-    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    const today     = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
     const scannedAt = admin.firestore.Timestamp.now();
 
-    const allItems: CompetitorItem[] = [];
+    const allItems: CompetitorItem[]  = [];
     const sellerCache = new Map<string, { nickname: string; level: string }>();
+    const seenItemIds = new Set<string>();
 
+    /**
+     * Helper: fetch up to 20 items at once via /items?ids=...
+     * Returns enriched item records.
+     */
+    async function batchFetchItems(
+        itemIds: string[], keyword: string, startPos: number
+    ): Promise<CompetitorItem[]> {
+        if (!itemIds.length) return [];
+        const res = await meliGet(`/items?ids=${itemIds.join(',')}`, token);
+        const results: any[] = Array.isArray(res) ? res : [];
+        const out: CompetitorItem[] = [];
+
+        for (let i = 0; i < results.length; i++) {
+            const entry = results[i];
+            if (entry.code !== 200) continue;
+            const r = entry.body ?? {};
+            const sellerId = String(r.seller_id ?? '');
+            if (ourId && sellerId === ourId) continue;
+            if (seenItemIds.has(r.id)) continue;
+            seenItemIds.add(r.id);
+
+            // Seller info (cached)
+            if (!sellerCache.has(sellerId) && sellerId) {
+                try {
+                    const su = await meliGet(`/users/${sellerId}`, token);
+                    sellerCache.set(sellerId, {
+                        nickname: su.nickname ?? sellerId,
+                        level:    su.seller_reputation?.level_id ?? 'unknown',
+                    });
+                } catch {
+                    sellerCache.set(sellerId, { nickname: sellerId, level: 'unknown' });
+                }
+                await sleep(30);
+            }
+            const seller  = sellerCache.get(sellerId) ?? { nickname: sellerId, level: 'unknown' };
+            const shipping = r.shipping?.free_shipping ? 'free' : 'paid';
+
+            out.push({
+                itemId:         r.id,
+                title:          r.title ?? '',
+                price:          Number(r.price ?? 0),
+                currencyId:     r.currency_id ?? 'MXN',
+                soldQuantity:   Number(r.sold_quantity ?? 0),
+                availableQty:   Number(r.available_quantity ?? 0),
+                condition:      r.condition ?? 'new',
+                sellerId,
+                sellerNickname: seller.nickname,
+                sellerLevel:    seller.level,
+                thumbnail:      r.thumbnail ?? '',
+                permalink:      r.permalink ?? '',
+                shipping,
+                keyword,
+                searchPosition: startPos + i + 1,
+                scannedAt,
+            });
+        }
+        return out;
+    }
+
+    // ── 1. Keyword scan via /products/search → items ─────────────────────────
     for (const keyword of config.keywords) {
-        console.log(`[CompetitorIntel] Scanning keyword: "${keyword}"`);
+        console.log(`[CompetitorIntel] Products search for keyword: "${keyword}"`);
         try {
-            const searchRes = await meliGet(
-                `/sites/${site}/search?q=${encodeURIComponent(keyword)}&limit=${limit}&sort=relevance`,
+            // /products/search returns catalog products — each product links to sellers
+            const prodRes = await meliGet(
+                `/products/search?site_id=${site}&q=${encodeURIComponent(keyword)}&limit=20`,
                 token
             );
-            const results: any[] = searchRes.results ?? [];
+            const products: any[] = prodRes.results ?? [];
+            console.log(`[CompetitorIntel] Keyword "${keyword}": ${products.length} catalog products found.`);
 
-            for (let pos = 0; pos < results.length; pos++) {
-                const r = results[pos];
-                const sellerId = String(r.seller?.id ?? '');
-
-                // Skip our own listings
-                if (ourId && sellerId === ourId) continue;
-
-                // Fetch seller details (cached)
-                if (!sellerCache.has(sellerId) && sellerId) {
-                    try {
-                        const sellerRes = await meliGet(`/users/${sellerId}`, token);
-                        sellerCache.set(sellerId, {
-                            nickname: sellerRes.nickname ?? sellerId,
-                            level:    sellerRes.seller_reputation?.level_id ?? 'unknown',
-                        });
-                        await sleep(50); // gentle pacing — ~1200 req/min max
-                    } catch {
-                        sellerCache.set(sellerId, { nickname: sellerId, level: 'unknown' });
+            // For each catalog product, find its live listings via /items?catalog_product_id=
+            // (not directly available via batch — use product's children items if present)
+            // Better: gather item IDs from buy_box_winner + search within category
+            const prodItemIds: string[] = [];
+            for (const prod of products) {
+                const bw = prod.buy_box_winner;
+                if (bw?.item_id) prodItemIds.push(bw.item_id);
+                // Also add any children items
+                if (Array.isArray(prod.children_ids)) {
+                    for (const cid of prod.children_ids.slice(0, 3)) {
+                        if (cid.startsWith('MLM')) prodItemIds.push(cid);
                     }
                 }
-                const seller = sellerCache.get(sellerId) ?? { nickname: sellerId, level: 'unknown' };
-
-                // Determine shipping
-                const shipping = r.shipping?.free_shipping ? 'free' : 'paid';
-
-                allItems.push({
-                    itemId:         r.id,
-                    title:          r.title,
-                    price:          Number(r.price ?? 0),
-                    currencyId:     r.currency_id ?? 'MXN',
-                    soldQuantity:   Number(r.sold_quantity ?? 0),
-                    availableQty:   Number(r.available_quantity ?? 0),
-                    condition:      r.condition ?? 'new',
-                    sellerId,
-                    sellerNickname: seller.nickname,
-                    sellerLevel:    seller.level,
-                    thumbnail:      r.thumbnail ?? '',
-                    permalink:      r.permalink ?? '',
-                    shipping,
-                    keyword,
-                    searchPosition: pos + 1,
-                    scannedAt,
-                });
             }
 
-            console.log(`[CompetitorIntel] Keyword "${keyword}": ${results.length} results processed.`);
-            await sleep(200); // pause between keyword searches
+            // Batch fetch in groups of 20
+            for (const batch of chunk(prodItemIds.filter((id, i, a) => a.indexOf(id) === i), 20)) {
+                const items = await batchFetchItems(batch, keyword, allItems.length);
+                allItems.push(...items);
+                await sleep(100);
+            }
+
+            await sleep(150);
         } catch (err: any) {
             console.error(`[CompetitorIntel] Error scanning keyword "${keyword}":`, err.message);
         }
     }
 
-    // Also deep-scan tracked sellers
+    // ── 2. Tracked seller scan via /users/{id}/items/search ──────────────────
     for (const sellerId of (config.trackedSellers ?? [])) {
         if (ourId && sellerId === ourId) continue;
+        console.log(`[CompetitorIntel] Scanning tracked seller: ${sellerId}`);
         try {
-            const sellerRes = await meliGet(
-                `/sites/${site}/search?seller_id=${sellerId}&limit=50&sort=price_asc`,
+            // Get seller item IDs
+            const sellerItemsRes = await meliGet(
+                `/users/${sellerId}/items/search?limit=50`,
                 token
             );
-            const results: any[] = sellerRes.results ?? [];
-            if (!sellerCache.has(sellerId)) {
-                const su = await meliGet(`/users/${sellerId}`, token);
-                sellerCache.set(sellerId, { nickname: su.nickname ?? sellerId, level: su.seller_reputation?.level_id ?? 'unknown' });
+            const sellerItemIds: string[] = sellerItemsRes.results ?? [];
+
+            // Batch fetch item details
+            for (const batch of chunk(sellerItemIds, 20)) {
+                const items = await batchFetchItems(batch, `__seller:${sellerId}`, allItems.length);
+                allItems.push(...items);
+                await sleep(150);
             }
-            const seller = sellerCache.get(sellerId)!;
-            for (let pos = 0; pos < results.length; pos++) {
-                const r = results[pos];
-                allItems.push({
-                    itemId:         r.id,
-                    title:          r.title,
-                    price:          Number(r.price ?? 0),
-                    currencyId:     r.currency_id ?? 'MXN',
-                    soldQuantity:   Number(r.sold_quantity ?? 0),
-                    availableQty:   Number(r.available_quantity ?? 0),
-                    condition:      r.condition ?? 'new',
-                    sellerId,
-                    sellerNickname: seller.nickname,
-                    sellerLevel:    seller.level,
-                    thumbnail:      r.thumbnail ?? '',
-                    permalink:      r.permalink ?? '',
-                    shipping:       r.shipping?.free_shipping ? 'free' : 'paid',
-                    keyword:        `__seller:${sellerId}`,
-                    searchPosition: pos + 1,
-                    scannedAt,
-                });
-            }
-            await sleep(300);
         } catch (err: any) {
             console.error(`[CompetitorIntel] Error scanning tracked seller ${sellerId}:`, err.message);
         }
@@ -283,8 +325,6 @@ async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promi
     console.log(`[CompetitorIntel] Scan complete: ${allItems.length} items in ${durationMs}ms`);
 
     // ── Write snapshot to Firestore ──────────────────────────────────────────
-    // Use a flat collection: competitor_snapshots/{date}
-    // Each item is a document inside a subcollection items/{itemId}
     const snapshotRef = db.collection('competitor_snapshots').doc(today);
     await snapshotRef.set({
         date: today,
@@ -297,6 +337,7 @@ async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promi
 
     // Batch-write items in chunks of 400 to stay under Firestore limits
     const itemBatches = chunk(allItems, 400);
+
     for (const batch of itemBatches) {
         const fb = db.batch();
         for (const item of batch) {

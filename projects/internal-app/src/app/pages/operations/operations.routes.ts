@@ -163,6 +163,11 @@ export const operationsRoutes: Routes = [
                 loadComponent: () => import('./metrics/channel-report/channel-report.component').then(m => m.ChannelReportComponent),
                 title: 'Reporte de Canal'
             },
+            {
+                path: 'metrics/competitor-intel',
+                loadComponent: () => import('./metrics/competitor-intel/competitor-intel.component').then(m => m.CompetitorIntelComponent),
+                title: 'Inteligencia Competitiva — MercadoLibre'
+            },
             // Channels & Integrations
             {
                 path: 'channels/mercadolibre',

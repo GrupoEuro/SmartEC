@@ -146,14 +146,6 @@ export const ADMIN_NAVIGATION: NavItem[] = [
                 icon: 'target',
                 route: '/admin/marketing/campaigns'
             },
-            // Competitor Intelligence
-            {
-                id: 'competitor_intel',
-                title: 'ADMIN.SIDEBAR.COMPETITOR_INTEL',
-                icon: 'radar',
-                route: '/admin/marketing/competitor-intel',
-                badge: { text: 'MeLi', color: 'bg-yellow-500' }
-            },
             // ── Jump to Marketing Hub ──────────────────────────────
             {
                 id: 'go_marketing_hub',

@@ -245,6 +245,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 icon: 'sparkles',
                 route: '/operations/metrics/ai-insights',
                 badge: { text: 'Beta', color: 'bg-indigo-500' }
+            },
+            {
+                id: 'metrics_competitor_intel',
+                title: 'Inteligencia Competitiva',
+                icon: 'radar',
+                route: '/operations/metrics/competitor-intel',
+                badge: { text: 'MeLi', color: 'bg-yellow-500' }
             }
         ]
     },

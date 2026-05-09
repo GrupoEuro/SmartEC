@@ -1463,3 +1463,110 @@ SyntaxError: Identifier 'BQ_DATASET' has already been declared
 [info] Serving at port 8190
 
 [error] ⬢  functions: Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization' {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'"}}
+[debug] [2026-05-09T13:34:24.730Z] DEBUG: File /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/src/competitor-intelligence.ts changed, reloading triggers
+[debug] [2026-05-09T13:34:26.544Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-05-09T13:34:32.747Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "lint": "eslint --ext .js,.ts .",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
+    "@google-cloud/vertexai": "^1.12.0",
+    "@google/generative-ai": "^0.24.1",
+    "facturapi": "^4.15.0",
+    "firebase-admin": "^11.8.0",
+    "firebase-functions": "4.9.0",
+    "mercadopago": "^2.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.12.0",
+    "@typescript-eslint/parser": "^5.12.0",
+    "eslint": "^8.9.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4",
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^4.9.0"
+  },
+  "private": true
+}
+[debug] [2026-05-09T13:34:32.748Z] Building nodejs source
+[debug] [2026-05-09T13:34:32.760Z] Failed to find version of module node: reached end of search path /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/node_modules
+[warn] ⚠  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2026-05-09T13:34:32.835Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-09T13:34:32.924Z] Found firebase-functions binary at '/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8186
+
+[error] ⬢  functions: Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization' {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'"}}
+[debug] [2026-05-09T13:35:16.875Z] DEBUG: File /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/src/competitor-intelligence.ts changed, reloading triggers
+[debug] [2026-05-09T13:35:17.945Z] Validating nodejs source
+[debug] [2026-05-09T13:35:28.009Z] checkFunctionsSDKVersion was unable to fetch information from NPM Error: spawnSync npm ETIMEDOUT
+    at Object.spawnSync (node:internal/child_process:1123:20)
+    at Object.spawnSync (node:child_process:877:24)
+    at Function.spawnSync [as sync] (/usr/local/lib/node_modules/firebase-tools/node_modules/cross-spawn/index.js:26:23)
+    at Object.getLatestSDKVersion (/usr/local/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js:54:25)
+    at Object.checkFunctionsSDKVersion (/usr/local/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js:74:32)
+    at Delegate.validate (/usr/local/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:88:20)
+    at FunctionsEmulator.discoverTriggers (/usr/local/lib/node_modules/firebase-tools/lib/emulator/functionsEmulator.js:319:35)
+    at async FunctionsEmulator.loadTriggers (/usr/local/lib/node_modules/firebase-tools/lib/emulator/functionsEmulator.js:361:34)
+[debug] [2026-05-09T13:35:28.016Z] > [functions] package.json contents: {
+  "name": "functions",
+  "scripts": {
+    "lint": "eslint --ext .js,.ts .",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
+    "@google-cloud/vertexai": "^1.12.0",
+    "@google/generative-ai": "^0.24.1",
+    "facturapi": "^4.15.0",
+    "firebase-admin": "^11.8.0",
+    "firebase-functions": "4.9.0",
+    "mercadopago": "^2.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.12.0",
+    "@typescript-eslint/parser": "^5.12.0",
+    "eslint": "^8.9.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.25.4",
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^4.9.0"
+  },
+  "private": true
+}
+[debug] [2026-05-09T13:35:28.017Z] Building nodejs source
+[debug] [2026-05-09T13:35:28.018Z] Failed to find version of module node: reached end of search path /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/node_modules
+[warn] ⚠  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2026-05-09T13:35:28.025Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-05-09T13:35:28.032Z] Found firebase-functions binary at '/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8444
+
+[error] ⬢  functions: Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization' {"metadata":{"emulator":{"name":"functions"},"message":"Failed to load function definition from source: FirebaseError: User code failed to load. Cannot determine backend specification. Timeout after 10000. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'"}}

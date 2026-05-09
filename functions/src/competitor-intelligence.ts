@@ -324,71 +324,110 @@ export const meliCompetitorScanCron = functions
         }
     });
 
+// ─── CORS helper ─────────────────────────────────────────────────────────────
+
+const ALLOWED_ORIGINS = [
+    'https://app-importadora-euro.web.app',
+    'https://app-importadora-euro.firebaseapp.com',
+    'http://localhost:4200',
+    'http://localhost:4000',
+];
+
+function setCors(req: functions.https.Request, res: any): boolean {
+    const origin = req.headers.origin as string | undefined;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.set('Access-Control-Allow-Origin', origin);
+    } else {
+        res.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+    }
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return true;
+    }
+    return false;
+}
+
+/** Verify Firebase ID token from Authorization header */
+async function verifyToken(req: functions.https.Request): Promise<admin.auth.DecodedIdToken> {
+    const authHeader = req.headers.authorization ?? '';
+    const idToken    = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!idToken) throw new Error('unauthenticated');
+    return admin.auth().verifyIdToken(idToken);
+}
+
+// ─── Manual scan trigger ─────────────────────────────────────────────────────
+
 /** Manual trigger from admin UI */
 export const meliCompetitorScanManual = functions
     .runWith({ timeoutSeconds: 540, memory: '512MB' })
-    .https.onCall(async (_data, context) => {
-        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+    .https.onRequest(async (req, res) => {
+        if (setCors(req, res)) return;
+        try {
+            await verifyToken(req);
+        } catch {
+            res.status(401).json({ error: 'unauthenticated' });
+            return;
+        }
         try {
             const result = await runCompetitorScan('manual');
-            return { ok: true, ...result };
+            res.status(200).json({ ok: true, ...result });
         } catch (err: any) {
-            throw new functions.https.HttpsError('internal', err.message);
+            console.error('[CompetitorIntel:Manual] Error:', err.message);
+            res.status(500).json({ error: err.message });
         }
     });
 
-/**
- * Callable: returns aggregated competitor intelligence for the admin dashboard.
- *
- * Returns:
- *  - latestSnapshot  metadata of the most recent scan
- *  - priceMap        our items vs top competitor prices by keyword
- *  - velocityRanking top sellers by estimated units sold (snapshot delta)
- *  - trends          keyword-level summary (avg price, num sellers, lowest price)
- *  - trackedSellers  deep-tracked seller summaries
- */
+// ─── Get intelligence data ────────────────────────────────────────────────────
+
 export const getCompetitorIntelligence = functions
     .runWith({ timeoutSeconds: 60, memory: '256MB' })
-    .https.onCall(async (data, context) => {
-        if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
+    .https.onRequest(async (req, res) => {
+        if (setCors(req, res)) return;
+        try {
+            await verifyToken(req);
+        } catch {
+            res.status(401).json({ error: 'unauthenticated' });
+            return;
+        }
 
-        const days = Math.min(Number(data?.days ?? 7), 30);
+        const body = req.body ?? {};
+        const days = Math.min(Number(body.days ?? 7), 30);
 
-        // Fetch the most recent snapshot date
         const snapshotsQuery = await db.collection('competitor_snapshots')
             .orderBy('date', 'desc')
             .limit(1)
             .get();
 
         if (snapshotsQuery.empty) {
-            return {
-                ok:             true,
-                hasData:        false,
-                latestSnapshot: null,
+            res.status(200).json({
+                ok:              true,
+                hasData:         false,
+                latestSnapshot:  null,
                 velocityRanking: [],
-                priceMap:       [],
-                trends:         [],
-                trackedSellers: [],
-            };
+                priceMap:        [],
+                trends:          [],
+                trackedSellers:  [],
+            });
+            return;
         }
 
         const latestDoc  = snapshotsQuery.docs[0];
         const latestMeta = latestDoc.data() as Omit<CompetitorSnapshot, 'items'>;
         const latestDate = latestMeta.date;
 
-        // Also fetch snapshot from N days ago (for velocity delta)
         const priorDate = (() => {
             const d = new Date(latestDate + 'T12:00:00Z');
             d.setDate(d.getDate() - days);
             return d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
         })();
 
-        // Load latest items
         const latestItemsSnap = await latestDoc.ref.collection('items').get();
         const latestItems = latestItemsSnap.docs.map(d => d.data() as CompetitorItem);
 
-        // Load prior items (for delta)
-        let priorItemMap = new Map<string, number>(); // itemId → soldQuantity
+        let priorItemMap = new Map<string, number>();
         const priorSnap = await db.collection('competitor_snapshots').doc(priorDate).get();
         if (priorSnap.exists) {
             const priorItemsSnap = await priorSnap.ref.collection('items').get();
@@ -398,31 +437,30 @@ export const getCompetitorIntelligence = functions
             });
         }
 
-        // ── Velocity Ranking (top 20 by estimated revenue in period) ──────
+        // ── Velocity Ranking ─────────────────────────────────────────────
         const velocityMap = new Map<string, VelocityEntry>();
         for (const item of latestItems) {
-            const priorSold  = priorItemMap.get(item.itemId) ?? item.soldQuantity;
-            const delta      = Math.max(0, item.soldQuantity - priorSold);
-            const revenue    = delta * item.price;
-
-            const existing = velocityMap.get(item.itemId);
+            const priorSold = priorItemMap.get(item.itemId) ?? item.soldQuantity;
+            const delta     = Math.max(0, item.soldQuantity - priorSold);
+            const revenue   = delta * item.price;
+            const existing  = velocityMap.get(item.itemId);
             if (!existing || revenue > existing.revenueEstimate) {
                 velocityMap.set(item.itemId, {
-                    itemId:           item.itemId,
-                    title:            item.title,
-                    sellerId:         item.sellerId,
-                    sellerNickname:   item.sellerNickname,
-                    sellerLevel:      item.sellerLevel,
-                    price:            item.price,
-                    soldQtyDelta:     delta,
-                    soldQtyTotal:     item.soldQuantity,
-                    avgPrice:         item.price,
-                    revenueEstimate:  revenue,
-                    keyword:          item.keyword,
-                    permalink:        item.permalink,
-                    thumbnail:        item.thumbnail,
-                    searchPosition:   item.searchPosition,
-                    lastScanned:      latestDate,
+                    itemId:          item.itemId,
+                    title:           item.title,
+                    sellerId:        item.sellerId,
+                    sellerNickname:  item.sellerNickname,
+                    sellerLevel:     item.sellerLevel,
+                    price:           item.price,
+                    soldQtyDelta:    delta,
+                    soldQtyTotal:    item.soldQuantity,
+                    avgPrice:        item.price,
+                    revenueEstimate: revenue,
+                    keyword:         item.keyword,
+                    permalink:       item.permalink,
+                    thumbnail:       item.thumbnail,
+                    searchPosition:  item.searchPosition,
+                    lastScanned:     latestDate,
                 });
             }
         }
@@ -450,19 +488,19 @@ export const getCompetitorIntelligence = functions
             keywordMap.set(item.keyword, kw);
         }
         const trends = [...keywordMap.values()].map(kw => ({
-            keyword:         kw.keyword,
-            listingCount:    kw.count,
-            uniqueSellers:   kw.sellers.size,
-            minPrice:        Math.min(...kw.prices),
-            maxPrice:        Math.max(...kw.prices),
-            avgPrice:        kw.prices.reduce((a, b) => a + b, 0) / kw.prices.length,
-            medianPrice:     (() => {
+            keyword:           kw.keyword,
+            listingCount:      kw.count,
+            uniqueSellers:     kw.sellers.size,
+            minPrice:          Math.min(...kw.prices),
+            maxPrice:          Math.max(...kw.prices),
+            avgPrice:          kw.prices.reduce((a, b) => a + b, 0) / kw.prices.length,
+            medianPrice:       (() => {
                 const sorted = [...kw.prices].sort((a, b) => a - b);
                 const mid = Math.floor(sorted.length / 2);
                 return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
             })(),
             totalSoldLifetime: kw.totalSold,
-            freeShippingPct: kw.count > 0 ? (kw.freeShipping / kw.count) * 100 : 0,
+            freeShippingPct:   kw.count > 0 ? (kw.freeShipping / kw.count) * 100 : 0,
         }));
 
         // ── Tracked Seller Summaries ─────────────────────────────────────
@@ -490,28 +528,38 @@ export const getCompetitorIntelligence = functions
             avgPrice: s.prices.length ? s.prices.reduce((a, b) => a + b, 0) / s.prices.length : 0,
         }));
 
-        return {
-            ok:              true,
-            hasData:         true,
-            latestSnapshot:  { ...latestMeta, date: latestDate, priorDate },
+        res.status(200).json({
+            ok:             true,
+            hasData:        true,
+            latestSnapshot: { ...latestMeta, date: latestDate, priorDate },
             velocityRanking,
             trends,
             trackedSellers,
-            periodDays:      days,
-        };
+            periodDays:     days,
+        });
     });
 
-/** Update competitor scan configuration */
-export const updateCompetitorConfig = functions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required.');
-    const { keywords, trackedSellers, ourSellerId, maxResultsPerKeyword, enabled } = data;
-    await db.collection('competitor_config').doc('default').set({
-        keywords:             keywords ?? [],
-        trackedSellers:       trackedSellers ?? [],
-        ourSellerId:          ourSellerId ?? '',
-        site:                 'MLM',
-        maxResultsPerKeyword: Math.min(Number(maxResultsPerKeyword ?? 50), 50),
-        enabled:              enabled !== false,
-    }, { merge: true });
-    return { ok: true };
-});
+// ─── Update config ────────────────────────────────────────────────────────────
+
+export const updateCompetitorConfig = functions
+    .https.onRequest(async (req, res) => {
+        if (setCors(req, res)) return;
+        try {
+            await verifyToken(req);
+        } catch {
+            res.status(401).json({ error: 'unauthenticated' });
+            return;
+        }
+        const { keywords, trackedSellers, ourSellerId, maxResultsPerKeyword, enabled } = req.body ?? {};
+        await db.collection('competitor_config').doc('default').set({
+            keywords:             keywords ?? [],
+            trackedSellers:       trackedSellers ?? [],
+            ourSellerId:          ourSellerId ?? '',
+            site:                 'MLM',
+            maxResultsPerKeyword: Math.min(Number(maxResultsPerKeyword ?? 50), 50),
+            enabled:              enabled !== false,
+        }, { merge: true });
+        res.status(200).json({ ok: true });
+    });
+
+

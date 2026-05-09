@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { Functions, httpsCallable } from '@angular/fire/functions';
+import { Auth } from '@angular/fire/auth';
+import { getIdToken } from '@angular/fire/auth';
 
 export interface CompetitorVelocityEntry {
     itemId:          string;
@@ -57,25 +58,49 @@ export interface CompetitorConfig {
     enabled:              boolean;
 }
 
+const FUNCTIONS_BASE = 'https://us-central1-tiendapraxis.cloudfunctions.net';
+
 @Injectable({ providedIn: 'root' })
 export class CompetitorIntelligenceService {
-    private fns = inject(Functions);
+    private auth = inject(Auth);
+
+    private async authHeader(): Promise<{ Authorization: string; 'Content-Type': string }> {
+        const user = this.auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const token = await getIdToken(user);
+        return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    }
 
     async fetchIntelligence(days = 7): Promise<CompetitorIntelligenceData> {
-        const fn = httpsCallable<{ days: number }, CompetitorIntelligenceData>(this.fns, 'getCompetitorIntelligence');
-        const res = await fn({ days });
-        return res.data;
+        const headers = await this.authHeader();
+        const res = await fetch(`${FUNCTIONS_BASE}/getCompetitorIntelligence`, {
+            method:  'POST',
+            headers,
+            body:    JSON.stringify({ days }),
+        });
+        if (!res.ok) throw new Error(`getCompetitorIntelligence: HTTP ${res.status}`);
+        return res.json();
     }
 
     async triggerManualScan(): Promise<{ ok: boolean; totalScanned: number; durationMs: number }> {
-        const fn = httpsCallable<void, { ok: boolean; totalScanned: number; durationMs: number }>(this.fns, 'meliCompetitorScanManual');
-        const res = await fn();
-        return res.data;
+        const headers = await this.authHeader();
+        const res = await fetch(`${FUNCTIONS_BASE}/meliCompetitorScanManual`, {
+            method:  'POST',
+            headers,
+            body:    JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error(`meliCompetitorScanManual: HTTP ${res.status}`);
+        return res.json();
     }
 
     async updateConfig(config: Partial<CompetitorConfig>): Promise<void> {
-        const fn = httpsCallable<Partial<CompetitorConfig>, { ok: boolean }>(this.fns, 'updateCompetitorConfig');
-        await fn(config);
+        const headers = await this.authHeader();
+        const res = await fetch(`${FUNCTIONS_BASE}/updateCompetitorConfig`, {
+            method:  'POST',
+            headers,
+            body:    JSON.stringify(config),
+        });
+        if (!res.ok) throw new Error(`updateCompetitorConfig: HTTP ${res.status}`);
     }
 
     sellerLevelLabel(level: string): string {

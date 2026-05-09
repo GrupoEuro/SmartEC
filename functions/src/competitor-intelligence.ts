@@ -258,45 +258,84 @@ async function runCompetitorScan(triggeredBy: 'cron' | 'manual' = 'cron'): Promi
         return out;
     }
 
-    // ── 1. Keyword scan via /products/search → items ─────────────────────────
-    for (const keyword of config.keywords) {
-        console.log(`[CompetitorIntel] Products search for keyword: "${keyword}"`);
-        try {
-            // /products/search returns catalog products — each product links to sellers
-            const prodRes = await meliGet(
-                `/products/search?site_id=${site}&q=${encodeURIComponent(keyword)}&limit=20`,
-                token
-            );
-            const products: any[] = prodRes.results ?? [];
-            console.log(`[CompetitorIntel] Keyword "${keyword}": ${products.length} catalog products found.`);
+    // ── 1. Keyword/category scan via Highlights + Trends (no /sites/MLM/search needed)
+    // The config.keywords are used as category IDs for the highlights API.
+    // We also fall back to category MLM169975 (motos tires) and MLM1000 (auto parts).
+    const CATEGORY_IDS = ['MLM169975', 'MLM1000', 'MLM5673'];
 
-            // For each catalog product, find its live listings via /items?catalog_product_id=
-            // (not directly available via batch — use product's children items if present)
-            // Better: gather item IDs from buy_box_winner + search within category
-            const prodItemIds: string[] = [];
-            for (const prod of products) {
-                const bw = prod.buy_box_winner;
-                if (bw?.item_id) prodItemIds.push(bw.item_id);
-                // Also add any children items
-                if (Array.isArray(prod.children_ids)) {
-                    for (const cid of prod.children_ids.slice(0, 3)) {
-                        if (cid.startsWith('MLM')) prodItemIds.push(cid);
-                    }
+    const highlightItemIds = new Set<string>();
+
+    // 1a. Fetch best-sellers from each category's highlights
+    for (const catId of CATEGORY_IDS) {
+        console.log(`[CompetitorIntel] Fetching highlights for category: ${catId}`);
+        try {
+            const hlRes = await meliGet(`/highlights/${site}/category/${catId}`, token);
+            const content: any[] = hlRes.content ?? [];
+            // content[].id may be product IDs (MLM...) — filter those that look like actual item IDs
+            // Items have format MLM + digits (no alpha suffix); catalog products similar but longer
+            for (const entry of content) {
+                const id = entry.id as string;
+                if (id && id.startsWith('MLM') && !isNaN(Number(id.replace('MLM', '')))) {
+                    highlightItemIds.add(id);
                 }
             }
+            console.log(`[CompetitorIntel] Category ${catId}: ${content.length} highlighted items.`);
+        } catch (err: any) {
+            console.warn(`[CompetitorIntel] Highlights for ${catId} failed:`, err.message);
+        }
+        await sleep(100);
+    }
 
-            // Batch fetch in groups of 20
-            for (const batch of chunk(prodItemIds.filter((id, i, a) => a.indexOf(id) === i), 20)) {
-                const items = await batchFetchItems(batch, keyword, allItems.length);
-                allItems.push(...items);
+    // 1b. Also add trending item IDs from our own items' sibling listings
+    // We use our own seller's item list to find product domains, then fetch related highlights
+    if (ourId || config.ourSellerId) {
+        const targetId = ourId || config.ourSellerId;
+        try {
+            const ourItemsRes = await meliGet(`/users/${targetId}/items/search?limit=20`, token);
+            const ourItemIds: string[] = ourItemsRes.results ?? [];
+            // Batch-fetch our items to get their categories
+            for (const batch of chunk(ourItemIds, 20)) {
+                const batchRes = await meliGet(`/items?ids=${batch.join(',')}`, token);
+                if (!Array.isArray(batchRes)) continue;
+                const categories = new Set<string>();
+                for (const entry of batchRes) {
+                    if (entry.code === 200) categories.add(entry.body?.category_id ?? '');
+                }
+                // Fetch highlights for any new categories we find
+                for (const cat of categories) {
+                    if (!cat || CATEGORY_IDS.includes(cat)) continue;
+                    try {
+                        const hlRes = await meliGet(`/highlights/${site}/category/${cat}`, token);
+                        const content: any[] = hlRes.content ?? [];
+                        for (const entry of content) {
+                            const id = entry.id as string;
+                            if (id && id.startsWith('MLM') && !isNaN(Number(id.replace('MLM', '')))) {
+                                highlightItemIds.add(id);
+                            }
+                        }
+                        console.log(`[CompetitorIntel] Category ${cat} (from our items): ${content.length} highlights.`);
+                    } catch { /* skip */ }
+                    await sleep(100);
+                }
                 await sleep(100);
             }
-
-            await sleep(150);
         } catch (err: any) {
-            console.error(`[CompetitorIntel] Error scanning keyword "${keyword}":`, err.message);
+            console.warn(`[CompetitorIntel] Could not fetch our own items:`, err.message);
         }
     }
+
+    // 1c. Batch-fetch all discovered highlight items
+    if (highlightItemIds.size > 0) {
+        console.log(`[CompetitorIntel] Fetching ${highlightItemIds.size} highlight item IDs...`);
+        const hlIds = [...highlightItemIds];
+        for (const batch of chunk(hlIds, 20)) {
+            const items = await batchFetchItems(batch, 'category_highlights', allItems.length);
+            allItems.push(...items);
+            await sleep(100);
+        }
+    }
+
+
 
     // ── 2. Tracked seller scan via /users/{id}/items/search ──────────────────
     for (const sellerId of (config.trackedSellers ?? [])) {

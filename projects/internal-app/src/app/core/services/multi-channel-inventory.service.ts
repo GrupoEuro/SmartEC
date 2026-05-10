@@ -3,11 +3,8 @@ import {
     Firestore,
     collection,
     getDocs,
-    query,
-    where,
-    orderBy,
-    Timestamp,
 } from '@angular/fire/firestore';
+import { Functions, httpsCallable } from '@angular/fire/functions';
 
 // ─── Channel constants ────────────────────────────────────────────────────────
 
@@ -57,10 +54,28 @@ export interface ChannelStock {
     price?: number;
 }
 
+export interface MeliSkuStat {
+    sku:                 string;
+    mlItemId:            string | null;
+    title:               string;
+    unitsSold7d:         number;
+    unitsSold30d:        number;
+    unitsSold90d:        number;
+    revenue7d:           number;
+    revenue30d:          number;
+    saleFees30d:         number;
+    orders30d:           number;
+    avgDailyVelocity7d:  number;
+    avgDailyVelocity30d: number;
+    trend:               'rising' | 'falling' | 'stable';
+    lastOrderDate:       string | null;
+}
+
 export interface ChannelInventoryItem {
     sku: string;
     title: string;
     productId: string | null;
+    skuStats: MeliSkuStat | null;
 
     channels: Partial<Record<ChannelId, ChannelStock>>;
 
@@ -114,27 +129,60 @@ function getFieldValue(fields: Record<string, any>, key: string): any {
 @Injectable({ providedIn: 'root' })
 export class MultiChannelInventoryService {
     private firestore = inject(Firestore);
+    private functions = inject(Functions);
 
     /**
      * Main entry point — loads all channels and returns a unified replenishment view.
      */
+    /** Trigger the Cloud Function to recompute SKU stats from order history */
+    async computeSkuStats(): Promise<{ skusComputed: number; ordersRead: number }> {
+        const fn = httpsCallable<void, { skusComputed: number; ordersRead: number }>(this.functions, 'computeMeliSkuStats');
+        const result = await fn();
+        return result.data;
+    }
+
     async loadReplenishmentData(): Promise<ReplenishmentSummary> {
-        const [meliItems, balanceItems, ledgerCosts] = await Promise.all([
+        const [meliItems, balanceItems, ledgerCosts, skuStatsMap] = await Promise.all([
             this.loadMeliFbmInventory(),
             this.loadInventoryBalances(),
             this.loadAverageCostsFromLedger(),
+            this.loadSkuStats(),
         ]);
 
         // Build unified item map keyed by SKU
         const itemMap = new Map<string, ChannelInventoryItem>();
 
-        // 1. MeliFull items (highest data quality — has real velocity)
+        // 1. MeliFull items — merge real velocity from meli_sku_stats when available
         for (const meli of meliItems) {
             const sku = meli.sku;
             if (!itemMap.has(sku)) {
                 itemMap.set(sku, this.emptyItem(sku, meli.title, null));
             }
             const item = itemMap.get(sku)!;
+
+            // Prefer real velocity from order history over the meli_fbm_inventory estimate
+            const skuKey = sku.replace(/\//g, '_');
+            const realStats = skuStatsMap.get(skuKey) || skuStatsMap.get(sku);
+            if (realStats) {
+                item.skuStats = realStats;
+                // Override velocity from order history (more accurate)
+                const ch = meli.channelStock;
+                ch.salesVelocity30d = realStats.avgDailyVelocity30d;
+                ch.salesVelocity7d  = realStats.avgDailyVelocity7d;
+                ch.unitsSold30d     = realStats.unitsSold30d;
+                ch.unitsSold7d      = realStats.unitsSold7d ?? 0;
+                // Recompute days of coverage with real velocity
+                if (realStats.avgDailyVelocity30d > 0) {
+                    ch.daysOfCoverage = Math.round(ch.available / realStats.avgDailyVelocity30d);
+                    const stockoutDate = new Date();
+                    stockoutDate.setDate(stockoutDate.getDate() + ch.daysOfCoverage);
+                    ch.projectedStockoutDate = stockoutDate.toISOString().split('T')[0];
+                }
+                ch.urgencyLevel = urgencyFromDays(ch.daysOfCoverage);
+                ch.reorderAlertLevel = ch.urgencyLevel === 'CRITICAL' ? 'critical'
+                                     : ch.urgencyLevel === 'HIGH' ? 'low' : 'ok';
+            }
+
             item.channels['MELI_FULL'] = meli.channelStock;
         }
 
@@ -330,9 +378,25 @@ export class MultiChannelInventoryService {
 
     // ─── Helpers ───────────────────────────────────────────────────────────
 
+    // ── Private: Load meli_sku_stats ───────────────────────────────────────
+    private async loadSkuStats(): Promise<Map<string, MeliSkuStat>> {
+        const statsMap = new Map<string, MeliSkuStat>();
+        try {
+            const snap = await getDocs(collection(this.firestore, 'meli_sku_stats'));
+            snap.forEach(doc => {
+                const d = doc.data() as MeliSkuStat;
+                statsMap.set(doc.id, d);
+                // Also index by raw SKU
+                if (d.sku && d.sku !== doc.id) statsMap.set(d.sku, d);
+            });
+        } catch (_) { /* collection may not exist yet */ }
+        return statsMap;
+    }
+
     private emptyItem(sku: string, title: string, productId: string | null): ChannelInventoryItem {
         return {
             sku, title, productId,
+            skuStats: null,
             channels: {},
             totalStock: 0,
             totalSold30d: 0,

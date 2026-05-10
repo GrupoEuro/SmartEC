@@ -29,8 +29,10 @@ export class ReplenishmentPlannerComponent implements OnInit {
 
     // ── State ───────────────────────────────────────────────────────────────
     isLoading      = signal(false);
+    isComputing    = signal(false);   // computing SKU stats from order history
     summary        = signal<ReplenishmentSummary | null>(null);
     selectedItems  = signal<Set<string>>(new Set());
+    statsResult    = signal<{skusComputed:number;ordersRead:number}|null>(null);
 
     // Filters
     channelFilter  = signal<FilterChannel>('ALL');
@@ -106,6 +108,7 @@ export class ReplenishmentPlannerComponent implements OnInit {
     async load() {
         this.isLoading.set(true);
         this.selectedItems.set(new Set());
+        this.statsResult.set(null);
         try {
             const result = await this.inventorySvc.loadReplenishmentData();
             this.summary.set(result);
@@ -123,6 +126,21 @@ export class ReplenishmentPlannerComponent implements OnInit {
             this.toast.error('Error cargando inventario: ' + err.message);
         } finally {
             this.isLoading.set(false);
+        }
+    }
+
+    async computeSkuStats() {
+        this.isComputing.set(true);
+        try {
+            const result = await this.inventorySvc.computeSkuStats();
+            this.statsResult.set(result);
+            this.toast.success(`✅ ${result.skusComputed} SKUs calculados desde ${result.ordersRead} órdenes`);
+            // Reload after computing to show fresh velocity data
+            await this.load();
+        } catch (err: any) {
+            this.toast.error('Error calculando estadísticas: ' + err.message);
+        } finally {
+            this.isComputing.set(false);
         }
     }
 

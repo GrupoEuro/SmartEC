@@ -60,6 +60,15 @@
 }
 .btn-outline:hover:not(:disabled) { border-color: #71717a; color: #f4f4f5; }
 .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-compute {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: transparent; color: #a78bfa;
+    border: 1px solid #7c3aed60; border-radius: 8px;
+    font-size: 13px; cursor: pointer; transition: all 0.2s;
+}
+.btn-compute:hover:not(:disabled) { background: #7c3aed15; border-color: #7c3aed; }
+.btn-compute:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-text { background: none; border: none; color: #71717a; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
 .btn-text:hover { color: #a1a1aa; }
 
@@ -283,6 +292,24 @@
 .vel-rising  { color: #10b981; }
 .vel-falling { color: #f97316; }
 .vel-sold { font-size: 11px; color: #71717a; margin-top: 2px; }
+.vel-revenue {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 11px; color: #10b981; font-weight: 600; margin-top: 4px;
+}
+.vel-fee {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 10px; color: #f97316; margin-top: 1px;
+}
+.vel-last-sale {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 10px; color: #52525b; margin-top: 2px;
+}
+.vel-source {
+    font-size: 9px; color: #a78bfa; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: 3px;
+}
+.vel-source--est { color: #52525b; }
 .no-data { font-size: 11px; color: #3f3f46; font-style: italic; }
 
 /* Urgency badge */

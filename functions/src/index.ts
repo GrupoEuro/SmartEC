@@ -40,6 +40,8 @@ export { snapshotProjections } from './analytics';
 // ── Competitor Intelligence ───────────────────────────────────────────────────
 export { meliCompetitorScanCron, meliCompetitorScanManual, getCompetitorIntelligence, updateCompetitorConfig } from './competitor-intelligence';
 
+// ── MeLi SKU Stats (Replenishment Analytics) ─────────────────────────────────
+export { computeMeliSkuStats, scheduledMeliSkuStats } from './meli-orders-sync';
 
 
 // ─── MercadoPago Payment Processing ─────────────────────────────────────────

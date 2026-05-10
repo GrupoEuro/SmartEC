@@ -17,6 +17,11 @@
             </div>
         </div>
         <div class="rp-header-actions">
+            <button class="btn-compute" (click)="computeSkuStats()" [disabled]="isComputing() || isLoading()"
+                title="Calcular velocidad real desde historial de órdenes">
+                <app-icon [name]="isComputing() ? 'loader' : 'bar-chart-2'" [size]="14" [class.spin]="isComputing()"></app-icon>
+                {{ isComputing() ? 'Calculando...' : 'Calc. Velocidad' }}
+            </button>
             <button class="btn-outline" (click)="load()" [disabled]="isLoading()">
                 <app-icon [name]="isLoading() ? 'loader' : 'refresh-cw'" [size]="14" [class.spin]="isLoading()"></app-icon>
                 {{ isLoading() ? 'Cargando...' : 'Actualizar' }}
@@ -263,6 +268,23 @@
                                     </span>
                                 </div>
                                 <div class="vel-sold">{{ meli.unitsSold30d }} vendidos (30d)</div>
+                                <!-- Real revenue from order history -->
+                                <ng-container *ngIf="item.skuStats as stats">
+                                    <div class="vel-revenue">
+                                        <app-icon name="dollar-sign" [size]="10"></app-icon>
+                                        ${{ stats.revenue30d | number:'1.0-0' }} MXN
+                                    </div>
+                                    <div class="vel-fee" *ngIf="stats.saleFees30d > 0">
+                                        <app-icon name="minus-circle" [size]="9"></app-icon>
+                                        ${{ stats.saleFees30d | number:'1.0-0' }} comisión
+                                    </div>
+                                    <div class="vel-last-sale" *ngIf="stats.lastOrderDate">
+                                        <app-icon name="clock" [size]="9"></app-icon>
+                                        Últ. venta: {{ stats.lastOrderDate }}
+                                    </div>
+                                </ng-container>
+                                <div class="vel-source" *ngIf="item.skuStats">⚡ datos reales</div>
+                                <div class="vel-source vel-source--est" *ngIf="!item.skuStats">~ estimado MeLi</div>
                             </div>
                         </ng-container>
                         <div class="no-data" *ngIf="!item.channels['MELI_FULL']">— sin datos MeLi</div>

@@ -25,6 +25,8 @@
               "projects/internal-app/src/assets"
             ],
             "styles": [
+              "node_modules/ag-grid-community/styles/ag-theme-alpine.css",
+              "node_modules/ag-grid-community/styles/ag-grid.css",
               "projects/internal-app/src/styles.css"
             ],
             "scripts": [],

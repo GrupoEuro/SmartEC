@@ -161,7 +161,7 @@
                     {{ 'PRICING_STRATEGY.DASHBOARD_V2.ACTIVITY.TITLE' | translate }}
                 </h3>
                 <div class="space-y-4">
-                    @for (act of recentActivity(); track act.time) {
+                    @for (act of recentActivity(); track $index) {
                     <div
                         class="flex gap-3 items-start relative pb-4 border-l border-slate-700 last:border-0 pl-4 last:pb-0">
                         <div

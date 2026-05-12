@@ -94,6 +94,20 @@ export interface WebsiteSettings {
         ogImage: string;
     };
     shipping: ShippingSettings;
+    pricing: {
+        globalDefaults: {
+            webShipping: number;
+            webCcFeePercent: number;
+            webMaxDiscountPercent: number;
+            meliCommissionPercent: number;
+            meliShipping: number;
+            meliFixedFee: number;
+            amazonReferralPercent: number;
+            amazonFbaFee: number;
+            targetNetMargin: number;
+            minAcceptableMargin: number;
+        };
+    };
 }
 
 const DEFAULT_SETTINGS: WebsiteSettings = {
@@ -159,6 +173,20 @@ const DEFAULT_SETTINGS: WebsiteSettings = {
             standardRate: { enabled: true, labelEs: 'Envío Estándar (3-5 días)', labelEn: 'Standard Shipping (3-5 days)', price: 150, maxDays: 5 },
             expressRate: { enabled: false, labelEs: 'Envío Express (1-2 días)', labelEn: 'Express Shipping (1-2 days)', price: 280, maxDays: 2 }
         }
+    },
+    pricing: {
+        globalDefaults: {
+            webShipping: 150,
+            webCcFeePercent: 3.6,
+            webMaxDiscountPercent: 10,
+            meliCommissionPercent: 15,
+            meliShipping: 200,
+            meliFixedFee: 25,
+            amazonReferralPercent: 15,
+            amazonFbaFee: 180,
+            targetNetMargin: 20,
+            minAcceptableMargin: 12
+        }
     }
 };
 
@@ -196,6 +224,9 @@ export class SettingsService {
                 features:      { ...DEFAULT_SETTINGS.features,       ...data['features'] },
                 approvals:     { ...DEFAULT_SETTINGS.approvals,      ...data['approvals'] },
                 seo:           { ...DEFAULT_SETTINGS.seo,            ...data['seo'] },
+                pricing: {
+                    globalDefaults: { ...DEFAULT_SETTINGS.pricing.globalDefaults, ...(data['pricing']?.globalDefaults || {}) }
+                },
                 shipping: {
                     origin: { ...DEFAULT_SETTINGS.shipping.origin, ...(shipData['origin'] || {}) },
                     rules:  { ...DEFAULT_SETTINGS.shipping.rules,  ...(shipData['rules']  || {}) }

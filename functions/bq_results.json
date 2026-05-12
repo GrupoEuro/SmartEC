@@ -1,0 +1,152 @@
+[
+  {
+    "month_year": "2026-05",
+    "source_channel": "MELI_CLASSIC",
+    "count": 116
+  },
+  {
+    "month_year": "2026-05",
+    "source_channel": "MELI_FULL",
+    "count": 141
+  },
+  {
+    "month_year": "2026-04",
+    "source_channel": "MELI_CLASSIC",
+    "count": 352
+  },
+  {
+    "month_year": "2026-04",
+    "source_channel": "MELI_FULL",
+    "count": 248
+  },
+  {
+    "month_year": "2026-03",
+    "source_channel": "MELI_CLASSIC",
+    "count": 406
+  },
+  {
+    "month_year": "2026-03",
+    "source_channel": "MELI_FULL",
+    "count": 169
+  },
+  {
+    "month_year": "2026-02",
+    "source_channel": "MELI_CLASSIC",
+    "count": 264
+  },
+  {
+    "month_year": "2026-02",
+    "source_channel": "MELI_FULL",
+    "count": 192
+  },
+  {
+    "month_year": "2026-01",
+    "source_channel": "MELI_CLASSIC",
+    "count": 297
+  },
+  {
+    "month_year": "2026-01",
+    "source_channel": "MELI_FULL",
+    "count": 44
+  },
+  {
+    "month_year": "2025-12",
+    "source_channel": "MELI_CLASSIC",
+    "count": 158
+  },
+  {
+    "month_year": "2025-12",
+    "source_channel": "MELI_FULL",
+    "count": 119
+  },
+  {
+    "month_year": "2025-11",
+    "source_channel": "MELI_CLASSIC",
+    "count": 140
+  },
+  {
+    "month_year": "2025-11",
+    "source_channel": "MELI_FULL",
+    "count": 240
+  },
+  {
+    "month_year": "2025-10",
+    "source_channel": "MELI_CLASSIC",
+    "count": 167
+  },
+  {
+    "month_year": "2025-10",
+    "source_channel": "MELI_FULL",
+    "count": 135
+  },
+  {
+    "month_year": "2025-09",
+    "source_channel": "MELI_CLASSIC",
+    "count": 221
+  },
+  {
+    "month_year": "2025-09",
+    "source_channel": "MELI_FULL",
+    "count": 105
+  },
+  {
+    "month_year": "2025-08",
+    "source_channel": "MELI_CLASSIC",
+    "count": 183
+  },
+  {
+    "month_year": "2025-08",
+    "source_channel": "MELI_FULL",
+    "count": 199
+  },
+  {
+    "month_year": "2025-07",
+    "source_channel": "MELI_CLASSIC",
+    "count": 319
+  },
+  {
+    "month_year": "2025-07",
+    "source_channel": "MELI_FULL",
+    "count": 132
+  },
+  {
+    "month_year": "2025-06",
+    "source_channel": "MELI_CLASSIC",
+    "count": 406
+  },
+  {
+    "month_year": "2025-06",
+    "source_channel": "MELI_FULL",
+    "count": 199
+  },
+  {
+    "month_year": "2025-05",
+    "source_channel": "MELI_CLASSIC",
+    "count": 502
+  },
+  {
+    "month_year": "2025-05",
+    "source_channel": "MELI_FULL",
+    "count": 361
+  },
+  {
+    "month_year": "2025-04",
+    "source_channel": "MELI_CLASSIC",
+    "count": 252
+  },
+  {
+    "month_year": "2025-04",
+    "source_channel": "MELI_FULL",
+    "count": 116
+  },
+  {
+    "month_year": "2025-03",
+    "source_channel": "MELI_CLASSIC",
+    "count": 353
+  },
+  {
+    "month_year": "2025-03",
+    "source_channel": "MELI_FULL",
+    "count": 70
+  }
+]

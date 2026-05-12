@@ -157,3 +157,10 @@ export {
     queryCustomerMetrics, queryCustomerSegmentation,
     queryPeriodData, queryGrowthMetrics,
 } from './customer-analytics';
+
+// ── Pricing & Costs (OmniEuro) ────────────────────────────────────────────────
+export {
+    processPricingUpload,
+    commitPricingSimulation
+} from './pricing';
+

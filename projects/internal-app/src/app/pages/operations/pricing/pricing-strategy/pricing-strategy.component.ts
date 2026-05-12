@@ -4,6 +4,10 @@ import { Router } from '@angular/router';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { PricingRulesService } from '../../../../core/services/pricing-rules.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { AdminLogService } from '../../../../core/services/admin-log.service';
+import { SettingsService } from '../../../../core/services/settings.service';
+import { Firestore, collection, getDocs } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
@@ -18,6 +22,9 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 export class PricingStrategyComponent implements OnInit {
   private rulesService = inject(PricingRulesService);
   private productService = inject(ProductService);
+  private adminLogService = inject(AdminLogService);
+  private settingsService = inject(SettingsService);
+  private firestore = inject(Firestore);
   public router = inject(Router);
   private translate = inject(TranslateService);
 
@@ -72,67 +79,112 @@ export class PricingStrategyComponent implements OnInit {
   async loadDashboardData() {
     this.loading.set(true);
     try {
+      // Ensure settings are loaded
+      await this.settingsService.loadSettings();
+
       // Parallel fetch for speed
-      const [products, rules, templates] = await Promise.all([
+      const [products, rules, templates, strategiesSnap, recentLogs, globalSettings] = await Promise.all([
         this.productService.getProducts().toPromise() as Promise<any[]>,
         this.rulesService.getRules() as Promise<any[]>,
-        this.rulesService.getTemplates() as Promise<any[]>
+        this.rulesService.getTemplates() as Promise<any[]>,
+        getDocs(collection(this.firestore, 'pricing_strategies')),
+        this.adminLogService.getLogs(100, 'PRICING'),
+        firstValueFrom(this.settingsService.settings$)
       ]);
 
       if (!products) return;
 
+      const strategies = strategiesSnap.docs.map(doc => doc.data() as any);
+      const stratMap = new Map<string, any>(strategies.map(s => [s.productId, s]));
+
+      const globalDefaults = globalSettings?.pricing?.globalDefaults || {
+          targetNetMargin: 20, minAcceptableMargin: 12,
+          webShipping: 150, webCcFeePercent: 3.6, webMaxDiscountPercent: 10,
+          meliCommissionPercent: 15, meliShipping: 200, meliFixedFee: 25,
+          amazonReferralPercent: 15, amazonFbaFee: 180
+      };
+
       // 1. Calculate Statistics
       this.totalProducts.set(products.length);
+      this.activeStrategies.set(strategies.length); 
+      this.strategyCoverage.set(Math.round((strategies.length / products.length) * 100) || 0);
 
-      // Approximating "Active Strategies" by products that have a non-default Price or linked rule
-      // For V2, we assume if a product has a 'pricingStrategy' in DB it's active.
-      // Since we don't have a direct "getAllStrategies" API in the service yet, we'll estimate based on Rules count for now
-      // OR better, we iterate products to check if they have a specialized price setup? 
-      // Actually, let's use the Rules count as a proxy for "Automated Strategies"
-      // AND we can mock some distribution data for the histogram based on product 'price' vs 'cost'
-
-      this.activeStrategies.set(rules.length); // Proxy
-      this.strategyCoverage.set(Math.round((rules.length / products.length) * 100) || 0);
-
-      // 2. Calculate Margins (Client-side Aggregation)
+      // 2. Calculate Margins (Client-side Aggregation using Universal Engine Algebra)
       let totalMargin = 0;
       let validProductCount = 0;
-      // Use simple keys for logic
       const marginBuckets: Record<string, number> = { 'CRITICAL': 0, 'LOW': 0, 'HEALTHY': 0, 'HIGH': 0 };
       const lowMarginList: any[] = [];
 
       products.forEach((p: any) => {
-        if (p.costPrice && p.price && p.price > 0) {
-          const margin = ((p.price - p.costPrice) / p.price) * 100;
-          totalMargin += margin;
-          validProductCount++;
+        const strat = stratMap.get(p.id);
+        
+        // Base Costs
+        const cog = strat?.cog ?? p.cog ?? 0;
+        const inbound = strat?.inboundShipping ?? 0;
+        const storageCost = strat?.storageCost ?? 0;
+        const packaging = strat?.packagingCost ?? 0;
+        const baseCost = cog + inbound + storageCost + packaging;
 
-          // Bucket Logic
-          if (margin < 10) marginBuckets['CRITICAL']++;
-          else if (margin < 20) marginBuckets['LOW']++;
-          else if (margin < 40) marginBuckets['HEALTHY']++;
-          else marginBuckets['HIGH']++;
+        if (baseCost > 0) {
+          // Channel Modifiers (Using Web Store for generic margin reporting)
+          const targetMargin = strat?.targetNetMargin ?? globalDefaults.targetNetMargin;
+          const webShipping = strat?.webShipping ?? globalDefaults.webShipping;
+          const webCcFeePercent = strat?.webCcFeePercent ?? globalDefaults.webCcFeePercent;
+          const webMaxDiscountPercent = strat?.webMaxDiscountPercent ?? globalDefaults.webMaxDiscountPercent;
 
-          // Action List
-          if (margin < 15) {
-            lowMarginList.push({
-              name: p.name.es,
-              sku: p.sku,
-              margin: margin.toFixed(1),
-              price: p.price
-            });
+          const safeDiv = (num: number, den: number) => den <= 0 ? 0 : num / den;
+          
+          const calculatedWebPrice = safeDiv(
+              (baseCost + webShipping),
+              (1 - (targetMargin / 100) - (webCcFeePercent / 100) - (webMaxDiscountPercent / 100))
+          );
+
+          if (calculatedWebPrice > 0) {
+             const netRevenue = calculatedWebPrice / 1.16; // Tax aware
+             const totalCost = baseCost + webShipping + (calculatedWebPrice * (webCcFeePercent / 100)); // Rough estimate
+             const netProfit = netRevenue - totalCost;
+             
+             // Gross Margin approximation for the dashboard (Profit / Price)
+             const margin = (netProfit / calculatedWebPrice) * 100;
+
+             totalMargin += margin;
+             validProductCount++;
+
+             // Bucket Logic
+             if (margin < 10) marginBuckets['CRITICAL']++;
+             else if (margin < 20) marginBuckets['LOW']++;
+             else if (margin < 40) marginBuckets['HEALTHY']++;
+             else marginBuckets['HIGH']++;
+
+             // Action List (Anomalies)
+             const minAcceptable = strat?.minAcceptableMargin ?? globalDefaults.minAcceptableMargin;
+             if (margin < minAcceptable || margin < 10) {
+               lowMarginList.push({
+                 name: p.name.es,
+                 sku: p.sku,
+                 margin: margin.toFixed(1),
+                 price: calculatedWebPrice,
+                 sortValue: margin
+               });
+             }
           }
+        } else {
+            // No COG anomaly
+            lowMarginList.push({
+                 name: p.name.es,
+                 sku: p.sku,
+                 margin: 'Sin COG',
+                 price: 0,
+                 sortValue: -999 // Force to top
+            });
         }
       });
 
       this.avgGrossMargin.set(validProductCount > 0 ? parseFloat((totalMargin / validProductCount).toFixed(1)) : 0);
-      this.lowMarginProducts.set(lowMarginList.slice(0, 5)); // Top 5 worst
+      this.lowMarginProducts.set(lowMarginList.sort((a, b) => a.sortValue - b.sortValue).slice(0, 5)); // Top 5 worst
 
-      // 3. Setup Chart (with Translations)
-      // We need to fetch translated labels. Since this is async/signal based, we can just grab current snapshot or use simple hardcoded fallback if translation not fast enough, 
-      // but usually 'instant' works if loaded.
+      // 3. Setup Chart
       const t = this.translate.instant.bind(this.translate);
-
       const labels = [
         t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.CRITICAL'),
         t('PRICING_STRATEGY.DASHBOARD_V2.CHARTS.LEGEND.LOW'),
@@ -150,18 +202,43 @@ export class PricingStrategyComponent implements OnInit {
         }]
       });
 
-      // 4. Mock Recent Activity (until backend supports audit log)
-      this.recentActivity.set([
-        { action: 'Strategy Updated', target: 'Michelin Pilot Sport 4', time: '2 hours ago', user: 'Admin' },
-        { action: 'Seasonal Rule', target: 'Summer Sale 2026', time: '5 hours ago', user: 'System' },
-        { action: 'Price Drop', target: 'Pirelli P Zero', time: '1 day ago', user: 'Auto-Repricer' },
-      ]);
+      // 4. Real Audit Logs
+      const actionMap: Record<string, string> = {
+          'UPDATE': 'Actualización',
+          'CREATE': 'Creación',
+          'DELETE': 'Eliminación',
+          'APPROVAL': 'Aprobación'
+      };
+
+      this.recentActivity.set(recentLogs.slice(0, 5).map(log => ({
+        action: actionMap[log.action] || log.action,
+        target: log.details,
+        time: this.formatTimeAgo(log.timestamp),
+        user: log.userEmail
+      })));
 
     } catch (e) {
       console.error('Error loading dashboard', e);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  // Helper for time
+  private formatTimeAgo(date: Date): string {
+      if (!date) return 'Desconocido';
+      const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) return 'Hace ' + Math.floor(interval) + ' años';
+      interval = seconds / 2592000;
+      if (interval > 1) return 'Hace ' + Math.floor(interval) + ' meses';
+      interval = seconds / 86400;
+      if (interval > 1) return 'Hace ' + Math.floor(interval) + ' días';
+      interval = seconds / 3600;
+      if (interval > 1) return 'Hace ' + Math.floor(interval) + ' horas';
+      interval = seconds / 60;
+      if (interval > 1) return 'Hace ' + Math.floor(interval) + ' minutos';
+      return 'Hace unos segundos';
   }
 
   // Navigation Helpers

@@ -113,7 +113,7 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
     },
     {
         id: 'pricing_mgmt',
-        title: 'OPERATIONS.SIDEBAR.PRICING_MANAGEMENT',
+        title: 'Gestión Precios',
         icon: 'price_check',
         children: [
             {
@@ -121,6 +121,27 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
                 title: 'OPERATIONS.SIDEBAR.PRICING_DASHBOARD',
                 icon: 'layout-dashboard',
                 route: '/operations/pricing/dashboard'
+            },
+            {
+                id: 'anomalies',
+                title: 'Alertas y Anomalías',
+                icon: 'alert-triangle',
+                route: '/operations/pricing/anomalies',
+                badge: { text: 'NUEVO', color: 'bg-rose-600' }
+            },
+            {
+                id: 'simulation',
+                title: 'Simulador de Precios',
+                icon: 'trending-up',
+                route: '/operations/pricing/simulation',
+                badge: { text: 'What-If', color: 'bg-indigo-600' }
+            },
+            {
+                id: 'etl',
+                title: 'Ingesta de Datos (ETL)',
+                icon: 'upload-cloud',
+                route: '/operations/pricing/etl-import',
+                badge: { text: 'NUEVO', color: 'bg-emerald-600' }
             },
             {
                 id: 'smart_builder',

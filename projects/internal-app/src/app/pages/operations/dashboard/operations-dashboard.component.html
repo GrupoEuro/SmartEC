@@ -86,12 +86,29 @@
             </div>
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
                 'OPERATIONS.DASHBOARD.TOTAL_ORDERS' | translate }} ({{ timeframe() }})</div>
-            @if (showProjection() && mtdOrdersProjection() !== null) {
-            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
-                <app-icon name="trending-up" [size]="14" class="text-zinc-400 shrink-0"></app-icon>
-                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
-                <span class="text-xs font-semibold text-zinc-300">{{ mtdOrdersProjection() }} pedidos</span>
+            @if (showProjection() && timeframe() === 'MTD') {
+            <!-- Today actual + today projection -->
+            <div class="fdm-projection flex items-center justify-between gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <div class="flex items-center gap-1.5">
+                    <app-icon name="sun" [size]="13" class="text-amber-400 shrink-0"></app-icon>
+                    <span class="text-xs text-zinc-400">Hoy real</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-white font-mono">{{ todayOrdersActual() }}</span>
+                    @if (todayOrdersProjection() !== null) {
+                    <span class="text-[10px] text-zinc-500">→</span>
+                    <span class="text-[10px] font-bold text-amber-400 font-mono" title="Proyección de cierre del día">{{ todayOrdersProjection()! }}</span>
+                    }
+                </div>
             </div>
+            <!-- EOM projection -->
+            @if (mtdOrdersProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1">
+                <app-icon name="trending-up" [size]="13" class="text-zinc-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-zinc-300 ml-auto font-mono">{{ mtdOrdersProjection() }} pedidos</span>
+            </div>
+            }
             }
         </div>
 
@@ -190,12 +207,29 @@
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">{{
                 'OPERATIONS.DASHBOARD.METRICS.PIECES_SOLD' | translate: { timeframe: timeframe() } }}
             </div>
-            @if (showProjection() && mtdPiecesProjection() !== null) {
-            <div class="fdm-projection flex items-center gap-2 mt-1 pt-2 border-t border-zinc-700/60">
-                <app-icon name="trending-up" [size]="14" class="text-indigo-400 shrink-0"></app-icon>
-                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
-                <span class="text-xs font-semibold text-indigo-300">{{ mtdPiecesProjection() }} pzs.</span>
+            @if (showProjection() && timeframe() === 'MTD') {
+            <!-- Today actual + today projection -->
+            <div class="fdm-projection flex items-center justify-between gap-2 mt-1 pt-2 border-t border-zinc-700/60">
+                <div class="flex items-center gap-1.5">
+                    <app-icon name="sun" [size]="13" class="text-amber-400 shrink-0"></app-icon>
+                    <span class="text-xs text-zinc-400">Hoy real</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-white font-mono">{{ todayPiecesActual() }}</span>
+                    @if (todayPiecesProjection() !== null) {
+                    <span class="text-[10px] text-zinc-500">→</span>
+                    <span class="text-[10px] font-bold text-amber-400 font-mono" title="Proyección de cierre del día">{{ todayPiecesProjection()! }}</span>
+                    }
+                </div>
             </div>
+            <!-- EOM projection -->
+            @if (mtdPiecesProjection() !== null) {
+            <div class="fdm-projection flex items-center gap-2 mt-1">
+                <app-icon name="trending-up" [size]="13" class="text-indigo-400 shrink-0"></app-icon>
+                <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
+                <span class="text-xs font-semibold text-indigo-300 ml-auto font-mono">{{ mtdPiecesProjection() }} pzs.</span>
+            </div>
+            }
             }
         </div>
     </div>

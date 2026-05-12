@@ -103,6 +103,7 @@ export const operationsRoutes: Routes = [
                 path: 'procurement/:id',
                 loadComponent: () => import('./procurement/purchase-order-detail/purchase-order-detail.component').then(m => m.PurchaseOrderDetailComponent)
             },
+            // ─── Administración de Precios ──────────────────────────────────────────
             {
                 path: 'pricing',
                 redirectTo: 'pricing/dashboard',
@@ -110,7 +111,23 @@ export const operationsRoutes: Routes = [
             },
             {
                 path: 'pricing/dashboard',
-                loadComponent: () => import('./pricing/pricing-strategy/pricing-strategy.component').then(m => m.PricingStrategyComponent)
+                loadComponent: () => import('./pricing/pricing-strategy/pricing-strategy.component').then(m => m.PricingStrategyComponent),
+                title: 'Pricing Dashboard'
+            },
+            {
+                path: 'pricing/anomalies',
+                loadComponent: () => import('./pricing/pricing-dashboard.component').then(m => m.PricingDashboardComponent),
+                title: 'Gestión de Precios'
+            },
+            {
+                path: 'pricing/simulation',
+                loadComponent: () => import('./pricing/pricing-simulation.component').then(m => m.PricingSimulationComponent),
+                title: 'Simulador de Precios'
+            },
+            {
+                path: 'pricing/costs',
+                loadComponent: () => import('./pricing/cost-management-hub.component').then(m => m.CostManagementHubComponent),
+                title: 'Cost Management Hub'
             },
             {
                 path: 'pricing/constructor',
@@ -123,6 +140,10 @@ export const operationsRoutes: Routes = [
             {
                 path: 'pricing/grid',
                 loadComponent: () => import('./pricing/pricing-list/pricing-list.component').then(m => m.PricingListComponent)
+            },
+            {
+                path: 'pricing/kits',
+                loadComponent: () => import('./pricing/pricing-kit-builder.component').then(m => m.PricingKitBuilderComponent)
             },
             // ─── Analytics / Metrics Hub ────────────────────────────────────────
             {

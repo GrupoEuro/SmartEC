@@ -41,6 +41,11 @@
                 <app-icon name="check-circle" [size]="18"></app-icon>
                 <span>Aprobaciones</span>
             </button>
+            <button type="button" class="tab-link" [class.active]="activeTab === 'pricing'"
+                (click)="setActiveTab('pricing')">
+                <app-icon name="dollar-sign" [size]="18"></app-icon>
+                <span>Pricing Engine</span>
+            </button>
         </div>
 
         <form [formGroup]="settingsForm" (ngSubmit)="onSubmit()" class="admin-form">
@@ -819,6 +824,87 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Engine Tab -->
+            <div class="tab-content" *ngIf="activeTab === 'pricing'" formGroupName="pricing">
+                <div class="form-section" formGroupName="globalDefaults">
+                    <h3 class="section-title">
+                        <app-icon name="dollar-sign" [size]="24" class="text-green-500"></app-icon>
+                        Pricing Engine Global Defaults
+                    </h3>
+                    <p class="text-sm text-[var(--admin-text-secondary)] mb-6">
+                        These values act as global fallbacks. If a SKU does not have custom specific fees or commissions set, the pricing algorithm will use these variables to calculate the selling price.
+                    </p>
+
+                    <!-- Margins -->
+                    <div class="feature-card mb-6">
+                        <h4 class="text-lg font-bold text-[var(--admin-text-primary)] mb-4 border-b border-[var(--admin-border-color)] pb-2">Target Margins</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Target Net Margin (%)</label>
+                                <input type="number" formControlName="targetNetMargin" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Min Acceptable Floor Margin (%)</label>
+                                <input type="number" formControlName="minAcceptableMargin" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Web Store -->
+                    <div class="feature-card mb-6">
+                        <h4 class="text-lg font-bold text-[var(--admin-text-primary)] mb-4 border-b border-[var(--admin-border-color)] pb-2">Web Store</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Outbound Shipping (MXN)</label>
+                                <input type="number" formControlName="webShipping" class="form-control" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Gateway/CC Fee (%)</label>
+                                <input type="number" formControlName="webCcFeePercent" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Max Allowed Discount (%)</label>
+                                <input type="number" formControlName="webMaxDiscountPercent" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mercado Libre -->
+                    <div class="feature-card mb-6">
+                        <h4 class="text-lg font-bold text-[var(--admin-text-primary)] mb-4 border-b border-[var(--admin-border-color)] pb-2">Mercado Libre</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Commission (%)</label>
+                                <input type="number" formControlName="meliCommissionPercent" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Average Shipping (MXN)</label>
+                                <input type="number" formControlName="meliShipping" class="form-control" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Fixed Fee per item (MXN)</label>
+                                <input type="number" formControlName="meliFixedFee" class="form-control" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amazon -->
+                    <div class="feature-card mb-6">
+                        <h4 class="text-lg font-bold text-[var(--admin-text-primary)] mb-4 border-b border-[var(--admin-border-color)] pb-2">Amazon</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">Referral Fee (%)</label>
+                                <input type="number" formControlName="amazonReferralPercent" class="form-control" min="0" max="100" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="text-sm font-semibold mb-1 block">FBA Fee (MXN)</label>
+                                <input type="number" formControlName="amazonFbaFee" class="form-control" min="0" step="0.01">
                             </div>
                         </div>
                     </div>

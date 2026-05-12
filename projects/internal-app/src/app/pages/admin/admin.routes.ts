@@ -228,6 +228,7 @@ export const ADMIN_ROUTES: Routes = [
                 path: 'warehouses/:id',
                 loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent)
             },
+
             // ── Integrations subroutes MUST come before the base 'integrations' route ──
             {
                 path: 'integrations/callback',

@@ -1,23 +1,22 @@
 const admin = require("firebase-admin");
-
-admin.initializeApp();
+const serviceAccount = require("/Users/SaulFigueroa/firebase-service-account.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 const db = admin.firestore();
 
-async function check() {
-    const snap = await db.collection('orders')
-        .where('total', '<', 100)
-        .where('total', '>', 0)
-        .orderBy('total', 'desc')
-        .limit(50)
-        .get();
-        
-    console.log("Found:", snap.size);
-    snap.docs.forEach(doc => {
-        const d = doc.data();
-        if (!d.sourceChannel || d.sourceChannel === 'storefront') {
-            console.log(doc.id, "Date:", d.createdAt?.toDate(), "Total:", d.total, "Status:", d.status);
-        }
-    });
+async function run() {
+  const snap = await db.collection('orders').get();
+  const results = {};
+  snap.docs.forEach(doc => {
+    const d = doc.data();
+    if (d.sourceChannel && d.sourceChannel.toUpperCase().startsWith('MELI')) {
+        const dStr = d.createdAt ? d.createdAt.toDate().toISOString().substring(0, 7) : 'Unknown';
+        const ch = d.sourceChannel.toUpperCase();
+        const key = dStr + '|' + ch;
+        results[key] = (results[key] || 0) + 1;
+    }
+  });
+  console.log(results);
 }
-
-check().catch(console.error);
+run();

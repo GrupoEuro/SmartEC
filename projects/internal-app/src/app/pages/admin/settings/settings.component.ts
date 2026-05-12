@@ -27,7 +27,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     settingsForm: FormGroup;
     isLoading = true;
     isSaving = false;
-    activeTab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping' = 'general';
+    activeTab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping' | 'pricing' = 'general';
     daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
     // Character counters
@@ -116,6 +116,20 @@ export class SettingsComponent implements OnInit, OnDestroy {
                         maxDays:  [2,   [Validators.required, Validators.min(1)]]
                     })
                 })
+            }),
+            pricing: this.fb.group({
+                globalDefaults: this.fb.group({
+                    webShipping: [150, [Validators.required, Validators.min(0)]],
+                    webCcFeePercent: [3.6, [Validators.required, Validators.min(0), Validators.max(100)]],
+                    webMaxDiscountPercent: [10, [Validators.required, Validators.min(0), Validators.max(100)]],
+                    meliCommissionPercent: [15, [Validators.required, Validators.min(0), Validators.max(100)]],
+                    meliShipping: [200, [Validators.required, Validators.min(0)]],
+                    meliFixedFee: [25, [Validators.required, Validators.min(0)]],
+                    amazonReferralPercent: [15, [Validators.required, Validators.min(0), Validators.max(100)]],
+                    amazonFbaFee: [180, [Validators.required, Validators.min(0)]],
+                    targetNetMargin: [20, [Validators.required, Validators.min(0), Validators.max(100)]],
+                    minAcceptableMargin: [12, [Validators.required, Validators.min(0), Validators.max(100)]]
+                })
             })
         });
     }
@@ -153,7 +167,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         });
     }
 
-    setActiveTab(tab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping') {
+    setActiveTab(tab: 'general' | 'social' | 'features' | 'approvals' | 'hours' | 'seo' | 'shipping' | 'pricing') {
         this.activeTab = tab;
     }
 

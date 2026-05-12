@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 // ... existing imports ...
 import { PricingCalculatorService } from '../../../../core/services/pricing-calculator.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { AdminLogService } from '../../../../core/services/admin-log.service';
 import { CategoryService } from '../../../../core/services/category.service';
 import { Product } from '../../../../core/models/product.model';
 import { Category } from '../../../../core/models/catalog.model';
@@ -32,28 +33,40 @@ interface PriceGridRow {
     categoryId?: string;
     weight: number;
 
-    // Intelligence Data (New)
-    velocity: number[]; // Array of daily sales numbers
-    marketPrice: number;
-    competitorName?: string;
-
-    // Costs (Editable)
+    // Baseline Costs (Editable)
     cog: number;
     inboundShipping: number;
+    storageCost: number;
     packaging: number;
 
-    // Margins (Editable)
+    // Strategy Margins (Editable)
     targetNetMargin: number;
     minAcceptableMargin: number;
 
+    // Web Builder (Editable)
+    webShipping: number;
+    webCcFeePercent: number;
+    webMaxDiscountPercent: number;
+
+    // Meli Builder (Editable)
+    meliCommissionPercent: number;
+    meliShipping: number;
+    meliFixedFee: number;
+
+    // Amazon Builder (Editable)
+    amazonReferralPercent: number;
+    amazonFbaFee: number;
+
     // Calculated Prices per Channel
-    [key: string]: any; // Allow dynamic channel properties like 'AMAZON_FBA_price'
+    calculatedWebPrice?: number;
+    calculatedMeliPrice?: number;
+    calculatedAmazonPrice?: number;
+    [key: string]: any;
 
     // Metadata
     productId: string;
     dimensions: any;
-    ruleApplied?: string;
-    strategyId?: string; // ID of existing strategy document if any
+    strategyId?: string;
 }
 
 @Component({
@@ -70,12 +83,19 @@ export class PricingListComponent {
     private categoryService = inject(CategoryService);
     private settingsService = inject(SettingsService);
     private approvalWorkflow = inject(ApprovalWorkflowService);
+    private adminLog = inject(AdminLogService);
     private toast = inject(ToastService);
 
     // Grid State
     loading = signal(true);
     showRulesManager = signal(false);
-    showColumnMenu = signal(false); // New: Toggle for Column Menu
+    showColumnMenu = signal(false); // Toggle for Column Menu
+    showBulkEditModal = signal(false); // Toggle for Bulk Edit
+    bulkEditField = signal<string>('meliCommissionPercent');
+    bulkEditValue = signal<number>(0);
+    bulkEditProcessing = signal(false);
+    bulkEditProgress = signal(0);
+    bulkEditTotal = signal(0);
     pagination = true;
     paginationPageSize = 20;
 
@@ -89,24 +109,36 @@ export class PricingListComponent {
         'channels': true // Global toggle for channels? Or individual? Let's do individual in template
     });
 
-    // Explicit list of togglable groups/columns for the UI
     togglableColumns = computed(() => [
-        { id: 'velocity', label: '30d Trend', visible: true },
-        { id: 'Market Intel', label: 'Market Intel', isGroup: true, visible: true },
         { id: 'Base Costs', label: 'Base Costs', isGroup: true, visible: true },
         { id: 'Strategy Targets', label: 'Strategy Targets', isGroup: true, visible: true },
-        ...this.displayChannels.map(ch => ({
-            id: ch.name, // Using Header Name as Group ID for channels
-            label: ch.name,
-            isGroup: true,
-            visible: true
-        }))
+        { id: 'Web Builder', label: 'Web Store Builder', isGroup: true, visible: true },
+        { id: 'Meli Builder', label: 'Mercado Libre Builder', isGroup: true, visible: true },
+        { id: 'Amazon Builder', label: 'Amazon Builder', isGroup: true, visible: false } // Hidden by default
     ]);
 
     // Data Signals
     masterData = signal<PriceGridRow[]>([]);
     categories = signal<Category[]>([]);
     selectedCategory = signal<string>('all');
+
+    // Bulk Edit Editable Fields
+    editableFields = [
+        { id: 'cog', label: 'COG (Base Cost)' },
+        { id: 'inboundShipping', label: 'Inbound Freight' },
+        { id: 'storageCost', label: 'Storage Cost' },
+        { id: 'packaging', label: 'Packaging / Labeling' },
+        { id: 'targetNetMargin', label: 'Target Net Margin %' },
+        { id: 'minAcceptableMargin', label: 'Min Floor Margin %' },
+        { id: 'webShipping', label: 'Web Outbound Shipping' },
+        { id: 'webCcFeePercent', label: 'Web Gateway Fee %' },
+        { id: 'webMaxDiscountPercent', label: 'Web Max Discount %' },
+        { id: 'meliCommissionPercent', label: 'Meli Commission %' },
+        { id: 'meliShipping', label: 'Meli Shipping' },
+        { id: 'meliFixedFee', label: 'Meli Fixed Fee' },
+        { id: 'amazonReferralPercent', label: 'Amazon Referral %' },
+        { id: 'amazonFbaFee', label: 'Amazon FBA Fee' }
+    ];
 
     // Derived State (Solves NG0600)
     rowData = computed(() => {
@@ -189,56 +221,7 @@ export class PricingListComponent {
             },
             { field: 'sku', headerName: 'SKU', pinned: 'left', width: 120 },
             { field: 'name', headerName: 'Product', width: 250 },
-            // Velocity Sparkline
-            {
-                field: 'velocity',
-                headerName: '30d Trend',
-                width: 120,
-                cellRenderer: SparklineCellComponent,
-                sortable: false
-            },
             { field: 'categoryName', headerName: 'Category', width: 120 },
-
-            // Market Intelligence Group
-            {
-                headerName: 'Market Intel',
-                children: [
-                    {
-                        headerName: 'Comp. Price',
-                        valueGetter: (params) => {
-                            const row = params.data as PriceGridRow;
-                            const delta = row.marketPrice - (row['WEB_price'] || 0); // Compare vs Web Price
-                            return row.marketPrice;
-                        },
-                        width: 140, // Increased
-                        cellRenderer: (params: any) => {
-                            if (!params.value) return '-';
-                            const row = params.data as PriceGridRow;
-                            const myPrice = row['WEB_price'] || 0;
-                            if (myPrice === 0) return `$${params.value.toFixed(2)}`;
-
-                            const diff = params.value - myPrice;
-                            const percent = (diff / myPrice) * 100;
-
-                            // Logic: If Comp is HIGHER than us, we are cheaper (Good? Bad? depends on strategy).
-                            // Usually: 
-                            // Green = We are cheaper (Comp is higher)
-                            // Red = We are more expensive (Comp is lower)
-                            // Let's invert: Green = We are priced competitively (Equal or slightly lower). 
-                            // Actually user spec says: "Competitor Delta"
-
-                            const colorClass = diff > 0 ? 'text-emerald-400' : 'text-rose-400';
-                            const sign = diff > 0 ? '+' : '';
-
-                            // Added text-right alignment
-                            return `<div class="flex flex-col leading-tight text-right w-full">
-                                        <span>$${params.value.toFixed(2)}</span>
-                                        <span class="text-xs ${colorClass} font-bold">${sign}${percent.toFixed(1)}%</span>
-                                     </div>`;
-                        }
-                    }
-                ]
-            },
 
             // Base Costs Group
             {
@@ -247,26 +230,41 @@ export class PricingListComponent {
                     {
                         field: 'cog',
                         headerName: 'COG',
-                        width: 100,
+                        width: 90,
                         editable: true,
                         valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'editable-cell text-right'
+                        cellClass: 'editable-cell text-right text-slate-300 font-mono'
                     },
                     {
                         field: 'inboundShipping',
                         headerName: 'Inbound',
-                        width: 100,
+                        width: 90,
                         editable: true,
                         valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'editable-cell text-right'
+                        cellClass: 'editable-cell text-right text-slate-400 font-mono'
+                    },
+                    {
+                        field: 'storageCost',
+                        headerName: 'Storage',
+                        width: 90,
+                        editable: true,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'editable-cell text-right text-slate-400 font-mono'
                     },
                     {
                         field: 'packaging',
                         headerName: 'Pack/Label',
-                        width: 100,
+                        width: 90,
                         editable: true,
                         valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'editable-cell text-right'
+                        cellClass: 'editable-cell text-right text-slate-400 font-mono'
+                    },
+                    {
+                        headerName: 'Total Base Cost',
+                        valueGetter: p => ((p.data.cog || 0) + (p.data.inboundShipping || 0) + (p.data.storageCost || 0) + (p.data.packaging || 0)),
+                        width: 120,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'text-right font-bold text-white bg-slate-800/50 font-mono border-r border-slate-700'
                     }
                 ]
             },
@@ -278,57 +276,128 @@ export class PricingListComponent {
                     {
                         field: 'targetNetMargin',
                         headerName: 'Target %',
-                        width: 110, // Increased
+                        width: 100,
                         editable: true,
                         valueFormatter: p => (p.value || 0) + '%',
-                        // MARGIN HEATMAP LOGIC
-                        cellStyle: params => {
-                            const val = params.value || 0;
-                            // Add right-align to default style
-                            const base = { textAlign: 'right', borderRight: '1px solid #334155' };
-                            if (val < 15) return { ...base, backgroundColor: 'rgba(244, 63, 94, 0.15)', color: '#fda4af' }; // Red
-                            if (val < 25) return { ...base, backgroundColor: 'rgba(251, 191, 36, 0.15)', color: '#fcd34d' }; // Amber
-                            return { ...base, backgroundColor: 'rgba(34, 197, 94, 0.15)', color: '#86efac' }; // Green
-                        }
+                        cellClass: 'editable-cell text-right font-mono text-emerald-400'
                     },
                     {
                         field: 'minAcceptableMargin',
-                        headerName: 'Min %',
-                        width: 110, // Increased
+                        headerName: 'Min Floor %',
+                        width: 100,
                         editable: true,
                         valueFormatter: p => (p.value || 0) + '%',
-                        cellClass: 'editable-cell text-right'
+                        cellClass: 'editable-cell text-right font-mono text-amber-400 border-r border-slate-700'
+                    }
+                ]
+            },
+
+            // Web Store Builder
+            {
+                headerName: 'Web Builder',
+                children: [
+                    {
+                        field: 'webShipping',
+                        headerName: 'Outbound Ship',
+                        width: 110,
+                        editable: true,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'editable-cell text-right text-indigo-300 font-mono'
+                    },
+                    {
+                        field: 'webCcFeePercent',
+                        headerName: 'Gateway Fee %',
+                        width: 110,
+                        editable: true,
+                        valueFormatter: p => (p.value || 0) + '%',
+                        cellClass: 'editable-cell text-right text-indigo-300 font-mono'
+                    },
+                    {
+                        field: 'webMaxDiscountPercent',
+                        headerName: 'Max Discount %',
+                        width: 120,
+                        editable: true,
+                        valueFormatter: p => (p.value || 0) + '%',
+                        cellClass: 'editable-cell text-right text-indigo-300 font-mono'
+                    },
+                    {
+                        field: 'calculatedWebPrice',
+                        headerName: 'Web Price',
+                        width: 120,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'text-right font-bold text-indigo-400 bg-indigo-900/20 font-mono border-r border-slate-700'
+                    }
+                ]
+            },
+
+            // Mercado Libre Builder
+            {
+                headerName: 'Meli Builder',
+                children: [
+                    {
+                        field: 'meliCommissionPercent',
+                        headerName: 'Commission %',
+                        width: 110,
+                        editable: true,
+                        valueFormatter: p => (p.value || 0) + '%',
+                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
+                    },
+                    {
+                        field: 'meliShipping',
+                        headerName: 'Meli Ship',
+                        width: 100,
+                        editable: true,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
+                    },
+                    {
+                        field: 'meliFixedFee',
+                        headerName: 'Fixed Fee',
+                        width: 100,
+                        editable: true,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
+                    },
+                    {
+                        field: 'calculatedMeliPrice',
+                        headerName: 'Meli Price',
+                        width: 120,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'text-right font-bold text-yellow-400 bg-yellow-900/20 font-mono border-r border-slate-700'
+                    }
+                ]
+            },
+
+            // Amazon Builder
+            {
+                headerName: 'Amazon Builder',
+                children: [
+                    {
+                        field: 'amazonReferralPercent',
+                        headerName: 'Referral %',
+                        width: 100,
+                        editable: true,
+                        valueFormatter: p => (p.value || 0) + '%',
+                        cellClass: 'editable-cell text-right text-orange-300 font-mono'
+                    },
+                    {
+                        field: 'amazonFbaFee',
+                        headerName: 'FBA Fee',
+                        width: 100,
+                        editable: true,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'editable-cell text-right text-orange-300 font-mono'
+                    },
+                    {
+                        field: 'calculatedAmazonPrice',
+                        headerName: 'Amazon Price',
+                        width: 120,
+                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
+                        cellClass: 'text-right font-bold text-orange-400 bg-orange-900/20 font-mono border-r border-slate-700'
                     }
                 ]
             }
         ];
-
-        // Dynamic Channel Columns
-        this.displayChannels.forEach(ch => {
-            cols.push({
-                headerName: ch.name,
-                children: [
-                    {
-                        field: `${ch.id}_price`,
-                        headerName: 'Price',
-                        width: 110,
-                        valueFormatter: p => p.value ? '$' + p.value.toFixed(2) : '-',
-                        cellStyle: { 'background-color': 'rgba(167, 139, 250, 0.05)', 'text-align': 'right' }
-                    },
-                    {
-                        field: `${ch.id}_margin`,
-                        headerName: 'Margin',
-                        width: 90,
-                        valueFormatter: p => p.value ? p.value.toFixed(1) + '%' : '-',
-                        cellClassRules: {
-                            'text-green-400 font-bold text-right': params => (params.value || 0) >= 20,
-                            'text-amber-400 text-right': params => (params.value || 0) < 20 && (params.value || 0) > 10,
-                            'text-rose-400 font-bold text-right': params => (params.value || 0) <= 10
-                        }
-                    }
-                ]
-            });
-        });
 
         return cols;
     }
@@ -336,12 +405,23 @@ export class PricingListComponent {
     async loadProducts() {
         this.loading.set(true);
         try {
+            // Ensure settings are loaded so settings$ emits
+            await this.settingsService.loadSettings();
+
             // Load Dependencies
-            const [rules, products, categories] = await Promise.all([
+            const [rules, products, categories, globalSettings] = await Promise.all([
                 this.rulesService.getRules(),
                 firstValueFrom(this.productService.getProducts()),
-                firstValueFrom(this.categoryService.getCategories())
-            ]) as [PricingRule[], Product[], Category[]];
+                firstValueFrom(this.categoryService.getCategories()),
+                firstValueFrom(this.settingsService.settings$)
+            ]) as [PricingRule[], Product[], Category[], any];
+
+            const globalDefaults = globalSettings?.pricing?.globalDefaults || {
+                targetNetMargin: 20, minAcceptableMargin: 12,
+                webShipping: 150, webCcFeePercent: 3.6, webMaxDiscountPercent: 10,
+                meliCommissionPercent: 15, meliShipping: 200, meliFixedFee: 25,
+                amazonReferralPercent: 15, amazonFbaFee: 180
+            };
 
             this.categories.set(categories);
 
@@ -352,39 +432,52 @@ export class PricingListComponent {
             const rows = await Promise.all(products.map(async (p: Product) => {
                 // Fetch existing strategy
                 const strategy = await this.pricingCalculator.getPricingStrategy(p.id!);
+                const strat = strategy as any;
 
                 // Prioritize Strategy > Product > Default
-                const cog = strategy?.cog ?? p.cog ?? 0;
-                const inbound = strategy?.inboundShipping ?? 0;
-                const packaging = strategy?.packagingCost ?? 0;
-                const targetMargin = strategy?.targetNetMargin ?? 20;
-                const minMargin = strategy?.minAcceptableMargin ?? 12;
+                const cog = strat?.cog ?? p.cog ?? 0;
+                const inbound = strat?.inboundShipping ?? 0;
+                const packaging = strat?.packagingCost ?? 0;
 
-                // --- MOCK INTELLIGENCE DATA GENERATOR ---
-                // Velocity: 30 data points (random 0-5 per day)
-                const velocity = Array.from({ length: 30 }, () => Math.floor(Math.random() * 4));
-                // Add some spikes for realism
-                if (Math.random() > 0.7) velocity[25] = 12;
+                // 1. Base Costs
+                const storageCost = strat?.storageCost ?? 0; // assuming exists, or 0
+                const targetMargin = strat?.targetNetMargin ?? globalDefaults.targetNetMargin;
+                const minMargin = strat?.minAcceptableMargin ?? globalDefaults.minAcceptableMargin;
 
-                // Market Price: Drift from our calculated price
-                // We need a base price to drift from. Let's use rough COG * 1.4
-                const estimatedPrice = cog * 1.5;
-                const drift = (Math.random() - 0.5) * 0.2; // +/- 10%
-                const marketPrice = estimatedPrice * (1 + drift);
-                // ----------------------------------------
+                const baseCost = cog + inbound + storageCost + packaging;
 
-                // Calculate Prices
-                const margins: MarginTargets = {
-                    targetGrossMargin: 50, // Default fixed for now
-                    targetNetMargin: targetMargin,
-                    minAcceptableMargin: minMargin
-                };
+                // Global Defaults for Channel Modifiers
+                const webShipping = strat?.webShipping ?? globalDefaults.webShipping;
+                const webCcFeePercent = strat?.webCcFeePercent ?? globalDefaults.webCcFeePercent;
+                const webMaxDiscountPercent = strat?.webMaxDiscountPercent ?? globalDefaults.webMaxDiscountPercent;
 
-                const prices = await this.pricingCalculator.generateMultiChannelPrices({
-                    ...p, cog, // Use overridden COG
-                    weight: p.weight || 0,
-                    dimensions: p.dimensions || { length: 0, width: 0, height: 0 }
-                } as Product, margins);
+                const meliCommissionPercent = strat?.meliCommissionPercent ?? globalDefaults.meliCommissionPercent;
+                const meliShipping = strat?.meliShipping ?? globalDefaults.meliShipping;
+                const meliFixedFee = strat?.meliFixedFee ?? globalDefaults.meliFixedFee;
+
+                const amazonReferralPercent = strat?.amazonReferralPercent ?? globalDefaults.amazonReferralPercent;
+                const amazonFbaFee = strat?.amazonFbaFee ?? globalDefaults.amazonFbaFee;
+
+                // The Price Construction Algorithm
+                // Selling Price = (Total Base Cost + Fixed Fees + Outbound Shipping) / (1 - Target Net Margin % - Channel Commission % - Payment Gateway % - Max Allowed Discount %)
+                
+                // Helper to prevent division by zero or negative margin errors
+                const safeDiv = (num: number, den: number) => den <= 0 ? 0 : num / den;
+
+                const calculatedWebPrice = safeDiv(
+                    (baseCost + webShipping),
+                    (1 - (targetMargin / 100) - (webCcFeePercent / 100) - (webMaxDiscountPercent / 100))
+                );
+
+                const calculatedMeliPrice = safeDiv(
+                    (baseCost + meliShipping + meliFixedFee),
+                    (1 - (targetMargin / 100) - (meliCommissionPercent / 100))
+                );
+
+                const calculatedAmazonPrice = safeDiv(
+                    (baseCost + amazonFbaFee),
+                    (1 - (targetMargin / 100) - (amazonReferralPercent / 100))
+                );
 
                 // Build Row
                 const row: PriceGridRow = {
@@ -398,27 +491,31 @@ export class PricingListComponent {
                     dimensions: p.dimensions,
                     strategyId: strategy?.id,
 
-                    // Intelligence
-                    velocity,
-                    marketPrice,
-                    competitorName: Math.random() > 0.5 ? 'Amazon' : 'MercadoLibre',
-
+                    // Baseline
                     cog,
                     inboundShipping: inbound,
+                    storageCost,
                     packaging,
                     targetNetMargin: targetMargin,
                     minAcceptableMargin: minMargin,
-                };
 
-                // Flatten prices into row
-                this.displayChannels.forEach(ch => {
-                    const priceData = prices[ch.id];
-                    if (priceData) {
-                        row[`${ch.id}_price`] = priceData.sellingPrice;
-                        row[`${ch.id}_margin`] = priceData.netMargin;
-                        row[`${ch.id}_profit`] = priceData.netProfit;
-                    }
-                });
+                    // Web Builder
+                    webShipping,
+                    webCcFeePercent,
+                    webMaxDiscountPercent,
+                    calculatedWebPrice,
+
+                    // Meli Builder
+                    meliCommissionPercent,
+                    meliShipping,
+                    meliFixedFee,
+                    calculatedMeliPrice,
+
+                    // Amazon Builder
+                    amazonReferralPercent,
+                    amazonFbaFee,
+                    calculatedAmazonPrice
+                };
 
                 return row;
             }));
@@ -435,147 +532,262 @@ export class PricingListComponent {
     async onCellValueChanged(event: any) {
         const row = event.data as PriceGridRow;
         const colId = event.colDef.field;
-        const newValue = Number(event.newValue);
 
-        // Fields that trigger recalculation
-        const costFields = ['cog', 'inboundShipping', 'packaging'];
-        const marginFields = ['targetNetMargin', 'minAcceptableMargin'];
+        // Start Optimistic Update
+        event.api.showLoadingOverlay();
 
-        if (costFields.includes(colId) || marginFields.includes(colId)) {
+        try {
+            // 1. Recalculate Logic locally for instantaneous UI update
+            const baseCost = (row.cog || 0) + (row.inboundShipping || 0) + (row.storageCost || 0) + (row.packaging || 0);
+            const targetMargin = row.targetNetMargin || 0;
+            
+            const safeDiv = (num: number, den: number) => den <= 0 ? 0 : num / den;
 
-            // 1. Recalculate Logic
-            const tempProduct: any = {
-                id: row.productId,
+            row.calculatedWebPrice = safeDiv(
+                (baseCost + (row.webShipping || 0)),
+                (1 - (targetMargin / 100) - ((row.webCcFeePercent || 0) / 100) - ((row.webMaxDiscountPercent || 0) / 100))
+            );
+
+            row.calculatedMeliPrice = safeDiv(
+                (baseCost + (row.meliShipping || 0) + (row.meliFixedFee || 0)),
+                (1 - (targetMargin / 100) - ((row.meliCommissionPercent || 0) / 100))
+            );
+
+            row.calculatedAmazonPrice = safeDiv(
+                (baseCost + (row.amazonFbaFee || 0)),
+                (1 - (targetMargin / 100) - ((row.amazonReferralPercent || 0) / 100))
+            );
+
+            // Update Grid Row
+            event.node.setData({ ...row });
+
+            // 2. Persist to Backend (Pricing Strategy)
+            const strategyData = {
+                productId: row.productId,
                 sku: row.sku,
-                brand: row.brand,
-                cog: row.cog, // Uses update value from grid (event.data is already updated by grid)
-                weight: row.weight,
-                dimensions: row.dimensions,
-                category: 'general' // Default
-            };
-
-            const margins: MarginTargets = {
-                targetGrossMargin: 50,
-                targetNetMargin: row.targetNetMargin,
-                minAcceptableMargin: row.minAcceptableMargin
-            };
-
-            // Note: generateMultiChannelPrices currently relies on Product COG.
-            // But we need to pass Inbound/Packaging. The service calculates breakdown inside.
-            // Wait, calculateChannelPrice takes customCosts? Yes.
-            // But generateMultiChannelPrices does NOT expose customCosts arg in its current signature.
-            // We need to fix that or call individual calculations. 
-            // Workaround: We will update logic to call calculateChannelPrice in loop here, 
-            // OR update the service. (Updating service is out of scope for strict 'grid' task unless blocked).
-            // Actually, looking at service: calculateChannelPrice takes customCosts.
-            // generateMultiChannelPrices does NOT.
-            // I will manually loop here to support custom costs.
-
-            const customCosts = {
+                
+                // Baseline
+                cog: row.cog,
                 inboundShipping: row.inboundShipping,
-                packagingLabeling: row.packaging
+                storageCost: row.storageCost,
+                packagingCost: row.packaging,
+                targetNetMargin: row.targetNetMargin,
+                minAcceptableMargin: row.minAcceptableMargin,
+
+                // Web
+                webShipping: row.webShipping,
+                webCcFeePercent: row.webCcFeePercent,
+                webMaxDiscountPercent: row.webMaxDiscountPercent,
+
+                // Meli
+                meliCommissionPercent: row.meliCommissionPercent,
+                meliShipping: row.meliShipping,
+                meliFixedFee: row.meliFixedFee,
+
+                // Amazon
+                amazonReferralPercent: row.amazonReferralPercent,
+                amazonFbaFee: row.amazonFbaFee
             };
 
-            const updatedRow = { ...row };
+            let requiresApproval = false;
 
-            // Start Optimistic Update
-            event.api.showLoadingOverlay();
+            // Check COG change for approval
+            if (colId === 'cog') {
+                const oldCog = Number(event.oldValue) || 0;
+                const newCog = Number(event.newValue) || 0;
 
-            try {
-                // Recalculate all channels
-                for (const ch of this.displayChannels) {
-                    const price = await this.pricingCalculator.calculateChannelPrice(
-                        tempProduct,
-                        ch.id,
-                        margins,
-                        customCosts
-                    );
+                if (oldCog > 0 && newCog !== oldCog) {
+                    const changePct = Math.abs(newCog - oldCog) / oldCog * 100;
+                    const settings = await firstValueFrom(this.settingsService.settings$);
+                    const threshold = settings?.approvals?.priceChangeThreshold || 15;
 
-                    updatedRow[`${ch.id}_price`] = price.sellingPrice;
-                    updatedRow[`${ch.id}_margin`] = price.netMargin;
-                    updatedRow[`${ch.id}_profit`] = price.netProfit;
+                    if (changePct >= threshold) {
+                        requiresApproval = true;
+                        
+                        // Revert visually
+                        event.node.setDataValue('cog', oldCog);
+                        strategyData.cog = oldCog;
+
+                        // Create approval request
+                        await this.approvalWorkflow.createApprovalRequest(
+                            'PRICE_CHANGE',
+                            {
+                                productId: row.productId,
+                                productName: row.name,
+                                sku: row.sku,
+                                oldPrice: oldCog,
+                                newPrice: newCog,
+                                changePercentage: changePct,
+                                field: 'cog'
+                            },
+                            `Cambio de COG de $${oldCog} a $${newCog} (${changePct.toFixed(2)}%) supera el umbral.`,
+                            'HIGH'
+                        );
+
+                        this.toast.info('El cambio de costo supera el límite y fue enviado para aprobación.');
+                    }
                 }
+            }
 
-                // Update Grid
-                event.node.setData(updatedRow);
+            if (row.strategyId) {
+                await this.pricingCalculator.updatePricingStrategy(row.strategyId, strategyData);
+            } else {
+                const newId = await this.pricingCalculator.savePricingStrategy(strategyData as any);
+                row.strategyId = newId;
+                event.node.setData({ ...row });
+            }
 
-                // 2. Persist to Backend (Pricing Strategy)
-                const strategyData: Partial<PricingStrategy> = {
+            // Also update Product COG for consistency everywhere
+            if (colId === 'cog' && !requiresApproval) {
+                await this.productService.updateProduct(row.productId, { cog: row.cog } as any);
+            }
+
+            // Write Audit Log
+            if (!requiresApproval) {
+                const oldValue = event.oldValue !== undefined && event.oldValue !== null ? event.oldValue : 'empty';
+                const newValue = event.newValue;
+                const fieldLabel = this.editableFields.find(f => f.id === colId)?.label || colId;
+                
+                await this.adminLog.log(
+                    'UPDATE',
+                    'PRICING',
+                    `Cambio de ${fieldLabel} de ${oldValue} a ${newValue} en SKU ${row.sku}`,
+                    row.productId
+                );
+            }
+
+        } catch (error) {
+            console.error('Error recalculating/saving:', error);
+            this.toast.error('Error guardando los cambios.');
+        } finally {
+            event.api.hideOverlay();
+        }
+    }
+
+    async applyBulkEdit() {
+        if (!this.gridApi) return;
+        
+        const field = this.bulkEditField();
+        const value = Number(this.bulkEditValue());
+
+        // Get all nodes currently visible after filtering
+        const filteredNodes: any[] = [];
+        this.gridApi.forEachNodeAfterFilter(node => {
+            filteredNodes.push(node);
+        });
+
+        if (filteredNodes.length === 0) {
+            this.toast.warning('No hay SKUs filtrados para actualizar.');
+            return;
+        }
+
+        // Removed `confirm()` as it can block execution in some environments.
+        // We will just proceed since there is a huge warning on the modal.
+        this.bulkEditProcessing.set(true);
+        this.bulkEditTotal.set(filteredNodes.length);
+        this.bulkEditProgress.set(0);
+        this.showBulkEditModal.set(false);
+
+        // We process sequentially to prevent memory/firebase flooding, but we update UI instantly
+        let i = 0;
+        
+        // Helper for math
+        const safeDiv = (num: number, den: number) => den <= 0 ? 0 : num / den;
+
+        // Analytics for Audit Log
+        const oldValueFrequencies: Record<string, number> = {};
+
+        for (const node of filteredNodes) {
+            const row = { ...node.data } as PriceGridRow;
+            
+            // Track old value for logs
+            const oldValRaw = (row as any)[field];
+            const oldValString = oldValRaw !== undefined && oldValRaw !== null ? String(oldValRaw) : 'empty';
+            oldValueFrequencies[oldValString] = (oldValueFrequencies[oldValString] || 0) + 1;
+
+            // 1. Update the target field
+            (row as any)[field] = value;
+
+            // 2. Recalculate
+            const baseCost = (row.cog || 0) + (row.inboundShipping || 0) + (row.storageCost || 0) + (row.packaging || 0);
+            const targetMargin = row.targetNetMargin || 0;
+
+            row.calculatedWebPrice = safeDiv(
+                (baseCost + (row.webShipping || 0)),
+                (1 - (targetMargin / 100) - ((row.webCcFeePercent || 0) / 100) - ((row.webMaxDiscountPercent || 0) / 100))
+            );
+
+            row.calculatedMeliPrice = safeDiv(
+                (baseCost + (row.meliShipping || 0) + (row.meliFixedFee || 0)),
+                (1 - (targetMargin / 100) - ((row.meliCommissionPercent || 0) / 100))
+            );
+
+            row.calculatedAmazonPrice = safeDiv(
+                (baseCost + (row.amazonFbaFee || 0)),
+                (1 - (targetMargin / 100) - ((row.amazonReferralPercent || 0) / 100))
+            );
+
+            // 3. Update Grid UI
+            node.setData(row);
+
+            // 4. Persist to DB (Awaited sequentially to prevent flooding)
+            try {
+                const strategyData = {
                     productId: row.productId,
                     sku: row.sku,
                     cog: row.cog,
                     inboundShipping: row.inboundShipping,
+                    storageCost: row.storageCost,
                     packagingCost: row.packaging,
                     targetNetMargin: row.targetNetMargin,
                     minAcceptableMargin: row.minAcceptableMargin,
-                    // We should also save the calculated prices? 
-                    // PricingStrategy model usually just stores inputs.
-                    // PricingHistory stores calc snapshots.
+                    webShipping: row.webShipping,
+                    webCcFeePercent: row.webCcFeePercent,
+                    webMaxDiscountPercent: row.webMaxDiscountPercent,
+                    meliCommissionPercent: row.meliCommissionPercent,
+                    meliShipping: row.meliShipping,
+                    meliFixedFee: row.meliFixedFee,
+                    amazonReferralPercent: row.amazonReferralPercent,
+                    amazonFbaFee: row.amazonFbaFee
                 };
-
-                let requiresApproval = false;
-
-                // Check COG change for approval
-                if (colId === 'cog') {
-                    const oldCog = Number(event.oldValue) || 0;
-                    const newCog = Number(event.newValue) || 0;
-
-                    if (oldCog > 0 && newCog !== oldCog) {
-                        const changePct = Math.abs(newCog - oldCog) / oldCog * 100;
-                        const settings = await firstValueFrom(this.settingsService.settings$);
-                        const threshold = settings?.approvals?.priceChangeThreshold || 15;
-
-                        if (changePct >= threshold) {
-                            requiresApproval = true;
-                            
-                            // Revert visually
-                            event.node.setDataValue('cog', oldCog);
-                            strategyData.cog = oldCog;
-
-                            // Create approval request
-                            await this.approvalWorkflow.createApprovalRequest(
-                                'PRICE_CHANGE',
-                                {
-                                    productId: row.productId,
-                                    productName: row.name,
-                                    sku: row.sku,
-                                    oldPrice: oldCog,
-                                    newPrice: newCog,
-                                    changePercentage: changePct,
-                                    field: 'cog'
-                                },
-                                `Cambio de COG de $${oldCog} a $${newCog} (${changePct.toFixed(2)}%) supera el umbral.`,
-                                'HIGH'
-                            );
-
-                            this.toast.info('El cambio de costo supera el límite y fue enviado para aprobación.');
-                        }
-                    }
-                }
 
                 if (row.strategyId) {
                     await this.pricingCalculator.updatePricingStrategy(row.strategyId, strategyData);
                 } else {
                     const newId = await this.pricingCalculator.savePricingStrategy(strategyData as any);
-                    updatedRow.strategyId = newId;
-                    event.node.setData(updatedRow);
+                    row.strategyId = newId;
+                    node.setData(row); // Update with new ID
                 }
 
-                // Also update Product COG for consistency everywhere
-                if (colId === 'cog' && !requiresApproval) {
+                // If COG was bulk edited, sync to Product catalog directly
+                // (Intentionally skipping approval workflow for bulk edits to prevent 500 approval tickets)
+                if (field === 'cog') {
                     await this.productService.updateProduct(row.productId, { cog: row.cog } as any);
                 }
 
-                if (!requiresApproval) {
-                    console.log('Strategy saved successfully');
-                }
-
-            } catch (error) {
-                console.error('Error recalculating/saving:', error);
-            } finally {
-                event.api.hideOverlay();
+            } catch (err) {
+                console.error(`Error saving bulk edit for ${row.sku}`, err);
             }
+            
+            i++;
+            this.bulkEditProgress.set(i);
         }
+
+        // Generate Old Value Analysis String
+        const oldValuesSummary = Object.entries(oldValueFrequencies)
+            .map(([val, count]) => `${val} (${count} SKUs)`)
+            .join(', ');
+
+        // Consolidated Bulk Audit Log
+        const fieldLabel = this.editableFields.find(f => f.id === field)?.label || field;
+        await this.adminLog.log(
+            'UPDATE',
+            'PRICING',
+            `Aplicación masiva de valor ${value} a ${fieldLabel} en ${filteredNodes.length} SKUs. (Valores anteriores: ${oldValuesSummary})`
+        );
+
+        this.toast.success(`Se actualizaron ${filteredNodes.length} SKUs con éxito.`);
+        this.bulkEditProcessing.set(false);
     }
 
     openRulesManager() {

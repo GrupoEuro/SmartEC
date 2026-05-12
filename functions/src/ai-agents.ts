@@ -393,52 +393,77 @@ async function runAnalyzeMeliInsightsLogic() {
     const itemsToAnalyze = Object.keys(itemQuestions);
     console.log(`[analyzeMeliInsights] Found ${itemsToAnalyze.length} items with recent questions.`);
 
-    for (const itemId of itemsToAnalyze) {
-        const questions = itemQuestions[itemId];
-        if (questions.length === 0) continue;
+    const BATCH_SIZE = 10;
+    
+    for (let i = 0; i < itemsToAnalyze.length; i += BATCH_SIZE) {
+        const batchItemIds = itemsToAnalyze.slice(i, i + BATCH_SIZE);
+        const batchQuestions = batchItemIds
+            .filter(id => itemQuestions[id].length > 0)
+            .map(id => `Item ID: ${id}\nPreguntas:\n${itemQuestions[id].map(q => '- ' + q).join('\n')}`)
+            .join('\n\n---\n\n');
 
-        console.log(`[analyzeMeliInsights] Analyzing ${itemId} (${questions.length} questions)...`);
+        if (!batchQuestions) continue;
+
+        console.log(`[analyzeMeliInsights] Analyzing batch of ${batchItemIds.length} items...`);
 
         const systemPrompt = `Eres un experto en optimización de e-commerce automotriz y refacciones.
-Tu objetivo es analizar preguntas reales de clientes sobre una publicación de MercadoLibre y extraer recomendaciones accionables para mejorar la descripción del producto, reducir fricción, y aumentar ventas.
+Tu objetivo es analizar preguntas reales de clientes sobre publicaciones de MercadoLibre y extraer recomendaciones accionables para mejorar la descripción del producto, reducir fricción, y aumentar ventas.
 
-Analiza este grupo de preguntas para el Item ID: ${itemId} y devuelve un objeto JSON estructurado con el siguiente formato estricto:
+Analiza los siguientes grupos de preguntas por Item ID y devuelve un objeto JSON estructurado con el siguiente formato estricto, donde las llaves principales son los Item IDs:
 {
-  "summary": "Resumen de las dudas principales de los clientes",
-  "missingInformation": ["Falta 1", "Falta 2"],
-  "actionableRecommendations": ["Agrega X a la descripción", "Aclara Y en las fotos"]
+  "ITEM_ID_1": {
+    "summary": "Resumen de las dudas principales de los clientes",
+    "missingInformation": ["Falta 1", "Falta 2"],
+    "actionableRecommendations": ["Agrega X a la descripción", "Aclara Y en las fotos"]
+  },
+  "ITEM_ID_2": {
+    "summary": "...",
+    "missingInformation": ["..."],
+    "actionableRecommendations": ["..."]
+  }
 }
 No devuelvas ningún texto fuera del JSON. Devuelve el JSON puro sin bloques markdown de codigo.`;
 
         const history = [{
             role: 'user' as const,
-            parts: [{ text: `Preguntas de los clientes:\n\n${questions.map(q => '- ' + q).join('\n')}` }]
+            parts: [{ text: `Datos a analizar:\n\n${batchQuestions}` }]
         }];
 
         try {
-            const { text } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.2, 8192, true /* forceJson */);
-            let parsedInsights;
+            // Downgrade model to gemini-1.5-flash for cost efficiency and speed
+            const { text } = await callGemini(systemPrompt, history, 'gemini-1.5-flash', 0.2, 8192, true /* forceJson */);
+            let parsedBatchInsights: Record<string, any>;
             
             try {
                 const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                parsedInsights = JSON.parse(cleanText);
+                parsedBatchInsights = JSON.parse(cleanText);
             } catch (e) {
-                console.error(`[analyzeMeliInsights] Failed to parse JSON for ${itemId}:`, text);
+                console.error(`[analyzeMeliInsights] Failed to parse JSON for batch ${batchItemIds.join(',')}:`, text);
                 continue;
             }
 
-            await db.collection('meli_insights').doc(itemId).set({
-                itemId,
-                lastAnalyzedAt: admin.firestore.FieldValue.serverTimestamp(),
-                questionCount: questions.length,
-                summary: parsedInsights.summary || '',
-                missingInformation: parsedInsights.missingInformation || [],
-                actionableRecommendations: parsedInsights.actionableRecommendations || [],
-                recentQuestions: questions.slice(0, 5) // Store top 5 as sample
-            }, { merge: true });
+            const batchPromises = Object.entries(parsedBatchInsights).map(async ([itemId, insights]) => {
+                // Double check the itemId is one of the ones we requested
+                if (!batchItemIds.includes(itemId)) return;
+                
+                const questions = itemQuestions[itemId] || [];
+                return db.collection('meli_insights').doc(itemId).set({
+                    itemId,
+                    lastAnalyzedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    questionCount: questions.length,
+                    summary: insights.summary || '',
+                    missingInformation: insights.missingInformation || [],
+                    actionableRecommendations: insights.actionableRecommendations || [],
+                    recentQuestions: questions.slice(0, 5) // Store top 5 as sample
+                }, { merge: true }).catch(err => {
+                    console.error(`[analyzeMeliInsights] Firestore error for ${itemId}:`, err.message);
+                });
+            });
+
+            await Promise.all(batchPromises);
 
         } catch (err: any) {
-            console.error(`[analyzeMeliInsights] Gemini API error for ${itemId}:`, err.message);
+            console.error(`[analyzeMeliInsights] Gemini API error for batch ${batchItemIds.join(',')}:`, err.message);
         }
     }
 

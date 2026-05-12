@@ -271,13 +271,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     });
 
     /**
-     * Today's actual sales so far (CY).
-     * Reads directly from the stats signal which is always up-to-date.
-     * We keep a separate todayOrders signal that applyFilters() populates.
+     * Today's actual totals so far (CY).
      */
-    todayOrdersTotal = signal<number>(0);
+    todaySalesTotalSignal = signal<number>(0);
+    todaySalesActual = computed<number>(() => this.todaySalesTotalSignal());
 
-    todaySalesActual = computed<number>(() => this.todayOrdersTotal());
+    todayOrdersCountSignal = signal<number>(0);
+    todayOrdersActual = computed<number>(() => this.todayOrdersCountSignal());
+
+    todayPiecesCountSignal = signal<number>(0);
+    todayPiecesActual = computed<number>(() => this.todayPiecesCountSignal());
 
     /**
      * Today's full-day sales projection.
@@ -309,13 +312,48 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
                 if (lySalesMTD > 0 && mtdSales > 0) {
                     const velocityMultiplier = mtdSales / lySalesMTD;
-                    return lyToday * velocityMultiplier;
+                    const futureLyToday = lyToday * (1 - fractionalDayPart);
+                    return todaySales + (futureLyToday * velocityMultiplier);
                 }
             }
         }
 
         // ── Strategy B: Straight-line hourly run-rate ──────────────────────────
         return (todaySales / hoursElapsed) * 24;
+    });
+
+    todayOrdersProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const todayOrders = this.todayOrdersActual();
+        const todaySalesProj = this.todayProjection();
+        const todaySalesAct = this.todaySalesActual();
+        
+        // Strategy A: Scale by the sales projection ratio
+        if (todaySalesProj && todaySalesAct > 0) {
+            const ratio = todaySalesProj / todaySalesAct;
+            return Math.round(todayOrders * ratio);
+        }
+        
+        // Strategy B: Straight-line hourly
+        const hoursElapsed = new Date().getHours() + new Date().getMinutes() / 60;
+        if (hoursElapsed < 0.5) return null;
+        return Math.round((todayOrders / hoursElapsed) * 24);
+    });
+
+    todayPiecesProjection = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const todayPieces = this.todayPiecesActual();
+        const todaySalesProj = this.todayProjection();
+        const todaySalesAct = this.todaySalesActual();
+        
+        if (todaySalesProj && todaySalesAct > 0) {
+            const ratio = todaySalesProj / todaySalesAct;
+            return Math.round(todayPieces * ratio);
+        }
+        
+        const hoursElapsed = new Date().getHours() + new Date().getMinutes() / 60;
+        if (hoursElapsed < 0.5) return null;
+        return Math.round((todayPieces / hoursElapsed) * 24);
     });
 
 
@@ -444,8 +482,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const vsYesterdayAbs = yesterdayAtSameHour > 0
             ? todaySales - yesterdayAtSameHour
             : null;
-        const vsLyPct = lyToday && lyToday > 0
-            ? ((todaySales - lyToday) / lyToday) * 100
+            
+        // Compare today's partial sales to the same proportion of LY's full day
+        const lyTodayPartial = lyToday ? lyToday * (hoursElapsed / 24) : null;
+        const vsLyPct = lyTodayPartial && lyTodayPartial > 0
+            ? ((todaySales - lyTodayPartial) / lyTodayPartial) * 100
             : null;
 
         // Health status
@@ -1242,18 +1283,33 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         this.stats.set(stats);
 
-        // Calculate today's actual sales total — feeds todaySalesActual / todayProjection signals.
+        // Calculate today's actual totals — feeds todaySalesActual / todayOrdersActual / todayPiecesActual signals.
         const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
-        const todayTotal = orders
-            .filter(o => {
-                if (NON_REVENUE.includes(o.status as string)) return false;
-                const d = this.getJsDate(o.createdAt);
-                return d.getFullYear() === today.getFullYear()
-                    && d.getMonth()    === today.getMonth()
-                    && d.getDate()     === today.getDate();
-            })
-            .reduce((sum, o) => sum + (o.total || 0), 0);
-        this.todayOrdersTotal.set(todayTotal);
+        
+        let todaySalesSum = 0;
+        let todayOrdersCount = 0;
+        let todayPiecesSum = 0;
+        
+        orders.forEach(o => {
+            if (NON_REVENUE.includes(o.status as string)) return;
+            const d = this.getJsDate(o.createdAt);
+            if (d.getFullYear() === today.getFullYear() && 
+                d.getMonth() === today.getMonth() && 
+                d.getDate() === today.getDate()) {
+                
+                todaySalesSum += o.total || 0;
+                todayOrdersCount++;
+                if (o.items && Array.isArray(o.items)) {
+                    o.items.forEach(item => {
+                        todayPiecesSum += item.quantity || 0;
+                    });
+                }
+            }
+        });
+        
+        this.todaySalesTotalSignal.set(todaySalesSum);
+        this.todayOrdersCountSignal.set(todayOrdersCount);
+        this.todayPiecesCountSignal.set(todayPiecesSum);
 
         // Populate specific widget stats respecting timeframe
         // These are now called directly from applyFilters
@@ -1958,10 +2014,14 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             const projData = new Array(dataLength).fill(null);
             const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
 
-            // Anchor projection line at today's actual (partial) sales.
-            // Projection starts TOMORROW (todayIdx + 1) to avoid double-counting today.
+            // Anchor projection line at yesterday's actual complete sales so the line connects visually.
+            if (todayIdx > 0 && todayIdx - 1 < dataLength) {
+                projData[todayIdx - 1] = safeSalesData[todayIdx - 1];
+            }
+
+            // Set today's projection using the computed full-day projection.
             if (todayIdx < dataLength) {
-                projData[todayIdx] = safeSalesData[todayIdx];
+                projData[todayIdx] = this.todayProjection() ?? safeSalesData[todayIdx];
             }
 
             const lyData = this.lyDailyData();

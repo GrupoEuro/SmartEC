@@ -61,17 +61,18 @@ export class AdminLogService {
       const logsRef = collection(this.firestore, this.collectionName);
       let q = query(logsRef, orderBy('timestamp', 'desc'), limit(limitCount));
 
-      // Note: Composite index might be needed for where + orderBy
-      if (moduleFilter && moduleFilter !== 'ALL') {
-        q = query(logsRef, where('module', '==', moduleFilter), orderBy('timestamp', 'desc'), limit(limitCount));
-      }
-
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
+      let logs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         timestamp: (doc.data() as any).timestamp?.toDate()
       }));
+
+      if (moduleFilter && moduleFilter !== 'ALL') {
+          logs = logs.filter((l: any) => l.module === moduleFilter);
+      }
+
+      return logs;
     } catch (e) {
       console.error('Error fetching logs:', e);
       return [];

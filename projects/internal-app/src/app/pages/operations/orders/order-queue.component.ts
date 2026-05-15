@@ -22,6 +22,9 @@ import { PdfGenerationService } from '../../../core/services/pdf-generation.serv
 import { TableDataSource } from '../../../core/utils/table-data-source';
 import { HelpContextButtonComponent } from '../../../shared/components/help-context-button/help-context-button.component';
 import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.component';
+import { DATE_RANGES, DateRange, MetricsAnalyticsService } from '../metrics/services/metrics-analytics.service';
+import { MetricsTimeframeService } from '../metrics/services/metrics-timeframe.service';
+import { Subscription } from 'rxjs';
 
 type SortField = 'orderNumber' | 'date' | 'customer' | 'total';
 type SortDirection = 'asc' | 'desc';
@@ -45,6 +48,11 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     private toast = inject(ToastService);
     private firestore = inject(Firestore);
     private pdfService = inject(PdfGenerationService);
+    private analyticsSvc = inject(MetricsAnalyticsService);
+    private tf = inject(MetricsTimeframeService);
+
+    readonly dateRanges = DATE_RANGES;
+    readonly selectedRange = this.tf.selected;
 
     orders = signal<Order[]>([]);
 
@@ -57,9 +65,8 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     dataSource = new TableDataSource<Order>([], 10);
 
     // Filter state
-    currentStatus = signal<OrderStatus | 'all'>('all');
+    statusFilter = signal<OrderStatus | 'all' | 'ghost'>('all');
     searchControl = this.fb.control('');
-    selectedDateRange = '';
     selectedPaymentStatus = '';
     selectedFulfillmentStatus = '';
 
@@ -86,14 +93,7 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     statusTabs = signal([
         { id: 'all' as const,            label: 'OPERATIONS.ORDERS.STATUS.ALL',              icon: 'clipboard-list', count: 0 },
         { id: 'my-orders' as const,      label: 'OPERATIONS.ORDERS.MY_ORDERS',               icon: 'user',           count: 0 },
-        { id: 'unassigned' as const,     label: 'OPERATIONS.ORDERS.UNASSIGNED',              icon: 'pin',            count: 0 },
-        { id: 'paid' as OrderStatus,     label: 'OPERATIONS.ORDERS.STATUS.PAID',             icon: 'zap',            count: 0 },
-        { id: 'pending' as OrderStatus,  label: 'OPERATIONS.ORDERS.STATUS.PENDING',          icon: 'clock',          count: 0 },
-        { id: 'refund_pending' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.REFUND_PENDING', icon: 'alert-triangle', count: 0 },
-        { id: 'processing' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.PROCESSING',    icon: 'settings',       count: 0 },
-        { id: 'shipped' as OrderStatus,  label: 'OPERATIONS.ORDERS.STATUS.SHIPPED',         icon: 'truck',          count: 0 },
-        { id: 'delivered' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.DELIVERED',      icon: 'check-circle',   count: 0 },
-        { id: 'cancelled' as OrderStatus, label: 'OPERATIONS.ORDERS.STATUS.CANCELLED',      icon: 'x-circle',       count: 0 }
+        { id: 'unassigned' as const,     label: 'OPERATIONS.ORDERS.UNASSIGNED',              icon: 'pin',            count: 0 }
     ]);
 
     /** Ghost statuses excluded from queue by default (abandoned checkouts & failed payments) */
@@ -128,9 +128,10 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
         this.route.queryParams.subscribe((params: any) => {
             if (params['status']) {
                 const status = params['status'].toLowerCase();
-                // precise matching would be better, but let's assume valid status for now
-                if (['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'all', 'my-orders', 'unassigned'].includes(status)) {
-                    this.setFilter(status);
+                if (['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'returned', 'all'].includes(status)) {
+                    this.statusFilter.set(status as any);
+                } else if (['my-orders', 'unassigned'].includes(status)) {
+                    this.setFilter(status as any);
                 }
             }
         });
@@ -166,9 +167,23 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
         }
     }
 
+    private ordersSub?: Subscription;
+
+    selectRange(r: DateRange) {
+        this.tf.set(r);
+        this.loadOrders();
+    }
+
     loadOrders() {
         this.isLoading.set(true);
-        this.orderService.getOrders().pipe(takeUntil(this.destroy$)).subscribe({
+        const range = this.tf.selected();
+        const [startDate, endDate] = this.analyticsSvc.getDateRange(range.type);
+
+        if (this.ordersSub) this.ordersSub.unsubscribe();
+
+        this.ordersSub = this.orderService.getOrdersByDateRangeLive(startDate, endDate)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
             next: (orders) => {
                 // ── Real-time new-order notification ─────────────────────────
                 if (this.knownOrderIds.size > 0) {
@@ -210,19 +225,16 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
         });
     }
 
-    setFilter(status: OrderStatus | 'all' | 'my-orders' | 'unassigned') {
+    setFilter(view: 'all' | 'my-orders' | 'unassigned') {
         // Handle special filters
-        if (status === 'my-orders') {
+        if (view === 'my-orders') {
             this.showMyOrdersOnly.set(true);
-            this.currentStatus.set('all');
             this.assignmentFilter.set('my-orders');
-        } else if (status === 'unassigned') {
+        } else if (view === 'unassigned') {
             this.showMyOrdersOnly.set(false);
-            this.currentStatus.set('all');
             this.assignmentFilter.set('unassigned');
         } else {
             this.showMyOrdersOnly.set(false);
-            this.currentStatus.set(status);
             this.assignmentFilter.set('all');
         }
         this.applyFilters();
@@ -245,17 +257,18 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
 
     applyFilters() {
         this.dataSource.refresh((order) => {
-            // ── Ghost order filter ─────────────────────────────────────────────
-            // Exclude abandoned checkouts / failed payments from the queue by default.
-            // Staff can toggle showGhostOrders to debug these.
-            if (!this.showGhostOrders() && this.GHOST_STATUSES.includes(order.status)) {
-                return false;
-            }
-
-            // Status filter
-            const status = this.currentStatus();
-            if (status !== 'all' && order.status !== status) {
-                return false;
+            const status = this.statusFilter();
+            
+            // Handle Ghost Orders via Status Dropdown
+            if (status === 'ghost') {
+                if (!this.GHOST_STATUSES.includes(order.status)) return false;
+            } else {
+                if (this.GHOST_STATUSES.includes(order.status)) return false;
+                
+                // Status filter
+                if (status !== 'all' && order.status !== status) {
+                    return false;
+                }
             }
 
             // Search filter
@@ -266,29 +279,6 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
                     (order.customer?.name || '').toLowerCase().includes(searchTerm) ||
                     (order.customer?.email || '').toLowerCase().includes(searchTerm);
                 if (!matchesSearch) return false;
-            }
-
-            // Date range filter
-            if (this.selectedDateRange) {
-                const now = new Date();
-                let startDate: Date;
-
-                switch (this.selectedDateRange) {
-                    case 'today':
-                        startDate = new Date(now.setHours(0, 0, 0, 0));
-                        break;
-                    case 'this-week':
-                        startDate = new Date(now.setDate(now.getDate() - 7));
-                        break;
-                    case 'this-month':
-                        startDate = new Date(now.setMonth(now.getMonth() - 1));
-                        break;
-                    default:
-                        startDate = new Date(0);
-                }
-
-                const orderDate = this.getJsDate(order.createdAt);
-                if (orderDate < startDate) return false;
             }
 
             // Assignment filter - handled by tabs via setFilter() method
@@ -592,14 +582,6 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
                 case 'unassigned':
                     count = orders.filter(o => !o.assignedTo).length;
                     break;
-                case 'pending':
-                case 'processing':
-                case 'shipped':
-                case 'delivered':
-                case 'cancelled':
-                case 'refunded':
-                    count = orders.filter(o => o.status === tab.id).length;
-                    break;
             }
 
             return { ...tab, count };
@@ -654,10 +636,10 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     }
 
     clearFilters() {
-        this.currentStatus.set('all');
+        this.statusFilter.set('all');
         this.searchControl.setValue('');
-        this.selectedDateRange = '';
         this.assignmentFilter.set('all');
+        this.showMyOrdersOnly.set(false);
         this.priorityFilter.set('all');
         this.slaFilter.set('all');
         this.channelFilter.set('all');
@@ -686,10 +668,11 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     hasActiveFilters(): boolean {
         return !!(
             this.searchControl.value ||
-            this.selectedDateRange ||
+            this.statusFilter() !== 'all' ||
             this.priorityFilter() !== 'all' ||
             this.slaFilter() !== 'all' ||
-            this.channelFilter() !== 'all'
+            this.channelFilter() !== 'all' ||
+            this.assignmentFilter() !== 'all'
         );
     }
 

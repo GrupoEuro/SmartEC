@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Firestore, doc, getDoc, collection, getDocs, query, where, orderBy, limit } from '@angular/fire/firestore';
 import { Subscription } from 'rxjs';
+import confetti from 'canvas-confetti';
 
 import { OrderService } from '../../../core/services/order.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
@@ -148,6 +149,11 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf'>('ALL');
     showProjection = signal<boolean>(true);
     allFetchedOrders: Order[] = [];
+
+    // Easter Egg Milestones
+    dailyMilestone = signal<'50K' | '100K' | null>(null);
+    monthlyMilestone = signal<boolean>(false);
+    fireworksMessage = signal<string | null>(null);
 
     // Channel breakdown — always computed on ALL orders regardless of active filter
     channelBreakdown = signal<{
@@ -421,12 +427,17 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         vsYesterdayPct:       number | null;
         vsYesterdayAbs:       number | null;
         lyToday:              number | null;
+        lyTodayPartial:       number | null;
+        lyRate:               number | null;
         vsLyPct:              number | null;
         hoursElapsed:         number;
         status:               'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
         insight:              string;
         insightDetail:        string;
     } | null>(() => {
+        // Inject reactive dependency so this re-runs on live order updates
+        this.todaySalesTotalSignal();
+        
         if (this.timeframe() !== 'MTD') return null;
 
         const now          = new Date();
@@ -485,6 +496,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             
         // Compare today's partial sales to the same proportion of LY's full day
         const lyTodayPartial = lyToday ? lyToday * (hoursElapsed / 24) : null;
+        const lyRate = lyToday ? lyToday / 24 : null;
         const vsLyPct = lyTodayPartial && lyTodayPartial > 0
             ? ((todaySales - lyTodayPartial) / lyTodayPartial) * 100
             : null;
@@ -523,7 +535,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             todaySales, todayRate,
             yesterdayAtSameHour, yesterdayFull, yesterdayRate,
             vsYesterdayPct, vsYesterdayAbs,
-            lyToday, vsLyPct,
+            lyToday, lyTodayPartial, lyRate, vsLyPct,
             hoursElapsed, status, insight, insightDetail
         };
     });
@@ -901,48 +913,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
             if (hasAny) {
                 this.lyDailyData.set(dailySales);
-                // If trend chart already rendered, push the overlay onto it
-                if (this.trendChart) this.updateTrendChartLyOverlay();
+                // The historical data has arrived. Redraw the entire chart so 
+                // the projection curve recalculates based on this new data!
+                if (this.trendChart) this.applyFilters();
             }
         } catch (err) {
             console.warn('[Dashboard] LY daily MTD read failed (non-critical):', err);
         }
     }
 
-    /** Add or update the dashed LY overlay line dataset on the trend chart. */
-    private updateTrendChartLyOverlay(): void {
-        if (!this.trendChart) return;
-        const lyData = this.lyDailyData();
-        if (lyData.length === 0) return;
-
-        const lyYear = new Date().getFullYear() - 1;
-        const datasets = this.trendChart.data.datasets as any[];
-        const existingIdx = datasets.findIndex(d => d['_isLY'] === true);
-
-        const lyDataset = {
-            type: 'line',
-            label: `Ventas ${lyYear}`,
-            data: lyData,
-            borderColor: '#94a3b8',       // slate-400 — neutral, clearly distinguishable
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            tension: 0.4,
-            spanGaps: true,
-            yAxisID: 'y1',
-            pointRadius: 3,
-            pointBackgroundColor: '#94a3b8',
-            order: 0,
-            _isLY: true,
-        };
-
-        if (existingIdx >= 0) {
-            datasets[existingIdx] = lyDataset;
-        } else {
-            datasets.unshift(lyDataset); // prepend so it renders first (behind bars)
-        }
-        this.trendChart.update();
-    }
+    // LY overlay natively handled inside createTrendChart()
 
 
     private chartRenderTimeout: any;
@@ -1945,6 +1925,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const safeSalesData = salesData.map(val => Number.isNaN(val) ? 0 : val);
         console.log('[TrendChart] dataLength:', dataLength, '| salesData total:', safeSalesData.reduce((a, b) => a + b, 0).toFixed(0), '| first 7 days:', safeSalesData.slice(0, 7));
 
+        this.checkMilestones(safeSalesData);
+
         const datasets: any[] = [
             {
                 type: 'line',
@@ -2069,6 +2051,28 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }
 
 
+        const lyDataObj = this.lyDailyData();
+        if (lyDataObj && lyDataObj.length === dataLength) {
+            const lyYear = new Date().getFullYear() - 1;
+            datasets.unshift({
+                type: 'line',
+                label: `Ventas ${lyYear}`,
+                data: lyDataObj,
+                borderColor: '#94a3b8',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                tension: 0.4,
+                spanGaps: true,
+                yAxisID: 'y1',
+                pointRadius: 3,
+                pointBackgroundColor: '#94a3b8',
+                order: 0,
+                // @ts-ignore
+                _isLY: true
+            });
+        }
+
         const config: ChartConfiguration = {
             type: 'bar',
             data: {
@@ -2143,35 +2147,59 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const bestDayPlugin = {
             id: 'bestDayStar',
             afterDatasetsDraw(chart: any) {
-                const { ctx, scales } = chart;
+                const { ctx, scales, chartArea } = chart;
                 const xScale  = scales['x'];
-                const y1Scale = scales['y1'];
-                if (!xScale || !y1Scale) return;
+                if (!xScale || !chartArea) return;
 
                 const bv = safeSalesData[bestDayIdx];
                 if (!bv) return;
 
                 const x = xScale.getPixelForValue(bestDayIdx);
-                const y = y1Scale.getPixelForValue(bv);
+                const topY = chartArea.top;
+                const bottomY = chartArea.bottom;
+
+                // 1. Draw premium vertical dashed line
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(253, 224, 71, 0.3)'; // Subtle yellow glow
+                ctx.stroke();
+                ctx.restore();
 
                 ctx.save();
+                
+                // 2. Format text
+                const fmtBv = bv >= 1_000 ? '$' + (bv / 1_000).toFixed(0) + 'K' : '$' + Math.round(bv);
+                ctx.font = 'bold 10px system-ui, sans-serif';
+                const textWidth = ctx.measureText(fmtBv).width;
+                
+                // 3. Draw pill background in the guaranteed empty space at the top (due to suggestedMax 1.25x)
+                const boxWidth = textWidth + 16;
+                const boxHeight = 20;
+                const boxY = topY + 10;
+                
+                ctx.fillStyle = 'rgba(20, 20, 20, 0.8)'; // Dark glass
+                ctx.strokeStyle = 'rgba(253, 224, 71, 0.6)'; // Yellow border
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(x - boxWidth/2, boxY, boxWidth, boxHeight, 6);
+                ctx.fill();
+                ctx.stroke();
 
-                // Glow halo behind star
-                ctx.shadowColor  = 'rgba(253, 224, 71, 0.8)';
-                ctx.shadowBlur   = 14;
-                ctx.font         = '18px serif';
-                ctx.textAlign    = 'center';
-                ctx.textBaseline = 'bottom';
-                ctx.fillText('⭐', x, y - 6);
+                // 4. Draw text inside pill
+                ctx.fillStyle = '#fde047';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(fmtBv, x, boxY + boxHeight/2);
 
-                // Revenue label
-                ctx.shadowBlur = 0;
-                ctx.font       = 'bold 9px system-ui, sans-serif';
-                ctx.fillStyle  = '#fde047';
-                const fmtBv = bv >= 1_000
-                    ? '$' + (bv / 1_000).toFixed(0) + 'K'
-                    : '$' + Math.round(bv);
-                ctx.fillText(fmtBv, x, y - 26);
+                // 5. Draw glowing star directly below the pill
+                ctx.shadowColor = 'rgba(253, 224, 71, 1)';
+                ctx.shadowBlur = 12;
+                ctx.font = '16px serif';
+                ctx.fillText('⭐', x, boxY + boxHeight + 14);
 
                 ctx.restore();
             }
@@ -2183,10 +2211,6 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         this.trendChart = new Chart(canvas, config);
 
-        // If MTD and LY daily data already loaded, add overlay immediately
-        if (this.timeframe() === 'MTD' && this.lyDailyData().length > 0) {
-            this.updateTrendChartLyOverlay();
-        }
     }
 
     private updateTopProductsChart() {
@@ -2217,5 +2241,99 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const stats = this.priorityStats();
         this.priorityChart.data.datasets[0].data = [stats.standard, stats.express, stats.rush];
         this.priorityChart.update();
+    }
+
+    private checkMilestones(safeSalesData: number[]) {
+        if (this.timeframe() !== 'MTD') {
+            this.dailyMilestone.set(null);
+            this.monthlyMilestone.set(false);
+            return;
+        }
+
+        const now = new Date();
+        const todayIdx = now.getDate() - 1;
+        const todaySales = safeSalesData[todayIdx] || 0;
+        const monthlySales = this.stats().monthlySales || 0;
+
+        // Daily Milestones
+        if (todaySales >= 100_000) {
+            this.dailyMilestone.set('100K');
+            this.triggerAutomaticFireworks('100K', now);
+        } else if (todaySales >= 50_000) {
+            this.dailyMilestone.set('50K');
+            this.triggerAutomaticFireworks('50K', now);
+        } else {
+            this.dailyMilestone.set(null);
+        }
+
+        // Monthly Milestone
+        if (monthlySales >= 1_000_000) {
+            this.monthlyMilestone.set(true);
+            this.triggerAutomaticFireworks('1M', now);
+        } else {
+            this.monthlyMilestone.set(false);
+        }
+    }
+
+    private triggerAutomaticFireworks(type: '50K' | '100K' | '1M', date: Date) {
+        let key = '';
+        if (type === '1M') {
+            key = `fireworks_triggered_1M_${date.getFullYear()}-${date.getMonth()}`;
+        } else {
+            key = `fireworks_triggered_${type}_${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        }
+
+        if (!localStorage.getItem(key)) {
+            localStorage.setItem(key, 'true');
+            setTimeout(() => this.playFireworks(type), 1500);
+        }
+    }
+
+    playFireworks(type: '50K' | '100K' | '1M') {
+        const duration = type === '1M' ? 8000 : (type === '100K' ? 4000 : 2000);
+        const end = Date.now() + duration;
+
+        let msg = '';
+        if (type === '50K') msg = '¡$50,000 MXN en un solo día! 🚀';
+        if (type === '100K') msg = '¡RÉCORD: $100,000 MXN de ventas hoy! 🔥';
+        if (type === '1M') msg = '🏆 ¡HITO HISTÓRICO: 1 MILLÓN DE PESOS! 🏆';
+        this.fireworksMessage.set(msg);
+
+        const colors = type === '1M' 
+            ? ['#fde047', '#f59e0b', '#fbbf24', '#ffffff'] // Golden/White for 1M
+            : ['#14b8a6', '#8b5cf6', '#ec4899', '#fde047']; // Vibrant brand colors for daily
+
+        // Create a custom instance to disable web workers to comply with CSP (prevents blob: worker error)
+        const myConfetti = (confetti as any).create(undefined, {
+            useWorker: false,
+            resize: true
+        });
+
+        const frame = () => {
+            myConfetti({
+                particleCount: type === '1M' ? 8 : (type === '100K' ? 5 : 3),
+                angle: 60,
+                spread: 55,
+                origin: { x: 0 },
+                colors: colors,
+                zIndex: 9999
+            });
+            myConfetti({
+                particleCount: type === '1M' ? 8 : (type === '100K' ? 5 : 3),
+                angle: 120,
+                spread: 55,
+                origin: { x: 1 },
+                colors: colors,
+                zIndex: 9999
+            });
+
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            } else {
+                this.fireworksMessage.set(null);
+            }
+        };
+        
+        frame();
     }
 }

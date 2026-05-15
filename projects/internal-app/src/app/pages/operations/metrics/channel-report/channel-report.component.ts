@@ -1,13 +1,15 @@
-import { Component, OnInit, inject, signal, computed, input } from '@angular/core';
-import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { Component, OnInit, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { CommonModule, CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { RouterModule, ActivatedRoute } from '@angular/router';
+import { Firestore, collection, getDocs } from '@angular/fire/firestore';
+import { Chart, registerables } from 'chart.js';
 import {
-    MetricsAnalyticsService, AnalyticsDailyDoc, DATE_RANGES, DateRange, ChannelBreakdown
+    MetricsAnalyticsService, AnalyticsDailyDoc, DATE_RANGES, DateRange, ChannelSnapshotDoc
 } from '../services/metrics-analytics.service';
 import { MetricsTimeframeService } from '../services/metrics-timeframe.service';
 import { MetricsBigqueryService, DailyTrendRow, SummaryKpisRow } from '../services/metrics-bigquery.service';
-import { MetricsHeatmapComponent } from '../shared/metrics-heatmap.component';
+
+Chart.register(...registerables);
 
 interface ChannelConfig {
     id:    string;
@@ -29,24 +31,32 @@ const CHANNEL_CONFIGS: Record<string, ChannelConfig> = {
 @Component({
     selector: 'app-channel-report',
     standalone: true,
-    imports: [CommonModule, CurrencyPipe, DecimalPipe, RouterModule, MetricsHeatmapComponent],
+    imports: [CommonModule, CurrencyPipe, DecimalPipe, PercentPipe, RouterModule],
     templateUrl: './channel-report.component.html',
     styleUrls: ['./channel-report.component.scss'],
 })
 export class ChannelReportComponent implements OnInit {
 
-    private svc   = inject(MetricsAnalyticsService);  // kept for pctChange helper
+    private svc   = inject(MetricsAnalyticsService);
     private bqSvc = inject(MetricsBigqueryService);
     private tf    = inject(MetricsTimeframeService);
     private route = inject(ActivatedRoute);
+    private fs    = inject(Firestore);
 
     readonly dateRanges    = DATE_RANGES;
-    readonly selectedRange = this.tf.selected;  // shared + persistent
+    readonly selectedRange = this.tf.selected;
 
     channelId  = signal<string>('WEB');
     isLoading  = signal(true);
     dailyDocs  = signal<AnalyticsDailyDoc[]>([]);
     priorDocs  = signal<AnalyticsDailyDoc[]>([]);
+    
+    // New Signals for advanced metrics
+    channelSnapshots = signal<ChannelSnapshotDoc[]>([]);
+    rawListings      = signal<any[]>([]);
+
+    @ViewChild('trendCanvas') trendCanvasRef?: ElementRef<HTMLCanvasElement>;
+    private trendChart?: Chart;
 
     readonly config = computed(() =>
         CHANNEL_CONFIGS[this.channelId()] ?? CHANNEL_CONFIGS['WEB']
@@ -78,71 +88,51 @@ export class ChannelReportComponent implements OnInit {
 
         return {
             revenue:    { value: curCh.revenue,   delta: this.svc.pctChange(curCh.revenue,  prevCh.revenue)  },
-            orders:     { value: curCh.orders,     delta: this.svc.pctChange(curCh.orders,   prevCh.orders)   },
-            avgTicket:  { value: avgTicket,        delta: this.svc.pctChange(avgTicket,      prevTicket)      },
-            units:      { value: curCh.units,      delta: this.svc.pctChange(curCh.units,    prevCh.units)    },
+            orders:     { value: curCh.orders,    delta: this.svc.pctChange(curCh.orders,   prevCh.orders)   },
+            avgTicket:  { value: avgTicket,       delta: this.svc.pctChange(avgTicket,      prevTicket)      },
+            units:      { value: curCh.units,     delta: this.svc.pctChange(curCh.units,    prevCh.units)    },
             channelShare,
         };
     });
 
-    // ── Daily trend per channel ───────────────────────────────────────────────
-    readonly trendData = computed(() => {
-        const ch   = this.channelId();
-        const docs = this.dailyDocs();
-        return {
-            labels:  docs.map(d => {
-                const dt = new Date(d.date + 'T12:00:00');
-                return dt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-            }),
-            revenue: docs.map(d => d.byChannel?.[ch]?.revenue ?? 0),
-            orders:  docs.map(d => d.byChannel?.[ch]?.orders  ?? 0),
-        };
-    });
+    readonly advancedKpis = computed(() => {
+        const snaps = this.channelSnapshots();
+        const listings = this.rawListings();
+        const units = this.kpis().units.value;
 
-    // ── DoW heatmap (last 90d) ────────────────────────────────────────────────
-    readonly dayOfWeekData = computed(() => {
-        const ch    = this.channelId();
-        const days  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-        const totals = Array(7).fill(0);
-        const counts = Array(7).fill(0);
-        for (const d of this.dailyDocs()) {
-            const dow = d.dayOfWeek ?? 0;
-            totals[dow] += d.byChannel?.[ch]?.revenue ?? 0;
-            counts[dow]++;
+        // Total Visits
+        let totalVisits: number | null = null;
+        let avgConversion: number | null = null;
+
+        if (this.channelId() === 'MELI_CLASSIC') {
+            totalVisits = snaps.reduce((s, d) => s + (d.visits ?? 0), 0);
+            avgConversion = totalVisits > 0 ? (units / totalVisits) * 100 : 0;
         }
-        const max = Math.max(...totals, 1);
-        return days.map((label, i) => ({
-            label,
-            avg:       counts[i] > 0 ? totals[i] / counts[i] : 0,
-            intensity: totals[i] / max,
-        }));
+
+        // Avg Health
+        let avgHealth: number | null = null;
+        if (listings.length > 0) {
+            const healths = listings.map(l => l.health).filter(h => h != null);
+            avgHealth = healths.length > 0 ? healths.reduce((a,b)=>a+b, 0) / healths.length : null;
+        }
+
+        return { totalVisits, avgConversion, avgHealth };
     });
 
-    // ── Bar data for avg revenue per DoW ─────────────────────────────────────
-    readonly bestDay = computed(() => {
-        const data = this.dayOfWeekData();
-        return data.reduce((best, d) => d.avg > best.avg ? d : best, data[0]);
+    readonly listings = computed(() => {
+        // Return sorted top listings
+        const list = [...this.rawListings()];
+        return list.sort((a,b) => (b.soldQuantity ?? 0) - (a.soldQuantity ?? 0)).slice(0, 50);
     });
-
-    // ── Rev bar height helper (avoids non-existent max pipe) ─────────────────
-    readonly maxRevenue = computed(() => {
-        const ch = this.channelId();
-        return Math.max(1, ...this.dailyDocs().map(d => d.byChannel?.[ch]?.revenue ?? 0));
-    });
-
-    revBarHeight(rev: number | undefined): number {
-        return ((rev ?? 0) / this.maxRevenue()) * 100;
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
 
     async ngOnInit() {
-        // Channel comes from route: /operations/metrics/channel/:id
         this.route.params.subscribe(params => {
             const id = (params['channel'] as string ?? 'WEB').toUpperCase();
             this.channelId.set(id);
+            this.load();
         });
-        await this.load();
     }
 
     async selectRange(r: DateRange) {
@@ -159,21 +149,158 @@ export class ChannelReportComponent implements OnInit {
             const prevFromStr = prevFrom.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
             const prevToStr   = prevTo.toLocaleDateString('sv-SE',   { timeZone: 'America/Mexico_City' });
 
-            const [curTrend, curKpis, prevTrend, prevKpis] = await Promise.all([
+            const [curTrend, curKpis, prevTrend, prevKpis, snaps] = await Promise.all([
                 this.bqSvc.queryDailyTrendBetween(curFrom, curTo),
                 this.bqSvc.querySummaryKpisBetween(curFrom, curTo),
                 this.bqSvc.queryDailyTrendBetween(prevFromStr, prevToStr),
                 this.bqSvc.querySummaryKpisBetween(prevFromStr, prevToStr),
+                this.channelId() === 'MELI_CLASSIC' ? this.svc.getChannelSnapshots('MELI_CLASSIC', range) : Promise.resolve([]),
             ]);
+            
             this.dailyDocs.set(this._bqToDocs(curTrend, curKpis));
             this.priorDocs.set(this._bqToDocs(prevTrend, prevKpis));
+            this.channelSnapshots.set(snaps);
+
+            if (this.channelId() === 'MELI_CLASSIC') {
+                const snapDocs = await getDocs(collection(this.fs, 'meli_listings'));
+                const all = snapDocs.docs.map(d => ({ id: d.id, ...d.data() }) as any);
+                const classic = all.filter(l => l.logistic_type !== 'fulfillment' && l.status === 'active');
+                this.rawListings.set(classic);
+            } else {
+                this.rawListings.set([]);
+            }
+
+            setTimeout(() => this.buildTrendChart(), 100);
+
         } catch (err) {
-            console.error('[ChannelReport] BQ load failed:', err);
+            console.error('[ChannelReport] Data load failed:', err);
             this.dailyDocs.set([]);
             this.priorDocs.set([]);
+            this.channelSnapshots.set([]);
+            this.rawListings.set([]);
         } finally {
             this.isLoading.set(false);
         }
+    }
+
+    private buildTrendChart() {
+        this.trendChart?.destroy();
+        if (!this.trendCanvasRef?.nativeElement) return;
+        const ctx = this.trendCanvasRef.nativeElement.getContext('2d');
+        if (!ctx) return;
+
+        const docs = this.dailyDocs();
+        const ch = this.channelId();
+        const labels = docs.map(d => {
+            const dt = new Date(d.date + 'T12:00:00');
+            return dt.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+        });
+        const revenue = docs.map(d => d.byChannel?.[ch]?.revenue ?? 0);
+        const orders  = docs.map(d => d.byChannel?.[ch]?.orders ?? 0);
+
+        const gradientOrange = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientOrange.addColorStop(0, 'rgba(251, 146, 60, 0.4)');
+        gradientOrange.addColorStop(1, 'rgba(251, 146, 60, 0.01)');
+
+        this.trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Ingresos',
+                        data: revenue,
+                        borderColor: '#fb923c',
+                        backgroundColor: gradientOrange,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#1e293b',
+                        pointBorderColor: '#fb923c',
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#fb923c',
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Órdenes',
+                        data: orders,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 2,
+                        pointBackgroundColor: '#1e293b',
+                        pointBorderColor: '#6366f1',
+                        fill: false,
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#e2e8f0', usePointStyle: true, boxWidth: 6, font: { size: 11, family: "'Inter', sans-serif" } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#f8fafc',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: (context) => {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.datasetIndex === 0) {
+                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(context.parsed.y || 0);
+                                } else {
+                                    label += context.parsed.y + ' órdenes';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { size: 10, family: "'Inter', sans-serif" }, maxTicksLimit: 14 }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#fb923c',
+                            font: { size: 10, family: "'Inter', sans-serif" },
+                            callback: (val) => '$' + (Number(val) / 1000) + 'k'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: {
+                            color: '#818cf8',
+                            font: { size: 10, family: "'Inter', sans-serif" },
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
     }
 
     private _bqToDocs(trend: DailyTrendRow[], kpis: SummaryKpisRow[]): AnalyticsDailyDoc[] {
@@ -223,9 +350,4 @@ export class ChannelReportComponent implements OnInit {
     }
     isDeltaPos(v: number | null): boolean { return v !== null && v > 0; }
     isDeltaNeg(v: number | null): boolean { return v !== null && v < 0; }
-
-    intensityColor(intensity: number, hex: string): string {
-        const alpha = Math.max(0.05, Math.min(0.85, intensity));
-        return `${hex}${Math.round(alpha * 255).toString(16).padStart(2,'0')}`;
-    }
 }

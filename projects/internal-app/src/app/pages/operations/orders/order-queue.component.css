@@ -19,9 +19,54 @@
     }
 }
 
-/* Status Badges - mirroring dashboard styles */
+/* Premium Dark Glassmorphism Styles */
+.glass-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+}
+
+.glass-card-hover:hover {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-glass {
+    @apply flex items-center justify-center gap-2 px-4 py-2 bg-zinc-800/40 border border-white/10 text-zinc-300 font-medium rounded-lg hover:bg-zinc-700/60 hover:text-white transition-all shadow-sm;
+}
+
+.btn-glass-primary {
+    @apply flex items-center justify-center gap-2 px-4 py-2 text-white font-medium rounded-lg transition-all shadow-lg;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(79, 70, 229, 0.8));
+    border: 1px solid rgba(99, 102, 241, 0.5);
+}
+
+.btn-glass-primary:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(79, 70, 229, 1));
+    border-color: rgba(99, 102, 241, 0.8);
+    transform: translateY(-1px);
+}
+
+.btn-glass-success {
+    @apply flex items-center justify-center gap-2 px-4 py-2 text-white font-medium rounded-lg transition-all shadow-lg;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.8), rgba(5, 150, 105, 0.8));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.btn-glass-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 1), rgba(5, 150, 105, 1));
+    border-color: rgba(16, 185, 129, 0.8);
+    transform: translateY(-1px);
+}
+
+/* Status Badges - Enhanced with glow */
 .status-badge {
     @apply inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
+    box-shadow: 0 0 10px -2px currentColor;
 }
 
 .status-pending {
@@ -45,7 +90,7 @@
 }
 
 .status-refunded {
-    @apply bg-slate-800 text-slate-400 border border-slate-700;
+    @apply bg-slate-800/50 text-slate-400 border border-slate-700/50;
 }
 
 /* Minimal responsive helpers if needed */
@@ -56,24 +101,25 @@
 /* Channel Badges */
 .channel-badge {
     @apply inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold uppercase;
+    box-shadow: 0 2px 8px -2px rgba(0,0,0,0.5);
 }
 
 .channel-web {
-    @apply bg-zinc-800 text-blue-400 border border-blue-800/50;
+    @apply bg-zinc-800/50 text-blue-400 border border-blue-800/50 backdrop-blur-sm;
 }
 
 .channel-pos {
-    @apply bg-zinc-800 text-purple-400 border border-purple-800/50;
+    @apply bg-zinc-800/50 text-purple-400 border border-purple-800/50 backdrop-blur-sm;
 }
 
 .channel-on-behalf {
-    @apply bg-zinc-800 text-amber-400 border border-amber-800/50;
+    @apply bg-zinc-800/50 text-amber-400 border border-amber-800/50 backdrop-blur-sm;
 }
 
 .channel-amazon {
-    @apply bg-zinc-800 text-orange-400 border border-orange-800/50;
+    @apply bg-zinc-800/50 text-orange-400 border border-orange-800/50 backdrop-blur-sm;
 }
 
 .channel-meli {
-    @apply bg-zinc-800 text-yellow-400 border border-yellow-800/50;
+    @apply bg-zinc-800/50 text-yellow-400 border border-yellow-800/50 backdrop-blur-sm;
 }

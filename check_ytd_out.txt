@@ -1,0 +1,18 @@
+Fetching YTD orders...
+Error: Unable to detect a Project Id in the current environment. 
+To learn more about authentication and Google APIs, visit: 
+https://cloud.google.com/docs/authentication/getting-started
+    at GoogleAuth.findAndCacheProjectId (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/google-auth-library/build/src/auth/googleauth.js:170:19)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Firestore.initializeIfNeeded (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/index.js:1201:35)
+Caused by: Error
+    at QueryUtil._getResponse (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/reference/query-util.js:44:23)
+    at Query._getResponse (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/reference/query.js:784:32)
+    at Query._get (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/reference/query.js:777:35)
+    at /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/reference/query.js:745:43
+    at /Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:110:30
+    at NoopContextManager.with (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@opentelemetry/api/build/src/context/NoopContextManager.js:25:19)
+    at ContextAPI.with (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@opentelemetry/api/build/src/api/context.js:60:46)
+    at NoopTracer.startActiveSpan (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@opentelemetry/api/build/src/trace/NoopTracer.js:65:31)
+    at ProxyTracer.startActiveSpan (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@opentelemetry/api/build/src/trace/ProxyTracer.js:36:24)
+    at EnabledTraceUtil.startActiveSpan (/Volumes/MacData/Projects/Eurollantas/Website/importadora-euro/node_modules/@google-cloud/firestore/build/src/telemetry/enabled-trace-util.js:102:28)

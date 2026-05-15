@@ -3129,6 +3129,9 @@
         "PROCESSING": "Processing",
         "SHIPPED": "Shipped",
         "DELIVERED": "Delivered",
+        "CANCELLED": "Cancelled",
+        "REFUNDED": "Refunded",
+        "RETURNED": "Returned",
         "ALL": "All Orders",
         "UNASSIGNED": "Unassigned"
       },

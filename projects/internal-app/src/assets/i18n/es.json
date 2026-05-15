@@ -4096,6 +4096,7 @@
         "DELIVERED": "Entregado",
         "CANCELLED": "Cancelado",
         "REFUNDED": "Reembolsado",
+        "RETURNED": "Devuelto",
         "ALL": "Todos",
         "UNASSIGNED": "Sin Asignar",
         "PENDING_PAYMENT": "Pago Pendiente",

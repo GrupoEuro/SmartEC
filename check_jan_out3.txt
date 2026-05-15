@@ -1,0 +1,14 @@
+Fetching January orders...
+Total January 2026 Orders: 378
+MELI_FULL Orders in Jan 2026: 2
+Sample MELI_FULL order from Jan 2026: {
+  "id": "ord_1149",
+  "orderNumber": "ORD-2025149",
+  "channel": "MELI_FULL",
+  "status": "delivered",
+  "createdAt": "2026-01-04T02:35:49.134Z"
+}
+-----------------------------------
+Total January 2025 Orders: 0
+MELI_FULL Orders in Jan 2025: 0
+-----------------------------------

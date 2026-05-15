@@ -1,4 +1,4 @@
-<section class="cr-page">
+<section class="cr-page melf-page">
 
   <!-- ── Header ─────────────────────────────────────────────────────────────── -->
   <div class="cr-header">
@@ -39,11 +39,11 @@
   @if (!isLoading()) {
 
     <!-- ── KPI Cards ──────────────────────────────────────────────────────── -->
-    <div class="cr-kpi-grid">
+    <div class="melf-kpi-grid">
 
-      <div class="cr-kpi">
-        <span class="cr-kpi-label">Ingresos</span>
-        <span class="cr-kpi-value">{{ kpis().revenue.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      <div class="melf-kpi orange">
+        <span class="mkpi-label">Ingresos</span>
+        <span class="mkpi-value">{{ kpis().revenue.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
         <span class="cr-kpi-delta"
           [class.pos]="isDeltaPos(kpis().revenue.delta)"
           [class.neg]="isDeltaNeg(kpis().revenue.delta)">
@@ -51,9 +51,9 @@
         </span>
       </div>
 
-      <div class="cr-kpi">
-        <span class="cr-kpi-label">Órdenes</span>
-        <span class="cr-kpi-value">{{ kpis().orders.value | number }}</span>
+      <div class="melf-kpi indigo">
+        <span class="mkpi-label">Órdenes</span>
+        <span class="mkpi-value">{{ kpis().orders.value | number }}</span>
         <span class="cr-kpi-delta"
           [class.pos]="isDeltaPos(kpis().orders.delta)"
           [class.neg]="isDeltaNeg(kpis().orders.delta)">
@@ -61,9 +61,9 @@
         </span>
       </div>
 
-      <div class="cr-kpi">
-        <span class="cr-kpi-label">Ticket Promedio</span>
-        <span class="cr-kpi-value">{{ kpis().avgTicket.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+      <div class="melf-kpi emerald">
+        <span class="mkpi-label">Ticket Promedio</span>
+        <span class="mkpi-value">{{ kpis().avgTicket.value | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
         <span class="cr-kpi-delta"
           [class.pos]="isDeltaPos(kpis().avgTicket.delta)"
           [class.neg]="isDeltaNeg(kpis().avgTicket.delta)">
@@ -71,9 +71,9 @@
         </span>
       </div>
 
-      <div class="cr-kpi">
-        <span class="cr-kpi-label">Unidades</span>
-        <span class="cr-kpi-value">{{ kpis().units.value | number }}</span>
+      <div class="melf-kpi violet">
+        <span class="mkpi-label">Unidades</span>
+        <span class="mkpi-value">{{ kpis().units.value | number }}</span>
         <span class="cr-kpi-delta"
           [class.pos]="isDeltaPos(kpis().units.delta)"
           [class.neg]="isDeltaNeg(kpis().units.delta)">
@@ -81,40 +81,117 @@
         </span>
       </div>
 
-      <!-- Channel Share -->
-      <div class="cr-kpi cr-kpi-share">
-        <span class="cr-kpi-label">Share de Revenue</span>
-        <span class="cr-kpi-value">{{ kpis().channelShare | percent:'1.1-1' }}</span>
-        <div class="cr-share-bar">
-          <div class="cr-share-fill"
-               [style.width.%]="kpis().channelShare * 100"
-               [style.background]="config().color">
-          </div>
+      @if (advancedKpis().totalVisits !== null) {
+        <div class="melf-kpi blue">
+          <span class="mkpi-label">Visitas</span>
+          <span class="mkpi-value">{{ advancedKpis().totalVisits | number }}</span>
         </div>
-        <span class="cr-kpi-sub">del total de todos los canales</span>
-      </div>
+      }
+
+      @if (advancedKpis().avgConversion !== null) {
+        <div class="melf-kpi green">
+          <span class="mkpi-label">Conversión</span>
+          <span class="mkpi-value">{{ advancedKpis().avgConversion | number:'1.2-2' }}%</span>
+        </div>
+      }
+
+      @if (advancedKpis().avgHealth !== null) {
+        <div class="melf-kpi" [class.red]="(advancedKpis().avgHealth ?? 0) < 60"
+             [class.yellow]="(advancedKpis().avgHealth ?? 0) >= 60 && (advancedKpis().avgHealth ?? 0) < 80"
+             [class.green]="(advancedKpis().avgHealth ?? 0) >= 80"
+             title="Calidad promedio de las publicaciones">
+          <span class="mkpi-label">Salud Promedio</span>
+          <span class="mkpi-value">{{ advancedKpis().avgHealth | number:'1.0-0' }}/100</span>
+        </div>
+      }
 
     </div>
 
-
-    <!-- ── Heatmap ─────────────────────────────────────────────────────────── -->
-    <div class="cr-section">
-      <div class="cr-section-header">
-        <h2 class="cr-section-title">🗓 Mapa de Calor — {{ config().label }}</h2>
-        <p class="cr-section-sub">
-          Mejor día: <strong>{{ bestDay().label }}</strong> —
-          promedio {{ bestDay().avg | currency:'MXN':'symbol-narrow':'1.0-0' }}
-        </p>
+    <!-- Revenue + Orders Chart -->
+    <div class="melf-card melf-card-full">
+      <div class="melf-card-header">
+        <h3 class="melf-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Ingresos + Órdenes — Tendencia Diaria
+        </h3>
       </div>
-      <app-metrics-heatmap
-        [docs]="dailyDocs()"
-        [channelId]="channelId()"
-        [channelColor]="config().color">
-      </app-metrics-heatmap>
+      <div class="melf-chart-wrap">
+        <canvas #trendCanvas></canvas>
+      </div>
     </div>
+
+    <!-- Top Listings Table (Conditionally rendered for MELI_CLASSIC or when listings exist) -->
+    @if (listings().length > 0) {
+      <div class="melf-card melf-card-full">
+        <div class="melf-card-header">
+          <h3 class="melf-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Top Publicaciones ({{ config().label }})
+          </h3>
+        </div>
+        <div class="melf-table-wrap">
+          <table class="melf-table">
+            <thead>
+              <tr>
+                <th>Publicación</th>
+                <th class="text-right">Precio</th>
+                <th class="text-right">Vendidos</th>
+                <th class="text-right" title="Calidad de la publicación">Salud</th>
+                <th class="text-right">Neto</th>
+                <th class="text-right">vs Precio Ganador</th>
+                <th class="text-right">Stock</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of listings(); track l.id) {
+                <tr class="melf-row">
+                  <td>
+                    @if (l.thumbnail) {
+                      <img [src]="l.thumbnail" [alt]="l.title" class="listing-thumb">
+                    }
+                    <div class="listing-title-wrap">
+                      <span class="listing-title">{{ l.title }}</span>
+                      @if (l.sku) { <span class="listing-sku">{{ l.sku }}</span> }
+                    </div>
+                  </td>
+                  <td class="text-right">{{ l.price | currency:'MXN':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right text-zinc-300">{{ l.soldQuantity | number }}</td>
+                  <td class="text-right">
+                    @if (l.health !== null) {
+                      <span class="health-badge"
+                        [class.health-green]="(l.health ?? 0) >= 80"
+                        [class.health-yellow]="(l.health ?? 0) >= 60 && (l.health ?? 0) < 80"
+                        [class.health-red]="(l.health ?? 0) < 60">
+                        {{ l.health }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right">
+                    <span class="net-pct">{{ l.net_percent | number:'1.1-1' }}%</span>
+                    <span class="net-amt">{{ l.net_amount | currency:'MXN':'symbol-narrow':'1.0-0' }}</span>
+                  </td>
+                  <td class="text-right">
+                    @if (l.priceToWin !== null && l.priceToWin !== undefined) {
+                      <span [class.win-gap-pos]="l.price <= l.priceToWin" [class.win-gap-neg]="l.price > l.priceToWin">
+                        {{ l.price > l.priceToWin ? '+' : '' }}{{ (l.price - l.priceToWin) | currency:'MXN':'symbol-narrow':'1.0-0' }}
+                      </span>
+                    } @else { <span class="text-zinc-600">—</span> }
+                  </td>
+                  <td class="text-right text-zinc-400">{{ l.available_quantity | number }}</td>
+                  <td>
+                    <a [href]="l.permalink" target="_blank" class="melf-link-btn" title="Ver en ML">↗</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
 
     <!-- ── Order Queue CTA ────────────────────────────────────────────────── -->
-    <div class="cr-section cr-cta-section">
+    <div class="melf-card cr-cta-section">
       <div class="cr-cta">
         <span>¿Quieres ver las órdenes individuales de este canal?</span>
         <a [routerLink]="['/operations/orders']"

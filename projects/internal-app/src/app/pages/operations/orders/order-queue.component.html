@@ -1,6 +1,20 @@
 <app-admin-page-header iconName="truck" [title]="'OPERATIONS.ORDERS.QUEUE' | translate"
     [subtitle]="paginationConfig.totalItems + ' ' + ('OPERATIONS.ORDERS.ORDERS' | translate)" variant="operations">
-    <div class="flex gap-2 items-center">
+    <div class="flex gap-2 items-center flex-wrap">
+        <!-- Timeframe Range Selector -->
+        <div class="cr-range-selector flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1 mr-4 hidden md:flex">
+            @for (r of dateRanges; track r.type) {
+                <button
+                    class="px-3 py-1.5 rounded-md text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all"
+                    [class.bg-blue-600]="selectedRange().type === r.type"
+                    [class.text-white]="selectedRange().type === r.type"
+                    [class.shadow]="selectedRange().type === r.type"
+                    (click)="selectRange(r)">
+                    {{ r.label }}
+                </button>
+            }
+        </div>
+
         <app-help-context-button topicId="fulfillment-process"
             tooltip="Ver Guía de Cumplimiento"></app-help-context-button>
         <button
@@ -14,120 +28,103 @@
 </app-admin-page-header>
 
 <div class="order-queue-container p-6 max-w-7xl mx-auto space-y-6">
-    <!-- Top Bar: Search, Date Filter, Export -->
-    <div
-        class="filters-bar flex flex-col xl:flex-row justify-between items-start xl:items-center bg-zinc-800 p-4 rounded-xl shadow-lg gap-4">
-        <div class="search-and-filters flex flex-1 w-full xl:w-auto gap-4 flex-wrap items-center">
-            <!-- Search -->
-            <div class="search-box relative w-full sm:w-64">
-                <span class="search-icon absolute left-3 top-2.5"><app-icon name="search" [size]="18"
-                        class="text-zinc-500"></app-icon></span>
-                <input type="text" [formControl]="searchControl"
-                    [placeholder]="'OPERATIONS.ORDERS.SEARCH_PLACEHOLDER' | translate"
-                    class="search-input w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
-            </div>
-
-            <!-- Date Range Filter -->
-            <select [(ngModel)]="selectedDateRange" (ngModelChange)="onFilterChange()"
-                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
-                <option value="">{{ 'OPERATIONS.ORDERS.DATE_RANGE' | translate }}</option>
-                <option value="today">{{ 'OPERATIONS.ORDERS.TODAY' | translate }}</option>
-                <option value="this-week">{{ 'OPERATIONS.ORDERS.THIS_WEEK' | translate }}</option>
-                <option value="this-month">{{ 'OPERATIONS.ORDERS.THIS_MONTH' | translate }}</option>
-            </select>
-
-            <!-- Clear Filters -->
-            @if (selectedDateRange || searchControl.value) {
-            <button class="btn-clear-filters text-zinc-400 hover:text-white underline text-sm transition-colors"
-                (click)="clearFilters()">
-                {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
-            </button>
-            }
+    <!-- Filters & Actions Container -->
+    <div class="filters-container glass-card p-4 flex flex-col gap-4">
+        
+        <!-- Top Row: Search -->
+        <div class="search-box relative w-full">
+            <span class="search-icon absolute left-3 top-2.5">
+                <app-icon name="search" [size]="18" class="text-zinc-500"></app-icon>
+            </span>
+            <input type="text" [formControl]="searchControl"
+                [placeholder]="'OPERATIONS.ORDERS.SEARCH_PLACEHOLDER' | translate"
+                class="search-input w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors shadow-inner">
         </div>
 
-        <!-- Phase 2B: New Filters -->
-        <!-- Phase 2B: New Filters -->
-        <div class="advanced-filters flex items-center gap-3 flex-wrap">
+        <!-- Bottom Row: Filters -->
+        <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar w-full pb-1">
+            
+            <!-- Status Filter -->
+            <div class="flex items-center bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden shrink-0 transition-colors hover:border-white/20">
+                <div class="px-2.5 py-2 border-r border-white/10 text-zinc-500 flex items-center bg-white/5">
+                    <app-icon name="filter" [size]="14"></app-icon>
+                </div>
+                <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()"
+                    class="filter-select bg-transparent text-zinc-300 text-sm focus:ring-0 focus:outline-none block p-2 cursor-pointer min-w-[120px] outline-none border-none">
+                    <option value="all">{{ 'OPERATIONS.ORDERS.STATUS.ALL' | translate }}</option>
+                    <option value="paid">{{ 'OPERATIONS.ORDERS.STATUS.PAID' | translate }}</option>
+                    <option value="pending">{{ 'OPERATIONS.ORDERS.STATUS.PENDING' | translate }}</option>
+                    <option value="processing">{{ 'OPERATIONS.ORDERS.STATUS.PROCESSING' | translate }}</option>
+                    <option value="shipped">{{ 'OPERATIONS.ORDERS.STATUS.SHIPPED' | translate }}</option>
+                    <option value="delivered">{{ 'OPERATIONS.ORDERS.STATUS.DELIVERED' | translate }}</option>
+                    <option value="cancelled">{{ 'OPERATIONS.ORDERS.STATUS.CANCELLED' | translate }}</option>
+                    <option value="refunded">{{ 'OPERATIONS.ORDERS.STATUS.REFUNDED' | translate }}</option>
+                    <option value="returned">{{ 'OPERATIONS.ORDERS.STATUS.RETURNED' | translate }}</option>
+                    <option value="ghost">Fantasmas</option>
+                </select>
+            </div>
+
             <!-- Priority Filter -->
-            <select [(ngModel)]="priorityFilter" (ngModelChange)="onFilterChange()"
-                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
-                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_PRIORITIES' | translate }}</option>
-                <option value="standard">{{ 'OPERATIONS.ORDERS.FILTERS.STANDARD' | translate }}</option>
-                <option value="express">{{ 'OPERATIONS.ORDERS.FILTERS.EXPRESS' | translate }}</option>
-                <option value="rush">{{ 'OPERATIONS.ORDERS.FILTERS.RUSH' | translate }}</option>
-            </select>
+            <div class="flex items-center bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden shrink-0 transition-colors hover:border-white/20">
+                <select [(ngModel)]="priorityFilter" (ngModelChange)="onFilterChange()"
+                    class="filter-select bg-transparent text-zinc-300 text-sm focus:ring-0 focus:outline-none block p-2 cursor-pointer w-[120px] outline-none border-none pl-3">
+                    <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_PRIORITIES' | translate }}</option>
+                    <option value="standard">{{ 'OPERATIONS.ORDERS.FILTERS.STANDARD' | translate }}</option>
+                    <option value="express">{{ 'OPERATIONS.ORDERS.FILTERS.EXPRESS' | translate }}</option>
+                    <option value="rush">{{ 'OPERATIONS.ORDERS.FILTERS.RUSH' | translate }}</option>
+                </select>
+            </div>
 
             <!-- SLA Filter -->
-            <select [(ngModel)]="slaFilter" (ngModelChange)="onFilterChange()"
-                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
-                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_SLA' | translate }}</option>
-                <option value="on-time">{{ 'OPERATIONS.ORDERS.FILTERS.ON_TIME' | translate }}</option>
-                <option value="approaching">{{ 'OPERATIONS.ORDERS.FILTERS.APPROACHING' | translate }}</option>
-                <option value="overdue">{{ 'OPERATIONS.ORDERS.FILTERS.OVERDUE' | translate }}</option>
-            </select>
+            <div class="flex items-center bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden shrink-0 transition-colors hover:border-white/20">
+                <select [(ngModel)]="slaFilter" (ngModelChange)="onFilterChange()"
+                    class="filter-select bg-transparent text-zinc-300 text-sm focus:ring-0 focus:outline-none block p-2 cursor-pointer w-[120px] outline-none border-none pl-3">
+                    <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_SLA' | translate }}</option>
+                    <option value="on-time">{{ 'OPERATIONS.ORDERS.FILTERS.ON_TIME' | translate }}</option>
+                    <option value="approaching">{{ 'OPERATIONS.ORDERS.FILTERS.APPROACHING' | translate }}</option>
+                    <option value="overdue">{{ 'OPERATIONS.ORDERS.FILTERS.OVERDUE' | translate }}</option>
+                </select>
+            </div>
 
             <!-- Channel Filter -->
-            <select [(ngModel)]="channelFilter" (ngModelChange)="onFilterChange()"
-                class="filter-select bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 hover:bg-zinc-800 cursor-pointer transition-colors">
-                <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_CHANNELS' | translate }}</option>
-                <option value="WEB">{{ 'OPERATIONS.ORDERS.CHANNELS.WEB' | translate }}</option>
-                <option value="POS">{{ 'OPERATIONS.ORDERS.CHANNELS.POS' | translate }}</option>
-                <option value="ON_BEHALF">{{ 'OPERATIONS.ORDERS.CHANNELS.PHONE' | translate }}</option>
-                <option value="AMAZON_MFN">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_MFN' | translate }}</option>
-                <option value="MELI_CLASSIC">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_CLASSIC' | translate }}</option>
-                <option value="AMAZON_FBA">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_FBA' | translate }}</option>
-                <option value="MELI_FULL">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_FULL' | translate }}</option>
-            </select>
+            <div class="flex items-center bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden shrink-0 transition-colors hover:border-white/20">
+                <select [(ngModel)]="channelFilter" (ngModelChange)="onFilterChange()"
+                    class="filter-select bg-transparent text-zinc-300 text-sm focus:ring-0 focus:outline-none block p-2 cursor-pointer w-[140px] outline-none border-none pl-3">
+                    <option value="all">{{ 'OPERATIONS.ORDERS.FILTERS.ALL_CHANNELS' | translate }}</option>
+                    <option value="WEB">{{ 'OPERATIONS.ORDERS.CHANNELS.WEB' | translate }}</option>
+                    <option value="POS">{{ 'OPERATIONS.ORDERS.CHANNELS.POS' | translate }}</option>
+                    <option value="ON_BEHALF">{{ 'OPERATIONS.ORDERS.CHANNELS.PHONE' | translate }}</option>
+                    <option value="AMAZON_MFN">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_MFN' | translate }}</option>
+                    <option value="MELI_CLASSIC">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_CLASSIC' | translate }}</option>
+                    <option value="AMAZON_FBA">{{ 'OPERATIONS.ORDERS.CHANNELS.AMAZON_FBA' | translate }}</option>
+                    <option value="MELI_FULL">{{ 'OPERATIONS.ORDERS.CHANNELS.MELI_FULL' | translate }}</option>
+                </select>
+            </div>
+
+            <!-- Assignment Filter -->
+            <div class="flex items-center bg-slate-900/50 border border-white/10 rounded-lg overflow-hidden shrink-0 transition-colors hover:border-white/20">
+                <select [ngModel]="assignmentFilter()" (ngModelChange)="setFilter($event)"
+                    class="filter-select bg-transparent text-zinc-300 text-sm focus:ring-0 focus:outline-none block p-2 cursor-pointer min-w-[140px] outline-none border-none pl-3">
+                    @for (tab of statusTabs(); track tab.id) {
+                        <option [value]="tab.id">{{ tab.label | translate }} ({{ tab.count }})</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-1 min-w-[10px]"></div>
+
+            <!-- Export Button -->
+            <button class="btn-glass px-3 py-2 shrink-0 flex items-center gap-1.5" (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
+                <app-icon name="download" [size]="14"></app-icon> Exportar
+            </button>
 
             <!-- Clear All Filters Button -->
             @if (hasActiveFilters()) {
             <button
-                class="btn-clear-all flex items-center gap-2 bg-red-900/30 text-red-400 hover:bg-red-900/50 hover:text-red-300 px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                class="btn-clear-all flex items-center gap-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 px-3 py-2 rounded-lg text-xs font-medium transition-all shrink-0 whitespace-nowrap"
                 (click)="clearFilters()">
-                <app-icon name="trash-2" [size]="14"></app-icon> {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
-            </button>
-            }
-
-            <!-- Ghost Orders Toggle -->
-            <button
-                class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all"
-                [class.bg-zinc-700]="!showGhostOrders()"
-                [class.text-zinc-500]="!showGhostOrders()"
-                [class.border-zinc-700]="!showGhostOrders()"
-                [class.hover:text-zinc-300]="!showGhostOrders()"
-                [class.bg-amber-900]="showGhostOrders()"
-                [class.bg-opacity-20]="showGhostOrders()"
-                [class.text-amber-400]="showGhostOrders()"
-                [class.border-amber-600]="showGhostOrders()"
-                [class.border-opacity-40]="showGhostOrders()"
-                (click)="showGhostOrders.set(!showGhostOrders()); applyFilters()"
-                title="Mostrar órdenes fantasma (checkout abandonado / pago fallido)">
-                <app-icon name="ghost" [size]="14"></app-icon>
-                {{ showGhostOrders() ? 'Ocultar' : 'Mostrar' }} fantasmas
-            </button>
-
-            <!-- Export Button -->
-            <button class="btn-glass" (click)="handleExport()" [title]="'OPERATIONS.ORDERS.EXPORT_CSV' | translate">
-                <app-icon name="download" [size]="16"></app-icon> {{ 'OPERATIONS.ORDERS.EXPORT_CSV' | translate }}
-            </button>
-        </div>
-    </div>
-
-    <!-- Status Filter Tabs -->
-    <div class="status-tabs-container mb-6 overflow-x-auto">
-        <div class="status-tabs flex gap-2 pb-2 min-w-max">
-            @for (tab of statusTabs(); track tab.id) {
-            <button
-                class="status-tab flex items-center gap-2 px-4 py-2.5 rounded-lg border border-transparent transition-all"
-                [class.bg-zinc-800]="currentStatus() !== tab.id" [class.text-zinc-400]="currentStatus() !== tab.id"
-                [class.hover:bg-zinc-700]="currentStatus() !== tab.id" [class.bg-blue-900]="currentStatus() === tab.id"
-                [class.bg-opacity-30]="currentStatus() === tab.id" [class.text-blue-400]="currentStatus() === tab.id"
-                [class.border-blue-500]="currentStatus() === tab.id"
-                [class.border-opacity-50]="currentStatus() === tab.id" (click)="setFilter(tab.id)">
-                <app-icon [name]="tab.icon" [size]="16" class="tab-icon"></app-icon>
-                <span class="tab-label font-medium text-sm">{{ tab.label | translate }}</span>
-                <span class="tab-count bg-zinc-900/50 px-2 py-0.5 rounded-full text-xs font-semibold">{{ tab.count
-                    }}</span>
+                <app-icon name="x" [size]="14"></app-icon> Limpiar
             </button>
             }
         </div>
@@ -178,9 +175,9 @@
     </div>
     } @else if (displayedOrders.length > 0) {
     <!-- Orders Table -->
-    <div class="orders-table-wrapper bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700 shadow-lg">
+    <div class="orders-table-wrapper glass-card !p-0 overflow-hidden">
         <table class="operations-table w-full text-left border-collapse">
-            <thead class="bg-zinc-900/50 text-zinc-400 text-xs uppercase font-semibold">
+            <thead class="bg-slate-900/40 text-zinc-400 text-xs uppercase font-semibold">
                 <tr>
                     <th class="p-4 border-b border-zinc-700 w-10 text-center">
                         <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll($event)"
@@ -233,7 +230,7 @@
             <tbody class="text-zinc-300 text-sm">
                 @for (order of displayedOrders; track order.id) {
                 <tr [class.selected]="isSelected(order.id!)" (click)="toggleSelect(order.id!); $event.stopPropagation()"
-                    class="border-b border-zinc-800 hover:bg-zinc-700/30 transition-colors cursor-pointer"
+                    class="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
                     [ngClass]="{'bg-blue-900/20': isSelected(order.id!)}">
                     <td class="p-4 text-center" (click)="$event.stopPropagation()">
                         <input type="checkbox" [checked]="isSelected(order.id!)" (change)="toggleSelect(order.id!)"
@@ -357,11 +354,11 @@
     </app-pagination>
     } @else {
     <!-- Empty State -->
-    <div class="empty-state">
-        <span class="empty-icon"><app-icon name="package" [size]="48" class="text-gray-300"></app-icon></span>
+    <div class="empty-state glass-card flex flex-col items-center justify-center p-12 text-center">
+        <span class="empty-icon"><app-icon name="package" [size]="48" class="text-zinc-600 mb-4"></app-icon></span>
         <h3>{{ 'OPERATIONS.ORDERS.NO_ORDERS' | translate }}</h3>
         <p>{{ 'OPERATIONS.ORDERS.NO_RESULTS' | translate }}</p>
-        @if (selectedDateRange || searchControl.value || currentStatus() !== 'all') {
+        @if (hasActiveFilters()) {
         <button class="btn-clear-filters" (click)="clearFilters()">
             {{ 'OPERATIONS.ORDERS.CLEAR_FILTERS' | translate }}
         </button>

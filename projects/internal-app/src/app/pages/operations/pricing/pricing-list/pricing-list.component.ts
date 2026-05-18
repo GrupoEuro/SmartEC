@@ -529,11 +529,16 @@ export class PricingListComponent {
         }
     }
 
+    private isUpdatingCell = false;
+
     async onCellValueChanged(event: any) {
+        if (this.isUpdatingCell) return;
+        
         const row = event.data as PriceGridRow;
         const colId = event.colDef.field;
 
         // Start Optimistic Update
+        this.isUpdatingCell = true;
         event.api.showLoadingOverlay();
 
         try {
@@ -660,6 +665,7 @@ export class PricingListComponent {
             console.error('Error recalculating/saving:', error);
             this.toast.error('Error guardando los cambios.');
         } finally {
+            this.isUpdatingCell = false;
             event.api.hideOverlay();
         }
     }

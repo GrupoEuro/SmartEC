@@ -1266,35 +1266,45 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
             ? new Date(meliConfig.lastSyncDate)
             : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        // Apply a 2-hour safety overlap so orders that were created just before the
-        // last sync boundary are always re-evaluated (catches edge cases where a
-        // payment confirmation arrives slightly after the cron cursor advanced).
+        // 2-hour safety overlap so late-arriving payment confirmations are never missed
         const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
         const sweepFrom = new Date(lastSyncDate.getTime() - TWO_HOURS_MS);
-
         const dateFrom = sweepFrom.toISOString().replace('.000Z', '.000-00:00');
-        const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=50&order.date_created.from=${encodeURIComponent(dateFrom)}`;
-
         console.log(`[Meli Cron] Sweeping orders since: ${dateFrom} (2h overlap from ${lastSyncDate.toISOString()})`);
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } });
 
-        if (!res.ok) {
-            const errJson = await res.json();
-            throw new Error(JSON.stringify(errJson));
-        }
+        // ── Full Pagination ─────────────────────────────────────────────────────
+        // The previous code used limit=50 with NO loop. At high order volume this
+        // silently dropped every order beyond the first 50 in the window.
+        // Now we loop through ALL pages before advancing the cursor.
+        const PAGE_SIZE = 50;
+        let offset = 0;
+        let hasMore = true;
+        let importedCount = 0;
+        const cronHeaders = { 'Authorization': `Bearer ${meliConfig.accessToken}` };
 
-        const json = await res.json() as any;
-        const meliOrders = json.results || [];
+        while (hasMore) {
+            const url = `https://api.mercadolibre.com/orders/search?seller=${meliConfig.userId}&sort=date_asc&limit=${PAGE_SIZE}&offset=${offset}&order.date_created.from=${encodeURIComponent(dateFrom)}`;
+            const res = await fetch(url, { headers: cronHeaders });
 
-        const shipmentsMap: any = {};
-        const billingMap: any = {};
-        await Promise.all(
-            meliOrders
-                .map(async (mo: any) => {
+            if (!res.ok) {
+                const errJson = await res.json();
+                throw new Error(JSON.stringify(errJson));
+            }
+
+            const json = await res.json() as any;
+            const meliOrders: any[] = json.results || [];
+            const total: number = json.paging?.total ?? 0;
+            console.log(`[Meli Cron] Page offset=${offset}: ${meliOrders.length} orders (total=${total})`);
+            if (meliOrders.length === 0) break;
+
+            const shipmentsMap: any = {};
+            const billingMap: any = {};
+            await Promise.all(
+                meliOrders.map(async (mo: any) => {
                     try {
                         if (mo.shipping?.id) {
                             const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
-                                headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-format-new': 'true' }
+                                headers: { ...cronHeaders, 'x-format-new': 'true' }
                             });
                             if (sRes.ok) {
                                 shipmentsMap[mo.shipping.id] = await sRes.json();
@@ -1304,62 +1314,62 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
                             }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
-                            headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
+                            headers: { ...cronHeaders, 'x-version': '2' }
                         });
                         if (bRes.ok) billingMap[mo.id] = await bRes.json();
                         else {
-                            const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
-                                headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
-                            });
+                            const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, { headers: cronHeaders });
                             if (bRes1.ok) billingMap[mo.id] = await bRes1.json();
                         }
                     } catch (e) { /* skip */ }
                 })
-        );
+            );
 
-        let importedCount = 0;
+            // Pre-fetch existing originalNames in parallel to protect against ML name anonymization
+            const cronOrigNames = new Map<string, string>();
+            await Promise.all(
+                meliOrders.map(async (mo: any) => {
+                    try {
+                        const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
+                        const orig = snap.data()?.customer?.originalName;
+                        if (orig) cronOrigNames.set(String(mo.id), orig);
+                    } catch (_) { /* skip */ }
+                })
+            );
 
-        // Pre-fetch existing originalNames in parallel to protect against ML name anonymization
-        const cronOrigNames = new Map<string, string>();
-        await Promise.all(
-            meliOrders.map(async (mo: any) => {
-                try {
-                    const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
-                    const orig = snap.data()?.customer?.originalName;
-                    if (orig) cronOrigNames.set(String(mo.id), orig);
-                } catch (_) { /* skip */ }
-            })
-        );
+            for (const mo of meliOrders) {
+                const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+                const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
 
-        for (const mo of meliOrders) {
-            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
-            const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
+                const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
+                const isAnonC = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+                const preservedCron = cronOrigNames.get(String(mo.id));
+                if (preservedCron && !isAnonC(preservedCron)) {
+                    newOrder.customer.originalName = preservedCron;
+                } else if (preservedCron && isAnonC(preservedCron) && !isAnonC(newOrder.customer.originalName)) {
+                    // Upgrade: stored was anonymized, new is readable
+                } else if (preservedCron) {
+                    newOrder.customer.originalName = preservedCron;
+                }
 
-            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
-            const isAnonC = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-            const preservedCron = cronOrigNames.get(String(mo.id));
-            if (preservedCron && !isAnonC(preservedCron)) {
-                newOrder.customer.originalName = preservedCron;
-            } else if (preservedCron && isAnonC(preservedCron) && !isAnonC(newOrder.customer.originalName)) {
-                // Upgrade: stored was anonymized, new is readable
-            } else if (preservedCron) {
-                newOrder.customer.originalName = preservedCron;
+                await orderRef.set(newOrder, { merge: true });
+                importedCount++;
             }
 
-            await orderRef.set(newOrder, { merge: true });
-            importedCount++;
+            offset += PAGE_SIZE;
+            hasMore = offset < total;
         }
 
-        // Always advance the cursor — even when 0 orders found — so the next run
-        // doesn't redundantly re-scan the same window. The webhook is the real-time
-        // safety net; the cron is a catch-all for missed webhook events.
+        // Advance cursor ONLY after all pages succeed.
+        // If anything threw above, we skip this so the NEXT run retries the same window.
         await db.collection('config').doc('integrations').set({
             meli: { lastSyncDate: new Date().toISOString() }
         }, { merge: true });
 
-        console.log(`[Meli Cron] Success. Upserted ${importedCount} orders.`);
+        console.log(`[Meli Cron] ✅ Done. Upserted ${importedCount} orders across ${Math.ceil((offset || 1) / PAGE_SIZE)} page(s).`);
     } catch (err: any) {
         console.error('[Meli Cron] Failed:', err);
+        // NOTE: lastSyncDate is NOT advanced on failure — next run retries the same window.
     }
 });
 

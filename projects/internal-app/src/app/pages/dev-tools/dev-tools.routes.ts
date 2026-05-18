@@ -83,6 +83,11 @@ export const devToolsRoutes: Routes = [
                 path: 'backlog',
                 loadComponent: () => import('./backlog-manager/backlog-manager.component').then(m => m.BacklogManagerComponent),
                 data: { title: 'Backlog Manager' }
+            },
+            {
+                path: 'meli-reconciliator',
+                loadComponent: () => import('./meli-reconciliator/meli-reconciliator.component').then(m => m.MeliReconciliatorComponent),
+                data: { title: 'MeLi Reconciliator' }
             }
         ]
     }

@@ -163,3 +163,19 @@
     /* Zinc 950 */
     min-height: 100vh;
 }
+
+/* Highlighted nav item (Operations tools) */
+.nav-item--highlight {
+    background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.08));
+    border: 1px solid rgba(245,158,11,0.2);
+    color: #fbbf24;
+}
+.nav-item--highlight:hover {
+    background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(239,68,68,0.14));
+    color: #fde68a;
+}
+.nav-item--highlight.active {
+    background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(239,68,68,0.18));
+    color: #fde68a;
+    border-color: rgba(245,158,11,0.4);
+}

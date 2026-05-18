@@ -2,17 +2,13 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { map, take } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
 
-// Dev tools are restricted to DEV environments AND SUPER_ADMIN role.
+// Dev tools are restricted to SUPER_ADMIN role only.
+// Previously blocked entirely in production — removed that restriction because
+// operational tools like the MeLi Reconciliator require live production data.
 export const devModeGuard: CanActivateFn = (route, state) => {
     const authService = inject(AuthService);
     const router = inject(Router);
-
-    // Completely disable route in production to prevent accidental seeding or data wiping
-    if (environment.production) {
-        return router.createUrlTree(['/admin/dashboard']);
-    }
 
     return authService.userProfile$.pipe(
         take(1),

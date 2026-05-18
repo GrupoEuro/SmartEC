@@ -492,7 +492,7 @@
     </div>
 
     <!-- ── Sales Velocity Pulse ──────────────────────────────────────────── -->
-    @if (salesVelocity() !== null && timeframe() === 'MTD') {
+    @if (salesVelocity() !== null) {
     <div class="mb-6 rounded-xl border overflow-hidden shadow-lg transition-all"
          [class]="salesVelocity()!.status === 'ahead'    ? 'bg-zinc-800 border-emerald-500/40' :
                   salesVelocity()!.status === 'ok'        ? 'bg-zinc-800 border-zinc-600'       :
@@ -501,7 +501,7 @@
                                                             'bg-zinc-800 border-zinc-700'">
 
         <!-- Header bar -->
-        <div class="flex items-center justify-between px-5 py-3 border-b"
+        <div class="px-5 py-3 border-b border-zinc-700/50 flex items-center justify-between"
              [class]="salesVelocity()!.status === 'ahead'   ? 'bg-emerald-500/8 border-emerald-500/20' :
                       salesVelocity()!.status === 'ok'       ? 'bg-zinc-900/40 border-zinc-700'        :
                       salesVelocity()!.status === 'warning'  ? 'bg-amber-500/8  border-amber-500/20'   :
@@ -539,17 +539,74 @@
             </span>
         </div>
 
-        <!-- Body: metric grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-zinc-700/60">
+        <!-- Body: metric grid — 5 columns -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-0 divide-x divide-zinc-700/60">
 
             <!-- Hoy -->
             <div class="px-5 py-4 flex flex-col gap-1">
                 <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Hoy (acumulado)</span>
                 <span class="text-xl font-black text-white font-mono">{{ formatCurrency(salesVelocity()!.todaySales) }}</span>
+                <!-- Order count + avg ticket -->
+                <span class="text-[10px] text-zinc-400 font-mono">
+                    {{ salesVelocity()!.todayOrderCount }} pedidos
+                    @if (salesVelocity()!.avgTicket > 0) {
+                        · {{ formatCurrency(salesVelocity()!.avgTicket) }}/ticket
+                    }
+                </span>
                 <span class="text-[10px] text-zinc-500 flex flex-col gap-0.5 mt-0.5">
                     <span>Ritmo: <span class="font-mono text-zinc-300">{{ formatCurrency(salesVelocity()!.todayRate) }}/hr</span></span>
                     <span>{{ salesVelocity()!.hoursElapsed | number:'1.1-1' }}h transcurridas</span>
                 </span>
+                <!-- Hourly sparkline SVG -->
+                @if (salesVelocity()!.todayOrderCount > 0) {
+                <div class="mt-2" title="Ventas por hora hoy">
+                    <svg width="120" height="28" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg">
+                        @for (bucket of salesVelocity()!.hourlyBuckets; track $index) {
+                            @if ($index < 24) {
+                                <rect
+                                    [attr.x]="$index * 5"
+                                    [attr.y]="salesVelocity()!.todaySales > 0 && bucket > 0 ? (28 - (bucket / salesVelocity()!.todaySales * salesVelocity()!.todayOrderCount * 14)) : 27"
+                                    width="4"
+                                    [attr.height]="salesVelocity()!.todaySales > 0 && bucket > 0 ? (bucket / salesVelocity()!.todaySales * salesVelocity()!.todayOrderCount * 14) : 1"
+                                    rx="1"
+                                    [attr.fill]="bucket > 0 ? (salesVelocity()!.status === 'ahead' ? '#34d399' : salesVelocity()!.status === 'warning' ? '#fbbf24' : salesVelocity()!.status === 'critical' ? '#f87171' : '#6b7280') : '#27272a'"
+                                    opacity="0.85"
+                                />
+                            }
+                        }
+                    </svg>
+                </div>
+                }
+                <!-- Channel breakdown pills -->
+                @if (salesVelocity()!.todaySales > 0) {
+                <div class="flex flex-wrap gap-1 mt-1">
+                    @if (salesVelocity()!.channelBreakdown['mercadolibre']) {
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/20">
+                            ML {{ formatCurrency(salesVelocity()!.channelBreakdown['mercadolibre']) }}
+                        </span>
+                    }
+                    @if (salesVelocity()!.channelBreakdown['storefront']) {
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                            Web {{ formatCurrency(salesVelocity()!.channelBreakdown['storefront']) }}
+                        </span>
+                    }
+                    @if (salesVelocity()!.channelBreakdown['amazon']) {
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                            AMZ {{ formatCurrency(salesVelocity()!.channelBreakdown['amazon']) }}
+                        </span>
+                    }
+                    @if (salesVelocity()!.channelBreakdown['pos']) {
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/20">
+                            POS {{ formatCurrency(salesVelocity()!.channelBreakdown['pos']) }}
+                        </span>
+                    }
+                    @if (salesVelocity()!.channelBreakdown['on_behalf']) {
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-500/20 text-zinc-400 border border-zinc-600">
+                            Repr. {{ formatCurrency(salesVelocity()!.channelBreakdown['on_behalf']) }}
+                        </span>
+                    }
+                </div>
+                }
             </div>
 
             <!-- Ayer misma hora -->
@@ -559,18 +616,20 @@
                       [class]="salesVelocity()!.vsYesterdayPct !== null && salesVelocity()!.vsYesterdayPct! < 0 ? 'text-zinc-400' : 'text-zinc-200'">
                     {{ formatCurrency(salesVelocity()!.yesterdayAtSameHour) }}
                 </span>
+                <span class="text-[10px] text-zinc-500 font-mono">
+                    {{ salesVelocity()!.yesterdayOrderCount }} pedidos
+                </span>
                 @if (salesVelocity()!.vsYesterdayPct !== null) {
                 <span class="text-xs font-bold px-1.5 py-0.5 rounded-full self-start font-mono"
                       [class]="salesVelocity()!.vsYesterdayPct! >= 0
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
                           : 'bg-red-500/15 text-red-400 border border-red-500/25'">
-                    {{ salesVelocity()!.vsYesterdayPct! >= 0 ? '+' : '' }}{{ salesVelocity()!.vsYesterdayPct! | number:'1.1-1' }}%
+                    {{ salesVelocity()!.vsYesterdayPct! > 0 ? '+' : '' }}{{ salesVelocity()!.vsYesterdayPct | number:'1.1-1' }}%
+                    @if (salesVelocity()!.vsYesterdayMultiplier !== null) {
+                        <span class="ml-1 opacity-80">(x{{ salesVelocity()!.vsYesterdayMultiplier | number:'1.1-1' }})</span>
+                    }
                 </span>
                 }
-                <span class="text-[10px] text-zinc-600 font-mono flex flex-col gap-0.5 mt-0.5">
-                    <span>Ritmo: <span class="text-zinc-400">{{ salesVelocity()!.yesterdayRate !== null ? formatCurrency(salesVelocity()!.yesterdayRate!) + '/hr' : 'N/A' }}</span></span>
-                    <span>Cierre ayer: {{ formatCurrency(salesVelocity()!.yesterdayFull) }}</span>
-                </span>
             </div>
 
             <!-- Año anterior mismo día -->
@@ -584,6 +643,9 @@
                           ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
                           : 'bg-red-500/15 text-red-400 border border-red-500/25'">
                     {{ salesVelocity()!.vsLyPct! >= 0 ? '+' : '' }}{{ salesVelocity()!.vsLyPct! | number:'1.1-1' }}% vs AA
+                    @if (salesVelocity()!.vsLyMultiplier !== null) {
+                        <span class="ml-1 opacity-80">({{ salesVelocity()!.vsLyMultiplier! | number:'1.1-1' }}x)</span>
+                    }
                 </span>
                 }
                 <span class="text-[10px] text-zinc-600 font-mono flex flex-col gap-0.5 mt-0.5">
@@ -592,6 +654,28 @@
                 </span>
                 } @else {
                 <span class="text-sm text-zinc-600 italic">Sin dato AA</span>
+                }
+            </div>
+
+            <!-- Proyección cierre -->
+            <div class="px-5 py-4 flex flex-col gap-1">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Proyección cierre</span>
+                @if (salesVelocity()!.todayOrderCount > 0) {
+                <span class="text-xl font-black font-mono"
+                      [class]="salesVelocity()!.projVsYesterdayFull !== null && salesVelocity()!.projVsYesterdayFull! >= 0 ? 'text-emerald-300' : 'text-amber-300'">
+                    {{ formatCurrency(salesVelocity()!.projectedClose) }}
+                </span>
+                @if (salesVelocity()!.projVsYesterdayFull !== null) {
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded-full self-start font-mono"
+                      [class]="salesVelocity()!.projVsYesterdayFull! >= 0
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                          : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                    {{ salesVelocity()!.projVsYesterdayFull! >= 0 ? '+' : '' }}{{ formatCurrency(salesVelocity()!.projVsYesterdayFull!) }} vs ayer
+                </span>
+                }
+                <span class="text-[10px] text-zinc-600 mt-0.5">basado en ritmo actual</span>
+                } @else {
+                <span class="text-sm text-zinc-600 italic">Sin ventas aún</span>
                 }
             </div>
 
@@ -608,6 +692,75 @@
             </div>
 
         </div>
+
+        <!-- Yesterday Time Machine Toggle -->
+        @if (yesterdaySnapshot()) {
+        <button (click)="showYesterdaySnapshot.set(!showYesterdaySnapshot())"
+                class="w-full bg-zinc-900/50 hover:bg-zinc-800/80 border-t border-zinc-700/50 py-2.5 px-5 flex items-center justify-between text-xs font-bold text-zinc-400 hover:text-white transition-colors">
+            <span class="flex items-center gap-2">
+                <app-icon name="clock" [size]="14"></app-icon>
+                AYER · {{ yesterdaySnapshot()!.yesterdayDate }} — VER CIERRE
+            </span>
+            <app-icon [name]="showYesterdaySnapshot() ? 'chevron-up' : 'chevron-down'" [size]="16"></app-icon>
+        </button>
+
+        <!-- Yesterday Snapshot Collapsible Grid -->
+        <div class="overflow-hidden transition-all duration-300"
+             [ngClass]="showYesterdaySnapshot() ? 'max-h-96 opacity-100 border-t border-zinc-700/50' : 'max-h-0 opacity-0'">
+            <div class="bg-black/20 grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-zinc-800/60">
+
+                <!-- Cierre Ayer -->
+                <div class="px-5 py-4 flex flex-col gap-1">
+                    <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Cierre Ayer</span>
+                    <span class="text-lg font-black text-white font-mono opacity-90">{{ formatCurrency(yesterdaySnapshot()!.yesterdaySales) }}</span>
+                </div>
+
+                <!-- Vs Antier -->
+                <div class="px-5 py-4 flex flex-col gap-1">
+                    <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Cierre Antier</span>
+                    <span class="text-lg font-black font-mono text-zinc-300 opacity-90">{{ formatCurrency(yesterdaySnapshot()!.antierSales) }}</span>
+                    @if (yesterdaySnapshot()!.vsAntierPct !== null) {
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full self-start font-mono opacity-90 mt-0.5"
+                          [ngClass]="yesterdaySnapshot()!.vsAntierPct! >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                        {{ yesterdaySnapshot()!.vsAntierPct! > 0 ? '+' : '' }}{{ yesterdaySnapshot()!.vsAntierPct | number:'1.1-1' }}%
+                        @if (yesterdaySnapshot()!.vsAntierMultiplier !== null) {
+                            <span class="ml-1 opacity-80">(x{{ yesterdaySnapshot()!.vsAntierMultiplier | number:'1.1-1' }})</span>
+                        }
+                    </span>
+                    }
+                </div>
+
+                <!-- Vs Año Anterior -->
+                <div class="px-5 py-4 flex flex-col gap-1">
+                    <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">AA mismo día (Ayer)</span>
+                    @if (yesterdaySnapshot()!.lyYesterday !== null) {
+                    <span class="text-lg font-black text-zinc-400 font-mono opacity-90">{{ formatCurrency(yesterdaySnapshot()!.lyYesterday!) }}</span>
+                    @if (yesterdaySnapshot()!.vsLyPct !== null) {
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full self-start font-mono opacity-90 mt-0.5"
+                          [ngClass]="yesterdaySnapshot()!.vsLyPct! >= 0 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-red-500/15 text-red-400 border border-red-500/25'">
+                        {{ yesterdaySnapshot()!.vsLyPct! > 0 ? '+' : '' }}{{ yesterdaySnapshot()!.vsLyPct | number:'1.1-1' }}% vs AA
+                    </span>
+                    }
+                    } @else {
+                    <span class="text-xs text-zinc-600 italic">Sin dato AA</span>
+                    }
+                </div>
+
+                <!-- Diagnóstico -->
+                <div class="px-5 py-4 flex flex-col gap-1 justify-center">
+                    <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Diagnóstico (Ayer)</span>
+                    <p class="text-[11px] leading-relaxed font-medium"
+                       [ngClass]="yesterdaySnapshot()!.status === 'ahead' ? 'text-emerald-400/90' :
+                                  yesterdaySnapshot()!.status === 'ok' ? 'text-zinc-400' :
+                                  yesterdaySnapshot()!.status === 'warning' ? 'text-amber-400/90' :
+                                  yesterdaySnapshot()!.status === 'critical' ? 'text-red-400/90' : 'text-zinc-500'">
+                        {{ yesterdaySnapshot()!.insight }}
+                    </p>
+                </div>
+
+            </div>
+        </div>
+        }
     </div>
     }
 
@@ -1245,36 +1398,8 @@
         </div>
     </div>
 
-    <!-- ── EuroMind Weekly Report ────────────────────────────────────────── -->
-    <div class="mt-10 mb-8">
-        <div class="section-header flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                <app-icon name="cpu" [size]="20" class="text-indigo-400"></app-icon>
-                EuroMind Reporte Semanal
-            </h2>
-            <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">
-                Análisis Ejecutivo
-            </span>
-        </div>
-        
-        <div class="bg-zinc-800 rounded-xl border border-indigo-500/30 shadow-lg p-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-            
-            @if (euromindReport()) {
-                <div class="relative z-10 text-zinc-300 text-sm whitespace-pre-wrap leading-relaxed">
-                    {{ euromindReport().content }}
-                </div>
-                <div class="relative z-10 mt-4 text-[10px] text-zinc-500 font-mono">
-                    Generado: {{ euromindReport().createdAt?.toDate() | date:'short' }}
-                </div>
-            } @else {
-                <div class="relative z-10 flex flex-col items-center justify-center py-8 text-zinc-500">
-                    <app-icon name="loader" [size]="32" class="mb-3 opacity-40 animate-spin"></app-icon>
-                    <p class="text-sm">Buscando el reporte semanal de EuroMind...</p>
-                </div>
-            }
-        </div>
-    </div>
+    <!-- ── EuroMind Weekly Report — DISABLED (próximamente) ─────────────── -->
+    <!-- Widget pausado temporalmente. Se reactiva cuando el reporte esté listo. -->
 
     <app-euromind-chat></app-euromind-chat>
 

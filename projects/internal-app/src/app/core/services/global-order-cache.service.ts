@@ -6,7 +6,8 @@ import {
     where,
     orderBy,
     getDocs,
-    Timestamp
+    Timestamp,
+    collectionData
 } from '@angular/fire/firestore';
 import { Observable, from as fromPromise, map, shareReplay } from 'rxjs';
 import { Order } from '../models/order.model';
@@ -34,6 +35,7 @@ import { Order } from '../models/order.model';
 export class GlobalOrderCacheService {
     private fs = inject(Firestore);
     private cache = new Map<string, Observable<Order[]>>();
+    private liveCache = new Map<string, Observable<Order[]>>();
 
     /**
      * Returns a cached Observable<Order[]> for the given date range.
@@ -71,12 +73,63 @@ export class GlobalOrderCacheService {
     }
 
     /**
-     * Clear all cached observables.
+     * Returns a SHARED live Observable<Order[]> for the given date range.
+     * Multiple subscribers will multiplex over a single Firestore onSnapshot socket.
+     * When all subscribers unsubscribe, the socket is automatically closed.
+     */
+    getLive(startDate: Date, endDate: Date): Observable<Order[]> {
+        const key = this.buildKey(startDate, endDate);
+
+        if (!this.liveCache.has(key)) {
+            const ordersRef = collection(this.fs, 'orders');
+            const q = query(
+                ordersRef,
+                where('createdAt', '>=', Timestamp.fromDate(this.startOfDay(startDate))),
+                where('createdAt', '<=', Timestamp.fromDate(this.endOfDay(endDate))),
+                orderBy('createdAt', 'desc')
+            );
+
+            const live$ = collectionData(q, { idField: 'id' }).pipe(
+                map((docs: any[]) => {
+                    console.log(`[GlobalOrderCache] Live update: ${docs.length} orders for key=${key}`);
+                    return docs.map((data: any) => {
+                        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt ?? 0);
+                        const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : createdAt;
+                        return { id: data.id, ...data, createdAt, updatedAt } as Order;
+                    });
+                }),
+                shareReplay({ bufferSize: 1, refCount: true })
+            );
+
+            this.liveCache.set(key, live$);
+
+            // Note: Since refCount is true, when the last subscriber unsubscribes,
+            // the observable completes and we should ideally remove it from the cache
+            // so the next subscriber creates a fresh socket. We don't have a direct hook
+            // here, but shareReplay(1, refCount: true) will resubscribe to the source
+            // if subscribed again later.
+        }
+
+        return this.liveCache.get(key)!;
+    }
+
+    /**
+     * Clear all cached observables (one-shot reads).
      * Call this after order mutations if real-time accuracy is required.
      */
     invalidate(): void {
         this.cache.clear();
         console.log('[GlobalOrderCache] Cache invalidated.');
+    }
+
+    /**
+     * Clear the live (onSnapshot) cache.
+     * Call this before every loadDashboardData() so that a stale socket
+     * from a previous session (with an old endDate) is never reused.
+     */
+    invalidateLive(): void {
+        this.liveCache.clear();
+        console.log('[GlobalOrderCache] Live cache invalidated.');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

@@ -80,6 +80,9 @@ export {
 // ── MercadoLibre Webhooks ──────────────────────────────────────────────────────
 export { meliWebhook, getMeliRawOrderDebug } from './meli-webhook';
 
+// ── MercadoLibre Revenue Reconciliator ────────────────────────────────────────
+export { meliReconciliator, meliForceResync, meliXlsAudit } from './meli-reconciliator';
+
 // ── MercadoLibre → Inbox Sync ──────────────────────────────────────────────────
 export { syncMeliToInbox, backfillMeliToInbox } from './meli-inbox-sync';
 

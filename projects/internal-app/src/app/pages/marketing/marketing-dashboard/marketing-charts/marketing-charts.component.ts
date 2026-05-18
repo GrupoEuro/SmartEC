@@ -11,6 +11,8 @@ import {
 } from '@angular/fire/firestore';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { isRevenueOrder } from '../../../../core/models/order.model';
+import { GlobalOrderCacheService } from '../../../../core/services/global-order-cache.service';
+import { firstValueFrom } from 'rxjs';
 
 Chart.register(...registerables);
 
@@ -139,6 +141,7 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
     @ViewChild('sessionCanvas')  sessionCanvas!:  ElementRef<HTMLCanvasElement>;
 
     private fs = inject(Firestore);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private mixChart?:     any;
     private trendChart?:   any;
     private sessionChart?: any;
@@ -215,22 +218,17 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         const [from, to] = this.dateRange();
 
         try {
-            const [snapsSnap, ordersSnap] = await Promise.all([
+            const [snapsSnap, currentOrders] = await Promise.all([
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
                     where('createdAt', '>=', Timestamp.fromDate(from)),
                     where('createdAt', '<=', Timestamp.fromDate(to)),
                     orderBy('createdAt', 'asc'),
                 )),
-                getDocs(query(
-                    collection(this.fs, 'orders'),
-                    where('createdAt', '>=', Timestamp.fromDate(from)),
-                    where('createdAt', '<=', Timestamp.fromDate(to)),
-                    orderBy('createdAt', 'asc'),
-                )),
+                firstValueFrom(this.globalOrderCache.get(from, to)),
             ]);
 
-            if (snapsSnap.empty && ordersSnap.empty) {
+            if (snapsSnap.empty && currentOrders.length === 0) {
                 this.noData.set(true);
                 this.isLoading.set(false);
                 return;
@@ -239,8 +237,8 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
             // ── Revenue-only orders: exclude ghost/void statuses system-wide ──
             // NON_REVENUE_STATUSES: pending_payment, payment_failed, cancelled, refunded, returned
-            const revenueOrderDocs = ordersSnap.docs.filter(doc =>
-                isRevenueOrder(doc.data()['status'])
+            const revenueOrderDocs = currentOrders.filter((d: any) =>
+                isRevenueOrder(d.status)
             );
 
             // ── Source map (channel mix) ─────────────────────────────────────
@@ -265,10 +263,9 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
             // ── Orders by day + channel mix from orders (includes ML, POS) ───
             const ordersByDay = new Map<string, number>();
-            for (const doc of revenueOrderDocs) {
-                const d = doc.data() as any;
+            for (const d of revenueOrderDocs) {
                 if (d.createdAt) {
-                    const day = this.toMxKey(d.createdAt.toDate());
+                    const day = this.toMxKey(d.createdAt as Date);
                     ordersByDay.set(day, (ordersByDay.get(day) ?? 0) + 1);
                 }
                 // Merge resolved channel into sourceMap so Channel Mix includes all orders
@@ -454,8 +451,8 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
         // ── Extract unique channels ───────────────────────────────────────
         const channelSet = new Set<string>();
-        for (const doc of docs) {
-            const ch = this.normalizeSource(this.resolveChannel(doc.data()));
+        for (const d of docs) {
+            const ch = this.normalizeSource(this.resolveChannel(d));
             if (ch) channelSet.add(ch);
         }
         this.heatmapChannels.set(['all', ...Array.from(channelSet).sort()]);
@@ -464,13 +461,12 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         const selectedCh = this.heatmapChannel();
         const filtered = selectedCh === 'all'
             ? docs
-            : docs.filter(doc => this.normalizeSource(this.resolveChannel(doc.data())) === selectedCh);
+            : docs.filter(d => this.normalizeSource(this.resolveChannel(d)) === selectedCh);
 
         const singleDayMap = new Map<string, { orders: number; revenue: number }>();
-        for (const doc of filtered) {
-            const d = doc.data();
+        for (const d of filtered) {
             if (!d.createdAt) continue;
-            const key = this.toMxKey(d.createdAt.toDate());
+            const key = this.toMxKey(d.createdAt as Date);
             const cur = singleDayMap.get(key) ?? { orders: 0, revenue: 0 };
             singleDayMap.set(key, {
                 orders:  cur.orders + 1,
@@ -532,17 +528,16 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
 
         for (const ch of Array.from(channelSet).sort()) {
             const rgb   = CHANNEL_COLORS[ch] ?? DEFAULT_RGB;
-            const chDocs = docs.filter(doc =>
-                this.normalizeSource(this.resolveChannel(doc.data())) === ch
+            const chDocs = docs.filter(d =>
+                this.normalizeSource(this.resolveChannel(d)) === ch
             );
 
             // Channel day map
             const chDayMap = new Map<string, { orders: number; revenue: number }>();
             let chTotal = 0, chRevenue = 0;
-            for (const doc of chDocs) {
-                const d = doc.data();
+            for (const d of chDocs) {
                 if (!d.createdAt) continue;
-                const key = this.toMxKey(d.createdAt.toDate());
+                const key = this.toMxKey(d.createdAt as Date);
                 const cur = chDayMap.get(key) ?? { orders: 0, revenue: 0 };
                 const rev = (d.total || d.totalAmount || 0);
                 chDayMap.set(key, { orders: cur.orders + 1, revenue: cur.revenue + rev });
@@ -632,16 +627,15 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         const channelDayRowsData: HeatDayRow[] = [];
         for (const ch of Array.from(channelSet).sort()) {
             const rgb    = CHANNEL_COLORS[ch] ?? DEFAULT_RGB;
-            const chDocs = docs.filter(doc =>
-                this.normalizeSource(this.resolveChannel(doc.data())) === ch
+            const chDocs = docs.filter(d =>
+                this.normalizeSource(this.resolveChannel(d)) === ch
             );
             // Build this channel's day map
             const cDayMap = new Map<string, { orders: number; revenue: number }>();
             let cTotal = 0, cRevenue = 0;
-            for (const doc of chDocs) {
-                const d = doc.data();
+            for (const d of chDocs) {
                 if (!d.createdAt) continue;
-                const key = this.toMxKey(d.createdAt.toDate());
+                const key = this.toMxKey(d.createdAt as Date);
                 const cur = cDayMap.get(key) ?? { orders: 0, revenue: 0 };
                 const rev = (d.total || d.totalAmount || 0);
                 cDayMap.set(key, { orders: cur.orders + 1, revenue: cur.revenue + rev });
@@ -674,17 +668,16 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         const channelHourRowsData: HeatHourRow[] = [];
         for (const ch of Array.from(channelSet).sort()) {
             const rgb   = CHANNEL_COLORS[ch] ?? DEFAULT_RGB;
-            const chDocs = docs.filter(doc =>
-                this.normalizeSource(this.resolveChannel(doc.data())) === ch
+            const chDocs = docs.filter(d =>
+                this.normalizeSource(this.resolveChannel(d)) === ch
             );
             // Bucket by hour 0-23 in America/Mexico_City
             const hourBuckets: { orders: number; revenue: number }[] =
                 Array.from({ length: 24 }, () => ({ orders: 0, revenue: 0 }));
             let hTotal = 0;
-            for (const doc of chDocs) {
-                const d = doc.data();
+            for (const d of chDocs) {
                 if (!d.createdAt) continue;
-                const h   = this.toMxHour(d.createdAt.toDate());
+                const h   = this.toMxHour(d.createdAt as Date);
                 const rev = (d.total || d.totalAmount || 0);
                 hourBuckets[h].orders++;
                 hourBuckets[h].revenue += rev;
@@ -711,8 +704,8 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
         const channelDayHourRowsData: HeatDayHourRow[] = [];
         for (const ch of Array.from(channelSet).sort()) {
             const rgb    = CHANNEL_COLORS[ch] ?? DEFAULT_RGB;
-            const chDocs = docs.filter(doc =>
-                this.normalizeSource(this.resolveChannel(doc.data())) === ch
+            const chDocs = docs.filter(d =>
+                this.normalizeSource(this.resolveChannel(d)) === ch
             );
             // Build 7×24 matrix indexed [dow 0=Mon][hour]
             const matrix: { orders: number; revenue: number }[][] =
@@ -720,10 +713,9 @@ export class MarketingChartsComponent implements OnInit, OnChanges, AfterViewIni
                     Array.from({ length: 24 }, () => ({ orders: 0, revenue: 0 }))
                 );
             let dhTotal = 0;
-            for (const doc of chDocs) {
-                const d   = doc.data();
+            for (const d of chDocs) {
                 if (!d.createdAt) continue;
-                const dt  = d.createdAt.toDate();
+                const dt  = d.createdAt as Date;
                 const dow = this.toMxDow(dt);
                 const h   = this.toMxHour(dt);
                 const rev = (d.total || d.totalAmount || 0);

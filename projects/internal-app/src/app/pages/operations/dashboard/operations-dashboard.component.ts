@@ -8,6 +8,7 @@ import { Subscription } from 'rxjs';
 import confetti from 'canvas-confetti';
 
 import { OrderService } from '../../../core/services/order.service';
+import { GlobalOrderCacheService } from '../../../core/services/global-order-cache.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
 import { OrderPriorityService } from '../../../core/services/order-priority.service';
 import { OrderAssignmentService } from '../../../core/services/order-assignment.service';
@@ -138,6 +139,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     private orderService      = inject(OrderService);
     private priorityService   = inject(OrderPriorityService);
     private assignmentService = inject(OrderAssignmentService);
+    private globalOrderCache  = inject(GlobalOrderCacheService);
     private firestore         = inject(Firestore);
     private toast             = inject(ToastService);
     private translate         = inject(TranslateService);
@@ -154,6 +156,9 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     dailyMilestone = signal<'50K' | '100K' | null>(null);
     monthlyMilestone = signal<boolean>(false);
     fireworksMessage = signal<string | null>(null);
+
+    // Yesterday Snapshot State
+    showYesterdaySnapshot = signal<boolean>(false);
 
     // Channel breakdown — always computed on ALL orders regardless of active filter
     channelBreakdown = signal<{
@@ -419,30 +424,37 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
      *  critical < -35%
      */
     salesVelocity = computed<{
-        todaySales:           number;
-        todayRate:            number;   // $ per hour today
-        yesterdayAtSameHour:  number;   // yesterday's total up to this hour
-        yesterdayFull:        number;   // yesterday's complete day total
-        yesterdayRate:        number | null;
-        vsYesterdayPct:       number | null;
-        vsYesterdayAbs:       number | null;
-        lyToday:              number | null;
-        lyTodayPartial:       number | null;
-        lyRate:               number | null;
-        vsLyPct:              number | null;
-        hoursElapsed:         number;
-        status:               'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
-        insight:              string;
-        insightDetail:        string;
+        todaySales:            number;
+        todayRate:             number;   // $ per hour today
+        projectedClose:        number;   // todayRate * 24
+        todayOrderCount:       number;
+        avgTicket:             number;
+        yesterdayAtSameHour:   number;
+        yesterdayFull:         number;
+        yesterdayOrderCount:   number;
+        yesterdayRate:         number | null;
+        vsYesterdayPct:        number | null;
+        vsYesterdayAbs:        number | null;
+        vsYesterdayMultiplier: number | null;
+        projVsYesterdayFull:   number | null;  // projected close vs yesterday full day
+        lyToday:               number | null;
+        lyTodayPartial:        number | null;
+        lyRate:                number | null;
+        vsLyPct:               number | null;
+        vsLyMultiplier:        number | null;
+        hoursElapsed:          number;
+        hourlyBuckets:         number[];  // 24 buckets, today's sales per hour
+        channelBreakdown:      Record<string, number>;
+        status:                'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        insight:               string;
+        insightDetail:         string;
     } | null>(() => {
-        // Inject reactive dependency so this re-runs on live order updates
         this.todaySalesTotalSignal();
-        
-        if (this.timeframe() !== 'MTD') return null;
 
         const now          = new Date();
         const hoursElapsed = now.getHours() + now.getMinutes() / 60;
-        if (hoursElapsed < 0.5) return null; // too early in the day
+        // Show a meaningful early-morning state instead of null
+        const tooEarly = hoursElapsed < 0.25;
 
         const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
 
@@ -457,87 +469,177 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const yestD = yest.getDate();
 
         let todaySales          = 0;
+        let todayOrderCount     = 0;
         let yesterdayAtSameHour = 0;
         let yesterdayFull       = 0;
+        let yesterdayOrderCount = 0;
+        const hourlyBuckets     = new Array(24).fill(0);
+        const channelBreakdown: Record<string, number> = {};
 
         this.allFetchedOrders.forEach(o => {
             if (NON_REVENUE.includes(o.status as string)) return;
-            const d = this.getJsDate(o.createdAt);
-            const isToday     = d.getFullYear() === todayY && d.getMonth() === todayM && d.getDate() === todayD;
+            const d          = this.getJsDate(o.createdAt);
+            const isToday    = d.getFullYear() === todayY && d.getMonth() === todayM && d.getDate() === todayD;
             const isYesterday = d.getFullYear() === yestY  && d.getMonth() === yestM  && d.getDate() === yestD;
+            const amt        = o.total || 0;
 
             if (isToday) {
-                todaySales += o.total || 0;
+                todaySales += amt;
+                todayOrderCount++;
+                hourlyBuckets[d.getHours()] += amt;
+                const ch = (o as any).sourceChannel || 'other';
+                channelBreakdown[ch] = (channelBreakdown[ch] || 0) + amt;
             }
             if (isYesterday) {
-                yesterdayFull += o.total || 0;
-                // Same-hour comparison: only count yesterday orders up to the current hour/minute
+                yesterdayFull += amt;
+                yesterdayOrderCount++;
                 if ((d.getHours() + d.getMinutes() / 60) <= hoursElapsed) {
-                    yesterdayAtSameHour += o.total || 0;
+                    yesterdayAtSameHour += amt;
                 }
             }
         });
 
-        const todayRate     = todaySales / hoursElapsed;
-        const yesterdayRate = yesterdayAtSameHour > 0 ? yesterdayAtSameHour / hoursElapsed : null;
+        if (tooEarly) {
+            return {
+                todaySales: 0, todayRate: 0, projectedClose: 0,
+                todayOrderCount: 0, avgTicket: 0,
+                yesterdayAtSameHour: 0, yesterdayFull: yesterdayFull,
+                yesterdayOrderCount: 0, yesterdayRate: null,
+                vsYesterdayPct: null, vsYesterdayAbs: null, vsYesterdayMultiplier: null,
+                projVsYesterdayFull: null,
+                lyToday: null, lyTodayPartial: null, lyRate: null, vsLyPct: null, vsLyMultiplier: null,
+                hoursElapsed: 0, hourlyBuckets, channelBreakdown,
+                status: 'no-data' as const,
+                insight: '🌅 Día recién iniciado — sin ventas aún',
+                insightDetail: `Ayer cerró en $${yesterdayFull.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}.`,
+            };
+        }
+
+        const todayRate       = hoursElapsed > 0 ? todaySales / hoursElapsed : 0;
+        const projectedClose  = todayRate * 24;
+        const avgTicket       = todayOrderCount > 0 ? todaySales / todayOrderCount : 0;
+        const yesterdayRate   = yesterdayAtSameHour > 0 ? yesterdayAtSameHour / hoursElapsed : null;
 
         // LY same calendar day total
-        const lyData = this.lyDailyData();
+        const lyData    = this.lyDailyData();
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const lyToday = (lyData && lyData.length === totalDays) ? lyData[todayD - 1] : null;
+        const lyToday   = (lyData && lyData.length === totalDays) ? lyData[todayD - 1] : null;
 
-        // % deltas
-        const vsYesterdayPct = yesterdayAtSameHour > 0
-            ? ((todaySales - yesterdayAtSameHour) / yesterdayAtSameHour) * 100
-            : null;
-        const vsYesterdayAbs = yesterdayAtSameHour > 0
-            ? todaySales - yesterdayAtSameHour
-            : null;
-            
-        // Compare today's partial sales to the same proportion of LY's full day
+        const vsYesterdayPct        = yesterdayAtSameHour > 0 ? ((todaySales - yesterdayAtSameHour) / yesterdayAtSameHour) * 100 : null;
+        const vsYesterdayAbs        = yesterdayAtSameHour > 0 ? todaySales - yesterdayAtSameHour : null;
+        const vsYesterdayMultiplier = yesterdayAtSameHour > 0 ? todaySales / yesterdayAtSameHour : null;
+        const projVsYesterdayFull   = yesterdayFull > 0 ? projectedClose - yesterdayFull : null;
+
         const lyTodayPartial = lyToday ? lyToday * (hoursElapsed / 24) : null;
-        const lyRate = lyToday ? lyToday / 24 : null;
-        const vsLyPct = lyTodayPartial && lyTodayPartial > 0
-            ? ((todaySales - lyTodayPartial) / lyTodayPartial) * 100
-            : null;
+        const lyRate         = lyToday ? lyToday / 24 : null;
+        const vsLyPct        = lyTodayPartial && lyTodayPartial > 0 ? ((todaySales - lyTodayPartial) / lyTodayPartial) * 100 : null;
+        const vsLyMultiplier  = lyTodayPartial && lyTodayPartial > 0 ? todaySales / lyTodayPartial : null;
 
-        // Health status
+        // Tightened thresholds
         let status: 'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
         if (vsYesterdayPct === null)      status = 'no-data';
-        else if (vsYesterdayPct >= 10)    status = 'ahead';
-        else if (vsYesterdayPct >= -15)   status = 'ok';
-        else if (vsYesterdayPct >= -35)   status = 'warning';
+        else if (vsYesterdayPct >= 5)     status = 'ahead';
+        else if (vsYesterdayPct >= -10)   status = 'ok';
+        else if (vsYesterdayPct >= -25)   status = 'warning';
         else                              status = 'critical';
 
-        // Primary insight
-        const fmtCur = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-        let insight = '';
-        let insightDetail = '';
+        const fmtCur = (n: number) => `$${Math.round(n).toLocaleString('es-MX')}`;
+        let insight = '', insightDetail = '';
 
         if (status === 'no-data') {
-            insight = 'Sin datos de ayer para comparar.';
+            insight       = 'Sin datos de ayer para comparar.';
             insightDetail = 'Asegúrate de que los pedidos de ayer estén sincronizados.';
         } else if (status === 'ahead') {
-            insight = `✅ Ritmo superior al de ayer — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por encima`;
-            insightDetail = `Ayer a las ${now.getHours()}h llevabas ${fmtCur(yesterdayAtSameHour)}. Hoy: ${fmtCur(todaySales)}.`;
+            insight       = `✅ Ritmo superior — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por encima de ayer`;
+            insightDetail = `Ayer a las ${now.getHours()}h: ${fmtCur(yesterdayAtSameHour)} → Hoy: ${fmtCur(todaySales)}. Proyección cierre: ${fmtCur(projectedClose)}.`;
         } else if (status === 'ok') {
-            insight = `🟢 Ritmo normal — en línea con ayer`;
-            insightDetail = `Diferencia de ${fmtCur(Math.abs(vsYesterdayAbs!))} vs ayer a la misma hora. Ritmo: ${fmtCur(Math.round(todayRate))}/hr.`;
+            insight       = `🟢 Ritmo normal — en línea con ayer`;
+            insightDetail = `Diferencia de ${fmtCur(Math.abs(vsYesterdayAbs!))} vs ayer misma hora. Proyección: ${fmtCur(projectedClose)} vs cierre ayer ${fmtCur(yesterdayFull)}.`;
         } else if (status === 'warning') {
-            insight = `⚠️ Ritmo lento — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
-            insightDetail = `Ayer a esta hora: ${fmtCur(yesterdayAtSameHour)} → hoy: ${fmtCur(todaySales)}. Faltan ${fmtCur(Math.abs(vsYesterdayAbs!))} para igualar el ritmo.`;
+            insight       = `⚠️ Ritmo lento — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
+            insightDetail = `Ayer: ${fmtCur(yesterdayAtSameHour)} → Hoy: ${fmtCur(todaySales)}. A este ritmo cerrarías en ${fmtCur(projectedClose)} vs ${fmtCur(yesterdayFull)} de ayer.`;
         } else {
-            insight = `🚨 Ritmo crítico — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
-            insightDetail = `Ayer a esta hora cerrabas ${fmtCur(yesterdayAtSameHour)}. Hoy solo ${fmtCur(todaySales)}. Revisa canal MeLi y tienda.`;
+            insight       = `🚨 Ritmo crítico — ${Math.abs(vsYesterdayPct!).toFixed(0)}% por debajo de ayer`;
+            insightDetail = `Ayer a esta hora: ${fmtCur(yesterdayAtSameHour)} → Hoy: ${fmtCur(todaySales)}. Proyección: ${fmtCur(projectedClose)}. Revisa canal MeLi y tienda.`;
         }
 
         return {
-            todaySales, todayRate,
-            yesterdayAtSameHour, yesterdayFull, yesterdayRate,
-            vsYesterdayPct, vsYesterdayAbs,
-            lyToday, lyTodayPartial, lyRate, vsLyPct,
-            hoursElapsed, status, insight, insightDetail
+            todaySales, todayRate, projectedClose,
+            todayOrderCount, avgTicket,
+            yesterdayAtSameHour, yesterdayFull,
+            yesterdayOrderCount, yesterdayRate,
+            vsYesterdayPct, vsYesterdayAbs, vsYesterdayMultiplier,
+            projVsYesterdayFull,
+            lyToday, lyTodayPartial, lyRate, vsLyPct, vsLyMultiplier,
+            hoursElapsed, hourlyBuckets, channelBreakdown,
+            status, insight, insightDetail,
         };
+    });
+
+    yesterdaySnapshot = computed<{
+        yesterdaySales:        number;
+        antierSales:           number;
+        vsAntierPct:           number | null;
+        vsAntierMultiplier:    number | null;
+        lyYesterday:           number | null;
+        vsLyPct:               number | null;
+        yesterdayDate:         string;   // "16 may" for toggle button
+        status:                'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        insight:               string;
+    } | null>(() => {
+        this.todaySalesTotalSignal();
+
+        const now = new Date();
+        const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
+
+        const yest = new Date(now);
+        yest.setDate(yest.getDate() - 1);
+        const yestY = yest.getFullYear();
+        const yestM = yest.getMonth();
+        const yestD = yest.getDate();
+        const yesterdayDate = yest.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).toUpperCase();
+
+        const antier = new Date(now);
+        antier.setDate(antier.getDate() - 2);
+        const antierY = antier.getFullYear();
+        const antierM = antier.getMonth();
+        const antierD = antier.getDate();
+
+        let yesterdaySales = 0;
+        let antierSales = 0;
+
+        this.allFetchedOrders.forEach(o => {
+            if (NON_REVENUE.includes(o.status as string)) return;
+            const d = this.getJsDate(o.createdAt);
+            const isYesterday = d.getFullYear() === yestY && d.getMonth() === yestM && d.getDate() === yestD;
+            const isAntier    = d.getFullYear() === antierY && d.getMonth() === antierM && d.getDate() === antierD;
+            if (isYesterday) yesterdaySales += o.total || 0;
+            if (isAntier)    antierSales += o.total || 0;
+        });
+
+        const lyData      = this.lyDailyData();
+        const totalDays   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const lyYesterday = (lyData && lyData.length === totalDays && yestD > 0) ? lyData[yestD - 1] : null;
+
+        const vsAntierPct        = antierSales > 0 ? ((yesterdaySales - antierSales) / antierSales) * 100 : null;
+        const vsAntierMultiplier = antierSales > 0 ? yesterdaySales / antierSales : null;
+        const vsLyPct            = lyYesterday && lyYesterday > 0 ? ((yesterdaySales - lyYesterday) / lyYesterday) * 100 : null;
+
+        let status: 'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        if (vsAntierPct === null)    status = 'no-data';
+        else if (vsAntierPct >= 5)   status = 'ahead';
+        else if (vsAntierPct >= -10) status = 'ok';
+        else if (vsAntierPct >= -25) status = 'warning';
+        else                         status = 'critical';
+
+        let insight = '';
+        if (status === 'no-data') insight = 'Sin datos de antier.';
+        else if (status === 'ahead')    insight = `✅ Ayer cerró ${Math.abs(vsAntierPct!).toFixed(0)}% por encima de antier.`;
+        else if (status === 'ok')       insight = `🟢 Ayer cerró estable vs antier.`;
+        else if (status === 'warning')  insight = `⚠️ Ayer cerró ${Math.abs(vsAntierPct!).toFixed(0)}% por debajo de antier.`;
+        else                            insight = `🚨 Ayer cerró ${Math.abs(vsAntierPct!).toFixed(0)}% por debajo de antier.`;
+
+        return { yesterdaySales, antierSales, vsAntierPct, vsAntierMultiplier, lyYesterday, vsLyPct, yesterdayDate, status, insight };
     });
 
     toggleProjection() {
@@ -803,6 +905,16 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             startDate = new Date(today.getFullYear(), 0, 1);
         }
 
+        // ── Pulso de Ventas guard ────────────────────────────────────────────
+        // Pulso always needs today + yesterday in allFetchedOrders.
+        // For PM/YTD the window above excludes recent days, so we expand it
+        // to always include at least yesterday.
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (startDate > yesterday) {
+            startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+        }
+
         // Reset LY daily overlay
         this.lyDailyData.set([]);
         this.lyUsingApprox.set(false);
@@ -816,12 +928,17 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         // Cancel any previous live subscription before opening a new one.
         this.liveOrdersSub?.unsubscribe();
 
+        // Always invalidate the live cache before opening a new socket.
+        // Without this, a cached socket from a previous session (with an old
+        // endDate = yesterday) would be reused, causing Pulso to show $0 for ayer.
+        this.globalOrderCache.invalidateLive();
+
         // Real-time Firestore stream — auto-updates when MeLi webhook orders land.
         // NOTE: no debounceTime here — we need isLoading to turn false quickly so
-        // the chart canvas becomes visible BEFORE Chart.js initializes. Debouncing
+        // The chart canvas becomes visible BEFORE Chart.js initializes. Debouncing
         // was causing Chart.js to render on a 0-height invisible canvas.
-        this.liveOrdersSub = this.orderService
-            .getOrdersByDateRangeLive(startDate, endDate)
+        this.liveOrdersSub = this.globalOrderCache
+            .getLive(startDate, endDate)
             .subscribe({
                 next: (orders) => {
                     this.allFetchedOrders = orders;
@@ -2275,6 +2392,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         }
     }
 
+    private triggeredThisSession = new Set<string>();
+
     private triggerAutomaticFireworks(type: '50K' | '100K' | '1M', date: Date) {
         let key = '';
         if (type === '1M') {
@@ -2283,9 +2402,12 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             key = `fireworks_triggered_${type}_${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         }
 
-        if (!localStorage.getItem(key)) {
+        if (!this.triggeredThisSession.has(key) && !localStorage.getItem(key)) {
+            this.triggeredThisSession.add(key);
             localStorage.setItem(key, 'true');
             setTimeout(() => this.playFireworks(type), 1500);
+        } else {
+            this.triggeredThisSession.add(key);
         }
     }
 

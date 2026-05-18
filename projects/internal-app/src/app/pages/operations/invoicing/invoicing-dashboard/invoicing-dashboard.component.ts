@@ -125,7 +125,7 @@ export class InvoicingDashboardComponent implements OnInit {
             collection(this.firestore, 'orders'),
             where('sourceChannel', '==', 'mercadolibre'),
             orderBy('createdAt', 'desc'),
-            limit(300)
+            limit(20)
         );
 
         collectionData(q, { idField: 'id' }).subscribe({

@@ -134,7 +134,7 @@ export class AmazonHubComponent implements OnInit {
             collection(this.firestore, 'orders'),
             where('sourceChannel', '==', 'amazon'),
             orderBy('createdAt', 'desc'),
-            limit(200)
+            limit(20)
         );
         collectionData(q, { idField: 'id' }).subscribe({
             next: (docs: any[]) => {

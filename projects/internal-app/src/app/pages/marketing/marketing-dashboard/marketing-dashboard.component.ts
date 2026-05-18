@@ -9,6 +9,8 @@ import {
 import { MarketingChartsComponent } from './marketing-charts/marketing-charts.component';
 import { normalizeReferrerDomain } from '../attribution/attribution-report.service';
 import { isRevenueOrder } from '../../../core/models/order.model';
+import { GlobalOrderCacheService } from '../../../core/services/global-order-cache.service';
+import { firstValueFrom } from 'rxjs';
 
 export type DashTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD';
 
@@ -21,6 +23,7 @@ export type DashTimeframe = 'MTD' | 'PAST_MONTH' | 'YTD';
 })
 export class MarketingDashboardComponent implements OnInit {
     private fs = inject(Firestore);
+    private globalOrderCache = inject(GlobalOrderCacheService);
 
     isLoading  = signal(true);
     hasError   = signal(false);
@@ -168,31 +171,21 @@ export class MarketingDashboardComponent implements OnInit {
                 console.debug('[AI Visibility] sessionEvents query failed (index may be pending):', e?.message ?? e);
             });
 
-            const [snapsSnap, ordersSnap, prevSnapsSnap, prevOrdersSnap] = await Promise.all([
+            const [snapsSnap, currentOrders, prevSnapsSnap, prevOrders] = await Promise.all([
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
                     where('createdAt', '>=', fromTs),
                     where('createdAt', '<=', toTs),
                     orderBy('createdAt', 'desc'),
                 )),
-                getDocs(query(
-                    collection(this.fs, 'orders'),
-                    where('createdAt', '>=', fromTs),
-                    where('createdAt', '<=', toTs),
-                    orderBy('createdAt', 'desc'),
-                )),
+                firstValueFrom(this.globalOrderCache.get(from, to)),
                 getDocs(query(
                     collection(this.fs, 'cartSnapshots'),
                     where('createdAt', '>=', prevFromTs),
                     where('createdAt', '<=', prevToTs),
                     orderBy('createdAt', 'desc'),
                 )),
-                getDocs(query(
-                    collection(this.fs, 'orders'),
-                    where('createdAt', '>=', prevFromTs),
-                    where('createdAt', '<=', prevToTs),
-                    orderBy('createdAt', 'desc'),
-                )),
+                firstValueFrom(this.globalOrderCache.get(prevFrom, prevTo)),
             ]);
 
             // AI query runs concurrently — we don't await it to keep main KPIs fast
@@ -217,13 +210,12 @@ export class MarketingDashboardComponent implements OnInit {
             const channelRevMap   = new Map<string, number>();
             let totalRev = 0;
             let revenueOrderCount = 0;
-            for (const doc of ordersSnap.docs) {
-                const d = doc.data() as any;
+            for (const d of currentOrders) {
                 // ── Apply the same revenue filter as operations/dashboard ─────
                 if (!isRevenueOrder(d.status)) continue;
                 // ─────────────────────────────────────────────────────────────
                 revenueOrderCount++;
-                const rev = d.total ?? d.totalAmount ?? 0;
+                const rev = d.total ?? 0;
                 totalRev += rev;
                 const ch = this.resolveChannel(d);
                 orderChannelMap.set(ch, (orderChannelMap.get(ch) ?? 0) + 1);
@@ -266,11 +258,10 @@ export class MarketingDashboardComponent implements OnInit {
             }
             let prevRev = 0;
             let prevRevenueOrderCount = 0;
-            for (const doc of prevOrdersSnap.docs) {
-                const d = doc.data() as any;
+            for (const d of prevOrders) {
                 if (!isRevenueOrder(d.status)) continue;  // same filter for fair comparison
                 prevRevenueOrderCount++;
-                prevRev += d.total ?? d.totalAmount ?? 0;
+                prevRev += d.total ?? 0;
             }
 
             const pct = (cur: number, prev: number): number | null =>

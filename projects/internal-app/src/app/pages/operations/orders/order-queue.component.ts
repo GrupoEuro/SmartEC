@@ -4,6 +4,7 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { OrderService } from '../../../core/services/order.service';
+import { GlobalOrderCacheService } from '../../../core/services/global-order-cache.service';
 import { Order, OrderStatus } from '../../../core/models/order.model';
 import { OrderAssignmentService } from '../../../core/services/order-assignment.service';
 import { OrderAssignment } from '../../../core/models/order-assignment.model';
@@ -38,6 +39,7 @@ type SortDirection = 'asc' | 'desc';
 })
 export class OrderQueueComponent implements OnInit, OnDestroy {
     private orderService = inject(OrderService);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private assignmentService = inject(OrderAssignmentService);
     private priorityService = inject(OrderPriorityService);
     private authService = inject(AuthService);
@@ -181,7 +183,7 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
 
         if (this.ordersSub) this.ordersSub.unsubscribe();
 
-        this.ordersSub = this.orderService.getOrdersByDateRangeLive(startDate, endDate)
+        this.ordersSub = this.globalOrderCache.getLive(startDate, endDate)
             .pipe(takeUntil(this.destroy$))
             .subscribe({
             next: (orders) => {

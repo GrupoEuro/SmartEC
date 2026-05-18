@@ -45,6 +45,16 @@ import { AppIconComponent } from '../../../shared/components/app-icon/app-icon.c
             Project Vitality
           </a>
 
+          <div class="nav-section">
+            <div class="section-title">Operations</div>
+            <a routerLink="/dev-tools/meli-reconciliator"
+               routerLinkActive="active"
+               class="nav-item nav-item--highlight">
+              <app-icon name="git-compare" [size]="18"></app-icon>
+              MeLi Reconciliator
+            </a>
+          </div>
+
           <a routerLink="/dev-tools/backlog"
              routerLinkActive="active"
              class="nav-item">

@@ -8,6 +8,13 @@ export const OPERATIONS_NAVIGATION_CONFIG: NavItem[] = [
         route: '/operations/dashboard'
     },
     {
+        id: 'income_analytics',
+        title: 'Income Analytics',
+        icon: 'pie-chart',
+        route: '/operations/pricing/income-analytics',
+        badge: { text: '💰', color: 'bg-emerald-700' }
+    },
+    {
         id: 'fulfillment',
         title: 'OPERATIONS.SIDEBAR.FULFILLMENT',
         icon: 'shopping-bag',

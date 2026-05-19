@@ -23,6 +23,14 @@
             <app-icon name="map-pin" [size]="16" [ngClass]="{'animate-pulse': isBackfillingAddresses()}"></app-icon>
             {{ isBackfillingAddresses() ? 'Recuperando direcciones...' : 'Recuperar Direcciones' }}
         </button>
+        <!-- Mercado Ads spend sync: pulls daily CPC cost into meli_ads_daily/ collection -->
+        <button (click)="syncAdsSpend()" [disabled]="isSyncingAds()"
+            title="Sincroniza el gasto en Mercado Ads (publicidad CPC) para el mes actual. Almacena en meli_ads_daily/."
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg shadow-pink-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            style="background: linear-gradient(135deg, #ec4899, #db2777); border: 1px solid rgba(236,72,153,0.5);">
+            <app-icon name="trending-up" [size]="16" [ngClass]="{'animate-pulse': isSyncingAds()}"></app-icon>
+            {{ isSyncingAds() ? 'Sincronizando Ads...' : 'Sync Ads Spend' }}
+        </button>
         <!-- READ-ONLY diagnostic — checks what data MeLi API can provide for a sample of orders -->
         <button (click)="showDiagnosisPanel.set(true)"
             title="Análisis de datos sin escrituras. Muestra qué info está disponible en la API de MeLi para una muestra de pedidos."
@@ -399,6 +407,262 @@
             </div>
 
         </div>
+
+        <!-- ── Distribución del Ingreso ────────────────────────────────────── -->
+        @if (meliRevenueBreakdown(); as rev) {
+        <div class="col-span-1 md:col-span-3 mt-6 rounded-2xl overflow-hidden shadow-2xl"
+             style="background: linear-gradient(145deg, #18181b, #1c1c1f); border: 1px solid rgba(63,63,70,0.8);">
+
+            <!-- Card Header -->
+            <div class="px-6 pt-6 pb-4 flex items-start justify-between gap-4 border-b border-zinc-800/80">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25);">
+                        <app-icon name="pie-chart" [size]="22" class="text-emerald-400"></app-icon>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-white tracking-tight">Distribución del Ingreso MercadoLibre</h3>
+                        <p class="text-xs text-zinc-500 mt-0.5">¿De cada $100 que vendes, qué queda en tu bolsillo? · {{ rev.orderCount }} pedidos cargados</p>
+                    </div>
+                </div>
+                <!-- Keep Rate Headline -->
+                <div class="text-right shrink-0">
+                    <div class="text-3xl font-black" style="background: linear-gradient(135deg, #34d399, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        {{ rev.keepRate }}%
+                    </div>
+                    <div class="text-xs text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">Keep Rate</div>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-6">
+
+                <!-- ── Stacked Bar Visual ────────────────────────────────────── -->
+                <div>
+                    <div class="flex items-center justify-between text-xs text-zinc-500 mb-2 font-semibold uppercase tracking-wider">
+                        <span>Ingreso Bruto ${{ rev.gross | number:'1.0-0' }}</span>
+                        <span>Tu banco recibe → ${{ rev.net | number:'1.0-0' }}</span>
+                    </div>
+                    <!-- Segmented stacked bar -->
+                    <div class="w-full h-10 rounded-xl overflow-hidden flex relative" style="background:#27272a;">
+                        <!-- Net Received — anchor left -->
+                        <div class="h-full flex items-center justify-center text-[11px] font-bold text-white relative overflow-hidden transition-all duration-700"
+                             [style.width]="rev.netPct + '%'"
+                             style="background: linear-gradient(90deg, #10b981, #059669); min-width: 40px;">
+                            <span class="relative z-10 px-1 truncate">Recibes {{ rev.netPct }}%</span>
+                            <div class="absolute inset-0 opacity-30"
+                                 style="background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.15) 4px, rgba(255,255,255,0.15) 8px);">
+                            </div>
+                        </div>
+                        <!-- Shipping -->
+                        <div class="h-full flex items-center justify-center text-[11px] font-bold text-white transition-all duration-700"
+                             [style.width]="rev.shipPct + '%'"
+                             style="background: linear-gradient(90deg, #f97316, #ea580c); min-width: 28px;">
+                            <span class="px-1 truncate">{{ rev.shipPct }}%</span>
+                        </div>
+                        <!-- Commission -->
+                        <div class="h-full flex items-center justify-center text-[11px] font-bold text-white transition-all duration-700"
+                             [style.width]="rev.commPct + '%'"
+                             style="background: linear-gradient(90deg, #ef4444, #dc2626); min-width: 24px;">
+                            <span class="px-1 truncate">{{ rev.commPct }}%</span>
+                        </div>
+                        <!-- IVA -->
+                        <div class="h-full flex items-center justify-center text-[11px] font-bold text-white transition-all duration-700"
+                             [style.width]="rev.ivaPct + '%'"
+                             style="background: linear-gradient(90deg, #f59e0b, #d97706); min-width: 20px;">
+                            <span class="px-0.5 truncate">{{ rev.ivaPct }}%</span>
+                        </div>
+                        <!-- ISR -->
+                        <div class="h-full flex items-center justify-center text-[11px] font-bold text-zinc-200 transition-all duration-700 flex-1"
+                             style="background: #3f3f46;">
+                            <span class="px-1 truncate">{{ rev.isrPct }}%</span>
+                        </div>
+                    </div>
+                    <!-- Legend pills -->
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#34d399;">
+                            <span class="w-2 h-2 rounded-full" style="background:#10b981;"></span> Net Recibido
+                        </span>
+                        <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style="background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.3);color:#fb923c;">
+                            <span class="w-2 h-2 rounded-full" style="background:#f97316;"></span> Envío
+                        </span>
+                        <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;">
+                            <span class="w-2 h-2 rounded-full" style="background:#ef4444;"></span> Comisión MeLi
+                        </span>
+                        <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;">
+                            <span class="w-2 h-2 rounded-full" style="background:#f59e0b;"></span> Ret. IVA (SAT)
+                        </span>
+                        <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style="background:rgba(63,63,70,0.4);border:1px solid #52525b;color:#a1a1aa;">
+                            <span class="w-2 h-2 rounded-full" style="background:#52525b;"></span> Ret. ISR (SAT)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- ── Waterfall Rows ─────────────────────────────────────── -->
+                <div class="space-y-2">
+
+                    <!-- Gross Revenue -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);">
+                        <div class="text-lg">💰</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-bold text-white">Ingreso Bruto</span>
+                                <span class="text-sm font-black text-indigo-300 tabular-nums">{{ rev.gross | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-1.5 rounded-full" style="background:#3f3f46;">
+                                <div class="h-full rounded-full transition-all duration-700" style="width:100%;background:linear-gradient(90deg,#6366f1,#4f46e5);"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-zinc-500 w-10 text-right font-mono">100%</div>
+                    </div>
+
+                    <!-- Commission -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);">
+                        <div class="text-lg">💳</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <span class="text-sm font-bold text-red-300">Comisión MercadoLibre</span>
+                                    <span class="text-xs text-zinc-600 ml-2">10% / 11% / 14.5%</span>
+                                </div>
+                                <span class="text-sm font-black text-red-400 tabular-nums">−{{ rev.commission | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-1.5 rounded-full" style="background:#3f3f46;">
+                                <div class="h-full rounded-full transition-all duration-700" [style.width]="rev.commPct + '%'" style="background:linear-gradient(90deg,#ef4444,#dc2626);"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-red-500/70 w-10 text-right font-mono font-bold">{{ rev.commPct }}%</div>
+                    </div>
+
+                    <!-- IVA Retention -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);">
+                        <div class="text-lg">🏛️</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <span class="text-sm font-bold text-amber-300">Retención IVA</span>
+                                    <span class="text-xs text-zinc-600 ml-2">SAT Art.18-J · recuperable</span>
+                                </div>
+                                <span class="text-sm font-black text-amber-400 tabular-nums">−{{ rev.retIVA | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-1.5 rounded-full" style="background:#3f3f46;">
+                                <div class="h-full rounded-full transition-all duration-700" [style.width]="rev.ivaPct + '%'" style="background:linear-gradient(90deg,#f59e0b,#d97706);"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-amber-500/70 w-10 text-right font-mono font-bold">{{ rev.ivaPct }}%</div>
+                    </div>
+
+                    <!-- ISR Retention -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(63,63,70,0.3);border:1px solid rgba(63,63,70,0.6);">
+                        <div class="text-lg">🏛️</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <span class="text-sm font-bold text-zinc-400">Retención ISR</span>
+                                    <span class="text-xs text-zinc-600 ml-2">SAT Art.113-A · recuperable</span>
+                                </div>
+                                <span class="text-sm font-black text-zinc-400 tabular-nums">−{{ rev.retISR | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-1.5 rounded-full" style="background:#3f3f46;">
+                                <div class="h-full rounded-full transition-all duration-700" [style.width]="rev.isrPct + '%'" style="background:#52525b;"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-zinc-600 w-10 text-right font-mono font-bold">{{ rev.isrPct }}%</div>
+                    </div>
+
+                    <!-- Shipping -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.15);">
+                        <div class="text-lg">📦</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <span class="text-sm font-bold text-orange-300">Costo de Envío (absorbido)</span>
+                                    <span class="text-xs text-zinc-600 ml-2">prom. ${{ rev.avgShip | number:'1.0-0' }} / pedido</span>
+                                </div>
+                                <span class="text-sm font-black text-orange-400 tabular-nums">−{{ rev.shipping | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-1.5 rounded-full" style="background:#3f3f46;">
+                                <div class="h-full rounded-full transition-all duration-700" [style.width]="rev.shipPct + '%'" style="background:linear-gradient(90deg,#f97316,#ea580c);"></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-orange-500/70 w-10 text-right font-mono font-bold">{{ rev.shipPct }}%</div>
+                    </div>
+
+                    @if (rev.refunds > 0) {
+                    <!-- Refunds -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(239,68,68,0.06);border:1px dashed rgba(239,68,68,0.3);">
+                        <div class="text-lg">↩️</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-bold text-rose-400">Devoluciones / Cancelaciones</span>
+                                <span class="text-sm font-black text-rose-400 tabular-nums">−{{ rev.refunds | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    }
+
+                    @if (rev.bonus > 0) {
+                    <!-- Bonus -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-3" style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.2);">
+                        <div class="text-lg">🎁</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-bold text-teal-300">Bonificaciones ML (Flex / subsidios)</span>
+                                <span class="text-sm font-black text-teal-400 tabular-nums">+{{ rev.bonus | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    }
+
+                    <!-- Net Received — the result -->
+                    <div class="flex items-center gap-3 rounded-xl px-4 py-4 mt-2"
+                         style="background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.08));border:2px solid rgba(16,185,129,0.35);">
+                        <div class="text-xl">✅</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <div>
+                                    <span class="text-base font-black text-emerald-300">Recibes Tú (Mercado Pago)</span>
+                                    <span class="text-xs text-zinc-500 ml-2">antes de tu costo de producto</span>
+                                </div>
+                                <span class="text-xl font-black text-emerald-400 tabular-nums">{{ rev.net | currency:'MXN':'$':'1.0-0' }}</span>
+                            </div>
+                            <div class="w-full h-2 rounded-full" style="background:rgba(16,185,129,0.15);">
+                                <div class="h-full rounded-full transition-all duration-1000" [style.width]="rev.netPct + '%'"
+                                     style="background:linear-gradient(90deg,#34d399,#10b981);box-shadow:0 0 8px rgba(16,185,129,0.5);"></div>
+                            </div>
+                        </div>
+                        <div class="text-base font-black text-emerald-400 w-12 text-right tabular-nums">{{ rev.netPct }}%</div>
+                    </div>
+                </div>
+
+                <!-- ── Bottom Stats Row ───────────────────────────────────── -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-zinc-800/60">
+                    <div class="rounded-xl p-3" style="background:#1c1c1f;border:1px solid #3f3f46;">
+                        <div class="text-[10px] uppercase tracking-widest text-zinc-600 font-bold mb-1">Promedio Bruto / Pedido</div>
+                        <div class="text-xl font-black text-white tabular-nums">{{ rev.avgGross | currency:'MXN':'$':'1.0-0' }}</div>
+                    </div>
+                    <div class="rounded-xl p-3" style="background:#1c1c1f;border:1px solid rgba(16,185,129,0.2);">
+                        <div class="text-[10px] uppercase tracking-widest text-emerald-700 font-bold mb-1">Promedio Neto / Pedido</div>
+                        <div class="text-xl font-black text-emerald-400 tabular-nums">{{ rev.avgNet | currency:'MXN':'$':'1.0-0' }}</div>
+                    </div>
+                    <div class="rounded-xl p-3" style="background:#1c1c1f;border:1px solid rgba(249,115,22,0.15);">
+                        <div class="text-[10px] uppercase tracking-widest text-orange-700 font-bold mb-1">Prom. Envío / Pedido</div>
+                        <div class="text-xl font-black text-orange-400 tabular-nums">{{ rev.avgShip | currency:'MXN':'$':'1.0-0' }}</div>
+                    </div>
+                    <div class="rounded-xl p-3" style="background:#1c1c1f;border:1px solid rgba(236,72,153,0.15);">
+                        <div class="text-[10px] uppercase tracking-widest text-pink-700 font-bold mb-1">% Pedidos con Ads</div>
+                        <div class="text-xl font-black text-pink-400 tabular-nums">{{ rev.adPct }}%</div>
+                        <div class="text-[10px] text-zinc-600 mt-0.5">{{ rev.adOrders }} / {{ rev.orderCount }} pedidos</div>
+                    </div>
+                </div>
+
+                <!-- SAT Note -->
+                <div class="text-xs text-zinc-600 flex items-start gap-2">
+                    <span class="text-amber-600/70">ℹ️</span>
+                    <span>Las retenciones IVA e ISR son impuestos que MercadoLibre paga al SAT en tu nombre. <strong class="text-zinc-500">Son recuperables</strong> en tu declaración anual — no son una pérdida permanente.</span>
+                </div>
+
+            </div>
+        </div>
+        }
 
         <!-- Webhook Activity Logs (Spans full width) -->
         <div

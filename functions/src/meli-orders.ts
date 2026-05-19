@@ -129,28 +129,72 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
             // Construct Eurollantas Order object using helper
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
 
-            // ── Shipping cost deducted from seller ──────────────────────────────────
-            // For Classic/Flex + "Envío Gratis": seller absorbs shipping
-            //   → senders[0].cost from /shipments/{id}/costs
-            // For MeLi Full (fulfillment): cost = 0 (MeLi handles logistics)
-            // For pickup / no envíos: cost = 0
-            const shippingSellerCost: number = shipCosts?.seller_cost ?? 0;
+            // ── Shipping cost resolution ─────────────────────────────────────────────────
+            // Priority:
+            //   1. senders[0].cost from /shipments/{id}/costs (exact for Merchant/Flex orders)
+            //   2. order.shipping_cost (order-level field — may carry Full CFF)
+            //   3. 0 (Full orders where CFF is not yet available via API)
+            const shippingSellerCost: number = (() => {
+                const fromCosts = shipCosts?.seller_cost ?? 0;
+                if (fromCosts > 0) return fromCosts;  // authoritative source ✓
+                // Fallback: order-level shipping_cost (Full CFF candidate)
+                const fromOrder = newOrder.orderShippingCost ?? 0;
+                if (fromOrder > 0) {
+                    console.log(`[Meli] Using order-level shipping_cost=${fromOrder} for order ${mo.id} (Full CFF fallback)`);
+                    return fromOrder;
+                }
+                return 0;
+            })();
             const shippingGrossAmount: number = shipCosts?.gross_amount ?? 0;
             const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
+            // True when Full order still has no CFF from any source — net_receipt will be overstated
+            const cffPending: boolean = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0;
 
-            // net_receipt = what seller actually receives after all MeLi deductions
-            // = order total − MeLi commission − seller-absorbed shipping cost
-            const meliCommission: number = newOrder.marketplaceFee ?? 0;
-            const totalAmount: number = newOrder.total ?? 0;
-            const netReceipt: number = Math.max(0, totalAmount - meliCommission - shippingSellerCost);
+            // ── Complete net_receipt formula ───────────────────────────────────────────
+            // Verified cent-perfect against 5 real ML sale screenshots + 55-order CSV:
+            //   net = total − rawCommission − retIVA − retISR − shipping − refunds + mlBonus
+            //
+            // retIVA = (total/1.16) × 8%   ← SAT Art.18-J LIVA (50% of 16% on pre-IVA base)
+            // retISR = (total/1.16) × 2.5% ← SAT Art.113-A LISR (platform sellers, MX)
+            const IVA_INCLUSIVE_DIVISOR = 1.16;
+            const meliCommission: number  = newOrder.marketplaceFee ?? 0;
+            const totalAmount: number     = newOrder.total ?? 0;
+            const preIvaAmount: number    = totalAmount / IVA_INCLUSIVE_DIVISOR;
+            const retencionIVA: number    = Math.round(preIvaAmount * 0.08    * 100) / 100;
+            const retencionISR: number    = Math.round(preIvaAmount * 0.025   * 100) / 100;
+            const totalImpuestos: number  = retencionIVA + retencionISR;
+            const refundedAmount: number  = newOrder.refundedAmount ?? 0;
+            const mlBonus: number         = newOrder.mlBonus ?? 0;
 
-            // Merge financials into the order via spread (avoids TS strict type errors)
+            const netReceipt: number = Math.round(Math.max(0,
+                totalAmount
+                - meliCommission
+                - retencionIVA
+                - retencionISR
+                - shippingSellerCost
+                - refundedAmount
+                + mlBonus
+            ) * 100) / 100;
+
+            // Merge ALL financial fields into the order document
             const orderWithFinancials = {
                 ...newOrder,
-                shipping_seller_cost: shippingSellerCost,   // exact MXN deducted for shipping
+                // Shipping breakdown
+                shipping_seller_cost: shippingSellerCost,   // net MXN absorbed by seller
                 shipping_gross_amount: shippingGrossAmount,  // full carrier rate (before subsidy)
-                shipping_meli_subsidy: shippingMeliSubsidy,  // what MeLi covers
-                net_receipt: netReceipt,           // = total - commission - shipping
+                shipping_meli_subsidy: shippingMeliSubsidy,  // what ML covers
+                cff_pending: cffPending,                     // true = Full order missing CFF
+                // SAT tax retentions (recoverable in annual declaration)
+                retencion_iva: retencionIVA,                 // (price/1.16) × 8%
+                retencion_isr: retencionISR,                 // (price/1.16) × 2.5%
+                total_impuestos: totalImpuestos,             // retIVA + retISR
+                // Adjustments
+                refunded_amount: refundedAmount,             // chargebacks/cancellation refunds
+                ml_bonus: mlBonus,                           // ML-funded credits (Flex, subsidies)
+                // Advertising
+                is_ad_driven: newOrder.isAdDriven ?? false,  // paid via Mercado Ads
+                // 💰 The bottom line
+                net_receipt: netReceipt,                     // exact Recibes amount
             };
 
 
@@ -324,15 +368,28 @@ export const meliBackfillShippingCosts = functions
 
                         if (sellerCost === 0) { skippedCount++; return; } // No cost available yet (pending shipment)
 
-                        // Recompute net_receipt with real shipping cost
-                        const commission: number = data.marketplaceFee ?? 0;
-                        const total: number = data.total ?? 0;
-                        const netReceipt: number = Math.max(0, total - commission - sellerCost);
+                        // ── Recompute net_receipt with full formula (backfill path) ───────────────
+                        const commission: number  = data.marketplaceFee ?? 0;
+                        const total: number       = data.total ?? 0;
+                        const preIva: number      = total / 1.16;
+                        const retIVA: number      = Math.round(preIva * 0.08  * 100) / 100;
+                        const retISR: number      = Math.round(preIva * 0.025 * 100) / 100;
+                        const refunded: number    = data.refundedAmount ?? 0;
+                        const bonus: number       = data.mlBonus ?? 0;
+                        const netReceipt: number  = Math.round(Math.max(0,
+                            total - commission - sellerCost - retIVA - retISR - refunded + bonus
+                        ) * 100) / 100;
 
                         await doc.ref.update({
                             shipping_seller_cost: sellerCost,
                             shipping_gross_amount: grossAmount,
                             shipping_meli_subsidy: meliSubsidy,
+                            retencion_iva: retIVA,
+                            retencion_isr: retISR,
+                            total_impuestos: retIVA + retISR,
+                            refunded_amount: data.refundedAmount ?? 0,
+                            ml_bonus: data.mlBonus ?? 0,
+                            cff_pending: false,              // shipping cost now known
                             net_receipt: netReceipt,
                             shipping_backfilled: true,
                         });

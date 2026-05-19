@@ -557,24 +557,78 @@
                     <span>Ritmo: <span class="font-mono text-zinc-300">{{ formatCurrency(salesVelocity()!.todayRate) }}/hr</span></span>
                     <span>{{ salesVelocity()!.hoursElapsed | number:'1.1-1' }}h transcurridas</span>
                 </span>
-                <!-- Hourly sparkline SVG -->
-                @if (salesVelocity()!.todayOrderCount > 0) {
-                <div class="mt-2" title="Ventas por hora hoy">
-                    <svg width="120" height="28" viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg">
-                        @for (bucket of salesVelocity()!.hourlyBuckets; track $index) {
-                            @if ($index < 24) {
-                                <rect
-                                    [attr.x]="$index * 5"
-                                    [attr.y]="salesVelocity()!.todaySales > 0 && bucket > 0 ? (28 - (bucket / salesVelocity()!.todaySales * salesVelocity()!.todayOrderCount * 14)) : 27"
-                                    width="4"
-                                    [attr.height]="salesVelocity()!.todaySales > 0 && bucket > 0 ? (bucket / salesVelocity()!.todaySales * salesVelocity()!.todayOrderCount * 14) : 1"
-                                    rx="1"
-                                    [attr.fill]="bucket > 0 ? (salesVelocity()!.status === 'ahead' ? '#34d399' : salesVelocity()!.status === 'warning' ? '#fbbf24' : salesVelocity()!.status === 'critical' ? '#f87171' : '#6b7280') : '#27272a'"
-                                    opacity="0.85"
-                                />
-                            }
+                <!-- Hourly sparkline — business hours 6am–9pm, peak-normalized -->
+                @if (sparklineData(); as sd) {
+                <div class="mt-3 select-none">
+                    <!-- Bar chart SVG: 224px wide × 52px tall chart area + 12px label row = 64px total -->
+                    <svg width="224" height="64" viewBox="0 0 224 64" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">
+                        <!-- Subtle horizontal grid line at 50% -->
+                        <line x1="0" y1="26" x2="224" y2="26" stroke="#3f3f46" stroke-width="0.5" stroke-dasharray="2,3"/>
+
+                        @for (bar of sd.bars; track bar.hour) {
+                            <!-- Bar width=11px, gap=3px → stride=14px, 16 bars → 224px total -->
+                            <!-- Bar grows upward from y=52 -->
+                            <g [attr.transform]="'translate(' + ($index * 14) + ',0)'">
+                                <!-- Background slot (always visible) -->
+                                <rect x="0" y="0" width="11" height="52" rx="2"
+                                    fill="#27272a" opacity="0.5"/>
+
+                                <!-- Actual bar, height proportional to peak hour -->
+                                @if (bar.sales > 0) {
+                                    <rect
+                                        x="0"
+                                        [attr.y]="52 - (bar.heightPct * 52 / 100)"
+                                        width="11"
+                                        [attr.height]="bar.heightPct * 52 / 100"
+                                        rx="2"
+                                        [attr.fill]="bar.isCurrent ? 'white' :
+                                                     bar.isPeak    ? (salesVelocity()!.status === 'ahead' ? '#6ee7b7' : salesVelocity()!.status === 'warning' ? '#fde68a' : salesVelocity()!.status === 'critical' ? '#fca5a5' : '#a1a1aa') :
+                                                                     (salesVelocity()!.status === 'ahead' ? '#34d399' : salesVelocity()!.status === 'warning' ? '#fbbf24' : salesVelocity()!.status === 'critical' ? '#f87171' : '#71717a')"
+                                        [attr.opacity]="bar.isCurrent ? '1' : bar.isPeak ? '0.95' : '0.75'"
+                                    >
+                                        <title>{{ bar.hour }}:00 — {{ formatCurrency(bar.sales) }}</title>
+                                    </rect>
+
+                                    <!-- Peak crown dot -->
+                                    @if (bar.isPeak && !bar.isCurrent) {
+                                        <circle
+                                            cx="5.5"
+                                            [attr.cy]="52 - (bar.heightPct * 52 / 100) - 4"
+                                            r="2"
+                                            [attr.fill]="salesVelocity()!.status === 'ahead' ? '#6ee7b7' : salesVelocity()!.status === 'warning' ? '#fde68a' : salesVelocity()!.status === 'critical' ? '#fca5a5' : '#a1a1aa'"
+                                        />
+                                    }
+                                }
+
+                                <!-- Current-hour indicator: thin white line at top of bar area -->
+                                @if (bar.isCurrent) {
+                                    <rect x="0" y="0" width="11" height="2" rx="1" fill="white" opacity="0.9"/>
+                                }
+
+                                <!-- Hour axis labels: 8am, 12pm, 6pm only -->
+                                @if (bar.hour === 8 || bar.hour === 12 || bar.hour === 18) {
+                                    <text
+                                        x="5.5" y="62"
+                                        text-anchor="middle"
+                                        font-size="7"
+                                        font-family="Inter,system-ui,sans-serif"
+                                        fill="#52525b"
+                                    >{{ bar.hour === 12 ? '12p' : bar.hour === 18 ? '6p' : '8a' }}</text>
+                                }
+                            </g>
                         }
                     </svg>
+                    <!-- Legend row -->
+                    <div class="flex items-center gap-3 mt-1">
+                        <span class="flex items-center gap-1 text-[8px] text-zinc-600">
+                            <span class="inline-block w-2 h-2 rounded-full bg-white opacity-80"></span>Ahora
+                        </span>
+                        <span class="flex items-center gap-1 text-[8px] text-zinc-600">
+                            <span class="inline-block w-2 h-2 rounded-full"
+                                [style.background]="salesVelocity()!.status === 'ahead' ? '#6ee7b7' : salesVelocity()!.status === 'warning' ? '#fde68a' : salesVelocity()!.status === 'critical' ? '#fca5a5' : '#a1a1aa'"></span>Pico
+                        </span>
+                        <span class="text-[8px] text-zinc-600 ml-auto font-mono">6a–9p</span>
+                    </div>
                 </div>
                 }
                 <!-- Channel breakdown pills -->
@@ -630,6 +684,73 @@
                     }
                 </span>
                 }
+                <!-- Yesterday hourly sparkline — same Y-scale as today -->
+                @if (yesterdaySparklineData(); as ysd) {
+                <div class="mt-3 select-none">
+                    <svg width="224" height="64" viewBox="0 0 224 64" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">
+                        <!-- 50% grid line -->
+                        <line x1="0" y1="26" x2="224" y2="26" stroke="#3f3f46" stroke-width="0.5" stroke-dasharray="2,3"/>
+
+                        @for (bar of ysd.bars; track bar.hour) {
+                            <g [attr.transform]="'translate(' + ($index * 14) + ',0)'">
+                                <!-- Background slot -->
+                                <rect x="0" y="0" width="11" height="52" rx="2"
+                                    fill="#27272a" [attr.opacity]="bar.beyondCutoff ? '0.25' : '0.5'"/>
+
+                                <!-- Bar (dimmed if beyond cutoff) -->
+                                @if (bar.sales > 0) {
+                                    <rect
+                                        x="0"
+                                        [attr.y]="52 - (bar.heightPct * 52 / 100)"
+                                        width="11"
+                                        [attr.height]="bar.heightPct * 52 / 100"
+                                        rx="2"
+                                        [attr.fill]="bar.isPeak && !bar.beyondCutoff ? '#a1a1aa' : '#71717a'"
+                                        [attr.opacity]="bar.beyondCutoff ? '0.2' : bar.isPeak ? '0.9' : '0.65'"
+                                    >
+                                        <title>{{ bar.hour }}:00 (ayer) — {{ formatCurrency(bar.sales) }}{{ bar.beyondCutoff ? ' · fuera del rango de comparación' : '' }}</title>
+                                    </rect>
+
+                                    <!-- Peak crown dot (only for elapsed hours) -->
+                                    @if (bar.isPeak && !bar.beyondCutoff) {
+                                        <circle
+                                            cx="5.5"
+                                            [attr.cy]="52 - (bar.heightPct * 52 / 100) - 4"
+                                            r="2"
+                                            fill="#a1a1aa"
+                                        />
+                                    }
+                                }
+
+                                <!-- Cutoff marker: thin dashed vertical line at current hour -->
+                                @if (bar.hour === ysd.cutoffHour) {
+                                    <line x1="11" y1="0" x2="11" y2="52"
+                                        stroke="#52525b" stroke-width="1"
+                                        stroke-dasharray="2,2"/>
+                                }
+
+                                <!-- Hour axis labels -->
+                                @if (bar.hour === 8 || bar.hour === 12 || bar.hour === 18) {
+                                    <text
+                                        x="5.5" y="62"
+                                        text-anchor="middle"
+                                        font-size="7"
+                                        font-family="Inter,system-ui,sans-serif"
+                                        [attr.fill]="bar.beyondCutoff ? '#3f3f46' : '#52525b'"
+                                    >{{ bar.hour === 12 ? '12p' : bar.hour === 18 ? '6p' : '8a' }}</text>
+                                }
+                            </g>
+                        }
+                    </svg>
+                    <!-- Legend row -->
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[8px] text-zinc-600">hasta las {{ ysd.cutoffHour }}h</span>
+                        <span class="flex items-center gap-1 text-[8px] text-zinc-700 ml-auto">
+                            <span class="inline-block w-3 border-t border-dashed border-zinc-600"></span>ahora
+                        </span>
+                    </div>
+                </div>
+                }
             </div>
 
             <!-- Año anterior mismo día -->
@@ -680,7 +801,7 @@
             </div>
 
             <!-- Diagnóstico -->
-            <div class="px-5 py-4 flex flex-col gap-1 justify-center">
+            <div class="px-5 py-4 flex flex-col gap-1">
                 <span class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Diagnóstico</span>
                 <p class="text-xs leading-relaxed"
                    [class]="salesVelocity()!.status === 'ahead'   ? 'text-emerald-300' :

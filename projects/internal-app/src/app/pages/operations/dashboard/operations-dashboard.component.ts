@@ -424,30 +424,31 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
      *  critical < -35%
      */
     salesVelocity = computed<{
-        todaySales:            number;
-        todayRate:             number;   // $ per hour today
-        projectedClose:        number;   // todayRate * 24
-        todayOrderCount:       number;
-        avgTicket:             number;
-        yesterdayAtSameHour:   number;
-        yesterdayFull:         number;
-        yesterdayOrderCount:   number;
-        yesterdayRate:         number | null;
-        vsYesterdayPct:        number | null;
-        vsYesterdayAbs:        number | null;
-        vsYesterdayMultiplier: number | null;
-        projVsYesterdayFull:   number | null;  // projected close vs yesterday full day
-        lyToday:               number | null;
-        lyTodayPartial:        number | null;
-        lyRate:                number | null;
-        vsLyPct:               number | null;
-        vsLyMultiplier:        number | null;
-        hoursElapsed:          number;
-        hourlyBuckets:         number[];  // 24 buckets, today's sales per hour
-        channelBreakdown:      Record<string, number>;
-        status:                'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
-        insight:               string;
-        insightDetail:         string;
+        todaySales:              number;
+        todayRate:               number;   // $ per hour today
+        projectedClose:          number;   // todayRate * 24
+        todayOrderCount:         number;
+        avgTicket:               number;
+        yesterdayAtSameHour:     number;
+        yesterdayFull:           number;
+        yesterdayOrderCount:     number;
+        yesterdayRate:           number | null;
+        vsYesterdayPct:          number | null;
+        vsYesterdayAbs:          number | null;
+        vsYesterdayMultiplier:   number | null;
+        projVsYesterdayFull:     number | null;  // projected close vs yesterday full day
+        lyToday:                 number | null;
+        lyTodayPartial:          number | null;
+        lyRate:                  number | null;
+        vsLyPct:                 number | null;
+        vsLyMultiplier:          number | null;
+        hoursElapsed:            number;
+        hourlyBuckets:           number[];  // 24 buckets, today's sales per hour
+        yesterdayHourlyBuckets:  number[];  // 24 buckets, yesterday's sales per hour
+        channelBreakdown:        Record<string, number>;
+        status:                  'ahead' | 'ok' | 'warning' | 'critical' | 'no-data';
+        insight:                 string;
+        insightDetail:           string;
     } | null>(() => {
         this.todaySalesTotalSignal();
 
@@ -473,7 +474,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         let yesterdayAtSameHour = 0;
         let yesterdayFull       = 0;
         let yesterdayOrderCount = 0;
-        const hourlyBuckets     = new Array(24).fill(0);
+        const hourlyBuckets          = new Array(24).fill(0);
+        const yesterdayHourlyBuckets = new Array(24).fill(0);
         const channelBreakdown: Record<string, number> = {};
 
         this.allFetchedOrders.forEach(o => {
@@ -493,6 +495,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             if (isYesterday) {
                 yesterdayFull += amt;
                 yesterdayOrderCount++;
+                yesterdayHourlyBuckets[d.getHours()] += amt;
                 if ((d.getHours() + d.getMinutes() / 60) <= hoursElapsed) {
                     yesterdayAtSameHour += amt;
                 }
@@ -508,7 +511,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 vsYesterdayPct: null, vsYesterdayAbs: null, vsYesterdayMultiplier: null,
                 projVsYesterdayFull: null,
                 lyToday: null, lyTodayPartial: null, lyRate: null, vsLyPct: null, vsLyMultiplier: null,
-                hoursElapsed: 0, hourlyBuckets, channelBreakdown,
+                hoursElapsed: 0, hourlyBuckets, yesterdayHourlyBuckets, channelBreakdown,
                 status: 'no-data' as const,
                 insight: '🌅 Día recién iniciado — sin ventas aún',
                 insightDetail: `Ayer cerró en $${yesterdayFull.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}.`,
@@ -571,9 +574,96 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             vsYesterdayPct, vsYesterdayAbs, vsYesterdayMultiplier,
             projVsYesterdayFull,
             lyToday, lyTodayPartial, lyRate, vsLyPct, vsLyMultiplier,
-            hoursElapsed, hourlyBuckets, channelBreakdown,
+            hoursElapsed, hourlyBuckets, yesterdayHourlyBuckets, channelBreakdown,
             status, insight, insightDetail,
         };
+    });
+
+    /**
+     * Preprocessed sparkline data for the hourly bar chart in Pulso de Ventas.
+     *
+     * - Normalizes bar heights relative to the peak bucket (not total sales).
+     * - Renders only hours 6–21 (business window) to remove dead midnight bars.
+     * - Exposes currentHourIndex so the template can highlight the active bar.
+     */
+    sparklineData = computed<{
+        bars: { hour: number; sales: number; heightPct: number; isCurrent: boolean; isPeak: boolean }[];
+        maxSales: number;
+        currentHourIndex: number;
+    } | null>(() => {
+        const sv = this.salesVelocity();
+        if (!sv || sv.todayOrderCount === 0) return null;
+
+        const START_HOUR = 6;
+        const END_HOUR   = 21; // inclusive
+        const now        = new Date();
+        const currentHour = now.getHours();
+
+        const slice = sv.hourlyBuckets.slice(START_HOUR, END_HOUR + 1);
+        // Use shared peak across today + yesterday so both sparklines share the same Y-scale
+        const yesterdaySlice = sv.yesterdayHourlyBuckets.slice(START_HOUR, END_HOUR + 1);
+        const maxSales = Math.max(...slice, ...yesterdaySlice, 1); // avoid /0
+
+        const bars = slice.map((sales, i) => {
+            const hour = START_HOUR + i;
+            return {
+                hour,
+                sales,
+                heightPct: sales > 0 ? Math.max((sales / maxSales) * 100, 4) : 0,
+                isCurrent: hour === currentHour,
+                isPeak:    sales === Math.max(...slice, 1) && sales > 0,
+            };
+        });
+
+        const currentHourIndex = Math.max(0, Math.min(currentHour - START_HOUR, bars.length - 1));
+        return { bars, maxSales, currentHourIndex };
+    });
+
+    /**
+     * Sparkline data for the "Ayer misma hora" column.
+     *
+     * Key design decisions:
+     * - Uses the SAME shared peak (max of today + yesterday combined) as `sparklineData`
+     *   so both charts have identical Y-scales — directly comparable side-by-side.
+     * - Bars up to (and including) the current hour = full opacity ("already elapsed").
+     * - Bars after the current hour = `beyondCutoff: true` so the template dims them.
+     *   This makes clear that those hours exist in yesterday's data but are outside
+     *   the comparison window.
+     * - `isPeak` marks the highest business-hours bucket for the whole day (full day).
+     */
+    yesterdaySparklineData = computed<{
+        bars: { hour: number; sales: number; heightPct: number; beyondCutoff: boolean; isPeak: boolean }[];
+        maxSales: number;
+        cutoffHour: number;
+    } | null>(() => {
+        const sv = this.salesVelocity();
+        if (!sv || sv.yesterdayOrderCount === 0) return null;
+
+        const START_HOUR  = 6;
+        const END_HOUR    = 21;
+        const now         = new Date();
+        const currentHour = now.getHours();
+
+        const todaySlice = sv.hourlyBuckets.slice(START_HOUR, END_HOUR + 1);
+        const yesterdaySlice = sv.yesterdayHourlyBuckets.slice(START_HOUR, END_HOUR + 1);
+
+        // Shared peak across both days so Y-scales are identical
+        const sharedMax = Math.max(...todaySlice, ...yesterdaySlice, 1);
+        // Peak within yesterday's full-day slice (for crown marker)
+        const yesterdayMax = Math.max(...yesterdaySlice, 1);
+
+        const bars = yesterdaySlice.map((sales, i) => {
+            const hour = START_HOUR + i;
+            return {
+                hour,
+                sales,
+                heightPct: sales > 0 ? Math.max((sales / sharedMax) * 100, 4) : 0,
+                beyondCutoff: hour > currentHour,
+                isPeak: sales === yesterdayMax && sales > 0,
+            };
+        });
+
+        return { bars, maxSales: sharedMax, cutoffHour: currentHour };
     });
 
     yesterdaySnapshot = computed<{

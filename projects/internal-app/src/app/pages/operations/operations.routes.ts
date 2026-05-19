@@ -145,6 +145,11 @@ export const operationsRoutes: Routes = [
                 path: 'pricing/kits',
                 loadComponent: () => import('./pricing/pricing-kit-builder.component').then(m => m.PricingKitBuilderComponent)
             },
+            {
+                path: 'pricing/income-analytics',
+                loadComponent: () => import('./pricing/income-analytics/income-analytics.component').then(m => m.IncomeAnalyticsComponent),
+                title: 'Income Analytics'
+            },
             // ─── Analytics / Metrics Hub ────────────────────────────────────────
             {
                 path: 'metrics',

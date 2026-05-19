@@ -24,6 +24,7 @@ import { SparklineCellComponent } from './renderers/sparkline-cell/sparkline-cel
 import { SettingsService } from '../../../../core/services/settings.service';
 import { ApprovalWorkflowService } from '../../../../core/services/approval-workflow.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 interface PriceGridRow {
     sku: string;
@@ -48,10 +49,11 @@ interface PriceGridRow {
     webCcFeePercent: number;
     webMaxDiscountPercent: number;
 
-    // Meli Builder (Editable)
-    meliCommissionPercent: number;
-    meliShipping: number;
-    meliFixedFee: number;
+    // Meli Config (Editable)
+    classicCommission: number;   // 10%
+    premiumCommission: number;   // 14.5% — includes MSI
+    merchantShipping: number;    // outbound cost when seller ships
+    fullCFF: number;             // Cargo por Fulfillment (per-product, weight-based)
 
     // Amazon Builder (Editable)
     amazonReferralPercent: number;
@@ -59,8 +61,16 @@ interface PriceGridRow {
 
     // Calculated Prices per Channel
     calculatedWebPrice?: number;
-    calculatedMeliPrice?: number;
     calculatedAmazonPrice?: number;
+    // Meli — 4 scenario prices + margins
+    calcClassicMerchantPrice?: number;
+    calcClassicMerchantMargin?: number;
+    calcPremiumMerchantPrice?: number;
+    calcPremiumMerchantMargin?: number;
+    calcClassicFullPrice?: number;
+    calcClassicFullMargin?: number;
+    calcPremiumFullPrice?: number;
+    calcPremiumFullMargin?: number;
     [key: string]: any;
 
     // Metadata
@@ -85,6 +95,7 @@ export class PricingListComponent {
     private approvalWorkflow = inject(ApprovalWorkflowService);
     private adminLog = inject(AdminLogService);
     private toast = inject(ToastService);
+    private authService = inject(AuthService);
 
     // Grid State
     loading = signal(true);
@@ -133,9 +144,10 @@ export class PricingListComponent {
         { id: 'webShipping', label: 'Web Outbound Shipping' },
         { id: 'webCcFeePercent', label: 'Web Gateway Fee %' },
         { id: 'webMaxDiscountPercent', label: 'Web Max Discount %' },
-        { id: 'meliCommissionPercent', label: 'Meli Commission %' },
-        { id: 'meliShipping', label: 'Meli Shipping' },
-        { id: 'meliFixedFee', label: 'Meli Fixed Fee' },
+        { id: 'classicCommission',  label: 'Meli Clásica Commission %' },
+        { id: 'premiumCommission',  label: 'Meli Premium Commission %' },
+        { id: 'merchantShipping',   label: 'Meli Merchant Shipping' },
+        { id: 'fullCFF',            label: 'Meli Full CFF' },
         { id: 'amazonReferralPercent', label: 'Amazon Referral %' },
         { id: 'amazonFbaFee', label: 'Amazon FBA Fee' }
     ];
@@ -330,41 +342,61 @@ export class PricingListComponent {
                 ]
             },
 
-            // Mercado Libre Builder
+            // ── Mercado Libre ───────────────────────────────────────────
             {
-                headerName: 'Meli Builder',
+                headerName: 'Mercado Libre',
                 children: [
-                    {
-                        field: 'meliCommissionPercent',
-                        headerName: 'Commission %',
-                        width: 110,
-                        editable: true,
-                        valueFormatter: p => (p.value || 0) + '%',
-                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
-                    },
-                    {
-                        field: 'meliShipping',
-                        headerName: 'Meli Ship',
-                        width: 100,
-                        editable: true,
-                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
-                    },
-                    {
-                        field: 'meliFixedFee',
-                        headerName: 'Fixed Fee',
-                        width: 100,
-                        editable: true,
-                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'editable-cell text-right text-yellow-300 font-mono'
-                    },
-                    {
-                        field: 'calculatedMeliPrice',
-                        headerName: 'Meli Price',
-                        width: 120,
-                        valueFormatter: p => '$' + (p.value || 0).toFixed(2),
-                        cellClass: 'text-right font-bold text-yellow-400 bg-yellow-900/20 font-mono border-r border-slate-700'
-                    }
+                    // Config inputs
+                    { headerName: '⚙ Config', children: [
+                        { field: 'classicCommission', headerName: 'Clásica %', width: 90, editable: true,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0) + '%',
+                          cellClass: 'editable-cell text-right text-slate-300 font-mono' },
+                        { field: 'premiumCommission', headerName: 'Premium %', width: 90, editable: true,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0) + '%',
+                          cellClass: 'editable-cell text-right text-yellow-300 font-mono' },
+                        { field: 'merchantShipping', headerName: 'Merchant Ship', width: 110, editable: true,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(2),
+                          cellClass: 'editable-cell text-right text-slate-300 font-mono' },
+                        { field: 'fullCFF', headerName: 'Full CFF', width: 90, editable: true,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(2),
+                          cellClass: 'editable-cell text-right text-emerald-300 font-mono' },
+                    ]},
+                    // Clásica + Merchant
+                    { headerName: 'Clásica + Merchant', children: [
+                        { field: 'calcClassicMerchantPrice', headerName: 'Precio', width: 100,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(0),
+                          cellClass: 'text-right font-bold font-mono text-slate-200 bg-slate-800/40' },
+                        { field: 'calcClassicMerchantMargin', headerName: 'Margen', width: 80,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0).toFixed(1) + '%',
+                          cellStyle: (p: any) => { const v = p.value||0; return v>=20?{color:'#34d399',fontWeight:'700'}:v>=15?{color:'#fbbf24',fontWeight:'700'}:{color:'#f87171',fontWeight:'700'}; } },
+                    ]},
+                    // Premium + Merchant
+                    { headerName: 'Premium + Merchant', children: [
+                        { field: 'calcPremiumMerchantPrice', headerName: 'Precio', width: 100,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(0),
+                          cellClass: 'text-right font-bold font-mono text-yellow-200 bg-yellow-900/20' },
+                        { field: 'calcPremiumMerchantMargin', headerName: 'Margen', width: 80,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0).toFixed(1) + '%',
+                          cellStyle: (p: any) => { const v = p.value||0; return v>=20?{color:'#34d399',fontWeight:'700'}:v>=15?{color:'#fbbf24',fontWeight:'700'}:{color:'#f87171',fontWeight:'700'}; } },
+                    ]},
+                    // Clásica + Full
+                    { headerName: 'Clásica + Full', children: [
+                        { field: 'calcClassicFullPrice', headerName: 'Precio', width: 100,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(0),
+                          cellClass: 'text-right font-bold font-mono text-emerald-200 bg-emerald-900/20' },
+                        { field: 'calcClassicFullMargin', headerName: 'Margen', width: 80,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0).toFixed(1) + '%',
+                          cellStyle: (p: any) => { const v = p.value||0; return v>=20?{color:'#34d399',fontWeight:'700'}:v>=15?{color:'#fbbf24',fontWeight:'700'}:{color:'#f87171',fontWeight:'700'}; } },
+                    ]},
+                    // Premium + Full
+                    { headerName: 'Premium + Full', children: [
+                        { field: 'calcPremiumFullPrice', headerName: 'Precio', width: 100,
+                          valueFormatter: (p: ValueFormatterParams) => '$' + (p.value || 0).toFixed(0),
+                          cellClass: 'text-right font-bold font-mono text-yellow-300 bg-yellow-900/30' },
+                        { field: 'calcPremiumFullMargin', headerName: 'Margen', width: 80,
+                          valueFormatter: (p: ValueFormatterParams) => (p.value || 0).toFixed(1) + '%',
+                          cellStyle: (p: any) => { const v = p.value||0; return v>=20?{color:'#34d399',fontWeight:'700',borderRight:'1px solid #334155'}:v>=15?{color:'#fbbf24',fontWeight:'700',borderRight:'1px solid #334155'}:{color:'#f87171',fontWeight:'700',borderRight:'1px solid #334155'}; } },
+                    ]},
                 ]
             },
 
@@ -451,9 +483,11 @@ export class PricingListComponent {
                 const webCcFeePercent = strat?.webCcFeePercent ?? globalDefaults.webCcFeePercent;
                 const webMaxDiscountPercent = strat?.webMaxDiscountPercent ?? globalDefaults.webMaxDiscountPercent;
 
-                const meliCommissionPercent = strat?.meliCommissionPercent ?? globalDefaults.meliCommissionPercent;
-                const meliShipping = strat?.meliShipping ?? globalDefaults.meliShipping;
-                const meliFixedFee = strat?.meliFixedFee ?? globalDefaults.meliFixedFee;
+                // Meli config — backward-compat: fall back to old flat fields
+                const classicCommission = strat?.classicCommission ?? 10;
+                const premiumCommission = strat?.premiumCommission ?? 14.5;
+                const merchantShipping  = strat?.merchantShipping ?? strat?.meliShipping ?? globalDefaults.meliShipping;
+                const fullCFF           = strat?.fullCFF ?? 155; // default estimate; user should update per SKU
 
                 const amazonReferralPercent = strat?.amazonReferralPercent ?? globalDefaults.amazonReferralPercent;
                 const amazonFbaFee = strat?.amazonFbaFee ?? globalDefaults.amazonFbaFee;
@@ -469,10 +503,17 @@ export class PricingListComponent {
                     (1 - (targetMargin / 100) - (webCcFeePercent / 100) - (webMaxDiscountPercent / 100))
                 );
 
-                const calculatedMeliPrice = safeDiv(
-                    (baseCost + meliShipping + meliFixedFee),
-                    (1 - (targetMargin / 100) - (meliCommissionPercent / 100))
-                );
+                // Meli 4-scenario prices
+                const mMrg = (price: number, logistics: number, comm: number) =>
+                    price > 0 ? ((price - baseCost - logistics - (comm / 100) * price) / price) * 100 : 0;
+                const calcClassicMerchantPrice  = safeDiv(baseCost + merchantShipping, 1 - (targetMargin/100) - (classicCommission/100));
+                const calcPremiumMerchantPrice  = safeDiv(baseCost + merchantShipping, 1 - (targetMargin/100) - (premiumCommission/100));
+                const calcClassicFullPrice      = safeDiv(baseCost + fullCFF,          1 - (targetMargin/100) - (classicCommission/100));
+                const calcPremiumFullPrice      = safeDiv(baseCost + fullCFF,          1 - (targetMargin/100) - (premiumCommission/100));
+                const calcClassicMerchantMargin = mMrg(calcClassicMerchantPrice, merchantShipping, classicCommission);
+                const calcPremiumMerchantMargin = mMrg(calcPremiumMerchantPrice, merchantShipping, premiumCommission);
+                const calcClassicFullMargin     = mMrg(calcClassicFullPrice,     fullCFF,          classicCommission);
+                const calcPremiumFullMargin     = mMrg(calcPremiumFullPrice,     fullCFF,          premiumCommission);
 
                 const calculatedAmazonPrice = safeDiv(
                     (baseCost + amazonFbaFee),
@@ -505,11 +546,19 @@ export class PricingListComponent {
                     webMaxDiscountPercent,
                     calculatedWebPrice,
 
-                    // Meli Builder
-                    meliCommissionPercent,
-                    meliShipping,
-                    meliFixedFee,
-                    calculatedMeliPrice,
+                    // Meli Config
+                    classicCommission,
+                    premiumCommission,
+                    merchantShipping,
+                    fullCFF,
+                    calcClassicMerchantPrice,
+                    calcClassicMerchantMargin,
+                    calcPremiumMerchantPrice,
+                    calcPremiumMerchantMargin,
+                    calcClassicFullPrice,
+                    calcClassicFullMargin,
+                    calcPremiumFullPrice,
+                    calcPremiumFullMargin,
 
                     // Amazon Builder
                     amazonReferralPercent,
@@ -553,10 +602,20 @@ export class PricingListComponent {
                 (1 - (targetMargin / 100) - ((row.webCcFeePercent || 0) / 100) - ((row.webMaxDiscountPercent || 0) / 100))
             );
 
-            row.calculatedMeliPrice = safeDiv(
-                (baseCost + (row.meliShipping || 0) + (row.meliFixedFee || 0)),
-                (1 - (targetMargin / 100) - ((row.meliCommissionPercent || 0) / 100))
-            );
+            const mMrg = (price: number, logistics: number, comm: number) =>
+                price > 0 ? ((price - baseCost - logistics - (comm/100) * price) / price) * 100 : 0;
+            const cC = row.classicCommission || 10;
+            const pC = row.premiumCommission || 14.5;
+            const mS = row.merchantShipping || 0;
+            const fC = row.fullCFF || 0;
+            row.calcClassicMerchantPrice  = safeDiv(baseCost + mS, 1 - (targetMargin/100) - (cC/100));
+            row.calcPremiumMerchantPrice  = safeDiv(baseCost + mS, 1 - (targetMargin/100) - (pC/100));
+            row.calcClassicFullPrice      = safeDiv(baseCost + fC, 1 - (targetMargin/100) - (cC/100));
+            row.calcPremiumFullPrice      = safeDiv(baseCost + fC, 1 - (targetMargin/100) - (pC/100));
+            row.calcClassicMerchantMargin = mMrg(row.calcClassicMerchantPrice, mS, cC);
+            row.calcPremiumMerchantMargin = mMrg(row.calcPremiumMerchantPrice, mS, pC);
+            row.calcClassicFullMargin     = mMrg(row.calcClassicFullPrice,     fC, cC);
+            row.calcPremiumFullMargin     = mMrg(row.calcPremiumFullPrice,     fC, pC);
 
             row.calculatedAmazonPrice = safeDiv(
                 (baseCost + (row.amazonFbaFee || 0)),
@@ -585,9 +644,10 @@ export class PricingListComponent {
                 webMaxDiscountPercent: row.webMaxDiscountPercent,
 
                 // Meli
-                meliCommissionPercent: row.meliCommissionPercent,
-                meliShipping: row.meliShipping,
-                meliFixedFee: row.meliFixedFee,
+                classicCommission: row.classicCommission,
+                premiumCommission: row.premiumCommission,
+                merchantShipping:  row.merchantShipping,
+                fullCFF:           row.fullCFF,
 
                 // Amazon
                 amazonReferralPercent: row.amazonReferralPercent,
@@ -606,9 +666,14 @@ export class PricingListComponent {
                     const settings = await firstValueFrom(this.settingsService.settings$);
                     const threshold = settings?.approvals?.priceChangeThreshold || 15;
 
-                    if (changePct >= threshold) {
+                    // SUPER_ADMIN and MANAGER bypass the approval gate — save directly
+                    const userProfile = await firstValueFrom(this.authService.userProfile$);
+                    const userRole = userProfile?.role;
+                    const canBypassApproval = userRole === 'SUPER_ADMIN' || userRole === 'MANAGER';
+
+                    if (changePct >= threshold && !canBypassApproval) {
                         requiresApproval = true;
-                        
+
                         // Revert visually
                         event.node.setDataValue('cog', oldCog);
                         strategyData.cog = oldCog;
@@ -629,7 +694,7 @@ export class PricingListComponent {
                             'HIGH'
                         );
 
-                        this.toast.info('El cambio de costo supera el límite y fue enviado para aprobación.');
+                        this.toast.info(`Cambio de ${changePct.toFixed(0)}% en COG enviado a aprobación.`);
                     }
                 }
             }
@@ -723,10 +788,20 @@ export class PricingListComponent {
                 (1 - (targetMargin / 100) - ((row.webCcFeePercent || 0) / 100) - ((row.webMaxDiscountPercent || 0) / 100))
             );
 
-            row.calculatedMeliPrice = safeDiv(
-                (baseCost + (row.meliShipping || 0) + (row.meliFixedFee || 0)),
-                (1 - (targetMargin / 100) - ((row.meliCommissionPercent || 0) / 100))
-            );
+            const mMrg2 = (price: number, logistics: number, comm: number) =>
+                price > 0 ? ((price - baseCost - logistics - (comm/100) * price) / price) * 100 : 0;
+            const cC = row.classicCommission || 10;
+            const pC = row.premiumCommission || 14.5;
+            const mS = row.merchantShipping || 0;
+            const fC = row.fullCFF || 0;
+            row.calcClassicMerchantPrice  = safeDiv(baseCost + mS, 1 - (targetMargin/100) - (cC/100));
+            row.calcPremiumMerchantPrice  = safeDiv(baseCost + mS, 1 - (targetMargin/100) - (pC/100));
+            row.calcClassicFullPrice      = safeDiv(baseCost + fC, 1 - (targetMargin/100) - (cC/100));
+            row.calcPremiumFullPrice      = safeDiv(baseCost + fC, 1 - (targetMargin/100) - (pC/100));
+            row.calcClassicMerchantMargin = mMrg2(row.calcClassicMerchantPrice, mS, cC);
+            row.calcPremiumMerchantMargin = mMrg2(row.calcPremiumMerchantPrice, mS, pC);
+            row.calcClassicFullMargin     = mMrg2(row.calcClassicFullPrice,     fC, cC);
+            row.calcPremiumFullMargin     = mMrg2(row.calcPremiumFullPrice,     fC, pC);
 
             row.calculatedAmazonPrice = safeDiv(
                 (baseCost + (row.amazonFbaFee || 0)),
@@ -750,9 +825,10 @@ export class PricingListComponent {
                     webShipping: row.webShipping,
                     webCcFeePercent: row.webCcFeePercent,
                     webMaxDiscountPercent: row.webMaxDiscountPercent,
-                    meliCommissionPercent: row.meliCommissionPercent,
-                    meliShipping: row.meliShipping,
-                    meliFixedFee: row.meliFixedFee,
+                    classicCommission: row.classicCommission,
+                    premiumCommission: row.premiumCommission,
+                    merchantShipping:  row.merchantShipping,
+                    fullCFF:           row.fullCFF,
                     amazonReferralPercent: row.amazonReferralPercent,
                     amazonFbaFee: row.amazonFbaFee
                 };

@@ -371,6 +371,37 @@ export function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any)
         subtotal: mo.total_amount,
         marketplaceFee: (mo.order_items || []).reduce((acc: number, val: any) => acc + (val.sale_fee || 0), 0),
         paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending',
+        // ── Financial accuracy fields ────────────────────────────────────────────
+        // refundedAmount: sum of all payment-level refunds (cancellations, chargebacks)
+        // This reduces net_receipt — captured from payments[].refunded_amount
+        refundedAmount: (() => {
+            const total = (mo.payments || []).reduce((sum: number, p: any) => {
+                // refunded_amount is the authoritative refund field in ML API
+                const refund = p.refunded_amount || p.amount_refunded || 0;
+                return sum + (typeof refund === 'number' ? refund : 0);
+            }, 0);
+            return Math.round(total * 100) / 100;
+        })(),
+        // mlBonus: any ML-funded credits added to the order (Flex reimbursements,
+        // seller-protection credits, ML-funded coupon subsidies)
+        // These INCREASE net_receipt — captured from order.coupon + order.coupons[]
+        mlBonus: (() => {
+            let bonus = 0;
+            // order.coupon.amount = ML-funded discount subsidy
+            if (mo.coupon && typeof mo.coupon.amount === 'number') bonus += mo.coupon.amount;
+            // order.coupons[] — multiple coupon array (newer API shape)
+            if (Array.isArray(mo.coupons)) {
+                mo.coupons.forEach((c: any) => { bonus += typeof c.amount === 'number' ? c.amount : 0; });
+            }
+            return Math.round(bonus * 100) / 100;
+        })(),
+        // isAdDriven: true when this order was attributed to a Mercado Ads campaign
+        isAdDriven: !!(mo.context?.channel === 'mp-advertising' ||
+                       mo.context?.source === 'ADVERTISING' ||
+                       (mo.tags && mo.tags.includes('paid_advertising'))),
+        // orderShippingCost: order-level shipping_cost field (may carry Full CFF
+        // when /shipments/{id}/costs returns 0 for fulfillment orders)
+        orderShippingCost: typeof mo.shipping_cost === 'number' ? Math.abs(mo.shipping_cost) : 0,
         // ── shippingAddress: protective conditional spread ─────────────────────
         // When MeLi API returns no address, we return {} (empty spread) so the key
         // is ABSENT from the payload. Firestore merge:true then preserves whatever

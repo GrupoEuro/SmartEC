@@ -257,6 +257,52 @@ export class MercadolibreHubComponent implements OnInit {
         }).length;
     });
 
+    // ── Revenue Distribution (drives the income breakdown visualization) ──────
+    // Aggregates financial fields from ALL loaded ML orders. All fields come
+    // from the net_receipt formula computed during order sync — no extra reads.
+    meliRevenueBreakdown = computed(() => {
+        const orders = this.meliOrders();
+        let gross = 0, commission = 0, retIVA = 0, retISR = 0,
+            shipping = 0, refunds = 0, bonus = 0, adOrders = 0;
+
+        orders.forEach(o => {
+            const ao = o as any;
+            gross      += ao.total                 || 0;
+            commission += ao.marketplaceFee        || 0;
+            retIVA     += ao.retencion_iva         || 0;
+            retISR     += ao.retencion_isr         || 0;
+            shipping   += ao.shipping_seller_cost  || 0;
+            refunds    += ao.refunded_amount       || 0;
+            bonus      += ao.ml_bonus              || 0;
+            if (ao.is_ad_driven) adOrders++;
+        });
+
+        const net = Math.max(0, gross - commission - retIVA - retISR - shipping - refunds + bonus);
+        const count = orders.length || 1;
+        const pct = (v: number) => gross > 0 ? Math.round(v / gross * 1000) / 10 : 0;
+
+        return {
+            orderCount:   orders.length,
+            gross,  commission, retIVA, retISR, shipping, refunds, bonus, net,
+            // Percentages of gross
+            netPct:   pct(net),
+            shipPct:  pct(shipping),
+            commPct:  pct(commission),
+            ivaPct:   pct(retIVA),
+            isrPct:   pct(retISR),
+            // Per-order averages
+            avgGross: Math.round(gross  / count),
+            avgNet:   Math.round(net    / count),
+            avgShip:  Math.round(shipping / count),
+            avgComm:  Math.round(commission / count),
+            // Ads
+            adOrders,
+            adPct: orders.length > 0 ? Math.round(adOrders / orders.length * 100) : 0,
+            // "Keep rate" — the headline metric
+            keepRate: pct(net),
+        };
+    });
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     ngOnInit() {
@@ -499,8 +545,12 @@ export class MercadolibreHubComponent implements OnInit {
         }
     }
 
-    isBackfillingShipping = signal<boolean>(false);
-    backfillShippingResult = signal<any>(null);
+    isBackfillingShipping  = signal<boolean>(false);
+    backfillShippingResult  = signal<any>(null);
+    isSyncingAds            = signal<boolean>(false);
+    adsSyncResult           = signal<any>(null);
+    adsDateFrom             = signal<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+    adsDateTo               = signal<string>(new Date().toISOString().slice(0, 10));
 
     async backfillShippingCosts() {
         if (this.isBackfillingShipping()) return;
@@ -551,6 +601,31 @@ export class MercadolibreHubComponent implements OnInit {
             this.toast.error('Error al recuperar direcciones de envío.');
         } finally {
             this.isBackfillingAddresses.set(false);
+        }
+    }
+
+    // ── Mercado Ads Spend Sync ─────────────────────────────────────────────────
+
+    async syncAdsSpend() {
+        if (this.isSyncingAds()) return;
+        this.isSyncingAds.set(true);
+        this.adsSyncResult.set(null);
+        this.toast.info(`Sincronizando gasto en Mercado Ads (${this.adsDateFrom()} → ${this.adsDateTo()})…`);
+        try {
+            const fn = httpsCallable(this.functions, 'meliSyncAdsSpend', { timeout: 120000 });
+            const result: any = await fn({ dateFrom: this.adsDateFrom(), dateTo: this.adsDateTo() });
+            const d = result.data;
+            this.adsSyncResult.set(d);
+            if (d?.success) {
+                this.toast.success(`✅ Ads sync completado. Gasto total: $${d.totalSpend?.toFixed(2) ?? '—'} MXN en ${d.daysProcessed} días.`);
+            } else {
+                this.toast.warning('Ads sync respondió pero sin datos. Verifica que el token tenga scope de Publicidad.');
+            }
+        } catch (err: any) {
+            console.error('Ads Sync Error:', err);
+            this.toast.error('Error al sincronizar Mercado Ads: ' + err.message);
+        } finally {
+            this.isSyncingAds.set(false);
         }
     }
 

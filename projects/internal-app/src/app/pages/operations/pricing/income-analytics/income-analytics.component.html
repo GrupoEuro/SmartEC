@@ -1,0 +1,578 @@
+<div class="min-h-screen p-6 space-y-6" style="background:#0f0f11; color:#e4e4e7;">
+
+  <!-- ENCABEZADO -->
+  <div class="flex items-start justify-between flex-wrap gap-4">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-2xl">{{ selectedChannelDef().icon }}</span>
+        <h1 class="text-2xl font-black text-white tracking-tight">
+          Análisis de Ingresos
+          <span class="font-normal text-zinc-400 mx-1">—</span>
+          <span [style.color]="selectedChannelDef().color">{{ selectedChannelDef().label }}</span>
+        </h1>
+      </div>
+      <p class="text-sm text-zinc-500 mt-1">Desglose financiero real de tus ingresos · hasta el último centavo</p>
+    </div>
+    <!-- Selector de período -->
+    <div class="flex gap-1 p-1 rounded-xl" style="background:#1c1c1f; border:1px solid #3f3f46;">
+      @for (p of periods; track p.key) {
+        <button (click)="selectPeriod(p.key)"
+          class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+          [style.background]="selectedPeriod()===p.key ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+          [style.color]="selectedPeriod()===p.key ? '#fff' : '#71717a'">
+          {{ p.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- SELECTOR DE CANAL -->
+  <div class="flex flex-wrap gap-2">
+    @for (ch of channels; track ch.key) {
+      <button
+        [disabled]="!ch.available"
+        (click)="ch.available && selectedChannel.set(ch.key)"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all relative"
+        [style.background]="selectedChannel()===ch.key
+          ? ch.color+'22'
+          : 'rgba(28,28,31,0.8)'"
+        [style.border]="selectedChannel()===ch.key
+          ? '1px solid '+ch.color+'66'
+          : '1px solid #3f3f46'"
+        [style.color]="selectedChannel()===ch.key ? ch.color : '#52525b'"
+        [style.cursor]="ch.available ? 'pointer' : 'not-allowed'"
+        [style.opacity]="ch.available ? '1' : '0.5'">
+        <span>{{ ch.icon }}</span>
+        <span>{{ ch.label }}</span>
+        @if (!ch.available) {
+          <span class="text-[9px] font-black px-1.5 py-0.5 rounded-full ml-1"
+                style="background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.3);">
+            Próximamente
+          </span>
+        }
+        @if (selectedChannel()===ch.key && ch.available) {
+          <span class="w-1.5 h-1.5 rounded-full animate-pulse" [style.background]="ch.color"></span>
+        }
+      </button>
+    }
+  </div>
+
+
+  <!-- CARGANDO -->
+  @if (isLoading()) {
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      @for (i of [1,2,3,4,5]; track i) { <div class="shimmer h-28 rounded-2xl"></div> }
+    </div>
+    <div class="shimmer h-64 rounded-2xl"></div>
+    <div class="shimmer h-48 rounded-2xl"></div>
+  }
+
+  @if (!isLoading()) {
+  @if (breakdown(); as b) {
+
+  <!-- ═══ FILA PRINCIPAL DE KPIs ═══════════════════════════════════════════ -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+
+    <!-- Ventas Totales (HERO) -->
+    <div class="md:col-span-2 rounded-2xl p-5 relative overflow-hidden"
+         style="background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(79,70,229,0.1));border:1px solid rgba(99,102,241,0.5);">
+      <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2">Ventas Totales (Bruto)</div>
+      <div class="text-4xl font-black text-white">{{ b.gross | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-sm text-indigo-300 mt-1 font-semibold">{{ b.orderCount }} pedidos · prom. {{ b.avgGross | currency:'MXN':'$':'1.0-0' }}/pedido</div>
+      <div class="absolute -right-4 -bottom-4 text-8xl opacity-10">🛒</div>
+    </div>
+
+    <!-- Keep Rate -->
+    <div class="rounded-2xl p-5 relative overflow-hidden"
+         style="background:linear-gradient(135deg,rgba(16,185,129,0.18),rgba(5,150,105,0.08));border:1px solid rgba(16,185,129,0.45);">
+      <div class="text-xs font-bold uppercase tracking-wider text-emerald-500 mb-2">Keep Rate</div>
+      <div class="text-4xl font-black text-emerald-400">{{ b.keepRate }}%</div>
+      <div class="text-xs text-zinc-500 mt-1">de cada $100 vendido</div>
+      <div class="absolute -right-4 -bottom-4 text-7xl opacity-10">✅</div>
+    </div>
+
+    <!-- Neto Recibido -->
+    <div class="rounded-2xl p-5 relative overflow-hidden"
+         style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);">
+      <div class="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-2">Neto Recibido</div>
+      <div class="text-3xl font-black text-emerald-300">{{ b.net | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-600 mt-1">prom. {{ b.avgNet | currency:'MXN':'$':'1.0-0' }}/pedido</div>
+    </div>
+
+    <!-- Total Deducido -->
+    <div class="rounded-2xl p-5 relative overflow-hidden"
+         style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);">
+      <div class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2">Total Deducido</div>
+      <div class="text-3xl font-black text-red-300">{{ (b.gross - b.net) | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-600 mt-1">{{ 100 - b.keepRate }}% del ingreso bruto</div>
+    </div>
+  </div>
+
+  <!-- ═══ CASCADA DE INGRESOS (Waterfall bar mejorado) ═══════════════════════ -->
+  @if (pnl(); as p) {
+  <div class="rounded-2xl p-6" style="background:#18181b;border:1px solid #3f3f46;">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+      <div>
+        <h3 class="text-sm font-black text-white">¿A dónde va tu dinero?</h3>
+        <p class="text-xs text-zinc-600 mt-0.5">Desglose visual de cada peso de tu ingreso bruto</p>
+      </div>
+      <div class="text-xs text-zinc-600 font-mono">
+        Total: {{ b.gross | currency:'MXN':'$':'1.0-0' }}
+      </div>
+    </div>
+
+    <!-- Barra completa: Utilidad | COGS | Envío | Comisión | IVA | ISR -->
+    <div class="w-full h-14 rounded-xl flex overflow-hidden mb-1" style="background:#27272a;">
+
+      <!-- Utilidad Bruta (lo que realmente ganas) -->
+      <div class="h-full flex flex-col items-center justify-center relative overflow-hidden transition-all"
+           [style.width]="(b.keepRate - p.cogsAsPctGross > 0 ? b.keepRate - p.cogsAsPctGross : 0)+'%'"
+           style="background:linear-gradient(135deg,#10b981,#059669);min-width:32px;">
+        <span class="text-[10px] font-black text-white z-10 px-1 text-center leading-tight whitespace-nowrap">
+          {{ (b.keepRate - p.cogsAsPctGross) | number:'1.1-1' }}%
+        </span>
+        <div class="absolute inset-0 opacity-10"
+             style="background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,.3) 5px,rgba(255,255,255,.3) 10px);"></div>
+      </div>
+
+      <!-- COGS (costo de producto) -->
+      <div class="h-full flex flex-col items-center justify-center transition-all"
+           [style.width]="p.cogsAsPctGross+'%'"
+           style="background:linear-gradient(135deg,#6366f1,#4f46e5);min-width:28px;">
+        <span class="text-[10px] font-black text-white px-0.5 text-center">{{ p.cogsAsPctGross }}%</span>
+      </div>
+
+      <!-- Costo de Envío -->
+      <div class="h-full flex flex-col items-center justify-center transition-all"
+           [style.width]="b.shipPct+'%'" style="background:linear-gradient(135deg,#f97316,#ea580c);min-width:22px;">
+        <span class="text-[10px] font-black text-white px-0.5 text-center">{{ b.shipPct }}%</span>
+      </div>
+
+      <!-- Comisión -->
+      <div class="h-full flex flex-col items-center justify-center transition-all"
+           [style.width]="b.commPct+'%'" style="background:linear-gradient(135deg,#ef4444,#dc2626);min-width:18px;">
+        <span class="text-[10px] font-black text-white px-0.5 text-center">{{ b.commPct }}%</span>
+      </div>
+
+      <!-- IVA -->
+      <div class="h-full flex flex-col items-center justify-center transition-all"
+           [style.width]="b.ivaPct+'%'" style="background:linear-gradient(135deg,#f59e0b,#d97706);min-width:14px;">
+        <span class="text-[10px] font-black text-white px-0.5 text-center">{{ b.ivaPct }}%</span>
+      </div>
+
+      <!-- ISR -->
+      <div class="h-full flex flex-col items-center justify-center flex-1 transition-all" style="background:#3f3f46;">
+        <span class="text-[10px] font-bold text-zinc-400 px-0.5 text-center">{{ b.isrPct }}%</span>
+      </div>
+    </div>
+
+    <!-- Escala de referencia -->
+    <div class="flex justify-between text-[10px] text-zinc-700 font-mono mb-4 px-0.5">
+      <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+    </div>
+
+    <!-- Leyenda completa con MXN — 6 tiles -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+      @for (seg of [
+        {label:'✅ Utilidad Bruta',    pct: b.keepRate - p.cogsAsPctGross,  amt: p.grossProfit,  color:'#10b981', bg:'rgba(16,185,129,0.1)',  border:'rgba(16,185,129,0.35)'},
+        {label:'📦 Costo de Producto', pct: p.cogsAsPctGross,               amt: p.totalCogs,    color:'#6366f1', bg:'rgba(99,102,241,0.1)',  border:'rgba(99,102,241,0.35)'},
+        {label:'🚚 Costo de Envío',    pct: b.shipPct,                      amt: b.ship,         color:'#f97316', bg:'rgba(249,115,22,0.1)', border:'rgba(249,115,22,0.35)'},
+        {label:'💳 Comisión MeLi',     pct: b.commPct,                      amt: b.comm,         color:'#ef4444', bg:'rgba(239,68,68,0.1)',  border:'rgba(239,68,68,0.35)'},
+        {label:'🏛️ Ret. IVA (SAT)',    pct: b.ivaPct,                       amt: b.iva,          color:'#f59e0b', bg:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.35)', statutory:'8% s/base', base:'pre-IVA'},
+        {label:'🏛️ Ret. ISR (SAT)',    pct: b.isrPct,                       amt: b.isr,          color:'#71717a', bg:'rgba(113,113,122,0.08)',border:'rgba(113,113,122,0.3)', statutory:'2.5% s/base', base:'pre-IVA'}
+      ]; track seg.label) {
+        <div class="rounded-xl p-3 flex flex-col gap-1"
+             [style.background]="seg.bg" [style.border]="'1px solid '+seg.border">
+          <div class="text-[9px] font-bold uppercase tracking-wide" [style.color]="seg.color">{{ seg.label }}</div>
+          <div class="text-sm font-black text-white tabular-nums">{{ seg.amt | currency:'MXN':'$':'1.0-0' }}</div>
+          @if (seg.statutory) {
+            <div class="text-[9px] font-black" [style.color]="seg.color">{{ seg.statutory }} ({{ seg.base }})</div>
+            <div class="text-[9px] font-mono text-zinc-600">= {{ seg.pct | number:'1.1-1' }}% del bruto</div>
+          } @else {
+            <div class="text-[9px] font-mono" [style.color]="seg.color">{{ seg.pct | number:'1.1-1' }}% del bruto</div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- ═══ COGS + UTILIDAD BRUTA ══════════════════════════════════════════════ -->
+  @if (pnl(); as p) {
+  <div class="rounded-2xl overflow-hidden" style="border:1px solid #3f3f46;">
+
+    <!-- Header del bloque -->
+    <div class="flex items-center justify-between px-6 py-4 flex-wrap gap-3"
+         style="background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(79,70,229,0.05));border-bottom:1px solid #3f3f46;">
+      <div>
+        <h3 class="text-sm font-black text-white">📊 Rentabilidad — Costo de Producto & Utilidad</h3>
+        <p class="text-xs text-zinc-500 mt-0.5">
+          Fuente de costo:
+          @if (p.exactPct > 50) {
+            <span class="text-emerald-400 font-bold">{{ p.exactPct }}% de órdenes con costo exacto desde catálogo</span>
+          } @else {
+            <span class="text-amber-400 font-bold">Estimado — ajusta el % COGS para mayor precisión</span>
+          }
+        </p>
+      </div>
+      <button (click)="showCogsPanel.set(!showCogsPanel())"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#818cf8;">
+        ⚙️ {{ showCogsPanel() ? 'Cerrar' : 'Ajustar parámetros' }}
+      </button>
+    </div>
+
+    <!-- Banner de advertencia CFF (MeLi Full) -->
+    @if (showCffWarning().hasMissing) {
+    <div class="px-6 py-3 flex items-start gap-3" style="background:rgba(245,158,11,0.08);border-bottom:1px solid rgba(245,158,11,0.2);">
+      <span class="text-amber-400 text-base shrink-0">⚠️</span>
+      <div>
+        <span class="text-xs font-bold text-amber-400">{{ showCffWarning().count }} pedidos MeLi Full sin CFF registrado</span>
+        <span class="text-xs text-zinc-500 ml-2">— MeLi descuenta el costo de fulfillment directamente de MercadoPago, no aparece en la API de órdenes. Se está aplicando un CFF estimado de <strong class="text-amber-400">{{ cffEstimatedPct() }}%</strong>. Ajústalo abajo para mayor precisión.</span>
+      </div>
+    </div>
+    }
+
+    <!-- Panel de ajuste COGS + CFF -->
+    @if (showCogsPanel()) {
+    <div class="px-6 py-5 flex flex-wrap gap-8" style="background:#1c1c1f;border-bottom:1px solid #3f3f46;">
+
+      <!-- COGS blended -->
+      <div class="flex-1 min-w-64">
+        <div class="text-xs text-zinc-400 mb-1 font-bold uppercase tracking-wider">% COGS Estimado (fallback)</div>
+        <div class="text-xs text-zinc-600 mb-3">Para órdenes sin costo exacto en catálogo.</div>
+        <div class="flex items-center gap-3">
+          <input type="range" min="1" max="90" step="1"
+                 [value]="cogsBlendedPct()"
+                 (input)="saveCogsBlended(+$any($event.target).value)"
+                 class="w-40 accent-indigo-500">
+          <div class="flex items-center gap-1">
+            <input type="number" min="1" max="90"
+                   [value]="cogsBlendedPct()"
+                   (change)="saveCogsBlended(+$any($event.target).value)"
+                   class="w-16 text-center text-sm font-black text-white rounded-lg px-2 py-1"
+                   style="background:#27272a;border:1px solid #52525b;">
+            <span class="text-zinc-400 font-bold text-sm">%</span>
+          </div>
+        </div>
+        <div class="text-[10px] text-zinc-600 mt-2">💡 Llantas y refacciones: ~55–65%</div>
+      </div>
+
+      <!-- CFF (MeLi Full) -->
+      <div class="flex-1 min-w-64">
+        <div class="text-xs mb-1 font-bold uppercase tracking-wider" style="color:#f59e0b;">
+          ⚡ % CFF Estimado — MeLi Full (fulfillment)
+        </div>
+        <div class="text-xs text-zinc-600 mb-3">
+          MeLi descuenta el CFF de tu pago en MercadoPago. No aparece en la API de órdenes.
+        </div>
+        <div class="flex items-center gap-3">
+          <input type="range" min="0" max="15" step="0.5"
+                 [value]="cffEstimatedPct()"
+                 (input)="saveCffEstimated(+$any($event.target).value)"
+                 class="w-40 accent-amber-500">
+          <div class="flex items-center gap-1">
+            <input type="number" min="0" max="15" step="0.5"
+                   [value]="cffEstimatedPct()"
+                   (change)="saveCffEstimated(+$any($event.target).value)"
+                   class="w-16 text-center text-sm font-black text-white rounded-lg px-2 py-1"
+                   style="background:#27272a;border:1px solid #52525b;">
+            <span class="text-zinc-400 font-bold text-sm">%</span>
+          </div>
+        </div>
+        <div class="text-[10px] text-zinc-600 mt-2">💡 Tarifa típica MeLi Full MX: 3–6% (según peso/categoría)</div>
+      </div>
+    </div>
+    }
+
+    <!-- KPIs de utilidad -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-zinc-800" style="background:#18181b;">
+
+      <!-- COGS Total -->
+      <div class="p-5">
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Costo de Producto (COGS)</div>
+        <div class="text-3xl font-black text-zinc-200">{{ p.totalCogs | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-xs text-zinc-600 mt-1">{{ p.cogsAsPctNet }}% del neto · prom. {{ p.avgCogs | currency:'MXN':'$':'1.0-0' }}/pedido</div>
+        <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+          <div class="h-full rounded-full transition-all" [style.width]="p.cogsAsPctNet+'%'" style="background:#6366f1;"></div>
+        </div>
+      </div>
+
+      <!-- Utilidad Bruta -->
+      <div class="p-5" [style.background]="p.grossProfit > 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'">
+        <div class="text-xs font-bold uppercase tracking-wider mb-2"
+             [style.color]="p.grossProfit > 0 ? '#10b981' : '#ef4444'">Utilidad Bruta</div>
+        <div class="text-3xl font-black"
+             [style.color]="p.grossProfit > 0 ? '#34d399' : '#f87171'">
+          {{ p.grossProfit | currency:'MXN':'$':'1.0-0' }}
+        </div>
+        <div class="text-xs text-zinc-600 mt-1">prom. {{ p.avgProfit | currency:'MXN':'$':'1.0-0' }}/pedido</div>
+      </div>
+
+      <!-- Margen Bruto -->
+      <div class="p-5" [style.background]="p.grossMargin > 25 ? 'rgba(16,185,129,0.05)' : p.grossMargin > 10 ? 'rgba(245,158,11,0.05)' : 'rgba(239,68,68,0.05)'">
+        <div class="text-xs font-bold uppercase tracking-wider mb-2"
+             [style.color]="p.grossMargin > 25 ? '#10b981' : p.grossMargin > 10 ? '#f59e0b' : '#ef4444'">Margen Bruto</div>
+        <div class="text-4xl font-black"
+             [style.color]="p.grossMargin > 25 ? '#34d399' : p.grossMargin > 10 ? '#fbbf24' : '#f87171'">
+          {{ p.grossMargin }}%
+        </div>
+        <div class="text-xs text-zinc-600 mt-1">sobre neto recibido</div>
+      </div>
+
+      <!-- Cascada del peso: cada MXN -->
+      <div class="p-5">
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Por cada $100 vendido</div>
+        <div class="space-y-1.5">
+          @for (row of [
+            {label:'Neto tras fees', val: b.keepRate,              color:'#6366f1'},
+            {label:'Menos COGS',     val: -p.cogsAsPctGross,       color:'#ef4444'},
+            {label:'Utilidad',       val: b.keepRate - p.cogsAsPctGross, color: (b.keepRate - p.cogsAsPctGross) > 0 ? '#10b981' : '#ef4444'}
+          ]; track row.label) {
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] text-zinc-600">{{ row.label }}</span>
+              <span class="text-xs font-black tabular-nums" [style.color]="row.color">
+                ${{ row.val | number:'1.1-1' }}
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra P&L completa -->
+    <div class="px-6 py-4" style="background:#18181b;border-top:1px solid #3f3f46;">
+      <div class="text-xs text-zinc-600 mb-2 font-bold uppercase tracking-wider">Cascada completa de rentabilidad</div>
+      <div class="w-full h-8 rounded-lg flex overflow-hidden" style="background:#27272a;">
+        <!-- COGS -->
+        <div class="h-full flex items-center justify-center text-[10px] font-black text-white"
+             [style.width]="p.cogsAsPctGross+'%'" style="background:linear-gradient(90deg,#6366f1,#4f46e5);min-width:30px;">
+          <span class="px-1 truncate">COGS {{ p.cogsAsPctGross }}%</span>
+        </div>
+        <!-- Fees (comm + ship + iva + isr) -->
+        <div class="h-full flex items-center justify-center text-[10px] font-black text-white"
+             [style.width]="(100 - b.keepRate)+'%'" style="background:#374151;min-width:25px;">
+          <span class="px-1 truncate">Fees {{ 100 - b.keepRate }}%</span>
+        </div>
+        <!-- Utilidad -->
+        <div class="h-full flex items-center justify-center text-[10px] font-black text-white flex-1"
+             [style.background]="(b.keepRate - p.cogsAsPctGross) > 0 ? 'linear-gradient(90deg,#10b981,#059669)' : '#ef4444'">
+          <span class="px-1">Utilidad {{ b.keepRate - p.cogsAsPctGross | number:'1.1-1' }}%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ═══ TARJETAS DE DESGLOSE (clic para detalle) ══════════════════════════ -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+
+    <div class="drill-card rounded-2xl p-4" style="background:#18181b;border:1px solid rgba(239,68,68,0.25);">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">💳</span>
+        <span class="text-xs font-bold text-red-400 uppercase tracking-wider">Comisión</span>
+      </div>
+      <div class="text-2xl font-black text-red-300">{{ b.comm | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-600 mt-1">{{ b.commPct }}% del bruto · 10–14.5%</div>
+      <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+        <div class="h-full rounded-full" [style.width]="b.commPct+'%'" style="background:#ef4444;"></div>
+      </div>
+    </div>
+
+    <div class="drill-card rounded-2xl p-4" style="background:#18181b;border:1px solid rgba(245,158,11,0.25);">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">🏛️</span>
+        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Ret. IVA (SAT)</span>
+      </div>
+      <div class="text-2xl font-black text-amber-300">{{ b.iva | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-amber-600 mt-1 font-bold">Tasa legal: 8% s/base pre-IVA</div>
+      <div class="text-xs text-zinc-600 mt-0.5">= {{ b.ivaPct }}% del precio bruto · recuperable SAT</div>
+      <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+        <div class="h-full rounded-full" [style.width]="b.ivaPct+'%'" style="background:#f59e0b;"></div>
+      </div>
+    </div>
+
+    <div class="drill-card rounded-2xl p-4" style="background:#18181b;border:1px solid #3f3f46;">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">🏛️</span>
+        <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Ret. ISR (SAT)</span>
+      </div>
+      <div class="text-2xl font-black text-zinc-300">{{ b.isr | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-400 mt-1 font-bold">Tasa legal: 2.5% s/base pre-IVA</div>
+      <div class="text-xs text-zinc-600 mt-0.5">= {{ b.isrPct }}% del precio bruto · recuperable SAT</div>
+      <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+        <div class="h-full rounded-full" [style.width]="b.isrPct+'%'" style="background:#52525b;"></div>
+      </div>
+    </div>
+
+    <div class="drill-card rounded-2xl p-4" style="background:#18181b;border:1px solid rgba(249,115,22,0.25);">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">📦</span>
+        <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Envío</span>
+      </div>
+      <div class="text-2xl font-black text-orange-300">{{ b.ship | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-600 mt-1">prom. {{ b.avgShip | currency:'MXN':'$':'1.0-0' }}/pedido</div>
+      <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+        <div class="h-full rounded-full" [style.width]="b.shipPct+'%'" style="background:#f97316;"></div>
+      </div>
+    </div>
+
+    <div class="drill-card rounded-2xl p-4" style="background:#18181b;border:1px solid rgba(244,63,94,0.2);">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">↩️</span>
+        <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">Devoluciones</span>
+      </div>
+      <div class="text-2xl font-black text-rose-300">{{ b.refunds | currency:'MXN':'$':'1.0-0' }}</div>
+      <div class="text-xs text-zinc-600 mt-1">{{ b.refundPct }}% del bruto</div>
+      <div class="mt-3 h-1.5 rounded-full" style="background:#3f3f46;">
+        <div class="h-full rounded-full" [style.width]="b.refundPct+'%'" style="background:#f43f5e;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ GRÁFICA DIARIA + COMISIONES POR NIVEL ═════════════════════════════ -->
+  <div class="grid md:grid-cols-3 gap-6">
+
+    <!-- Gráfica diaria -->
+    <div class="md:col-span-2 rounded-2xl p-6" style="background:#18181b;border:1px solid #3f3f46;">
+      <h3 class="text-sm font-black text-white mb-1">Ingresos por Día</h3>
+      <div class="flex gap-4 text-xs text-zinc-600 mb-5">
+        <span class="flex items-center gap-1">
+          <span class="w-3 h-2 rounded inline-block" style="background:rgba(99,102,241,0.4);"></span>Bruto
+        </span>
+        <span class="flex items-center gap-1">
+          <span class="w-3 h-2 rounded inline-block" style="background:#10b981;"></span>Neto
+        </span>
+      </div>
+      @if (dailyTimeline().length === 0) {
+        <div class="flex items-center justify-center h-32 text-zinc-600 text-sm">Sin datos para este período</div>
+      } @else {
+        <div class="flex items-end gap-1 h-36">
+          @for (day of dailyTimeline(); track day.date) {
+            <div class="bar-col" [title]="day.date + ' · Bruto: $' + day.gross + ' · Neto: $' + day.net">
+              <div class="bar-wrap">
+                <div class="bar-gross" [style.height]="day.grossPct+'%'"></div>
+                <div class="bar-net"   [style.height]="day.netPct+'%'"></div>
+              </div>
+              @if (dailyTimeline().length <= 31) {
+                <div class="bar-label">{{ day.label }}</div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Distribución por nivel de comisión -->
+    <div class="rounded-2xl p-6" style="background:#18181b;border:1px solid #3f3f46;">
+      <h3 class="text-sm font-black text-white mb-4">Distribución por Comisión</h3>
+      @for (tier of commissionTiers(); track tier.label) {
+        <div class="mb-4">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-bold" [style.color]="tierColor(tier.label)">{{ tier.label }}</span>
+            <span class="text-xs text-zinc-400 font-mono">{{ tier.count }} pedidos ({{ tier.pct }}%)</span>
+          </div>
+          <div class="h-2 rounded-full" style="background:#27272a;">
+            <div class="tier-bar" [style.width]="tier.pct+'%'" [style.background]="tierColor(tier.label)"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-[10px] text-zinc-600">Bruto {{ tier.gross | currency:'MXN':'$':'1.0-0' }}</span>
+            <span class="text-[10px] font-bold" [style.color]="tierColor(tier.label)">Retención {{ tier.keepRate }}%</span>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ═══ DESGLOSE POR TIPO DE ENVÍO ════════════════════════════════════════ -->
+  @if (fulfillmentBreakdown().length > 0) {
+  <div class="rounded-2xl p-6" style="background:#18181b;border:1px solid #3f3f46;">
+    <h3 class="text-sm font-black text-white mb-4">Por Tipo de Logística</h3>
+    <div class="grid md:grid-cols-2 gap-4">
+      @for (ft of fulfillmentBreakdown(); track ft.label) {
+        <div class="rounded-xl p-4 flex items-center gap-4" style="background:#1c1c1f;border:1px solid #3f3f46;">
+          <div class="text-2xl">{{ ft.label.includes('Full') ? '⚡' : '📦' }}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-white text-sm">{{ ft.label }}</div>
+            <div class="text-xs text-zinc-500 mt-0.5">{{ ft.count }} pedidos · {{ ft.pct }}% del total</div>
+            <div class="flex gap-4 mt-2 text-xs">
+              <span class="text-zinc-400">Bruto <span class="text-white font-mono">{{ ft.gross | currency:'MXN':'$':'1.0-0' }}</span></span>
+              <span class="text-emerald-400">Neto <span class="font-mono font-black">{{ ft.net | currency:'MXN':'$':'1.0-0' }}</span></span>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-2xl font-black text-emerald-400">{{ ft.keepRate }}%</div>
+            <div class="text-[10px] text-zinc-600">retención</div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- ═══ TOP PEDIDOS / MENOR RETENCIÓN ════════════════════════════════════ -->
+  <div class="grid md:grid-cols-2 gap-6">
+
+    <!-- Top 10 mayor neto -->
+    <div class="rounded-2xl p-6" style="background:#18181b;border:1px solid #3f3f46;">
+      <h3 class="text-sm font-black text-white mb-4">🏆 Top 10 Pedidos — Mayor Neto</h3>
+      <div class="space-y-1">
+        @for (o of topOrders(); track o.id; let i = $index) {
+          <div class="data-row flex items-center gap-3 rounded-lg px-3 py-2">
+            <span class="text-xs font-black w-5 text-center"
+                  [style.color]="i===0?'#f59e0b':i===1?'#9ca3af':i===2?'#b45309':'#52525b'">{{ i+1 }}</span>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-mono text-zinc-400 truncate">{{ getFirstSku(o) }}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-sm font-black text-emerald-400 tabular-nums">{{ o.net_receipt | currency:'MXN':'$':'1.0-0' }}</div>
+              <div class="text-[10px] text-zinc-600 tabular-nums">de {{ o.total | currency:'MXN':'$':'1.0-0' }}</div>
+            </div>
+          </div>
+        }
+        @if (topOrders().length === 0) {
+          <div class="text-center text-zinc-600 text-sm py-6">Sin datos disponibles</div>
+        }
+      </div>
+    </div>
+
+    <!-- Menor retención -->
+    <div class="rounded-2xl p-6" style="background:#18181b;border:1px solid rgba(239,68,68,0.2);">
+      <h3 class="text-sm font-black text-white mb-4">⚠️ Pedidos con Menor Retención</h3>
+      <div class="space-y-1">
+        @for (o of worstOrders(); track o.id) {
+          <div class="data-row flex items-center gap-3 rounded-lg px-3 py-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-mono text-zinc-400 truncate">{{ getFirstSku(o) }}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-sm font-black tabular-nums"
+                   [style.color]="o.keepRate < 40 ? '#f43f5e' : o.keepRate < 55 ? '#f97316' : '#facc15'">
+                {{ o.keepRate }}%
+              </div>
+              <div class="text-[10px] text-zinc-600 tabular-nums">{{ o.net_receipt | currency:'MXN':'$':'1.0-0' }} neto</div>
+            </div>
+          </div>
+        }
+        @if (worstOrders().length === 0) {
+          <div class="text-center text-zinc-600 text-sm py-6">Sin datos disponibles</div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="text-xs text-zinc-700 flex items-start gap-2 pb-6">
+    <span class="text-amber-700 shrink-0">ℹ️</span>
+    <span>
+      <strong class="text-zinc-500">Base de cálculo SAT:</strong>
+      Las retenciones aplican sobre el <em>precio base sin IVA</em> (precio ÷ 1.16).
+      IVA: 8% × base = <strong class="text-amber-500">6.9% del precio bruto</strong> (Art. 18-J LIVA).
+      ISR: 2.5% × base = <strong class="text-zinc-400">2.2% del precio bruto</strong> (Art. 113-A LISR).
+      Ambas son <strong class="text-zinc-500">recuperables en declaración anual</strong> — no representan pérdida permanente.
+    </span>
+  </div>
+
+  } <!-- end breakdown -->
+  } <!-- end !isLoading -->
+
+</div>

@@ -14,6 +14,7 @@
  *   meli-auth.ts           — meliAuthUrl, meliCallback, meliRefreshTokenScheduled
  *   meli-orders.ts         — meliSyncOrders, meliBackfillShippingCosts, meliSyncHistorical, etc.
  *   meli-inventory.ts      — meliSyncFullInventory, meliSyncListings, meliPriceScan, etc.
+ *   meli-ads.ts            — meliSyncAdsSpend, meliGetAdsSummary (Mercado Ads spend tracking)
  *   meli-webhook.ts        — meliWebhook, getMeliRawOrderDebug
  *   meli-inbox-sync.ts     — syncMeliToInbox, backfillMeliToInbox
  *   payments.ts            — processPayment, cancelOrder, refundOrder, mpWebhook, etc.
@@ -82,6 +83,9 @@ export { meliWebhook, getMeliRawOrderDebug } from './meli-webhook';
 
 // ── MercadoLibre Revenue Reconciliator ────────────────────────────────────────
 export { meliReconciliator, meliForceResync, meliXlsAudit } from './meli-reconciliator';
+
+// ── Mercado Ads Spend Tracking ─────────────────────────────────────────────────
+export { meliSyncAdsSpend, meliGetAdsSummary } from './meli-ads';
 
 // ── MercadoLibre → Inbox Sync ──────────────────────────────────────────────────
 export { syncMeliToInbox, backfillMeliToInbox } from './meli-inbox-sync';

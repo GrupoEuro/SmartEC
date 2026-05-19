@@ -48,10 +48,11 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
 
         const meliOrders = json.results || [];
 
-        // Fetch shipments + shipment costs + billing_info in parallel
+        // Fetch shipments + shipment costs + billing_info + MP payment in parallel
         const shipmentsMap: any = {};
         const shipmentCostsMap: any = {};  // senders[0].cost = real seller shipping deduction
         const billingMap: any = {};
+        const mpPaymentMap: any = {};      // MercadoPago payment detail — authoritative CFF source
         await Promise.all(
             meliOrders
                 .map(async (mo: any) => {
@@ -81,17 +82,50 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
                                     // senders[0].cost = net cost after MeLi seller-reputation discount
                                     const senderCost: number = costsJson?.senders?.[0]?.cost ?? 0;
                                     const grossAmount: number = costsJson?.gross_amount ?? 0;
+                                    // buyer_cost = what the buyer paid for shipping
+                                    const buyerCost: number = costsJson?.buyer_cost ?? costsJson?.buyers?.[0]?.cost ?? 0;
                                     // Sum all discounts that MeLi covers (loyalty, mandatory subsidies)
                                     const meliSubsidy: number = (costsJson?.senders?.[0]?.discounts || [])
                                         .reduce((sum: number, d: any) => sum + (d.promoted_amount || 0), 0);
                                     shipmentCostsMap[mo.shipping.id] = {
-                                        seller_cost: senderCost,      // what seller pays
+                                        seller_cost: senderCost,      // what seller pays (net of discounts)
                                         gross_amount: grossAmount,     // full carrier rate
+                                        buyer_cost: buyerCost,         // what buyer paid
                                         meli_subsidy: meliSubsidy,     // what MeLi covers
                                     };
                                 }
                             } catch (_) { /* non-critical — skip */ }
                         }
+
+                        // ── MercadoPago Payment API — most authoritative source for CFF ──────
+                        // payment.shipping_amount = exact shipping charged by MeLi (incl. Full CFF)
+                        // payment.fee_details[] = MP processing fee breakdown
+                        // This is the ONLY reliable source for Full fulfillment shipping deductions.
+                        const paymentId = mo.payments?.[0]?.id;
+                        if (paymentId) {
+                            try {
+                                const mpRes = await fetch(
+                                    `https://api.mercadolibre.com/collections/${paymentId}`,
+                                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                                );
+                                if (mpRes.ok) {
+                                    const mpData = await mpRes.json() as any;
+                                    // collection wraps the payment — actual data inside .collection
+                                    const col = mpData?.collection ?? mpData;
+                                    mpPaymentMap[mo.id] = {
+                                        // Total shipping amount in the payment (buyer side + subsidy)
+                                        shipping_amount:  col?.shipping_amount  ?? 0,
+                                        // MP platform fee (separate from ML marketplace fee)
+                                        mp_fee:           (col?.fee_details || [])
+                                            .filter((f: any) => f.type === 'mercadopago_fee' && f.fee_payer === 'collector')
+                                            .reduce((s: number, f: any) => s + (f.amount || 0), 0),
+                                        // Net amount after all deductions
+                                        net_received_amount: col?.net_received_amount ?? col?.net_amount ?? 0,
+                                    };
+                                }
+                            } catch (_) { /* non-critical */ }
+                        }
+
                         // Billing info (try v2 for Mexico, fallback v1)
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${accessToken}`, 'x-version': '2' }
@@ -122,33 +156,60 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
         );
 
         for (const mo of meliOrders) {
-            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
-            const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
-            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id] : null;
+            const orderRef  = db.collection('orders').doc(`meli_${mo.id}`);
+            const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]      : null;
+            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id]  : null;
+            const mpPayment = mpPaymentMap[mo.id] ?? null;
 
             // Construct Eurollantas Order object using helper
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
 
-            // ── Shipping cost resolution ─────────────────────────────────────────────────
-            // Priority:
-            //   1. senders[0].cost from /shipments/{id}/costs (exact for Merchant/Flex orders)
-            //   2. order.shipping_cost (order-level field — may carry Full CFF)
-            //   3. 0 (Full orders where CFF is not yet available via API)
+            // ── Shipping cost resolution — 4-source priority chain ────────────────────────
+            //  1. /shipments/{id}/costs → senders[0].cost  — exact for Classic / Flex
+            //  2. /collections/{paymentId} → shipping_amount — ground truth for Full CFF
+            //     MercadoPago processes the CFF as part of the payment's shipping_amount.
+            //     For seller-paid Free Shipping on Full: seller absorbs 100% of shipping_amount.
+            //  3. order.shipping_cost  — sometimes carries Full CFF; used as last API fallback.
+            //  4. 0 + cff_pending:true — only when no source has data.
+            const mpShipAmount:  number = mpPayment?.shipping_amount  ?? 0;
+            const buyerShipCost: number = shipCosts?.buyer_cost       ?? 0;
+
             const shippingSellerCost: number = (() => {
+                // Source 1 — /shipments/costs (exact, Classic/Flex post-payment)
                 const fromCosts = shipCosts?.seller_cost ?? 0;
-                if (fromCosts > 0) return fromCosts;  // authoritative source ✓
-                // Fallback: order-level shipping_cost (Full CFF candidate)
+                if (fromCosts > 0) return fromCosts;
+
+                // Source 2 — MercadoPago payment.shipping_amount (Full CFF ground truth)
+                if (mpShipAmount > 0) {
+                    const isFull = newOrder.fulfillmentType === 'platform';
+                    if (isFull) {
+                        // Full: seller absorbs the entire CFF amount
+                        console.log(`[Meli] Full CFF via payment.shipping_amount=${mpShipAmount} order=${mo.id}`);
+                        return mpShipAmount;
+                    }
+                    // Classic Free Shipping: seller only absorbs delta above buyer's contribution
+                    if (mpShipAmount > buyerShipCost) {
+                        return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+                    }
+                }
+
+                // Source 3 — order.shipping_cost (sometimes has CFF, sometimes 0)
                 const fromOrder = newOrder.orderShippingCost ?? 0;
                 if (fromOrder > 0) {
-                    console.log(`[Meli] Using order-level shipping_cost=${fromOrder} for order ${mo.id} (Full CFF fallback)`);
+                    console.log(`[Meli] shipping_cost from order=${fromOrder} for order ${mo.id}`);
                     return fromOrder;
                 }
+
                 return 0;
             })();
-            const shippingGrossAmount: number = shipCosts?.gross_amount ?? 0;
+
+            const shippingGrossAmount: number = shipCosts?.gross_amount ?? mpShipAmount;
             const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
-            // True when Full order still has no CFF from any source — net_receipt will be overstated
-            const cffPending: boolean = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0;
+            // cff_pending only when Full + ALL sources returned 0
+            const cffPending: boolean = newOrder.fulfillmentType === 'platform'
+                && shippingSellerCost === 0
+                && mpShipAmount === 0;
+
 
             // ── Complete net_receipt formula ───────────────────────────────────────────
             // Verified cent-perfect against 5 real ML sale screenshots + 55-order CSV:
@@ -179,11 +240,13 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
             // Merge ALL financial fields into the order document
             const orderWithFinancials = {
                 ...newOrder,
-                // Shipping breakdown
-                shipping_seller_cost: shippingSellerCost,   // net MXN absorbed by seller
-                shipping_gross_amount: shippingGrossAmount,  // full carrier rate (before subsidy)
-                shipping_meli_subsidy: shippingMeliSubsidy,  // what ML covers
-                cff_pending: cffPending,                     // true = Full order missing CFF
+                // Shipping breakdown (full audit trail)
+                shipping_seller_cost:  shippingSellerCost,   // net MXN absorbed by seller ← used in P&L
+                shipping_gross_amount: shippingGrossAmount,   // full carrier rate (before subsidy)
+                shipping_meli_subsidy: shippingMeliSubsidy,   // what ML covers
+                mp_shipping_amount:    mpShipAmount,          // raw from payment.shipping_amount (MP API)
+                buyer_shipping_cost:   buyerShipCost,         // what buyer paid for shipping
+                cff_pending:           cffPending,            // true = Full order, CFF still unresolved
                 // SAT tax retentions (recoverable in annual declaration)
                 retencion_iva: retencionIVA,                 // (price/1.16) × 8%
                 retencion_isr: retencionISR,                 // (price/1.16) × 2.5%
@@ -196,6 +259,7 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
                 // 💰 The bottom line
                 net_receipt: netReceipt,                     // exact Recibes amount
             };
+
 
 
 

@@ -595,9 +595,11 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
             return { success: true, processed: 0, message: 'No more orders to sync.' };
         }
 
-        // Fetch shipments + billing_info in parallel
+        // Fetch shipments + shipment costs + billing_info + MP payment in parallel
         const shipmentsMap: any = {};
+        const shipmentCostsMap: any = {};
         const billingMap: any = {};
+        const mpPaymentMap: any = {};
         await Promise.all(
             meliOrders
                 .map(async (mo: any) => {
@@ -612,6 +614,42 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
                                 console.warn(`[Meli Historical] Shipment ${mo.shipping.id} fetch failed: ${sRes.status} — fulfillmentType may be wrong`);
                                 shipmentsMap[mo.shipping.id] = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
                             }
+                            // /shipments/{id}/costs — exact seller cost for Classic/Flex
+                            try {
+                                const cRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}/costs`, {
+                                    headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` }
+                                });
+                                if (cRes.ok) {
+                                    const costsJson = await cRes.json() as any;
+                                    const senderCost: number = costsJson?.senders?.[0]?.cost ?? 0;
+                                    const grossAmount: number = costsJson?.gross_amount ?? 0;
+                                    const buyerCost: number  = costsJson?.buyer_cost ?? costsJson?.buyers?.[0]?.cost ?? 0;
+                                    const meliSubsidy: number = (costsJson?.senders?.[0]?.discounts || [])
+                                        .reduce((sum: number, d: any) => sum + (d.promoted_amount || 0), 0);
+                                    shipmentCostsMap[mo.shipping.id] = { seller_cost: senderCost, gross_amount: grossAmount, buyer_cost: buyerCost, meli_subsidy: meliSubsidy };
+                                }
+                            } catch (_) { /* skip */ }
+                        }
+                        // /collections/{paymentId} — MP ground truth for Full CFF
+                        const paymentId = mo.payments?.[0]?.id;
+                        if (paymentId) {
+                            try {
+                                const mpRes = await fetch(
+                                    `https://api.mercadolibre.com/collections/${paymentId}`,
+                                    { headers: { 'Authorization': `Bearer ${meliConfig.accessToken}` } }
+                                );
+                                if (mpRes.ok) {
+                                    const mpData = await mpRes.json() as any;
+                                    const col = mpData?.collection ?? mpData;
+                                    mpPaymentMap[mo.id] = {
+                                        shipping_amount: col?.shipping_amount ?? 0,
+                                        mp_fee: (col?.fee_details || [])
+                                            .filter((f: any) => f.type === 'mercadopago_fee' && f.fee_payer === 'collector')
+                                            .reduce((s: number, f: any) => s + (f.amount || 0), 0),
+                                        net_received_amount: col?.net_received_amount ?? col?.net_amount ?? 0,
+                                    };
+                                }
+                            } catch (_) { /* skip */ }
                         }
                         const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
                             headers: { 'Authorization': `Bearer ${meliConfig.accessToken}`, 'x-version': '2' }
@@ -642,24 +680,73 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
         );
 
         for (const mo of meliOrders) {
-            const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
-            const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
+            const orderRef  = db.collection('orders').doc(`meli_${mo.id}`);
+            const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]     : null;
+            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id] : null;
+            const mpPayment = mpPaymentMap[mo.id] ?? null;
 
             const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
+
+            // Same 4-source shipping resolution as quick sync
+            const mpShipAmount:  number = mpPayment?.shipping_amount  ?? 0;
+            const buyerShipCost: number = shipCosts?.buyer_cost        ?? 0;
+            const shippingSellerCost: number = (() => {
+                const fromCosts = shipCosts?.seller_cost ?? 0;
+                if (fromCosts > 0) return fromCosts;
+                if (mpShipAmount > 0) {
+                    if (newOrder.fulfillmentType === 'platform') return mpShipAmount;
+                    if (mpShipAmount > buyerShipCost) return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+                }
+                const fromOrder = newOrder.orderShippingCost ?? 0;
+                if (fromOrder > 0) return fromOrder;
+                return 0;
+            })();
+            const shippingGrossAmount: number = shipCosts?.gross_amount ?? mpShipAmount;
+            const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
+            const cffPending: boolean = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0 && mpShipAmount === 0;
+
+            // SAT retentions
+            const IVA_INCLUSIVE_DIVISOR = 1.16;
+            const totalAmount    = newOrder.total ?? 0;
+            const preIvaAmount   = totalAmount / IVA_INCLUSIVE_DIVISOR;
+            const retencionIVA   = Math.round(preIvaAmount * 0.08  * 100) / 100;
+            const retencionISR   = Math.round(preIvaAmount * 0.025 * 100) / 100;
+            const netReceipt     = Math.round(Math.max(0,
+                totalAmount - (newOrder.marketplaceFee ?? 0) - retencionIVA - retencionISR
+                - shippingSellerCost - (newOrder.refundedAmount ?? 0) + (newOrder.mlBonus ?? 0)
+            ) * 100) / 100;
+
+            // Merge shipping + financial fields
+            const orderWithFinancials = {
+                ...newOrder,
+                shipping_seller_cost:  shippingSellerCost,
+                shipping_gross_amount: shippingGrossAmount,
+                shipping_meli_subsidy: shippingMeliSubsidy,
+                mp_shipping_amount:    mpShipAmount,
+                buyer_shipping_cost:   buyerShipCost,
+                cff_pending:           cffPending,
+                retencion_iva:         retencionIVA,
+                retencion_isr:         retencionISR,
+                total_impuestos:       retencionIVA + retencionISR,
+                refunded_amount:       newOrder.refundedAmount ?? 0,
+                ml_bonus:              newOrder.mlBonus        ?? 0,
+                is_ad_driven:          newOrder.isAdDriven     ?? false,
+                net_receipt:           netReceipt,
+            };
 
             // Restore the original readable name if we already have one stored
             const isAnonH = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
             const preservedOrig = origNameMap.get(String(mo.id));
             if (preservedOrig && !isAnonH(preservedOrig)) {
-                newOrder.customer.originalName = preservedOrig;
-            } else if (preservedOrig && isAnonH(preservedOrig) && !isAnonH(newOrder.customer.originalName)) {
+                orderWithFinancials.customer.originalName = preservedOrig;
+            } else if (preservedOrig && isAnonH(preservedOrig) && !isAnonH(orderWithFinancials.customer.originalName)) {
                 // Upgrade: stored was anonymized, new is readable
             } else if (preservedOrig) {
-                newOrder.customer.originalName = preservedOrig;
+                orderWithFinancials.customer.originalName = preservedOrig;
             }
 
-            // Upsert the order
-            batch.set(orderRef, newOrder, { merge: true });
+            // ✅ merge:true — NEVER deletes any existing fields
+            batch.set(orderRef, orderWithFinancials, { merge: true });
         }
 
         await batch.commit();

@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminPageHeaderComponent } from '../../../admin/shared/admin-page-header/admin-page-header.component';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
@@ -10,6 +10,7 @@ import { Order } from '../../../../core/models/order.model';
 import { MeliListingDoc } from '../../../../core/models/meli-listing.model';
 import { Firestore, collection, collectionData, query, orderBy, limit } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-mercadolibre-hub',
@@ -17,11 +18,12 @@ import { FormsModule } from '@angular/forms';
     imports: [CommonModule, AdminPageHeaderComponent, AppIconComponent, TranslateModule, FormsModule],
     templateUrl: './mercadolibre-hub.component.html'
 })
-export class MercadolibreHubComponent implements OnInit {
-    private functions = inject(Functions);
-    private firestore = inject(Firestore);
-    private toast = inject(ToastService);
+export class MercadolibreHubComponent implements OnInit, OnDestroy {
+    private functions  = inject(Functions);
+    private firestore  = inject(Firestore);
+    private toast      = inject(ToastService);
     private orderService = inject(OrderService);
+    private orderSub?: Subscription;
 
     activeTab = signal<'overview' | 'classic' | 'full' | 'listings' | 'communications'>('overview');
 
@@ -34,9 +36,17 @@ export class MercadolibreHubComponent implements OnInit {
     syncProgress = signal<{ processed: number, total: number }>({ processed: 0, total: 0 });
 
     // Orders Data
-    allOrders = signal<Order[]>([]);
+    allOrders     = signal<Order[]>([]);
     isLoadingData = signal(true);
-    dataError = signal<string | null>(null);
+    dataError     = signal<string | null>(null);
+
+    // Revenue period selector — default 7 days to minimize Firestore reads
+    revenuePeriod  = signal<7 | 30 | 90>(7);
+    readonly revenuePeriods: { days: 7 | 30 | 90; label: string }[] = [
+        { days: 7,  label: '7D' },
+        { days: 30, label: '30D' },
+        { days: 90, label: '90D' },
+    ];
 
     // FBM Inventory Data
     fbmInventory = signal<any[]>([]);
@@ -313,10 +323,27 @@ export class MercadolibreHubComponent implements OnInit {
         this.loadCommunications();
     }
 
+    ngOnDestroy() {
+        this.orderSub?.unsubscribe();
+    }
+
+    selectRevenuePeriod(days: 7 | 30 | 90) {
+        this.revenuePeriod.set(days);
+        this.loadOrders();
+    }
+
     private loadOrders() {
+        this.orderSub?.unsubscribe(); // cancel previous subscription
         this.isLoadingData.set(true);
         this.dataError.set(null);
-        this.orderService.getOrders().subscribe({
+
+        const end   = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - this.revenuePeriod());
+
+        // getOrdersByDateRange = single getDocs (one-shot, not a live stream)
+        // Reads only the orders within the selected window — not the entire collection
+        this.orderSub = this.orderService.getOrdersByDateRange(start, end).subscribe({
             next: (orders) => { this.allOrders.set(orders); this.isLoadingData.set(false); },
             error: (err)   => { console.error('Failed to load orders', err); this.dataError.set('Could not load orders.'); this.isLoadingData.set(false); }
         });

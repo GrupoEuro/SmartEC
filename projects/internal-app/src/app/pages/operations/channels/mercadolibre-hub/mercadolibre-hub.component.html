@@ -421,17 +421,31 @@
                     </div>
                     <div>
                         <h3 class="text-lg font-black text-white tracking-tight">Distribución del Ingreso MercadoLibre</h3>
-                        <p class="text-xs text-zinc-500 mt-0.5">¿De cada $100 que vendes, qué queda en tu bolsillo? · {{ rev.orderCount }} pedidos cargados</p>
+                        <p class="text-xs text-zinc-500 mt-0.5">¿De cada $100 que vendes, qué queda en tu bolsillo? · {{ rev.orderCount }} pedidos · últimos {{ revenuePeriod() }} días</p>
                     </div>
                 </div>
-                <!-- Keep Rate Headline -->
-                <div class="text-right shrink-0">
-                    <div class="text-3xl font-black" style="background: linear-gradient(135deg, #34d399, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                        {{ rev.keepRate }}%
+                <div class="flex items-center gap-4 shrink-0">
+                    <!-- Period selector -->
+                    <div class="flex gap-1 p-1 rounded-lg" style="background:#27272a;border:1px solid #3f3f46;">
+                        @for (p of revenuePeriods; track p.days) {
+                            <button (click)="selectRevenuePeriod(p.days)"
+                                    class="px-3 py-1 rounded-md text-xs font-bold transition-all"
+                                    [style.background]="revenuePeriod()===p.days ? 'linear-gradient(135deg,#10b981,#059669)' : 'transparent'"
+                                    [style.color]="revenuePeriod()===p.days ? '#fff' : '#52525b'">
+                                {{ p.label }}
+                            </button>
+                        }
                     </div>
-                    <div class="text-xs text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">Keep Rate</div>
+                    <!-- Keep Rate Headline -->
+                    <div class="text-right">
+                        <div class="text-3xl font-black" style="background: linear-gradient(135deg, #34d399, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            {{ rev.keepRate }}%
+                        </div>
+                        <div class="text-xs text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">Keep Rate</div>
+                    </div>
                 </div>
             </div>
+
 
             <div class="p-6 space-y-6">
 

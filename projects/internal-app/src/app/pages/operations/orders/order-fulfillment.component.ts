@@ -807,4 +807,14 @@ export class OrderFulfillmentComponent implements OnInit {
             email: 'contacto@importadoraeuro.com'
         };
     }
+
+    /** Copy text to clipboard with a toast confirmation */
+    copyToClipboard(text: string | undefined) {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            this.toast.success('Copiado al portapapeles');
+        }).catch(() => {
+            this.toast.error('No se pudo copiar');
+        });
+    }
 }

@@ -40,18 +40,35 @@
         </div>
 
         <app-help-context-button topicId="fulfillment-process" tooltip="Fulfillment Process"></app-help-context-button>
-        <button class="btn-glass" (click)="printInvoice()">
-            <app-icon name="file-text" [size]="16" class="mr-1"></app-icon> {{ 'OPERATIONS.ORDERS.PRINT_INVOICE' |
-            translate }}
-        </button>
-        <button class="btn-glass" (click)="printPackingSlip()">
-            <app-icon name="printer" [size]="16" class="mr-1"></app-icon> {{ 'OPERATIONS.ORDERS.PRINT_PACKING_SLIP' |
-            translate }}
-        </button>
     </app-admin-page-header>
 
-    <!-- Top Row: 2x2 Grid (Customer, Shipping, Channel, Payment/Tracking) -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 mt-8">
+    <!-- Back nav + quick meta bar -->
+    <div class="flex items-center justify-between mb-6 mt-6">
+        <a routerLink="/operations/orders"
+           class="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-100 transition-colors group">
+            <app-icon name="arrow-left" [size]="16" class="group-hover:-translate-x-0.5 transition-transform"></app-icon>
+            Cola de Órdenes
+        </a>
+        <div class="flex items-center gap-2">
+            <!-- Copyable order number -->
+            <button
+                (click)="copyToClipboard(order()!.externalOrderId || order()!.orderNumber)"
+                class="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-xs font-mono text-zinc-300 transition-colors"
+                title="Copiar ID">
+                <app-icon name="copy" [size]="12" class="text-zinc-500"></app-icon>
+                {{ order()!.externalOrderId || order()!.orderNumber }}
+            </button>
+            <button class="btn-glass" (click)="printInvoice()">
+                <app-icon name="file-text" [size]="14"></app-icon> Factura
+            </button>
+            <button class="btn-glass" (click)="printPackingSlip()">
+                <app-icon name="printer" [size]="14"></app-icon> Packing
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Row: 3-col grid (Customer | Shipping | Payment+Tracking) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <!-- Customer Info -->
         <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col">
             <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">{{
@@ -106,31 +123,95 @@
                 <strong class="text-zinc-300">Referencia:</strong> {{ $any(order())!.shippingAddress.references }}
             </div>
         </div>
+        <!-- Payment & Tracking (3rd column) -->
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col gap-5">
+            <!-- Payment -->
+            <div>
+                <div class="flex items-center gap-1.5 text-xs font-bold uppercase text-zinc-500 mb-3 tracking-widest">
+                    <app-icon name="credit-card" [size]="13"></app-icon> Pago
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Estado pago:</span>
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase" [ngClass]="'status-' + order()!.paymentStatus">
+                            {{ order()!.paymentStatus }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Método:</span>
+                        <span class="text-zinc-200 font-medium">{{ order()!.paymentMethod ? (order()!.paymentMethod | uppercase) : 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Total:</span>
+                        <span class="text-white font-bold">{{ formatCurrency(order()!.total) }}</span>
+                    </div>
+                    <ng-container *ngIf="$any(order())?.marketplaceFee > 0">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-zinc-400">Comisión ML:</span>
+                            <span class="text-red-400 font-medium">−{{ formatCurrency($any(order())?.marketplaceFee) }}</span>
+                        </div>
+                    </ng-container>
+                    <ng-container *ngIf="order()!.sourceChannel === 'mercadolibre'">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-zinc-400">Costo Envío:</span>
+                            <span class="font-medium" [ngClass]="$any(order()).shipping_seller_cost > 0 ? 'text-red-400' : $any(order()).shipping_seller_cost === 0 ? 'text-teal-400' : 'text-amber-500'">
+                                <ng-container *ngIf="$any(order()).shipping_seller_cost > 0">−{{ formatCurrency($any(order()).shipping_seller_cost) }}</ng-container>
+                                <ng-container *ngIf="$any(order()).shipping_seller_cost === 0">MeLi absorbe</ng-container>
+                                <ng-container *ngIf="$any(order()).shipping_seller_cost == null">⏳ pendiente</ng-container>
+                            </span>
+                        </div>
+                    </ng-container>
+                </div>
+            </div>
+            <div class="h-px bg-zinc-700/60"></div>
+            <!-- Tracking -->
+            <div>
+                <div class="flex items-center gap-1.5 text-xs font-bold uppercase text-zinc-500 mb-3 tracking-widest">
+                    <app-icon name="truck" [size]="13"></app-icon> Envío
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Estado:</span>
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase" [ngClass]="getStatusBadgeClass(order()!.status)">
+                            {{ order()!.status }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-zinc-400">Carrier:</span>
+                        <span class="text-zinc-200 font-medium">{{ order()!.carrier || 'N/A' }}</span>
+                    </div>
+                    <div class="flex justify-between items-start text-sm">
+                        <span class="text-zinc-400">Tracking:</span>
+                        <span *ngIf="order()!.trackingNumber" class="font-mono text-xs text-zinc-200 text-right ml-2 break-all">{{ order()!.trackingNumber }}</span>
+                        <span *ngIf="!order()!.trackingNumber" class="text-amber-500 text-xs">Sin tracking</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
-    <!-- End 2-col top row -->
+    <!-- End 3-col top row -->
 
     <!-- Channel Information (full-width) -->
     <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 mb-8">
-        <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5">Channel Information</h3>
+        <h3 class="text-lg font-semibold text-white border-b border-zinc-700 pb-3 mb-5 flex items-center gap-2">
+            <app-icon name="layers" [size]="16" class="text-zinc-500"></app-icon>
+            Canal & Marketplace
+        </h3>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Left: core channel fields -->
             <div class="space-y-4">
-                <!-- Channel Badge -->
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-zinc-400">Channel:</span>
+                    <span class="text-sm text-zinc-400">Canal:</span>
                     <span class="channel-badge" [ngClass]="getChannelBadgeConfig(getLegacyChannel(order()!)).class">
-                        <app-icon [name]="getChannelBadgeConfig(getLegacyChannel(order()!)).icon"
-                            [size]="14"></app-icon>
+                        <app-icon [name]="getChannelBadgeConfig(getLegacyChannel(order()!)).icon" [size]="14"></app-icon>
                         {{ getChannelBadgeConfig(getLegacyChannel(order()!)).label }}
                     </span>
                 </div>
-                <!-- External Order ID -->
                 <div class="flex justify-between items-center text-sm" *ngIf="order()!.externalOrderId">
-                    <span class="text-zinc-400">External ID:</span>
-                    <span class="font-mono font-medium text-zinc-200 text-right">{{ order()!.externalOrderId }}</span>
+                    <span class="text-zinc-400">ID Externo:</span>
+                    <span class="font-mono text-xs font-medium text-zinc-200 text-right bg-zinc-900/50 px-2 py-0.5 rounded">{{ order()!.externalOrderId }}</span>
                 </div>
-                <!-- Fulfillment Location -->
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-zinc-400">Fulfillment:</span>
                     <span class="px-2 py-1 rounded text-xs font-semibold uppercase" [ngClass]="{
@@ -139,160 +220,53 @@
                         'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50': getFulfillmentLocation() === 'MELI_FULL'
                     }">{{ getFulfillmentLocation() }}</span>
                 </div>
-                <!-- ON_BEHALF specific metadata -->
-                <div *ngIf="order()!.sourceChannel === 'on_behalf' && order()!.metadata"
-                    class="pt-3 border-t border-zinc-700/50">
+                <div *ngIf="order()!.sourceChannel === 'on_behalf' && order()!.metadata" class="pt-3 border-t border-zinc-700/50">
                     <div class="flex justify-between items-center text-sm mb-2">
-                        <span class="text-zinc-400">Source:</span>
-                        <span class="font-medium text-zinc-200 text-right capitalize">{{ order()!.metadata?.source ||
-                            'Phone' }}</span>
+                        <span class="text-zinc-400">Fuente:</span>
+                        <span class="font-medium text-zinc-200 text-right capitalize">{{ order()!.metadata?.source || 'Phone' }}</span>
                     </div>
                     <div class="flex justify-between items-center text-sm" *ngIf="order()!.metadata?.enteredBy">
-                        <span class="text-zinc-400">Entered By:</span>
+                        <span class="text-zinc-400">Ingresado por:</span>
                         <span class="font-medium text-zinc-200 text-right">{{ order()!.metadata?.enteredBy }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: marketplace info + billing (MeLi / Amazon) -->
-            <div class="space-y-3"
-                *ngIf="(order()!.sourceChannel === 'amazon' || order()!.sourceChannel === 'mercadolibre') && order()!.externalOrderId">
-                <div class="text-xs text-zinc-500 uppercase font-semibold mb-1">Marketplace Info</div>
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-zinc-400">Marketplace ID:</span>
-                    <span class="font-mono text-xs text-zinc-200 text-right">{{ order()!.externalOrderId }}</span>
-                </div>
-                <!-- MeLi: View on MercadoLibre link -->
-                <div class="flex justify-between items-center text-sm"
-                    *ngIf="order()!.sourceChannel === 'mercadolibre'">
-                    <span class="text-zinc-400">Ver en:</span>
-                    <a [href]="getMeliOrderUrl()" target="_blank"
-                        class="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-300 font-semibold text-xs transition-colors">
-                        <app-icon name="external-link" [size]="12"></app-icon>
-                        MercadoLibre
+            <!-- Right: marketplace info + fiscal -->
+            <div class="space-y-3" *ngIf="(order()!.sourceChannel === 'amazon' || order()!.sourceChannel === 'mercadolibre') && order()!.externalOrderId">
+                <div class="text-xs text-zinc-500 uppercase font-semibold mb-1 tracking-widest">Marketplace</div>
+                <div class="flex justify-between items-center text-sm" *ngIf="order()!.sourceChannel === 'mercadolibre'">
+                    <span class="text-zinc-400">Ver orden:</span>
+                    <a [href]="getMeliOrderUrl()" target="_blank" class="inline-flex items-center gap-1 text-yellow-400 hover:text-yellow-300 font-semibold text-xs transition-colors">
+                        <app-icon name="external-link" [size]="12"></app-icon> MercadoLibre
                     </a>
                 </div>
-                <!-- MeLi: Shipping ID -->
-                <div class="flex justify-between items-center text-sm"
-                    *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.shippingId">
+                <div class="flex justify-between items-center text-sm" *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.shippingId">
                     <span class="text-zinc-400">Shipping ID:</span>
                     <span class="font-mono text-xs text-zinc-200">{{ $any(order())?.shippingId }}</span>
                 </div>
                 <!-- MeLi Invoice / Fiscal Data -->
-                <div *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.meliInvoice"
-                    class="pt-3 border-t border-zinc-700/50">
-                    <div class="text-xs text-zinc-500 uppercase font-semibold mb-2">Datos de Facturación</div>
+                <div *ngIf="order()!.sourceChannel === 'mercadolibre' && $any(order())?.meliInvoice" class="pt-3 border-t border-zinc-700/50">
+                    <div class="text-xs text-zinc-500 uppercase font-semibold mb-2 tracking-widest">Datos Fiscales</div>
                     <div class="flex justify-between items-center text-sm mb-1">
                         <span class="text-zinc-400">Nombre:</span>
-                        <span class="text-zinc-200 text-right font-medium">{{ $any(order())!.meliInvoice.name || '—'
-                            }}</span>
+                        <span class="text-zinc-200 text-right font-medium">{{ $any(order())!.meliInvoice.name || '—' }}</span>
                     </div>
                     <div class="flex justify-between items-center text-sm mb-1">
                         <span class="text-zinc-400">RFC:</span>
-                        <span class="font-mono text-xs font-bold text-right"
-                            [class.text-amber-400]="$any(order())!.meliInvoice.isGenericRfc"
-                            [class.text-emerald-400]="!$any(order())!.meliInvoice.isGenericRfc">
+                        <span class="font-mono text-xs font-bold text-right" [class.text-amber-400]="$any(order())!.meliInvoice.isGenericRfc" [class.text-emerald-400]="!$any(order())!.meliInvoice.isGenericRfc">
                             {{ $any(order())!.meliInvoice.rfc || '—' }}
-                            <span *ngIf="$any(order())!.meliInvoice.isGenericRfc"
-                                class="ml-1 text-amber-500/60">genérico</span>
+                            <span *ngIf="$any(order())!.meliInvoice.isGenericRfc" class="ml-1 text-amber-500/60">genérico</span>
                         </span>
                     </div>
-                    <div class="flex justify-between items-center text-sm mb-1"
-                        *ngIf="$any(order())!.meliInvoice.taxpayerType">
-                        <span class="text-zinc-400">Tipo:</span>
-                        <span class="text-zinc-200 text-right">{{ $any(order())!.meliInvoice.taxpayerType }}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-sm mb-1"
-                        *ngIf="$any(order())!.meliInvoice.cfdiUse">
+                    <div class="flex justify-between items-center text-sm" *ngIf="$any(order())!.meliInvoice.cfdiUse">
                         <span class="text-zinc-400">Uso CFDI:</span>
-                        <span class="font-mono text-xs text-zinc-200 text-right">{{ $any(order())!.meliInvoice.cfdiUse
-                            }}</span>
-                    </div>
-                    <div class="flex justify-between items-start text-sm"
-                        *ngIf="$any(order())!.meliInvoice.billingAddress">
-                        <span class="text-zinc-400">Dir. fiscal:</span>
-                        <span class="text-zinc-300 text-right text-xs ml-2 leading-relaxed">
-                            {{ $any(order())!.meliInvoice.billingAddress.street }} {{
-                            $any(order())!.meliInvoice.billingAddress.exteriorNumber }},
-                            {{ $any(order())!.meliInvoice.billingAddress.city }},
-                            C.P. {{ $any(order())!.meliInvoice.billingAddress.zipCode }},
-                            {{ $any(order())!.meliInvoice.billingAddress.state }}
-                        </span>
+                        <span class="font-mono text-xs text-zinc-200 text-right">{{ $any(order())!.meliInvoice.cfdiUse }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- End Channel Information -->
-
-
-<!-- Payment & Tracking -->
-<div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 h-full flex flex-col justify-center gap-6">
-    <!-- Payment Section -->
-    <div class="w-full">
-        <div class="flex items-center gap-2 text-xs font-bold uppercase text-zinc-400 mb-2 tracking-wider">
-            <app-icon name="credit-card" [size]="18"></app-icon> {{
-            'OPERATIONS.ORDERS.PAYMENT' | translate }}
-        </div>
-        <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-center">
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}:</span>
-            <span class="text-right">
-                <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
-                    [ngClass]="'status-' + order()!.paymentStatus">
-                    {{ order()!.paymentStatus }}
-                </span>
-            </span>
-
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.PAYMENT_METHOD' | translate }}:</span>
-            <span class="text-sm font-medium text-zinc-200 text-right">
-                {{ order()!.paymentMethod ? (order()!.paymentMethod | uppercase) : 'N/A' }}
-            </span>
-
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}:</span>
-            <span class="text-sm font-bold text-white text-right">{{ formatCurrency(order()!.total) }}</span>
-
-            <!-- Marketplace fee (MeLi / Amazon orders) -->
-            <ng-container *ngIf="$any(order())?.marketplaceFee > 0">
-                <span class="text-sm text-zinc-500">Comisión ML:</span>
-                <span class="text-sm font-medium text-red-400 text-right">- {{
-                    formatCurrency($any(order())?.marketplaceFee) }}</span>
-            </ng-container>
-        </div>
-    </div>
-
-    <div class="h-px bg-zinc-700 w-full"></div>
-
-    <!-- Tracking Section -->
-    <div class="w-full">
-        <div class="flex items-center gap-2 text-xs font-bold uppercase text-zinc-400 mb-2 tracking-wider">
-            <app-icon name="truck" [size]="18"></app-icon> {{ 'OPERATIONS.ORDERS.TRACKING'
-            | translate }}
-        </div>
-        <div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 items-center">
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.STATUS_LABEL' | translate }}:</span>
-            <span class="text-right">
-                <span class="inline-block px-2 py-0.5 rounded text-xs font-bold uppercase"
-                    [ngClass]="getStatusBadgeClass(order()!.status)">
-                    {{ order()!.status }}
-                </span>
-            </span>
-
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.CARRIER' | translate }}:</span>
-            <span class="text-sm font-medium text-zinc-200 text-right">
-                {{ order()!.carrier || 'N/A' }}
-            </span>
-
-            <span class="text-sm text-zinc-500">{{ 'OPERATIONS.ORDERS.TRACKING_NUMBER' | translate }}:</span>
-            <span class="text-sm font-mono font-medium text-zinc-200 text-right" *ngIf="order()!.trackingNumber">
-                {{ order()!.trackingNumber }}
-            </span>
-            <span class="text-sm text-amber-500 text-right" *ngIf="!order()!.trackingNumber">
-                {{ 'OPERATIONS.ORDERS.NO_TRACKING' | translate }}
-            </span>
-        </div>
-    </div>
-</div>
-<!-- End Channel Information -->
 
 <!-- Order Management Section (Assignment, Priority, Notes) -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -720,38 +694,41 @@
 
         <div class="space-y-4">
             @for (item of order()!.items; track item.productId) {
-            <div class="grid grid-cols-[40px_80px_1fr_auto_auto] gap-4 items-center p-4 border-2 rounded-lg transition-all"
-                [class.bg-emerald-900-10]="isItemPicked(item.productId)"
+            <div class="flex gap-4 items-center p-4 border-2 rounded-xl transition-all"
                 [class.border-emerald-600]="isItemPicked(item.productId)"
+                [class.bg-emerald-950\/20]="isItemPicked(item.productId)"
                 [class.border-zinc-700]="!isItemPicked(item.productId)"
                 [class.bg-zinc-800]="!isItemPicked(item.productId)">
-                <label class="relative cursor-pointer flex items-center justify-center w-6 h-6 no-print">
+                <!-- Checkbox -->
+                <label class="relative cursor-pointer flex-shrink-0 no-print">
                     <input type="checkbox" [checked]="isItemPicked(item.productId)"
                         (change)="toggleItemPicked(item.productId)"
-                        class="peer opacity-0 absolute w-full h-full cursor-pointer z-10">
-                    <div
-                        class="w-6 h-6 border-2 border-zinc-500 rounded bg-zinc-800 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-colors flex items-center justify-center">
-                        <app-icon name="check" [size]="16"
-                            class="text-white opacity-0 peer-checked:opacity-100"></app-icon>
+                        class="peer sr-only">
+                    <div class="w-6 h-6 border-2 border-zinc-500 rounded bg-zinc-900 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all flex items-center justify-center">
+                        <app-icon name="check" [size]="14" class="text-white"></app-icon>
                     </div>
                 </label>
-                <div class="w-20 h-20 rounded-lg overflow-hidden bg-zinc-700 border border-zinc-600">
+                <!-- Thumbnail -->
+                <div class="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-zinc-700 border border-zinc-600/50">
                     <img [src]="item.productImage" [alt]="item.productName" class="w-full h-full object-cover">
                 </div>
-                <div class="flex flex-col gap-1">
-                    <div class="font-medium text-white text-lg">{{ item.productName }}</div>
-                    <div class="text-sm text-zinc-400 font-mono">SKU: {{ item.sku }}</div>
+                <!-- Product Info -->
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-white text-sm leading-snug truncate">{{ item.productName }}</div>
+                    <div class="text-xs text-zinc-500 font-mono mt-0.5">{{ item.sku }}</div>
                     @if (item.brand) {
-                    <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider">{{ item.brand }}</div>
+                    <div class="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mt-1">{{ item.brand }}</div>
                     }
                 </div>
-                <div class="flex flex-col items-center">
-                    <span class="text-xs text-zinc-500 uppercase">{{ 'OPERATIONS.ORDERS.QTY' | translate
-                        }}</span>
-                    <span class="text-xl font-bold text-white">{{ item.quantity }}</span>
+                <!-- Qty badge -->
+                <div class="flex-shrink-0 text-center px-3">
+                    <div class="text-[10px] text-zinc-600 uppercase font-bold">{{ 'OPERATIONS.ORDERS.QTY' | translate }}</div>
+                    <div class="text-2xl font-black text-white leading-none mt-0.5">{{ item.quantity }}</div>
                 </div>
-                <div class="font-bold text-white text-right min-w-[100px]">
-                    {{ formatCurrency(item.subtotal) }}
+                <!-- Price -->
+                <div class="flex-shrink-0 text-right min-w-[90px]">
+                    <div class="font-bold text-white text-sm">{{ formatCurrency(item.subtotal) }}</div>
+                    <div class="text-xs text-zinc-500 mt-0.5">{{ formatCurrency(item.price) }} c/u</div>
                 </div>
             </div>
             }
@@ -1429,7 +1406,7 @@
             <div class="space-y-3">
                 <div class="flex justify-between text-sm text-zinc-400">
                     <span>{{ 'OPERATIONS.ORDERS.SUBTOTAL' | translate }}</span>
-                    <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.subtotal) }}</span>
+                    <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.subtotal || order()!.total) }}</span>
                 </div>
                 @if (order()!.discount > 0) {
                 <div class="flex justify-between text-sm text-emerald-400">
@@ -1437,6 +1414,7 @@
                     <span>-{{ formatCurrency(order()!.discount) }}</span>
                 </div>
                 }
+                @if (order()!.sourceChannel !== 'mercadolibre') {
                 <div class="flex justify-between text-sm text-zinc-400">
                     <span>{{ 'OPERATIONS.ORDERS.SHIPPING' | translate }}</span>
                     <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.shippingCost) }}</span>
@@ -1445,6 +1423,7 @@
                     <span>{{ 'OPERATIONS.ORDERS.TAX' | translate }}</span>
                     <span class="font-medium text-zinc-200">{{ formatCurrency(order()!.tax) }}</span>
                 </div>
+                }
                 <div class="flex justify-between text-base font-bold text-white pt-4 border-t border-zinc-700 mt-2">
                     <span>{{ 'OPERATIONS.ORDERS.TOTAL' | translate }}</span>
                     <span class="text-xl text-emerald-400 font-black tracking-tight">{{
@@ -1452,6 +1431,91 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── MeLi P&L Breakdown ─────────────────────────────────────────── -->
+        @if (order()!.sourceChannel === 'mercadolibre') {
+        <div class="bg-zinc-800 rounded-xl p-6 shadow-lg border border-zinc-700 summary-card mt-4">
+            <h3 class="text-sm font-bold text-zinc-400 uppercase tracking-widest border-b border-zinc-700 pb-3 mb-4 flex items-center gap-2">
+                <app-icon name="dollar-sign" [size]="14"></app-icon>
+                Resumen Financiero MeLi
+            </h3>
+            <div class="space-y-2 text-xs">
+
+                <!-- Subtotal -->
+                <div class="flex justify-between">
+                    <span class="text-zinc-500">Venta bruta</span>
+                    <span class="text-zinc-200 font-mono">{{ formatCurrency(order()!.total) }}</span>
+                </div>
+
+                <!-- Marketplace Commission -->
+                <ng-container *ngIf="$any(order()).marketplaceFee > 0">
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500">Comisión MeLi</span>
+                        <span class="text-red-400 font-mono">−{{ formatCurrency($any(order()).marketplaceFee) }}</span>
+                    </div>
+                </ng-container>
+
+                <!-- Shipping Cost (3-state) -->
+                <div class="flex justify-between">
+                    <span class="text-zinc-500">Costo Envío</span>
+                    <ng-container *ngIf="$any(order()).shipping_seller_cost > 0">
+                        <span class="text-red-400 font-mono">−{{ formatCurrency($any(order()).shipping_seller_cost) }}</span>
+                    </ng-container>
+                    <ng-container *ngIf="$any(order()).shipping_seller_cost === 0">
+                        <span class="text-teal-400 font-semibold">MeLi absorbe</span>
+                    </ng-container>
+                    <ng-container *ngIf="$any(order()).shipping_seller_cost == null">
+                        <span class="text-amber-500">⏳ pendiente</span>
+                    </ng-container>
+                </div>
+
+                <!-- CFF Pending notice -->
+                <ng-container *ngIf="$any(order()).cff_pending">
+                    <div class="flex gap-1.5 items-start mt-1 p-2 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+                        <app-icon name="alert-circle" [size]="12" class="text-amber-400 mt-0.5 flex-shrink-0"></app-icon>
+                        <span class="text-amber-400 leading-tight">CFF pendiente — se actualizará al sincronizar</span>
+                    </div>
+                </ng-container>
+
+                <!-- SAT Retentions -->
+                <ng-container *ngIf="$any(order()).retencion_iva > 0 || $any(order()).retencion_isr > 0">
+                    <div class="pt-2 mt-1 border-t border-zinc-700/60">
+                        <div class="text-[10px] uppercase tracking-widest text-zinc-600 font-bold mb-1.5">Retenciones SAT</div>
+                        <div class="flex justify-between" *ngIf="$any(order()).retencion_iva > 0">
+                            <span class="text-zinc-600">Ret. IVA (8%)</span>
+                            <span class="text-zinc-500 font-mono">−{{ formatCurrency($any(order()).retencion_iva) }}</span>
+                        </div>
+                        <div class="flex justify-between" *ngIf="$any(order()).retencion_isr > 0">
+                            <span class="text-zinc-600">Ret. ISR (2.5%)</span>
+                            <span class="text-zinc-500 font-mono">−{{ formatCurrency($any(order()).retencion_isr) }}</span>
+                        </div>
+                    </div>
+                </ng-container>
+
+                <!-- Net Receipt -->
+                @if ($any(order()).net_receipt != null) {
+                <div class="flex justify-between pt-3 mt-1 border-t border-zinc-700">
+                    <span class="text-zinc-300 font-bold">Neto recibido</span>
+                    <span class="text-teal-400 font-black font-mono text-sm">{{ formatCurrency($any(order()).net_receipt) }}</span>
+                </div>
+                }
+
+                <!-- Keep Rate -->
+                @if ($any(order()).net_receipt != null && order()!.total > 0) {
+                <div class="flex justify-between">
+                    <span class="text-zinc-600 text-[10px] uppercase tracking-wider">Keep Rate</span>
+                    <span class="font-mono text-[10px] font-bold"
+                        [ngClass]="($any(order()).net_receipt / order()!.total) >= 0.80 ? 'text-emerald-400' :
+                                   ($any(order()).net_receipt / order()!.total) >= 0.70 ? 'text-amber-400' :
+                                   'text-red-400'">
+                        {{ ($any(order()).net_receipt / order()!.total * 100) | number:'1.1-1' }}%
+                    </span>
+                </div>
+                }
+
+            </div>
+        </div>
+        }
     </div>
 </div>
 <!-- ── Staff Cancel Modal (paid web orders → refund_pending) ─────────── -->

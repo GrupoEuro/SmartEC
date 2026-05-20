@@ -1,0 +1,221 @@
+"use strict";
+/**
+ * meli-ads.ts
+ * Mercado Ads (Publicidad) spend sync.
+ *
+ * Provides two callable Cloud Functions:
+ *   meliSyncAdsSpend  — sync daily ad spend for a date range
+ *   meliGetAdsSummary — return MTD spend + breakdown from Firestore cache
+ *
+ * Data is stored in Firestore:
+ *   meli_ads_daily/{YYYY-MM-DD}  → { spend, impressions, clicks, orders, date }
+ *   meli_ads_campaigns/{campaignId} → { name, status, daily: [...] }
+ *
+ * ML Advertising API v2 docs:
+ *   https://developers.mercadolibre.com/es_ar/advertising-v2
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.meliGetAdsSummary = exports.meliSyncAdsSpend = void 0;
+const functions = require("firebase-functions");
+const shared_1 = require("./shared");
+const meli_shared_1 = require("./meli-shared");
+const ADS_BASE = 'https://api.mercadolibre.com/advertising/v2';
+// ─── Helper: fetch from ML Advertising API ───────────────────────────────────
+async function fetchAds(path, token) {
+    const res = await fetch(`${ADS_BASE}${path}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`ML Ads API ${path} → ${res.status}: ${JSON.stringify(err)}`);
+    }
+    return res.json();
+}
+// ─── Format date as YYYY-MM-DD ───────────────────────────────────────────────
+function fmtDate(d) {
+    return d.toISOString().slice(0, 10);
+}
+/**
+ * meliSyncAdsSpend — Callable
+ * Syncs Mercado Ads daily spend for a given date range.
+ *
+ * Input:
+ *   dateFrom?: string  — YYYY-MM-DD (default: first day of current month)
+ *   dateTo?:   string  — YYYY-MM-DD (default: today)
+ *
+ * Output:
+ *   { success, daysProcessed, totalSpend, campaigns: [...] }
+ */
+exports.meliSyncAdsSpend = functions
+    .runWith({ timeoutSeconds: 120, memory: '256MB' })
+    .https.onCall(async (data, context) => {
+    var _a;
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    try {
+        const configDoc = await shared_1.db.collection('config').doc('integrations').get();
+        const meliConfig = (_a = configDoc.data()) === null || _a === void 0 ? void 0 : _a.meli;
+        if (!(meliConfig === null || meliConfig === void 0 ? void 0 : meliConfig.userId))
+            throw new Error('MercadoLibre not connected.');
+        const accessToken = await (0, meli_shared_1.getValidMeliToken)();
+        const sellerId = String(meliConfig.userId);
+        // Date range defaults: current MTD
+        const now = new Date();
+        const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+        const dateFrom = (data === null || data === void 0 ? void 0 : data.dateFrom) || fmtDate(defaultFrom);
+        const dateTo = (data === null || data === void 0 ? void 0 : data.dateTo) || fmtDate(now);
+        console.log(`[MeliAds] Syncing spend from ${dateFrom} to ${dateTo} for seller ${sellerId}`);
+        // ── Step 1: List all campaigns ─────────────────────────────────
+        let campaigns = [];
+        try {
+            const campRes = await fetchAds(`/advertiser/${sellerId}/campaigns?limit=100`, accessToken);
+            campaigns = (campRes === null || campRes === void 0 ? void 0 : campRes.results) || (campRes === null || campRes === void 0 ? void 0 : campRes.campaigns) || [];
+            console.log(`[MeliAds] Found ${campaigns.length} campaigns`);
+        }
+        catch (e) {
+            console.warn('[MeliAds] Could not list campaigns (may need Ads scope):', e.message);
+            // Fall through to try the aggregate report
+        }
+        // ── Step 2: Get daily aggregate report ────────────────────────
+        // ML Ads API: GET /advertiser/{id}/report?type=daily&date_from=&date_to=
+        let dailyRows = [];
+        let totalSpend = 0;
+        let totalClicks = 0;
+        let totalImpressions = 0;
+        try {
+            const reportRes = await fetchAds(`/advertiser/${sellerId}/report?type=daily&date_from=${dateFrom}&date_to=${dateTo}`, accessToken);
+            dailyRows = (reportRes === null || reportRes === void 0 ? void 0 : reportRes.results) || (reportRes === null || reportRes === void 0 ? void 0 : reportRes.data) || [];
+            console.log(`[MeliAds] Daily report rows: ${dailyRows.length}`);
+        }
+        catch (e) {
+            // Try alternative endpoint shape
+            console.warn('[MeliAds] Daily report endpoint failed, trying campaigns stats:', e.message);
+        }
+        // ── Step 3: If daily report worked, aggregate and write ───────
+        const batch = shared_1.db.batch();
+        let daysProcessed = 0;
+        if (dailyRows.length > 0) {
+            // Group by date
+            const byDate = new Map();
+            dailyRows.forEach((row) => {
+                // ML API can return date as 'date', 'date_from', or 'day'
+                const date = row.date || row.date_from || row.day || '';
+                if (!date)
+                    return;
+                const dateKey = date.slice(0, 10); // normalize to YYYY-MM-DD
+                const existing = byDate.get(dateKey) || { spend: 0, clicks: 0, impressions: 0, orders: 0 };
+                existing.spend += Number(row.spend || row.cost || 0);
+                existing.clicks += Number(row.clicks || 0);
+                existing.impressions += Number(row.impressions || 0);
+                existing.orders += Number(row.orders || row.conversions || 0);
+                byDate.set(dateKey, existing);
+            });
+            byDate.forEach((stats, dateKey) => {
+                totalSpend += stats.spend;
+                totalClicks += stats.clicks;
+                totalImpressions += stats.impressions;
+                const docRef = shared_1.db.collection('meli_ads_daily').doc(dateKey);
+                batch.set(docRef, {
+                    date: dateKey,
+                    spend: Math.round(stats.spend * 100) / 100,
+                    clicks: stats.clicks,
+                    impressions: stats.impressions,
+                    orders: stats.orders,
+                    // cost per click
+                    cpc: stats.clicks > 0 ? Math.round((stats.spend / stats.clicks) * 100) / 100 : 0,
+                    // click-through rate
+                    ctr: stats.impressions > 0 ? Math.round((stats.clicks / stats.impressions) * 10000) / 100 : 0,
+                    syncedAt: new Date(),
+                }, { merge: true });
+                daysProcessed++;
+            });
+        }
+        else {
+            // ── Fallback: per-campaign stats if daily report unavailable ──
+            console.log('[MeliAds] Trying per-campaign stats as fallback...');
+            for (const camp of campaigns.slice(0, 20)) {
+                try {
+                    const statsRes = await fetchAds(`/advertiser/${sellerId}/campaigns/${camp.id}/statistics?date_from=${dateFrom}&date_to=${dateTo}`, accessToken);
+                    const spend = Number((statsRes === null || statsRes === void 0 ? void 0 : statsRes.spend) || (statsRes === null || statsRes === void 0 ? void 0 : statsRes.cost) || 0);
+                    totalSpend += spend;
+                    totalClicks += Number((statsRes === null || statsRes === void 0 ? void 0 : statsRes.clicks) || 0);
+                    // Write per-campaign summary
+                    batch.set(shared_1.db.collection('meli_ads_campaigns').doc(String(camp.id)), {
+                        campaignId: String(camp.id),
+                        name: camp.name || 'Campaign',
+                        status: camp.status || 'unknown',
+                        spend: Math.round(spend * 100) / 100,
+                        clicks: Number((statsRes === null || statsRes === void 0 ? void 0 : statsRes.clicks) || 0),
+                        impressions: Number((statsRes === null || statsRes === void 0 ? void 0 : statsRes.impressions) || 0),
+                        dateFrom, dateTo,
+                        syncedAt: new Date(),
+                    }, { merge: true });
+                }
+                catch (e) {
+                    console.warn(`[MeliAds] Campaign ${camp.id} stats failed:`, e.message);
+                }
+            }
+        }
+        // ── Step 4: Write MTD summary ─────────────────────────────────
+        const summaryRef = shared_1.db.collection('meli_ads_daily').doc('_summary');
+        batch.set(summaryRef, {
+            dateFrom, dateTo,
+            totalSpend: Math.round(totalSpend * 100) / 100,
+            totalClicks,
+            totalImpressions,
+            cpc: totalClicks > 0 ? Math.round((totalSpend / totalClicks) * 100) / 100 : 0,
+            daysProcessed,
+            campaignCount: campaigns.length,
+            syncedAt: new Date(),
+        }, { merge: true });
+        await batch.commit();
+        console.log(`[MeliAds] ✅ Synced. totalSpend=$${Math.round(totalSpend * 100) / 100} | days=${daysProcessed} | campaigns=${campaigns.length}`);
+        return {
+            success: true,
+            dateFrom, dateTo,
+            daysProcessed,
+            campaignCount: campaigns.length,
+            totalSpend: Math.round(totalSpend * 100) / 100,
+            totalClicks,
+            totalImpressions,
+        };
+    }
+    catch (err) {
+        console.error('[MeliAds] Sync failed:', err.message);
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+/**
+ * meliGetAdsSummary — Callable
+ * Returns cached MTD ad spend summary + daily breakdown from Firestore.
+ * Fast read — no ML API calls.
+ *
+ * Input: { month?: 'YYYY-MM' }
+ * Output: { summary, daily: [...] }
+ */
+exports.meliGetAdsSummary = functions
+    .runWith({ timeoutSeconds: 30 })
+    .https.onCall(async (data, context) => {
+    if (!context.auth)
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    try {
+        const now = new Date();
+        const month = (data === null || data === void 0 ? void 0 : data.month) || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        // Summary doc
+        const summarySnap = await shared_1.db.collection('meli_ads_daily').doc('_summary').get();
+        const summary = summarySnap.exists ? summarySnap.data() : null;
+        // Daily docs for the requested month
+        const dailySnap = await shared_1.db.collection('meli_ads_daily')
+            .where('date', '>=', `${month}-01`)
+            .where('date', '<=', `${month}-31`)
+            .orderBy('date', 'asc')
+            .get();
+        const daily = dailySnap.docs.map(d => d.data());
+        return { success: true, month, summary, daily };
+    }
+    catch (err) {
+        console.error('[MeliAds] GetSummary failed:', err.message);
+        throw new functions.https.HttpsError('internal', err.message);
+    }
+});
+//# sourceMappingURL=meli-ads.js.map

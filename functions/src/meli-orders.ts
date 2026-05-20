@@ -384,7 +384,7 @@ export const meliBackfillShippingCosts = functions
 
             const accessToken = await getValidMeliToken();
 
-            // Find all MeLi orders that have a shipmentId but 0 or missing shipping cost
+            // Find all MeLi orders that have a shipmentId but 0 or missing shipping cost, or are cff_pending
             const ordersSnap = await db.collection('orders')
                 .where('sourceChannel', '==', 'mercadolibre')
                 .get();
@@ -394,7 +394,8 @@ export const meliBackfillShippingCosts = functions
                 const d = doc.data();
                 const hasCost = d.shipping_seller_cost != null && d.shipping_seller_cost > 0;
                 const hasShipId = d.shipmentId || d.shippingId || d.meliShipmentId;
-                return hasShipId && !hasCost;
+                const isCffPending = d.cff_pending === true;
+                return (hasShipId && !hasCost) || isCffPending;
             });
 
             console.log(`[Meli Backfill] Found ${toBackfill.length} orders to backfill (of ${ordersSnap.size} total MeLi orders)`);
@@ -417,51 +418,95 @@ export const meliBackfillShippingCosts = functions
                         data.shipmentId || data.shippingId || data.meliShipmentId || null;
                     if (!shipmentId) { skippedCount++; return; }
 
+                    let sellerCost = 0;
+                    let grossAmount = 0;
+                    let meliSubsidy = 0;
+                    let buyerShipCost = 0;
+
                     try {
                         const cRes = await fetch(
                             `https://api.mercadolibre.com/shipments/${shipmentId}/costs`,
                             { headers: { 'Authorization': `Bearer ${accessToken}` } }
                         );
-                        if (!cRes.ok) { skippedCount++; return; }
-
-                        const costsJson = await cRes.json() as any;
-                        const sellerCost: number = costsJson?.senders?.[0]?.cost ?? 0;
-                        const grossAmount: number = costsJson?.gross_amount ?? 0;
-                        const meliSubsidy: number = (costsJson?.senders?.[0]?.discounts || [])
-                            .reduce((sum: number, d: any) => sum + (d.promoted_amount || 0), 0);
-
-                        if (sellerCost === 0) { skippedCount++; return; } // No cost available yet (pending shipment)
-
-                        // ── Recompute net_receipt with full formula (backfill path) ───────────────
-                        const commission: number  = data.marketplaceFee ?? 0;
-                        const total: number       = data.total ?? 0;
-                        const preIva: number      = total / 1.16;
-                        const retIVA: number      = Math.round(preIva * 0.08  * 100) / 100;
-                        const retISR: number      = Math.round(preIva * 0.025 * 100) / 100;
-                        const refunded: number    = data.refundedAmount ?? 0;
-                        const bonus: number       = data.mlBonus ?? 0;
-                        const netReceipt: number  = Math.round(Math.max(0,
-                            total - commission - sellerCost - retIVA - retISR - refunded + bonus
-                        ) * 100) / 100;
-
-                        await doc.ref.update({
-                            shipping_seller_cost: sellerCost,
-                            shipping_gross_amount: grossAmount,
-                            shipping_meli_subsidy: meliSubsidy,
-                            retencion_iva: retIVA,
-                            retencion_isr: retISR,
-                            total_impuestos: retIVA + retISR,
-                            refunded_amount: data.refundedAmount ?? 0,
-                            ml_bonus: data.mlBonus ?? 0,
-                            cff_pending: false,              // shipping cost now known
-                            net_receipt: netReceipt,
-                            shipping_backfilled: true,
-                        });
-                        updatedCount++;
+                        if (cRes.ok) {
+                            const costsJson = await cRes.json() as any;
+                            sellerCost = costsJson?.senders?.[0]?.cost ?? 0;
+                            grossAmount = costsJson?.gross_amount ?? 0;
+                            buyerShipCost = costsJson?.buyer_cost ?? costsJson?.buyers?.[0]?.cost ?? 0;
+                            meliSubsidy = (costsJson?.senders?.[0]?.discounts || [])
+                                .reduce((sum: number, d: any) => sum + (d.promoted_amount || 0), 0);
+                        }
                     } catch (e) {
-                        console.warn(`[Meli Backfill] Failed for shipment ${shipmentId}:`, e);
-                        skippedCount++;
+                        console.warn(`[Meli Backfill] Costs API failed for shipment ${shipmentId}:`, e);
                     }
+
+                    // MercadoPago payment API fallback (CFF ground truth for Full)
+                    let mpShipAmount = 0;
+                    const paymentId = data.payments?.[0]?.id;
+                    if (paymentId) {
+                        try {
+                            const mpRes = await fetch(
+                                `https://api.mercadolibre.com/collections/${paymentId}`,
+                                { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                            );
+                            if (mpRes.ok) {
+                                const mpData = await mpRes.json() as any;
+                                const col = mpData?.collection ?? mpData;
+                                mpShipAmount = col?.shipping_amount ?? 0;
+                            }
+                        } catch (e) {
+                            console.warn(`[Meli Backfill] MP payment fetch failed for payment ${paymentId}:`, e);
+                        }
+                    }
+
+                    // Priority shipping cost resolution logic
+                    const shippingSellerCost: number = (() => {
+                        if (sellerCost > 0) return sellerCost;
+                        if (mpShipAmount > 0) {
+                            const isFull = data.fulfillmentType === 'platform';
+                            if (isFull) return mpShipAmount;
+                            if (mpShipAmount > buyerShipCost) {
+                                return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+                            }
+                        }
+                        const fromOrder = data.orderShippingCost ?? 0;
+                        if (fromOrder > 0) return fromOrder;
+                        return 0;
+                    })();
+
+                    if (shippingSellerCost === 0) { skippedCount++; return; } // No cost available yet (pending shipment)
+
+                    const shippingGrossAmount = grossAmount > 0 ? grossAmount : mpShipAmount;
+                    const shippingMeliSubsidy = meliSubsidy;
+
+                    // ── Recompute net_receipt with full formula (backfill path) ───────────────
+                    const commission: number  = data.marketplaceFee ?? 0;
+                    const total: number       = data.total ?? 0;
+                    const preIva: number      = total / 1.16;
+                    const retIVA: number      = Math.round(preIva * 0.08  * 100) / 100;
+                    const retISR: number      = Math.round(preIva * 0.025 * 100) / 100;
+                    const refunded: number    = data.refundedAmount ?? 0;
+                    const bonus: number       = data.mlBonus ?? 0;
+                    const netReceipt: number  = Math.round(Math.max(0,
+                        total - commission - shippingSellerCost - retIVA - retISR - refunded + bonus
+                    ) * 100) / 100;
+
+                    await doc.ref.update({
+                        shipping_seller_cost: shippingSellerCost,
+                        shipping_gross_amount: shippingGrossAmount,
+                        shipping_meli_subsidy: shippingMeliSubsidy,
+                        mp_shipping_amount: mpShipAmount,
+                        buyer_shipping_cost: buyerShipCost,
+                        retencion_iva: retIVA,
+                        retencion_isr: retISR,
+                        total_impuestos: retIVA + retISR,
+                        refunded_amount: data.refundedAmount ?? 0,
+                        ml_bonus: data.mlBonus ?? 0,
+                        cff_pending: false,              // shipping cost now known
+                        net_receipt: netReceipt,
+                        shipping_backfilled: true,
+                    });
+                    updatedCount++;
                 }));
 
                 // Brief rate-limit pause between batches

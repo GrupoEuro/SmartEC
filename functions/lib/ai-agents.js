@@ -88,7 +88,7 @@ async function evaluateConditions(conditions, convId, convData, businessHours) {
  *                    Using responseMimeType:'application/json' on free-text calls causes
  *                    internal errors when Gemini cannot produce valid JSON.
  */
-async function callGemini(systemPrompt, history, modelName = 'gemini-2.5-pro', temperature = 0.2, maxTokens = 8192, forceJson = false) {
+async function callGemini(systemPrompt, history, modelName = 'gemini-1.5-flash', temperature = 0.2, maxTokens = 8192, forceJson = false) {
     var _a, _b, _c, _d, _e;
     const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = await Promise.resolve().then(() => require('@google/generative-ai'));
     const apiKey = (_a = functions.config().gemini) === null || _a === void 0 ? void 0 : _a.apikey;
@@ -184,7 +184,7 @@ async function runAgentOrchestrator(convId, agent) {
     systemPrompt += `\n\nTono: ${(_f = toneInstr[(_e = tone.tone) !== null && _e !== void 0 ? _e : 'professional']) !== null && _f !== void 0 ? _f : ''} Máximo ${maxSentences} oraciones por respuesta. ${tone.useEmojis ? 'Puedes usar emojis con moderación.' : 'No uses emojis.'}${kbContext}`;
     // Call AI
     const mc = (_g = agent.modelConfig) !== null && _g !== void 0 ? _g : {};
-    const { text, inputTokens, outputTokens } = await callGemini(systemPrompt, history, (_h = mc.model) !== null && _h !== void 0 ? _h : 'gemini-1.5-pro', (_j = mc.temperature) !== null && _j !== void 0 ? _j : 0.7, (_k = mc.maxTokens) !== null && _k !== void 0 ? _k : 512);
+    const { text, inputTokens, outputTokens } = await callGemini(systemPrompt, history, (_h = mc.model) !== null && _h !== void 0 ? _h : 'gemini-1.5-flash', (_j = mc.temperature) !== null && _j !== void 0 ? _j : 0.7, (_k = mc.maxTokens) !== null && _k !== void 0 ? _k : 512);
     const latencyMs = Date.now() - start;
     const handoff = parseHandoff(text);
     const replyText = stripDirectives(text);
@@ -434,40 +434,12 @@ No devuelvas ningún texto fuera del JSON. Devuelve el JSON puro sin bloques mar
     }
     console.log(`[analyzeMeliInsights] Completed in ${Date.now() - start}ms. Analyzed ${itemsToAnalyze.length} items.`);
 }
-// ── EuroMind Executive Functions ───────────────────────────────────────────────
-exports.euromindWeeklyReport = functions
-    .runWith({ timeoutSeconds: 540, memory: '1GB' })
-    .pubsub.schedule('0 8 * * 0') // Every Sunday at 8:00 AM
-    .timeZone('America/Mexico_City')
-    .onRun(async (context) => {
-    const start = Date.now();
-    console.log('[euromindWeeklyReport] Starting weekly report generation...');
-    const systemPrompt = `Eres EuroMind, el asistente ejecutivo de inteligencia artificial de Importadora Euro.
-Tu tarea es generar un informe semanal para la directiva, analizando el desempeño de esta semana basándote en la información disponible.
-Destaca fortalezas, áreas de oportunidad y sugerencias estratégicas de mejora.`;
-    const history = [{
-            role: 'user',
-            parts: [{ text: `Genera el informe ejecutivo de esta semana.` }]
-        }];
-    try {
-        const { text, inputTokens, outputTokens } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.5, 8192);
-        await db.collection('euromind_reports').add({
-            type: 'weekly',
-            content: text,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        await db.collection('ai_interactions').add({
-            agentId: 'euromind',
-            trigger: 'weekly_cron',
-            inputTokens,
-            outputTokens,
-            latencyMs: Date.now() - start,
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-        });
-    }
-    catch (error) {
-        console.error('[euromindWeeklyReport] Error generating report:', error);
-    }
+// ── EuroMind Weekly Report — DISABLED (2026-05-17, re-enable when ready) ──────
+// Previously: pubsub.schedule('0 8 * * 0') — every Sunday 8am MX
+// Cost driver: gemini-2.5-pro with 8192 maxTokens every week
+// To re-enable: restore the pubsub trigger and deploy
+exports.euromindWeeklyReport = functions.https.onRequest((_req, res) => {
+    res.status(200).send('euromindWeeklyReport is currently disabled. Re-enable the pubsub schedule to activate.');
 });
 exports.askEuroMind = functions.https.onCall(async (data, context) => {
     if (!context.auth)
@@ -491,7 +463,7 @@ Tienes acceso a los KPIs y contexto de negocio si se proporciona. Responde de fo
             parts: [{ text: prompt }]
         }];
     try {
-        const { text, inputTokens, outputTokens } = await callGemini(systemPrompt, history, 'gemini-2.5-pro', 0.5, 8192);
+        const { text, inputTokens, outputTokens } = await callGemini(systemPrompt, history, 'gemini-1.5-flash', 0.5, 8192);
         await db.collection('ai_interactions').add({
             agentId: 'euromind',
             trigger: isDashboardOnDemand ? 'on_demand' : 'user_query',

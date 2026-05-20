@@ -126,7 +126,7 @@ async function processAndSaveMeliOrderById(orderId, token, headers) {
     await processAndSaveMeliOrderFromData(mo, token, headers);
 }
 async function processAndSaveMeliOrderFromData(mo, token, headers) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3;
     // Fetch shipment
     let shipData = null;
     if ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id) {
@@ -151,7 +151,79 @@ async function processAndSaveMeliOrderFromData(mo, token, headers) {
         }
     }
     catch (e) { /* non-critical */ }
+    // ── Shipment Costs (same 4-source chain as meliSyncOrders) ────────────────
+    let shipCosts = null;
+    if ((_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.id) {
+        try {
+            const cRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}/costs`, { headers });
+            if (cRes.ok) {
+                const costsJson = await cRes.json();
+                const senderCost = (_e = (_d = (_c = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.cost) !== null && _e !== void 0 ? _e : 0;
+                const grossAmount = (_f = costsJson === null || costsJson === void 0 ? void 0 : costsJson.gross_amount) !== null && _f !== void 0 ? _f : 0;
+                const buyerCost = (_k = (_g = costsJson === null || costsJson === void 0 ? void 0 : costsJson.buyer_cost) !== null && _g !== void 0 ? _g : (_j = (_h = costsJson === null || costsJson === void 0 ? void 0 : costsJson.buyers) === null || _h === void 0 ? void 0 : _h[0]) === null || _j === void 0 ? void 0 : _j.cost) !== null && _k !== void 0 ? _k : 0;
+                const meliSubsidy = (((_m = (_l = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _l === void 0 ? void 0 : _l[0]) === null || _m === void 0 ? void 0 : _m.discounts) || [])
+                    .reduce((sum, d) => sum + (d.promoted_amount || 0), 0);
+                shipCosts = { seller_cost: senderCost, gross_amount: grossAmount, buyer_cost: buyerCost, meli_subsidy: meliSubsidy };
+            }
+        }
+        catch (_) { /* non-critical */ }
+    }
+    // ── MercadoPago Payment API (CFF ground truth for Full) ───────────────────
+    let mpPayment = null;
+    const paymentId = (_p = (_o = mo.payments) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.id;
+    if (paymentId) {
+        try {
+            const mpRes = await fetch(`https://api.mercadolibre.com/collections/${paymentId}`, { headers });
+            if (mpRes.ok) {
+                const mpData = await mpRes.json();
+                const col = (_q = mpData === null || mpData === void 0 ? void 0 : mpData.collection) !== null && _q !== void 0 ? _q : mpData;
+                mpPayment = {
+                    shipping_amount: (_r = col === null || col === void 0 ? void 0 : col.shipping_amount) !== null && _r !== void 0 ? _r : 0,
+                    mp_fee: ((col === null || col === void 0 ? void 0 : col.fee_details) || [])
+                        .filter((f) => f.type === 'mercadopago_fee' && f.fee_payer === 'collector')
+                        .reduce((s, f) => s + (f.amount || 0), 0),
+                    net_received_amount: (_t = (_s = col === null || col === void 0 ? void 0 : col.net_received_amount) !== null && _s !== void 0 ? _s : col === null || col === void 0 ? void 0 : col.net_amount) !== null && _t !== void 0 ? _t : 0,
+                };
+            }
+        }
+        catch (_) { /* non-critical */ }
+    }
     const newOrder = (0, meli_shared_1.parseAndSaveMeliOrder)(mo, shipData, billingData);
+    // ── Resolve shipping seller cost ─────────────────────────────────────────
+    const mpShipAmount = (_u = mpPayment === null || mpPayment === void 0 ? void 0 : mpPayment.shipping_amount) !== null && _u !== void 0 ? _u : 0;
+    const buyerShipCost = (_v = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.buyer_cost) !== null && _v !== void 0 ? _v : 0;
+    const shippingSellerCost = (() => {
+        var _a, _b;
+        const fromCosts = (_a = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.seller_cost) !== null && _a !== void 0 ? _a : 0;
+        if (fromCosts > 0)
+            return fromCosts;
+        if (mpShipAmount > 0) {
+            if (newOrder.fulfillmentType === 'platform')
+                return mpShipAmount;
+            if (mpShipAmount > buyerShipCost)
+                return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+        }
+        const fromOrder = (_b = newOrder.orderShippingCost) !== null && _b !== void 0 ? _b : 0;
+        if (fromOrder > 0)
+            return fromOrder;
+        return 0;
+    })();
+    const shippingGrossAmount = (_w = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.gross_amount) !== null && _w !== void 0 ? _w : mpShipAmount;
+    const shippingMeliSubsidy = (_x = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.meli_subsidy) !== null && _x !== void 0 ? _x : 0;
+    const cffPending = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0 && mpShipAmount === 0;
+    // ── SAT tax retentions ───────────────────────────────────────────────────
+    const IVA_INCLUSIVE_DIVISOR = 1.16;
+    const totalAmount = (_y = newOrder.total) !== null && _y !== void 0 ? _y : 0;
+    const preIvaAmount = totalAmount / IVA_INCLUSIVE_DIVISOR;
+    const retencionIVA = Math.round(preIvaAmount * 0.08 * 100) / 100;
+    const retencionISR = Math.round(preIvaAmount * 0.025 * 100) / 100;
+    const meliCommission = (_z = newOrder.marketplaceFee) !== null && _z !== void 0 ? _z : 0;
+    const refundedAmount = (_0 = newOrder.refundedAmount) !== null && _0 !== void 0 ? _0 : 0;
+    const mlBonus = (_1 = newOrder.mlBonus) !== null && _1 !== void 0 ? _1 : 0;
+    const netReceipt = Math.round(Math.max(0, totalAmount - meliCommission - retencionIVA - retencionISR
+        - shippingSellerCost - refundedAmount + mlBonus) * 100) / 100;
+    // Merge financial fields into the order before saving
+    const orderWithFinancials = Object.assign(Object.assign({}, newOrder), { shipping_seller_cost: shippingSellerCost, shipping_gross_amount: shippingGrossAmount, shipping_meli_subsidy: shippingMeliSubsidy, mp_shipping_amount: mpShipAmount, buyer_shipping_cost: buyerShipCost, cff_pending: cffPending, retencion_iva: retencionIVA, retencion_isr: retencionISR, total_impuestos: retencionIVA + retencionISR, refunded_amount: refundedAmount, ml_bonus: mlBonus, net_receipt: netReceipt });
     // Use the REAL individual order id (what the seller sees on MeLi) as the doc key
     const orderRef = shared_1.db.collection('orders').doc(`meli_${mo.id}`);
     // Preserve the original human-readable buyer name on webhook updates.
@@ -159,24 +231,21 @@ async function processAndSaveMeliOrderFromData(mo, token, headers) {
     // first name received so the UI always shows the readable version.
     try {
         const existingSnap = await orderRef.get();
-        const existingOrigName = (_c = (_b = existingSnap.data()) === null || _b === void 0 ? void 0 : _b.customer) === null || _c === void 0 ? void 0 : _c.originalName;
+        const existingOrigName = (_3 = (_2 = existingSnap.data()) === null || _2 === void 0 ? void 0 : _2.customer) === null || _3 === void 0 ? void 0 : _3.originalName;
         const isAnonW = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
         if (existingOrigName && !isAnonW(existingOrigName)) {
-            // Keep the stored readable name
-            newOrder.customer.originalName = existingOrigName;
+            orderWithFinancials.customer.originalName = existingOrigName;
         }
-        else if (existingOrigName && isAnonW(existingOrigName) && !isAnonW(newOrder.customer.originalName)) {
+        else if (existingOrigName && isAnonW(existingOrigName) && !isAnonW(orderWithFinancials.customer.originalName)) {
             // Upgrade: stored was anonymized, new is readable — keep new one
         }
         else if (existingOrigName) {
-            // Both anonymized — keep stored one for stability
-            newOrder.customer.originalName = existingOrigName;
+            orderWithFinancials.customer.originalName = existingOrigName;
         }
-        // If no originalName yet → this is the first write, keep the current name as originalName
     }
     catch (_) { /* non-critical — proceed without preservation */ }
-    await orderRef.set(newOrder, { merge: true });
-    console.log(`[Meli Webhook] Saved order ML-${mo.id} (pack_id: ${mo.pack_id || 'n/a'})`);
+    await orderRef.set(orderWithFinancials, { merge: true });
+    console.log(`[Meli Webhook] Saved order ML-${mo.id} with shipping_cost=${shippingSellerCost} net=${netReceipt} (pack_id: ${mo.pack_id || 'n/a'})`);
 }
 exports.getMeliRawOrderDebug = functions.https.onRequest(async (req, res) => {
     var _a;

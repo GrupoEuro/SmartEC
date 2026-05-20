@@ -1451,7 +1451,24 @@
                                 <span class="text-red-400 font-mono">−{{ formatCurrency($any(order).marketplaceFee) }}</span>
                             </div>
                             }
-                            @if ($any(order).shipping_seller_cost) {
+                            @if (order.sourceChannel === 'mercadolibre') {
+                                @if ($any(order).shipping_seller_cost > 0) {
+                                <div class="flex justify-between">
+                                    <span class="text-zinc-500">Costo Envío</span>
+                                    <span class="text-red-400 font-mono">−{{ formatCurrency($any(order).shipping_seller_cost) }}</span>
+                                </div>
+                                } @else if ($any(order).shipping_seller_cost === 0) {
+                                <div class="flex justify-between">
+                                    <span class="text-zinc-500">Costo Envío</span>
+                                    <span class="text-teal-400 font-mono text-[10px] font-semibold">MeLi absorbe</span>
+                                </div>
+                                } @else {
+                                <div class="flex justify-between">
+                                    <span class="text-zinc-500">Costo Envío</span>
+                                    <span class="text-amber-500 font-mono text-[10px]">⏳ pendiente</span>
+                                </div>
+                                }
+                            } @else if ($any(order).shipping_seller_cost > 0) {
                             <div class="flex justify-between">
                                 <span class="text-zinc-500">Costo Envío</span>
                                 <span class="text-red-400 font-mono">−{{ formatCurrency($any(order).shipping_seller_cost) }}</span>

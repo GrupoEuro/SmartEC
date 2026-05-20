@@ -474,3 +474,135 @@
 
 /* ── MeLi Full variant (lighter border) ─────────────────────────────── */
 .workflow-meli-full { border-color: rgba(234,179,8,0.25); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RIGHT COLUMN / SUMMARY PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.summary-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.summary-card {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS BUTTON (matches app-wide btn-glass)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.btn-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4rem 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #d4d4d8;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+}
+
+.btn-glass:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-glass:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADDITIONAL STATUS BADGES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.status-paid,
+.status-approved {
+    background-color: rgba(6, 78, 59, 0.3);
+    color: #34d399;
+    border: 1px solid rgba(6, 95, 70, 0.5);
+}
+
+.status-refund_pending {
+    background-color: rgba(120, 53, 15, 0.3);
+    color: #fbbf24;
+    border: 1px solid rgba(146, 64, 14, 0.5);
+}
+
+.status-returned {
+    background-color: rgba(88, 28, 135, 0.3);
+    color: #c084fc;
+    border: 1px solid rgba(107, 33, 168, 0.5);
+}
+
+.status-pending_payment {
+    background-color: rgba(39, 39, 42, 0.5);
+    color: #71717a;
+    border: 1px solid rgba(63, 63, 70, 0.5);
+}
+
+.status-payment_failed {
+    background-color: rgba(127, 29, 29, 0.4);
+    color: #fca5a5;
+    border: 1px solid rgba(153, 27, 27, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FINANCIAL HIGHLIGHT ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+.net-receipt-row {
+    background: linear-gradient(135deg, rgba(20,184,166,0.08), rgba(6,182,212,0.05));
+    border: 1px solid rgba(20,184,166,0.2);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin-top: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT OVERRIDES (updated zinc selectors)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    .bg-zinc-800,
+    .bg-zinc-900,
+    .bg-zinc-700,
+    .bg-slate-800,
+    .bg-slate-900,
+    .bg-slate-700 {
+        background: white !important;
+        border: 1px solid #ddd !important;
+        color: black !important;
+    }
+
+    .text-white,
+    .text-zinc-200,
+    .text-zinc-300,
+    .text-zinc-400,
+    .text-slate-200,
+    .text-slate-300,
+    .text-slate-400 {
+        color: black !important;
+    }
+
+    .no-print,
+    .workflow-panel,
+    .summary-column {
+        display: none !important;
+    }
+}

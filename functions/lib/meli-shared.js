@@ -171,7 +171,7 @@ function stripNullsAndUndefined(obj) {
 exports.stripNullsAndUndefined = stripNullsAndUndefined;
 // Helper: Parse and construct Eurollantas Order object from a Meli Order, Ship Data, and Billing Info
 function parseAndSaveMeliOrder(mo, shipData, billingData) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11;
     let internalStatus = 'pending';
     if (mo.status === 'paid')
         internalStatus = 'processing';
@@ -330,7 +330,39 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
             quantity: item.quantity,
             subtotal: item.unit_price * item.quantity,
             sku: item.item.seller_sku || ''
-        })), total: mo.total_amount, subtotal: mo.total_amount, marketplaceFee: (mo.order_items || []).reduce((acc, val) => acc + (val.sale_fee || 0), 0), paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending' }, (() => {
+        })), total: mo.total_amount, subtotal: mo.total_amount, marketplaceFee: (mo.order_items || []).reduce((acc, val) => acc + (val.sale_fee || 0), 0), paymentStatus: mo.payments && mo.payments.length > 0 && mo.payments[0].status === 'approved' ? 'approved' : 'pending', 
+        // ── Financial accuracy fields ────────────────────────────────────────────
+        // refundedAmount: sum of all payment-level refunds (cancellations, chargebacks)
+        // This reduces net_receipt — captured from payments[].refunded_amount
+        refundedAmount: (() => {
+            const total = (mo.payments || []).reduce((sum, p) => {
+                // refunded_amount is the authoritative refund field in ML API
+                const refund = p.refunded_amount || p.amount_refunded || 0;
+                return sum + (typeof refund === 'number' ? refund : 0);
+            }, 0);
+            return Math.round(total * 100) / 100;
+        })(), 
+        // mlBonus: any ML-funded credits added to the order (Flex reimbursements,
+        // seller-protection credits, ML-funded coupon subsidies)
+        // These INCREASE net_receipt — captured from order.coupon + order.coupons[]
+        mlBonus: (() => {
+            let bonus = 0;
+            // order.coupon.amount = ML-funded discount subsidy
+            if (mo.coupon && typeof mo.coupon.amount === 'number')
+                bonus += mo.coupon.amount;
+            // order.coupons[] — multiple coupon array (newer API shape)
+            if (Array.isArray(mo.coupons)) {
+                mo.coupons.forEach((c) => { bonus += typeof c.amount === 'number' ? c.amount : 0; });
+            }
+            return Math.round(bonus * 100) / 100;
+        })(), 
+        // isAdDriven: true when this order was attributed to a Mercado Ads campaign
+        isAdDriven: !!(((_10 = mo.context) === null || _10 === void 0 ? void 0 : _10.channel) === 'mp-advertising' ||
+            ((_11 = mo.context) === null || _11 === void 0 ? void 0 : _11.source) === 'ADVERTISING' ||
+            (mo.tags && mo.tags.includes('paid_advertising'))), 
+        // orderShippingCost: order-level shipping_cost field (may carry Full CFF
+        // when /shipments/{id}/costs returns 0 for fulfillment orders)
+        orderShippingCost: typeof mo.shipping_cost === 'number' ? Math.abs(mo.shipping_cost) : 0 }, (() => {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         const recvAddr = (_e = (_c = (_a = shipData === null || shipData === void 0 ? void 0 : shipData.receiver_address) !== null && _a !== void 0 ? _a : (_b = shipData === null || shipData === void 0 ? void 0 : shipData.destination) === null || _b === void 0 ? void 0 : _b.shipping_address) !== null && _c !== void 0 ? _c : (_d = mo === null || mo === void 0 ? void 0 : mo.shipping) === null || _d === void 0 ? void 0 : _d.receiver_address) !== null && _e !== void 0 ? _e : null;
         if (!recvAddr)

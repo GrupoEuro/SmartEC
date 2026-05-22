@@ -6,7 +6,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { db } from './shared';
-import { getValidMeliToken, parseAndSaveMeliOrder } from './meli-shared';
+import { getValidMeliToken, parseAndSaveMeliOrder, processAndSaveMeliOrderFromData } from './meli-shared';
 
 // 4. Sync Orders (Callable)
 // Syncs orders from last sync date to now, using a date cursor for accuracy.
@@ -156,125 +156,16 @@ export const meliSyncOrders = functions.runWith({ timeoutSeconds: 120 }).https.o
         );
 
         for (const mo of meliOrders) {
-            const orderRef  = db.collection('orders').doc(`meli_${mo.id}`);
-            const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]      : null;
-            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id]  : null;
+            const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]     : null;
+            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id] : null;
             const mpPayment = mpPaymentMap[mo.id] ?? null;
 
-            // Construct Eurollantas Order object using helper
-            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
-
-            // ── Shipping cost resolution — 4-source priority chain ────────────────────────
-            //  1. /shipments/{id}/costs → senders[0].cost  — exact for Classic / Flex
-            //  2. /collections/{paymentId} → shipping_amount — ground truth for Full CFF
-            //     MercadoPago processes the CFF as part of the payment's shipping_amount.
-            //     For seller-paid Free Shipping on Full: seller absorbs 100% of shipping_amount.
-            //  3. order.shipping_cost  — sometimes carries Full CFF; used as last API fallback.
-            //  4. 0 + cff_pending:true — only when no source has data.
-            const mpShipAmount:  number = mpPayment?.shipping_amount  ?? 0;
-            const buyerShipCost: number = shipCosts?.buyer_cost       ?? 0;
-
-            const shippingSellerCost: number = (() => {
-                // Source 1 — /shipments/costs (exact, Classic/Flex post-payment)
-                const fromCosts = shipCosts?.seller_cost ?? 0;
-                if (fromCosts > 0) return fromCosts;
-
-                // Source 2 — MercadoPago payment.shipping_amount (Full CFF ground truth)
-                if (mpShipAmount > 0) {
-                    const isFull = newOrder.fulfillmentType === 'platform';
-                    if (isFull) {
-                        // Full: seller absorbs the entire CFF amount
-                        console.log(`[Meli] Full CFF via payment.shipping_amount=${mpShipAmount} order=${mo.id}`);
-                        return mpShipAmount;
-                    }
-                    // Classic Free Shipping: seller only absorbs delta above buyer's contribution
-                    if (mpShipAmount > buyerShipCost) {
-                        return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
-                    }
-                }
-
-                // Source 3 — order.shipping_cost (sometimes has CFF, sometimes 0)
-                const fromOrder = newOrder.orderShippingCost ?? 0;
-                if (fromOrder > 0) {
-                    console.log(`[Meli] shipping_cost from order=${fromOrder} for order ${mo.id}`);
-                    return fromOrder;
-                }
-
-                return 0;
-            })();
-
-            const shippingGrossAmount: number = shipCosts?.gross_amount ?? mpShipAmount;
-            const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
-            // cff_pending only when Full + ALL sources returned 0
-            const cffPending: boolean = newOrder.fulfillmentType === 'platform'
-                && shippingSellerCost === 0
-                && mpShipAmount === 0;
-
-
-            // ── Complete net_receipt formula ───────────────────────────────────────────
-            // Verified cent-perfect against 5 real ML sale screenshots + 55-order CSV:
-            //   net = total − rawCommission − retIVA − retISR − shipping − refunds + mlBonus
-            //
-            // retIVA = (total/1.16) × 8%   ← SAT Art.18-J LIVA (50% of 16% on pre-IVA base)
-            // retISR = (total/1.16) × 2.5% ← SAT Art.113-A LISR (platform sellers, MX)
-            const IVA_INCLUSIVE_DIVISOR = 1.16;
-            const meliCommission: number  = newOrder.marketplaceFee ?? 0;
-            const totalAmount: number     = newOrder.total ?? 0;
-            const preIvaAmount: number    = totalAmount / IVA_INCLUSIVE_DIVISOR;
-            const retencionIVA: number    = Math.round(preIvaAmount * 0.08    * 100) / 100;
-            const retencionISR: number    = Math.round(preIvaAmount * 0.025   * 100) / 100;
-            const totalImpuestos: number  = retencionIVA + retencionISR;
-            const refundedAmount: number  = newOrder.refundedAmount ?? 0;
-            const mlBonus: number         = newOrder.mlBonus ?? 0;
-
-            const netReceipt: number = Math.round(Math.max(0,
-                totalAmount
-                - meliCommission
-                - retencionIVA
-                - retencionISR
-                - shippingSellerCost
-                - refundedAmount
-                + mlBonus
-            ) * 100) / 100;
-
-            // Merge ALL financial fields into the order document
-            const orderWithFinancials = {
-                ...newOrder,
-                // Shipping breakdown (full audit trail)
-                shipping_seller_cost:  shippingSellerCost,   // net MXN absorbed by seller ← used in P&L
-                shipping_gross_amount: shippingGrossAmount,   // full carrier rate (before subsidy)
-                shipping_meli_subsidy: shippingMeliSubsidy,   // what ML covers
-                mp_shipping_amount:    mpShipAmount,          // raw from payment.shipping_amount (MP API)
-                buyer_shipping_cost:   buyerShipCost,         // what buyer paid for shipping
-                cff_pending:           cffPending,            // true = Full order, CFF still unresolved
-                // SAT tax retentions (recoverable in annual declaration)
-                retencion_iva: retencionIVA,                 // (price/1.16) × 8%
-                retencion_isr: retencionISR,                 // (price/1.16) × 2.5%
-                total_impuestos: totalImpuestos,             // retIVA + retISR
-                // Adjustments
-                refunded_amount: refundedAmount,             // chargebacks/cancellation refunds
-                ml_bonus: mlBonus,                           // ML-funded credits (Flex, subsidies)
-                // Advertising
-                is_ad_driven: newOrder.isAdDriven ?? false,  // paid via Mercado Ads
-                // 💰 The bottom line
-                net_receipt: netReceipt,                     // exact Recibes amount
-            };
-
-
-
-
-            // Preserve the first human-readable name — MeLi anonymizes buyer names on older orders
-            const preserved = existingNameMap.get(String(mo.id));
-            const isAnon = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-            if (preserved && !isAnon(preserved)) {
-                orderWithFinancials.customer.originalName = preserved;
-            } else if (preserved && isAnon(preserved) && orderWithFinancials.customer.originalName && !isAnon(orderWithFinancials.customer.originalName)) {
-                // Stored was anonymized but new name is readable — upgrade!
-            } else if (preserved) {
-                orderWithFinancials.customer.originalName = preserved;
-            }
-
-            await orderRef.set(orderWithFinancials, { merge: true });
+            await processAndSaveMeliOrderFromData(mo, accessToken, {
+                shipData,
+                billingData: billingMap[mo.id],
+                shipCosts,
+                mpPayment
+            });
             importedCount++;
         }
 
@@ -710,91 +601,20 @@ export const meliSyncHistorical = functions.runWith({ timeoutSeconds: 540, memor
                 })
         );
 
-        const batch = db.batch();
-
-        // Pre-fetch existing originalNames in parallel before batch-writing
-        const origNameMap = new Map<string, string>();
         await Promise.all(
             meliOrders.map(async (mo: any) => {
-                try {
-                    const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
-                    const orig = snap.data()?.customer?.originalName;
-                    if (orig) origNameMap.set(String(mo.id), orig);
-                } catch (_) { /* skip */ }
+                const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]     : null;
+                const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id] : null;
+                const mpPayment = mpPaymentMap[mo.id] ?? null;
+
+                await processAndSaveMeliOrderFromData(mo, meliConfig.accessToken, {
+                    shipData,
+                    billingData: billingMap[mo.id],
+                    shipCosts,
+                    mpPayment
+                });
             })
         );
-
-        for (const mo of meliOrders) {
-            const orderRef  = db.collection('orders').doc(`meli_${mo.id}`);
-            const shipData  = mo.shipping?.id ? shipmentsMap[mo.shipping.id]     : null;
-            const shipCosts = mo.shipping?.id ? shipmentCostsMap[mo.shipping.id] : null;
-            const mpPayment = mpPaymentMap[mo.id] ?? null;
-
-            const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
-
-            // Same 4-source shipping resolution as quick sync
-            const mpShipAmount:  number = mpPayment?.shipping_amount  ?? 0;
-            const buyerShipCost: number = shipCosts?.buyer_cost        ?? 0;
-            const shippingSellerCost: number = (() => {
-                const fromCosts = shipCosts?.seller_cost ?? 0;
-                if (fromCosts > 0) return fromCosts;
-                if (mpShipAmount > 0) {
-                    if (newOrder.fulfillmentType === 'platform') return mpShipAmount;
-                    if (mpShipAmount > buyerShipCost) return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
-                }
-                const fromOrder = newOrder.orderShippingCost ?? 0;
-                if (fromOrder > 0) return fromOrder;
-                return 0;
-            })();
-            const shippingGrossAmount: number = shipCosts?.gross_amount ?? mpShipAmount;
-            const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
-            const cffPending: boolean = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0 && mpShipAmount === 0;
-
-            // SAT retentions
-            const IVA_INCLUSIVE_DIVISOR = 1.16;
-            const totalAmount    = newOrder.total ?? 0;
-            const preIvaAmount   = totalAmount / IVA_INCLUSIVE_DIVISOR;
-            const retencionIVA   = Math.round(preIvaAmount * 0.08  * 100) / 100;
-            const retencionISR   = Math.round(preIvaAmount * 0.025 * 100) / 100;
-            const netReceipt     = Math.round(Math.max(0,
-                totalAmount - (newOrder.marketplaceFee ?? 0) - retencionIVA - retencionISR
-                - shippingSellerCost - (newOrder.refundedAmount ?? 0) + (newOrder.mlBonus ?? 0)
-            ) * 100) / 100;
-
-            // Merge shipping + financial fields
-            const orderWithFinancials = {
-                ...newOrder,
-                shipping_seller_cost:  shippingSellerCost,
-                shipping_gross_amount: shippingGrossAmount,
-                shipping_meli_subsidy: shippingMeliSubsidy,
-                mp_shipping_amount:    mpShipAmount,
-                buyer_shipping_cost:   buyerShipCost,
-                cff_pending:           cffPending,
-                retencion_iva:         retencionIVA,
-                retencion_isr:         retencionISR,
-                total_impuestos:       retencionIVA + retencionISR,
-                refunded_amount:       newOrder.refundedAmount ?? 0,
-                ml_bonus:              newOrder.mlBonus        ?? 0,
-                is_ad_driven:          newOrder.isAdDriven     ?? false,
-                net_receipt:           netReceipt,
-            };
-
-            // Restore the original readable name if we already have one stored
-            const isAnonH = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-            const preservedOrig = origNameMap.get(String(mo.id));
-            if (preservedOrig && !isAnonH(preservedOrig)) {
-                orderWithFinancials.customer.originalName = preservedOrig;
-            } else if (preservedOrig && isAnonH(preservedOrig) && !isAnonH(orderWithFinancials.customer.originalName)) {
-                // Upgrade: stored was anonymized, new is readable
-            } else if (preservedOrig) {
-                orderWithFinancials.customer.originalName = preservedOrig;
-            }
-
-            // ✅ merge:true — NEVER deletes any existing fields
-            batch.set(orderRef, orderWithFinancials, { merge: true });
-        }
-
-        await batch.commit();
 
         console.log(`[Meli Historical Sync] Batched ${meliOrders.length} orders. Offset: ${offset}`);
         return { success: true, processed: meliOrders.length, hasMore: (offset + limit) < (json.paging?.total || 0) };

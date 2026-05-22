@@ -1142,34 +1142,12 @@ exports.meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').onRun
                 }
                 catch (e) { /* skip */ }
             }));
-            // Pre-fetch existing originalNames in parallel to protect against ML name anonymization
-            const cronOrigNames = new Map();
-            await Promise.all(meliOrders.map(async (mo) => {
-                var _a, _b;
-                try {
-                    const snap = await shared_1.db.collection('orders').doc(`meli_${mo.id}`).get();
-                    const orig = (_b = (_a = snap.data()) === null || _a === void 0 ? void 0 : _a.customer) === null || _b === void 0 ? void 0 : _b.originalName;
-                    if (orig)
-                        cronOrigNames.set(String(mo.id), orig);
-                }
-                catch (_) { /* skip */ }
-            }));
             for (const mo of meliOrders) {
-                const orderRef = shared_1.db.collection('orders').doc(`meli_${mo.id}`);
                 const shipData = ((_d = mo.shipping) === null || _d === void 0 ? void 0 : _d.id) ? shipmentsMap[mo.shipping.id] : null;
-                const newOrder = (0, meli_shared_1.parseAndSaveMeliOrder)(mo, shipData, billingMap[mo.id]);
-                const isAnonC = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-                const preservedCron = cronOrigNames.get(String(mo.id));
-                if (preservedCron && !isAnonC(preservedCron)) {
-                    newOrder.customer.originalName = preservedCron;
-                }
-                else if (preservedCron && isAnonC(preservedCron) && !isAnonC(newOrder.customer.originalName)) {
-                    // Upgrade: stored was anonymized, new is readable
-                }
-                else if (preservedCron) {
-                    newOrder.customer.originalName = preservedCron;
-                }
-                await orderRef.set(newOrder, { merge: true });
+                await (0, meli_shared_1.processAndSaveMeliOrderFromData)(mo, meliConfig.accessToken, {
+                    shipData,
+                    billingData: billingMap[mo.id]
+                });
                 importedCount++;
             }
             offset += PAGE_SIZE;

@@ -695,10 +695,10 @@
         <div class="space-y-4">
             @for (item of order()!.items; track item.productId) {
             <div class="flex gap-4 items-center p-4 border-2 rounded-xl transition-all"
-                [class.border-emerald-600]="isItemPicked(item.productId)"
-                [class.bg-emerald-950\/20]="isItemPicked(item.productId)"
-                [class.border-zinc-700]="!isItemPicked(item.productId)"
-                [class.bg-zinc-800]="!isItemPicked(item.productId)">
+                [ngClass]="{
+                    'border-emerald-600 bg-emerald-950/20': isItemPicked(item.productId),
+                    'border-zinc-700 bg-zinc-800': !isItemPicked(item.productId)
+                }">
                 <!-- Checkbox -->
                 <label class="relative cursor-pointer flex-shrink-0 no-print">
                     <input type="checkbox" [checked]="isItemPicked(item.productId)"

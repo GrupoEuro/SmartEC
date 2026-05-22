@@ -210,7 +210,7 @@ exports.meliReconciliator = functions
 exports.meliForceResync = functions
     .runWith({ timeoutSeconds: 300, memory: '512MB' })
     .https.onCall(async (data, context) => {
-    var _a, _b, _c, _d;
+    var _a, _b;
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
     }
@@ -243,14 +243,10 @@ exports.meliForceResync = functions
                     billingData = await bRes.json();
             }
             catch (_) { /* non-critical */ }
-            const newOrder = (0, meli_shared_1.parseAndSaveMeliOrder)(mo, shipData, billingData);
-            const orderRef = shared_1.db.collection('orders').doc(`meli_${id}`);
-            const existing = await orderRef.get();
-            const origName = (_d = (_c = existing.data()) === null || _c === void 0 ? void 0 : _c.customer) === null || _d === void 0 ? void 0 : _d.originalName;
-            const isAnon = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-            if (origName && !isAnon(origName))
-                newOrder.customer.originalName = origName;
-            await orderRef.set(newOrder, { merge: true });
+            await (0, meli_shared_1.processAndSaveMeliOrderFromData)(mo, accessToken, {
+                shipData,
+                billingData
+            });
             synced++;
         }
         catch (e) {

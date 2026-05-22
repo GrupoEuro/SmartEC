@@ -7,7 +7,7 @@
  * These functions are NOT exported as Cloud Functions — they are internal utilities.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseAndSaveMeliOrder = exports.stripNullsAndUndefined = exports.getAppLevelToken = exports.getValidMeliToken = exports.getMeliConfig = void 0;
+exports.processAndSaveMeliOrderFromData = exports.parseAndSaveMeliOrder = exports.stripNullsAndUndefined = exports.getAppLevelToken = exports.getValidMeliToken = exports.getMeliConfig = void 0;
 const admin = require("firebase-admin");
 const shared_1 = require("./shared");
 async function getMeliConfig() {
@@ -434,4 +434,142 @@ function parseAndSaveMeliOrder(mo, shipData, billingData) {
     } : {})));
 }
 exports.parseAndSaveMeliOrder = parseAndSaveMeliOrder;
+/**
+ * Centrally processes raw MercadoLibre order data, fetches related details (shipments,
+ * costs, billing info, MercadoPago collections), and writes the fully calculated
+ * order object to Firestore under meli_${orderId} using { merge: true } merge logic.
+ */
+async function processAndSaveMeliOrderFromData(mo, accessToken, preFetched) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
+    const headers = { 'Authorization': `Bearer ${accessToken}` };
+    // Fetch shipment if not pre-fetched and shipping.id is present
+    let shipData = preFetched === null || preFetched === void 0 ? void 0 : preFetched.shipData;
+    if (shipData === undefined && ((_a = mo.shipping) === null || _a === void 0 ? void 0 : _a.id)) {
+        try {
+            const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                headers: Object.assign(Object.assign({}, headers), { 'x-format-new': 'true' })
+            });
+            if (sRes.ok)
+                shipData = await sRes.json();
+            else {
+                console.warn(`[Meli Shared] Shipment ${mo.shipping.id} fetch failed: ${sRes.status}`);
+                shipData = { _fetchFailed: true, logistic_type: (_c = (_b = mo.shipping) === null || _b === void 0 ? void 0 : _b.logistic_type) !== null && _c !== void 0 ? _c : null };
+            }
+        }
+        catch (e) {
+            console.warn(`[Meli Shared] Shipment fetch error:`, e);
+        }
+    }
+    // Fetch billing info if not pre-fetched
+    let billingData = preFetched === null || preFetched === void 0 ? void 0 : preFetched.billingData;
+    if (billingData === undefined) {
+        try {
+            const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                headers: Object.assign(Object.assign({}, headers), { 'x-version': '2' })
+            });
+            if (bRes.ok)
+                billingData = await bRes.json();
+            else {
+                const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, { headers });
+                if (bRes1.ok)
+                    billingData = await bRes1.json();
+            }
+        }
+        catch (e) { /* non-critical */ }
+    }
+    // Fetch shipment costs if not pre-fetched and shipping.id is present
+    let shipCosts = preFetched === null || preFetched === void 0 ? void 0 : preFetched.shipCosts;
+    if (shipCosts === undefined && ((_d = mo.shipping) === null || _d === void 0 ? void 0 : _d.id)) {
+        try {
+            const cRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}/costs`, { headers });
+            if (cRes.ok) {
+                const costsJson = await cRes.json();
+                const senderCost = (_g = (_f = (_e = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.cost) !== null && _g !== void 0 ? _g : 0;
+                const grossAmount = (_h = costsJson === null || costsJson === void 0 ? void 0 : costsJson.gross_amount) !== null && _h !== void 0 ? _h : 0;
+                const buyerCost = (_m = (_j = costsJson === null || costsJson === void 0 ? void 0 : costsJson.buyer_cost) !== null && _j !== void 0 ? _j : (_l = (_k = costsJson === null || costsJson === void 0 ? void 0 : costsJson.buyers) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.cost) !== null && _m !== void 0 ? _m : 0;
+                const meliSubsidy = (((_p = (_o = costsJson === null || costsJson === void 0 ? void 0 : costsJson.senders) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.discounts) || [])
+                    .reduce((sum, d) => sum + (d.promoted_amount || 0), 0);
+                shipCosts = { seller_cost: senderCost, gross_amount: grossAmount, buyer_cost: buyerCost, meli_subsidy: meliSubsidy };
+            }
+        }
+        catch (_) { /* non-critical */ }
+    }
+    // Fetch MercadoPago payment info if not pre-fetched and payments[0].id is present
+    let mpPayment = preFetched === null || preFetched === void 0 ? void 0 : preFetched.mpPayment;
+    const paymentId = (_r = (_q = mo.payments) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.id;
+    if (mpPayment === undefined && paymentId) {
+        try {
+            const mpRes = await fetch(`https://api.mercadolibre.com/collections/${paymentId}`, { headers });
+            if (mpRes.ok) {
+                const mpData = await mpRes.json();
+                const col = (_s = mpData === null || mpData === void 0 ? void 0 : mpData.collection) !== null && _s !== void 0 ? _s : mpData;
+                mpPayment = {
+                    shipping_amount: (_t = col === null || col === void 0 ? void 0 : col.shipping_amount) !== null && _t !== void 0 ? _t : 0,
+                    mp_fee: ((col === null || col === void 0 ? void 0 : col.fee_details) || [])
+                        .filter((f) => f.type === 'mercadopago_fee' && f.fee_payer === 'collector')
+                        .reduce((s, f) => s + (f.amount || 0), 0),
+                    net_received_amount: (_v = (_u = col === null || col === void 0 ? void 0 : col.net_received_amount) !== null && _u !== void 0 ? _u : col === null || col === void 0 ? void 0 : col.net_amount) !== null && _v !== void 0 ? _v : 0,
+                };
+            }
+        }
+        catch (_) { /* non-critical */ }
+    }
+    const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
+    // ── Resolve shipping seller cost ─────────────────────────────────────────
+    const mpShipAmount = (_w = mpPayment === null || mpPayment === void 0 ? void 0 : mpPayment.shipping_amount) !== null && _w !== void 0 ? _w : 0;
+    const buyerShipCost = (_x = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.buyer_cost) !== null && _x !== void 0 ? _x : 0;
+    const shippingSellerCost = (() => {
+        var _a, _b;
+        const fromCosts = (_a = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.seller_cost) !== null && _a !== void 0 ? _a : 0;
+        if (fromCosts > 0)
+            return fromCosts;
+        if (mpShipAmount > 0) {
+            if (newOrder.fulfillmentType === 'platform')
+                return mpShipAmount;
+            if (mpShipAmount > buyerShipCost)
+                return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+        }
+        const fromOrder = (_b = newOrder.orderShippingCost) !== null && _b !== void 0 ? _b : 0;
+        if (fromOrder > 0)
+            return fromOrder;
+        return 0;
+    })();
+    const shippingGrossAmount = (_y = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.gross_amount) !== null && _y !== void 0 ? _y : mpShipAmount;
+    const shippingMeliSubsidy = (_z = shipCosts === null || shipCosts === void 0 ? void 0 : shipCosts.meli_subsidy) !== null && _z !== void 0 ? _z : 0;
+    const cffPending = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0 && mpShipAmount === 0;
+    // ── SAT tax retentions ───────────────────────────────────────────────────
+    const IVA_INCLUSIVE_DIVISOR = 1.16;
+    const totalAmount = (_0 = newOrder.total) !== null && _0 !== void 0 ? _0 : 0;
+    const preIvaAmount = totalAmount / IVA_INCLUSIVE_DIVISOR;
+    const retencionIVA = Math.round(preIvaAmount * 0.08 * 100) / 100;
+    const retencionISR = Math.round(preIvaAmount * 0.025 * 100) / 100;
+    const meliCommission = (_1 = newOrder.marketplaceFee) !== null && _1 !== void 0 ? _1 : 0;
+    const refundedAmount = (_2 = newOrder.refundedAmount) !== null && _2 !== void 0 ? _2 : 0;
+    const mlBonus = (_3 = newOrder.mlBonus) !== null && _3 !== void 0 ? _3 : 0;
+    const netReceipt = Math.round(Math.max(0, totalAmount - meliCommission - retencionIVA - retencionISR
+        - shippingSellerCost - refundedAmount + mlBonus) * 100) / 100;
+    // Merge financial fields into the order before saving
+    const orderWithFinancials = Object.assign(Object.assign({}, newOrder), { shipping_seller_cost: shippingSellerCost, shipping_gross_amount: shippingGrossAmount, shipping_meli_subsidy: shippingMeliSubsidy, mp_shipping_amount: mpShipAmount, buyer_shipping_cost: buyerShipCost, cff_pending: cffPending, retencion_iva: retencionIVA, retencion_isr: retencionISR, total_impuestos: retencionIVA + retencionISR, refunded_amount: refundedAmount, ml_bonus: mlBonus, net_receipt: netReceipt });
+    // Use the REAL individual order id as the doc key
+    const orderRef = shared_1.db.collection('orders').doc(`meli_${mo.id}`);
+    // Preserve the original human-readable buyer name on webhook updates.
+    try {
+        const existingSnap = await orderRef.get();
+        const existingOrigName = (_5 = (_4 = existingSnap.data()) === null || _4 === void 0 ? void 0 : _4.customer) === null || _5 === void 0 ? void 0 : _5.originalName;
+        const isAnonW = (s) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+        if (existingOrigName && !isAnonW(existingOrigName)) {
+            orderWithFinancials.customer.originalName = existingOrigName;
+        }
+        else if (existingOrigName && isAnonW(existingOrigName) && !isAnonW(orderWithFinancials.customer.originalName)) {
+            // Upgrade: stored was anonymized, new is readable — keep new one
+        }
+        else if (existingOrigName) {
+            orderWithFinancials.customer.originalName = existingOrigName;
+        }
+    }
+    catch (_) { /* non-critical — proceed without preservation */ }
+    await orderRef.set(orderWithFinancials, { merge: true });
+    console.log(`[Meli Shared] Saved order ML-${mo.id} with shipping_cost=${shippingSellerCost} net=${netReceipt} (pack_id: ${mo.pack_id || 'n/a'})`);
+}
+exports.processAndSaveMeliOrderFromData = processAndSaveMeliOrderFromData;
 //# sourceMappingURL=meli-shared.js.map

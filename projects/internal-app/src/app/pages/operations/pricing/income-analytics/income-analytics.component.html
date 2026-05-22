@@ -364,6 +364,370 @@
   </div>
   }
 
+  <!-- ═══ SIMULADOR WHAT-IF ════════════════════════════════════════════════ -->
+  @if (pnl(); as p) {
+  <div class="rounded-2xl p-6 mb-6" style="background:#18181b; border:1px solid #3f3f46; background: linear-gradient(135deg, rgba(28,28,31,0.8), rgba(20,20,22,0.9)); backdrop-filter: blur(12px);">
+    <div class="flex justify-between items-start flex-wrap gap-4 mb-4">
+      <div>
+        <h3 class="text-base font-black text-white flex items-center gap-2">
+          <span>🔮</span> Simulador de Escenarios "What-If"
+        </h3>
+        <p class="text-xs text-zinc-500 mt-1">
+          Ajusta los precios de venta y simula el impacto en tus ingresos, utilidad y margen en tiempo real.
+        </p>
+      </div>
+      <div class="text-[10px] text-zinc-500 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/50 max-w-md">
+        ⚠️ <strong>Elasticidad:</strong> Se asume volumen de venta constante. En el mercado real, cambios de precio pueden alterar la demanda.
+      </div>
+    </div>
+
+    <!-- Pestañas del tipo de simulación -->
+    <div class="flex flex-wrap gap-1 p-1 rounded-xl mb-6 w-fit" style="background:#1c1c1f; border:1px solid #3f3f46;">
+      <button (click)="simType.set('percentage')"
+        class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+        [style.background]="simType()==='percentage' ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+        [style.color]="simType()==='percentage' ? '#fff' : '#71717a'">
+        Ajuste Porcentual (%)
+      </button>
+      <button (click)="simType.set('fixed')"
+        class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+        [style.background]="simType()==='fixed' ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+        [style.color]="simType()==='fixed' ? '#fff' : '#71717a'">
+        Pesos Fijos por Unidad ($ MXN)
+      </button>
+      <button (click)="simType.set('margin')"
+        class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+        [style.background]="simType()==='margin' ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+        [style.color]="simType()==='margin' ? '#fff' : '#71717a'">
+        Objetivo Margen Bruto (%)
+      </button>
+      <button (click)="simType.set('volume_profit')"
+        class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+        [style.background]="simType()==='volume_profit' ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+        [style.color]="simType()==='volume_profit' ? '#fff' : '#71717a'">
+        Utilidad Bruta Objetivo ($ MXN)
+      </button>
+      <button (click)="simType.set('volume_sales')"
+        class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
+        [style.background]="simType()==='volume_sales' ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'transparent'"
+        [style.color]="simType()==='volume_sales' ? '#fff' : '#71717a'">
+        Ventas Brutas Objetivo ($ MXN)
+      </button>
+    </div>
+
+    <!-- Controles de Simulación -->
+    <div class="p-4 rounded-xl mb-6" style="background:#1c1c1f; border:1px solid #27272a;">
+      
+      <!-- Ajuste Porcentual -->
+      @if (simType() === 'percentage') {
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-zinc-400">Variación de precio general (descuento o incremento)</span>
+            <div class="flex items-center gap-1">
+              <input type="number" min="-20" max="50" step="0.5"
+                     [ngModel]="simPercentValue()"
+                     (ngModelChange)="simPercentValue.set($event)"
+                     class="w-20 text-right text-sm font-black text-white rounded-lg px-2 py-1"
+                     style="background:#27272a; border:1px solid #3f3f46;">
+              <span class="text-zinc-500 font-bold text-sm">%</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-zinc-600">-20%</span>
+            <input type="range" min="-20" max="50" step="0.5"
+                   [ngModel]="simPercentValue()"
+                   (ngModelChange)="simPercentValue.set($event)"
+                   class="flex-1 accent-indigo-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer">
+            <span class="text-xs text-zinc-600">+50%</span>
+          </div>
+          <div class="text-[10px] text-zinc-600 mt-2">
+            💡 Ejemplos: <strong>-5%</strong> para simular un descuento general de Buen Fin, o <strong>+3%</strong> para simular un aumento por inflación.
+          </div>
+        </div>
+      }
+
+      <!-- Pesos Fijos por Unidad -->
+      @if (simType() === 'fixed') {
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-zinc-400">Ajustar precio de lista por pieza vendida</span>
+            <div class="flex items-center gap-1">
+              <span class="text-zinc-500 font-bold text-sm">$</span>
+              <input type="number" min="-200" max="500" step="5"
+                     [ngModel]="simFixedValue()"
+                     (ngModelChange)="simFixedValue.set($event)"
+                     class="w-24 text-right text-sm font-black text-white rounded-lg px-2 py-1"
+                     style="background:#27272a; border:1px solid #3f3f46;">
+              <span class="text-zinc-500 font-bold text-sm">MXN</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-zinc-600">-$200</span>
+            <input type="range" min="-200" max="500" step="5"
+                   [ngModel]="simFixedValue()"
+                   (ngModelChange)="simFixedValue.set($event)"
+                   class="flex-1 accent-indigo-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer">
+            <span class="text-xs text-zinc-600">+$500</span>
+          </div>
+          <div class="text-[10px] text-zinc-600 mt-2">
+            💡 Ejemplos: Incrementa <strong>+$20 pesos</strong> a cada publicación para absorber costos adicionales, o reduce para competir.
+          </div>
+        </div>
+      }
+
+      <!-- Objetivo Margen Bruto -->
+      @if (simType() === 'margin') {
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-zinc-400">Establecer Margen Bruto objetivo sobre ingresos netos</span>
+            <div class="flex items-center gap-1">
+              <input type="number" min="1" max="60" step="0.5"
+                     [ngModel]="simTargetMargin()"
+                     (ngModelChange)="simTargetMargin.set($event)"
+                     class="w-20 text-right text-sm font-black text-white rounded-lg px-2 py-1"
+                     style="background:#27272a; border:1px solid #3f3f46;">
+              <span class="text-zinc-500 font-bold text-sm">%</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-zinc-600">1%</span>
+            <input type="range" min="1" max="60" step="0.5"
+                   [ngModel]="simTargetMargin()"
+                   (ngModelChange)="simTargetMargin.set($event)"
+                   class="flex-1 accent-indigo-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer">
+            <span class="text-xs text-zinc-600">60%</span>
+          </div>
+          <div class="text-[10px] text-zinc-600 mt-2">
+            💡 Resuelve matemáticamente el factor de escala requerido para lograr exactamente el margen bruto deseado.
+          </div>
+        </div>
+      }
+
+      <!-- Utilidad Bruta Objetivo -->
+      @if (simType() === 'volume_profit') {
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-zinc-400">Establecer meta de Utilidad Bruta mensual deseada</span>
+            <div class="flex items-center gap-1">
+              <span class="text-zinc-500 font-bold text-sm">$</span>
+              <input type="text"
+                     [ngModel]="formatWithSeparators(simTargetProfit())"
+                     (ngModelChange)="parseAndSetProfit($event)"
+                     class="w-32 text-right text-sm font-black text-white rounded-lg px-2 py-1"
+                     style="background:#27272a; border:1px solid #3f3f46;">
+              <span class="text-zinc-500 font-bold text-sm">MXN</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-zinc-600">$5k</span>
+            <input type="range" min="5000" max="1000000" step="5000"
+                   [ngModel]="simTargetProfit()"
+                   (ngModelChange)="simTargetProfit.set($event)"
+                   class="flex-1 accent-indigo-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer">
+            <span class="text-xs text-zinc-600">$1M</span>
+          </div>
+          <div class="text-[10px] text-zinc-600 mt-2">
+            💡 Simula cuánto necesitas vender (volumen físico) para lograr esta ganancia neta manteniendo tu estructura de precios y comisiones actual.
+          </div>
+        </div>
+      }
+
+      <!-- Ventas Brutas Objetivo -->
+      @if (simType() === 'volume_sales') {
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-zinc-400">Establecer meta de Ventas Brutas (Facturación) mensual</span>
+            <div class="flex items-center gap-1">
+              <span class="text-zinc-500 font-bold text-sm">$</span>
+              <input type="text"
+                     [ngModel]="formatWithSeparators(simTargetSales())"
+                     (ngModelChange)="parseAndSetSales($event)"
+                     class="w-32 text-right text-sm font-black text-white rounded-lg px-2 py-1"
+                     style="background:#27272a; border:1px solid #3f3f46;">
+              <span class="text-zinc-500 font-bold text-sm">MXN</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-zinc-600">$50k</span>
+            <input type="range" min="50000" max="5000000" step="25000"
+                   [ngModel]="simTargetSales()"
+                   (ngModelChange)="simTargetSales.set($event)"
+                   class="flex-1 accent-indigo-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer">
+            <span class="text-xs text-zinc-600">$5M</span>
+          </div>
+          <div class="text-[10px] text-zinc-600 mt-2">
+            💡 Proyecta el desglose completo de tu P&L (Margen, comisiones, COGS y envíos) si tu facturación bruta alcanza esta meta mensual.
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Resultados Comparativos -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      
+      <!-- Ventas Brutas -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Ventas Brutas</div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ b.gross | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black text-white mt-1 tabular-nums">{{ simulatedPnl().gross | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="simulatedPnl().deltaGross >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="simulatedPnl().deltaGross >= 0 ? '#34d399' : '#f43f5e'">
+            {{ simulatedPnl().deltaGross >= 0 ? '+' : '' }}{{ simulatedPnl().deltaGross | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Neto Recibido -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Neto Recibido</div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ b.net | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black text-white mt-1 tabular-nums">{{ simulatedPnl().net | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="simulatedPnl().deltaNet >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="simulatedPnl().deltaNet >= 0 ? '#34d399' : '#f43f5e'">
+            {{ simulatedPnl().deltaNet >= 0 ? '+' : '' }}{{ simulatedPnl().deltaNet | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Utilidad Bruta -->
+      <div class="p-4 rounded-xl border transition-all" 
+           [style.background]="simulatedPnl().deltaProfit >= 0 ? 'rgba(16,185,129,0.03)' : 'rgba(244,63,94,0.03)'"
+           [style.borderColor]="simulatedPnl().deltaProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Utilidad Bruta</div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ p.grossProfit | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black mt-1 tabular-nums" 
+             [style.color]="simulatedPnl().profit > 0 ? '#34d399' : '#f87171'">
+          {{ simulatedPnl().profit | currency:'MXN':'$':'1.0-0' }}
+        </div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="simulatedPnl().deltaProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="simulatedPnl().deltaProfit >= 0 ? '#34d399' : '#f43f5e'">
+            {{ simulatedPnl().deltaProfit >= 0 ? '+' : '' }}{{ simulatedPnl().deltaProfit | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Margen Bruto -->
+      <div class="p-4 rounded-xl border transition-all" 
+           [style.background]="simulatedPnl().deltaMargin >= 0 ? 'rgba(16,185,129,0.03)' : 'rgba(244,63,94,0.03)'"
+           [style.borderColor]="simulatedPnl().deltaMargin >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2">Margen Bruto</div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ p.grossMargin | number:'1.1-1' }}%</div>
+        <div class="text-lg font-black mt-1 tabular-nums"
+             [style.color]="simulatedPnl().margin >= 25 ? '#34d399' : simulatedPnl().margin >= 10 ? '#fbbf24' : '#f87171'">
+          {{ simulatedPnl().margin | number:'1.1-1' }}%
+        </div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="simulatedPnl().deltaMargin >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="simulatedPnl().deltaMargin >= 0 ? '#34d399' : '#f43f5e'">
+            {{ simulatedPnl().deltaMargin >= 0 ? '+' : '' }}{{ simulatedPnl().deltaMargin | number:'1.1-1' }}%
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proyección de Compras y Flujo de Caja -->
+    <div class="mt-6 mb-3">
+      <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+        <span>📋 Pronóstico de Compras y Flujo de Caja</span>
+      </h3>
+      <p class="text-[11px] text-zinc-500 mt-0.5">Basado en el volumen de piezas, inversión requerida y retenciones de este escenario</p>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Inventario a Comprar (Físico) -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+          <span>📦 Piezas Necesarias</span>
+        </div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ b.totalPieces | number:'1.0-0' }} pzs</div>
+        <div class="text-lg font-black text-white mt-1 tabular-nums">{{ simulatedPnl().totalPieces | number:'1.0-0' }} pzs</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="(simulatedPnl().totalPieces - b.totalPieces) >= 0 ? 'rgba(99,102,241,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="(simulatedPnl().totalPieces - b.totalPieces) >= 0 ? '#818cf8' : '#f43f5e'">
+            {{ (simulatedPnl().totalPieces - b.totalPieces) >= 0 ? '+' : '' }}{{ (simulatedPnl().totalPieces - b.totalPieces) | number:'1.0-0' }} pzs
+          </span>
+        </div>
+      </div>
+
+      <!-- Capital de Adquisición Requerido (COGS) -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+          <span>💰 Inversión Inventario</span>
+        </div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ p.totalCogs | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black text-white mt-1 tabular-nums">{{ simulatedPnl().cogs | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="(simulatedPnl().cogs - p.totalCogs) >= 0 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'"
+                [style.color]="(simulatedPnl().cogs - p.totalCogs) >= 0 ? '#fbbf24' : '#34d399'">
+            {{ (simulatedPnl().cogs - p.totalCogs) >= 0 ? '+' : '' }}{{ (simulatedPnl().cogs - p.totalCogs) | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Flujo de Utilidad -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+          <span>📈 Flujo de Utilidad</span>
+        </div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ p.grossProfit | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black text-emerald-400 mt-1 tabular-nums">{{ simulatedPnl().profit | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="simulatedPnl().deltaProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)'"
+                [style.color]="simulatedPnl().deltaProfit >= 0 ? '#34d399' : '#f43f5e'">
+            {{ simulatedPnl().deltaProfit >= 0 ? '+' : '' }}{{ simulatedPnl().deltaProfit | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Retención SAT (Congelado) -->
+      <div class="p-4 rounded-xl border transition-all" style="background:rgba(39,39,42,0.3); border-color:#27272a;">
+        <div class="text-xs text-zinc-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1.5">
+          <span>🔒 Retención SAT (Congelado)</span>
+        </div>
+        <div class="text-xs text-zinc-400 font-mono">Actual: {{ (b.iva + b.isr) | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="text-lg font-black text-amber-500 mt-1 tabular-nums">{{ (simulatedPnl().iva + simulatedPnl().isr) | currency:'MXN':'$':'1.0-0' }}</div>
+        <div class="mt-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                [style.background]="((simulatedPnl().iva + simulatedPnl().isr) - (b.iva + b.isr)) >= 0 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'"
+                [style.color]="((simulatedPnl().iva + simulatedPnl().isr) - (b.iva + b.isr)) >= 0 ? '#fbbf24' : '#34d399'">
+            {{ ((simulatedPnl().iva + simulatedPnl().isr) - (b.iva + b.isr)) >= 0 ? '+' : '' }}{{ ((simulatedPnl().iva + simulatedPnl().isr) - (b.iva + b.isr)) | currency:'MXN':'$':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen Explicativo -->
+    <div class="rounded-xl p-4 mt-6 flex items-start gap-3 transition-all"
+         [style.background]="(simType() === 'volume_profit' || simType() === 'volume_sales') ? 'rgba(99,102,241,0.08)' : (simulatedPnl().avgDeltaPrice >= 0 ? 'rgba(99,102,241,0.08)' : 'rgba(244,63,94,0.08)')"
+         [style.border]="(simType() === 'volume_profit' || simType() === 'volume_sales') ? '1px dashed rgba(99,102,241,0.3)' : (simulatedPnl().avgDeltaPrice >= 0 ? '1px dashed rgba(99,102,241,0.3)' : '1px dashed rgba(244,63,94,0.3)')">
+      <span class="text-lg shrink-0">💡</span>
+      <div class="text-sm">
+        @if (simType() === 'margin') {
+          Para alcanzar un margen objetivo del <strong>{{ simTargetMargin() }}%</strong>, necesitas ajustar el precio de tus publicaciones en promedio por <strong class="text-indigo-400">{{ simulatedPnl().avgDeltaPrice | currency:'MXN':'$':'1.0-1' }} MXN</strong> por pieza, lo que equivale a un incremento del <strong class="text-indigo-400">{{ simulatedPnl().percentChange | number:'1.1-1' }}%</strong> sobre los precios actuales.
+        } @else if (simType() === 'percentage') {
+          Un ajuste de precio del <strong>{{ simPercentValue() }}%</strong> se traduce en un cambio promedio de <strong class="text-indigo-400">{{ simulatedPnl().avgDeltaPrice | currency:'MXN':'$':'1.0-1' }} MXN</strong> por pieza vendida, incrementando tu utilidad neta en <strong class="text-emerald-400">{{ simulatedPnl().deltaNet | currency:'MXN':'$':'1.0-0' }} MXN</strong>.
+        } @else if (simType() === 'fixed') {
+          Modificar tus precios en <strong>{{ simFixedValue() | currency:'MXN':'$':'1.0-0' }} MXN</strong> por pieza vendida representa una variación del <strong class="text-indigo-400">{{ simulatedPnl().percentChange | number:'1.1-1' }}%</strong> en facturación y cambia tu utilidad neta en <strong class="text-emerald-400">{{ simulatedPnl().deltaNet | currency:'MXN':'$':'1.0-0' }} MXN</strong>.
+        } @else if (simType() === 'volume_profit') {
+          Para alcanzar una Utilidad Bruta de <strong class="text-emerald-400">{{ simTargetProfit() | currency:'MXN':'$':'1.0-0' }} MXN</strong> con tus precios y costos actuales, necesitas incrementar tu volumen de ventas en un <strong class="text-indigo-400">{{ simulatedPnl().percentChange | number:'1.0-0' }}%</strong>. Esto requiere procesar un estimado de <strong class="text-indigo-400">{{ simulatedPnl().ordersCount | number:'1.0-0' }} órdenes</strong> y vender <strong class="text-indigo-400">{{ simulatedPnl().totalPieces | number:'1.0-0' }} piezas</strong>.
+        } @else if (simType() === 'volume_sales') {
+          Si logras facturar <strong class="text-indigo-400">{{ simTargetSales() | currency:'MXN':'$':'1.0-0' }} MXN</strong> en ventas brutas, con tus márgenes actuales obtendrás una Utilidad Bruta de <strong class="text-emerald-400">{{ simulatedPnl().profit | currency:'MXN':'$':'1.0-0' }} MXN</strong>. Esto equivale a una variación en volumen del <strong class="text-indigo-400">{{ simulatedPnl().percentChange | number:'1.0-0' }}%</strong>, requiriendo un volumen de <strong class="text-indigo-400">{{ simulatedPnl().ordersCount | number:'1.0-0' }} órdenes</strong> y <strong class="text-indigo-400">{{ simulatedPnl().totalPieces | number:'1.0-0' }} piezas</strong>.
+        }
+      </div>
+    </div>
+  </div>
+  }
+
   <!-- ═══ TARJETAS DE DESGLOSE (clic para detalle) ══════════════════════════ -->
   <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
 
@@ -526,7 +890,12 @@
             </div>
             <div class="text-right shrink-0">
               <div class="text-sm font-black text-emerald-400 tabular-nums">{{ o.net_receipt | currency:'MXN':'$':'1.0-0' }}</div>
-              <div class="text-[10px] text-zinc-600 tabular-nums">de {{ o.total | currency:'MXN':'$':'1.0-0' }}</div>
+              <div class="text-[10px] text-zinc-600 tabular-nums">
+                de {{ o.total | currency:'MXN':'$':'1.0-0' }}
+                @if (o.shipping_seller_cost > 0) {
+                  · 🚚 {{ o.shipping_seller_cost | currency:'MXN':'$':'1.0-0' }}
+                }
+              </div>
             </div>
           </div>
         }
@@ -550,7 +919,12 @@
                    [style.color]="o.keepRate < 40 ? '#f43f5e' : o.keepRate < 55 ? '#f97316' : '#facc15'">
                 {{ o.keepRate }}%
               </div>
-              <div class="text-[10px] text-zinc-600 tabular-nums">{{ o.net_receipt | currency:'MXN':'$':'1.0-0' }} neto</div>
+              <div class="text-[10px] text-zinc-600 tabular-nums">
+                {{ o.net_receipt | currency:'MXN':'$':'1.0-0' }} neto
+                @if (o.shipping_seller_cost > 0) {
+                  · 🚚 {{ o.shipping_seller_cost | currency:'MXN':'$':'1.0-0' }}
+                }
+              </div>
             </div>
           </div>
         }

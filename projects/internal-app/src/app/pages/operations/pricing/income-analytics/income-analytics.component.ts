@@ -2,9 +2,9 @@ import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular
 import { CommonModule, CurrencyPipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Firestore, collection, collectionData, query, where, orderBy, Timestamp } from '@angular/fire/firestore';
 import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 import { ProductService } from '../../../../core/services/product.service';
+import { GlobalOrderCacheService } from '../../../../core/services/global-order-cache.service';
 import { Subscription } from 'rxjs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -35,8 +35,8 @@ type Period = '7d' | '30d' | 'mtd' | '90d';
     styleUrls: ['./income-analytics.component.css'],
 })
 export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
-    private firestore      = inject(Firestore);
     private productService = inject(ProductService);
+    private globalOrderCache = inject(GlobalOrderCacheService);
     private sub?: Subscription;
     private productSub?: Subscription;
 
@@ -90,12 +90,21 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         this.channels.find(c => c.key === this.selectedChannel()) ?? this.channels[0]
     );
 
+    // ── Simulation State Signals ──────────────────────────────────────────────
+    simType         = signal<'percentage' | 'fixed' | 'margin' | 'volume_profit' | 'volume_sales'>('percentage');
+    simPercentValue = signal<number>(3);  // percentage price adjustment (e.g. +3% or -5%)
+    simFixedValue   = signal<number>(20); // fixed pesos adjustment per item (e.g. +20 pesos)
+    simTargetMargin = signal<number>(20); // target gross margin % (e.g. 20%)
+    simTargetProfit = signal<number>(200000); // target gross profit (e.g. $200k MXN)
+    simTargetSales  = signal<number>(1500000); // target gross sales volume (e.g. $1.5M MXN)
+
     private getDateFrom(period: Period): Date {
         const now = new Date();
+        now.setHours(0, 0, 0, 0);
         switch (period) {
-            case '7d':  return new Date(now.getTime() - 7   * 86400_000);
-            case '30d': return new Date(now.getTime() - 30  * 86400_000);
-            case '90d': return new Date(now.getTime() - 90  * 86400_000);
+            case '7d':  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+            case '30d': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+            case '90d': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
             case 'mtd': return new Date(now.getFullYear(), now.getMonth(), 1);
         }
     }
@@ -132,32 +141,24 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
 
     private load() {
         this.isLoading.set(true);
-        const dateFrom = this.getDateFrom(this.selectedPeriod());
-        const ts = Timestamp.fromDate(dateFrom);
+        const startDate = this.getDateFrom(this.selectedPeriod());
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
 
-        // Query ALL orders for the date range — no sourceChannel server filter
-        // (mirrors GlobalOrderCacheService strategy used by the dashboard).
-        // Legacy orders may have sourceChannel undefined but still be MeLi orders;
-        // we filter client-side for accuracy and to avoid missing any records.
-        const q = query(
-            collection(this.firestore, 'orders'),
-            where('createdAt', '>=', ts),
-            orderBy('createdAt', 'desc')
-        );
-
-        this.sub = collectionData(q, { idField: 'id' }).subscribe({
+        // Get live stream from cache to minimize firestore read quota
+        this.sub = this.globalOrderCache.getLive(startDate, endDate).subscribe({
             next: (docs) => {
                 // Same status exclusion as Operations Dashboard (EXCLUDED_FROM_REVENUE + GHOST_STATUSES)
                 const EXCLUDED = new Set(['cancelled', 'refunded', 'returned',
                                           'pending_payment', 'refund_pending', 'payment_failed']);
 
                 // Client-side MeLi filter — same logic as dashboard channelBreakdown
-                const meliOrders = (docs as OrderFinancials[]).filter(o => {
-                    const ch = (o as any).sourceChannel ?? '';
+                const meliOrders = (docs as any[]).filter(o => {
+                    const ch = o.sourceChannel ?? '';
                     if (!(ch === 'mercadolibre' || ch === 'MELI' || ch === 'MELI_CLASSIC' || ch === 'MELI_FULL')) return false;
-                    return !EXCLUDED.has((o as any).status ?? '');
+                    return !EXCLUDED.has(o.status ?? '');
                 });
-                this.orders.set(meliOrders);
+                this.orders.set(meliOrders as OrderFinancials[]);
                 this.isLoading.set(false);
             },
             error: (err) => {
@@ -196,15 +197,13 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
 
         const refunds = (o as any).refunded_amount || 0;
         const bonus   = (o as any).ml_bonus        || 0;
-        const net     = ((o as any).net_receipt || 0) > 0 && !cffPending
-                            ? (o as any).net_receipt
-                            : Math.max(0, total - comm - iva - isr - ship - refunds + bonus);
+        const net     = Math.round(Math.max(0, total - comm - iva - isr - ship - refunds + bonus) * 100) / 100;
         return { total, comm, iva, isr, ship, refunds, bonus, net, cffPending };
     }
 
     breakdown = computed(() => {
         const o = this.orders();
-        let gross = 0, comm = 0, iva = 0, isr = 0, ship = 0, refunds = 0, bonus = 0, adOrders = 0;
+        let gross = 0, comm = 0, iva = 0, isr = 0, ship = 0, refunds = 0, bonus = 0, adOrders = 0, totalPieces = 0;
 
         o.forEach(r => {
             const f = this.calcFinancials(r);
@@ -216,6 +215,9 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
             refunds += f.refunds;
             bonus   += f.bonus;
             if ((r as any).is_ad_driven) adOrders++;
+
+            const pieces = (r as any).items?.reduce((acc: number, item: any) => acc + (item.quantity || 1), 0) || 1;
+            totalPieces += pieces;
         });
 
         const net  = Math.max(0, gross - comm - iva - isr - ship - refunds + bonus);
@@ -225,6 +227,7 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
 
         return {
             orderCount: o.length,
+            totalPieces,
             gross, comm, iva, isr, ship, refunds, bonus, net,
             netPct:    pct(net),   commPct:   pct(comm),
             ivaPct:    pct(iva),   isrPct:    pct(isr),
@@ -297,6 +300,215 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         };
     });
 
+    // ── Simulated P&L What-If Logic ───────────────────────────────────────────
+    simulatedPnl = computed(() => {
+        const orders   = this.orders();
+        const prods    = this.products();
+        const fallback = this.cogsBlendedPct() / 100;
+        const b        = this.breakdown();
+        const p        = this.pnl();
+
+        const type       = this.simType();
+        const pctVal     = this.simPercentValue();
+        const fixedVal   = this.simFixedValue();
+        const targetMarg = this.simTargetMargin();
+        const targetProf = this.simTargetProfit();
+        const targetSale = this.simTargetSales();
+
+        if (type === 'volume_profit' || type === 'volume_sales') {
+            let totalPieces = 0;
+            orders.forEach(o => {
+                const pieces = (o as any).items?.reduce((acc: number, item: any) => acc + (item.quantity || 1), 0) || 1;
+                totalPieces += pieces;
+            });
+
+            let V_scale = 1;
+            if (type === 'volume_profit') {
+                const actProfit = p.grossProfit;
+                V_scale = actProfit > 0 ? targetProf / actProfit : 1;
+            } else {
+                const actGross = b.gross;
+                V_scale = actGross > 0 ? targetSale / actGross : 1;
+            }
+
+            const simGross = b.gross * V_scale;
+            const simNet   = b.net * V_scale;
+            const simCogs  = p.totalCogs * V_scale;
+            const simProfit = simNet - simCogs;
+            const simMargin = p.grossMargin;
+            const simIva = b.iva * V_scale;
+            const simIsr = b.isr * V_scale;
+            const simComm = b.comm * V_scale;
+            const simShip = b.ship * V_scale;
+
+            const deltaGross  = simGross - b.gross;
+            const deltaNet    = simNet - b.net;
+            const deltaProfit = simProfit - p.grossProfit;
+            const deltaMargin = 0;
+
+            const avgDeltaPrice = 0;
+            const percentChange = (V_scale - 1) * 100;
+
+            return {
+                gross: simGross,
+                net: simNet,
+                cogs: simCogs,
+                profit: simProfit,
+                margin: simMargin,
+                iva: simIva,
+                isr: simIsr,
+                comm: simComm,
+                ship: simShip,
+                deltaGross,
+                deltaNet,
+                deltaProfit,
+                deltaMargin,
+                avgDeltaPrice,
+                percentChange,
+                totalPieces: totalPieces * V_scale,
+                ordersCount: orders.length * V_scale
+            };
+        }
+
+        let S = 1; // Price scaling factor
+        let totalPieces = 0;
+
+        // Pre-calculate aggregate sums for target margin formula
+        let A_sum = 0;
+        let B_sum = 0;
+        let cogs_sum = 0;
+
+        const orderDetails = orders.map(o => {
+            const f = this.calcFinancials(o);
+            const total = f.total;
+            const pieces = (o as any).items?.reduce((acc: number, item: any) => acc + (item.quantity || 1), 0) || 1;
+            totalPieces += pieces;
+
+            // Resolve COGS for this order (fixed, based on original order total)
+            let orderCogs = 0;
+            const items = (o as any).items as any[] | undefined;
+            if (items && items.length > 0) {
+                let resolved = 0;
+                items.forEach(item => {
+                    const prod = prods.find(pr => pr.id === item.productId || pr.sku === item.sku);
+                    if (prod) {
+                        const cost = (prod as any).averageCost || (prod as any).costPrice || 0;
+                        if (cost > 0) {
+                            orderCogs += cost * (item.quantity || 1);
+                            resolved++;
+                        }
+                    }
+                });
+                if (resolved !== items.length || orderCogs === 0) {
+                    orderCogs = total * fallback;
+                }
+            } else {
+                orderCogs = total * fallback;
+            }
+            cogs_sum += orderCogs;
+
+            // A = total - comm - iva - isr
+            const A = total - f.comm - f.iva - f.isr;
+            // B = ship + refunds - bonus
+            const B = f.ship + f.refunds - f.bonus;
+
+            A_sum += A;
+            B_sum += B;
+
+            return { o, f, total, pieces, orderCogs };
+        });
+
+        // Determine scaling factor S
+        if (type === 'percentage') {
+            S = 1 + (pctVal / 100);
+        } else if (type === 'margin') {
+            const T = targetMarg / 100;
+            if (T >= 1 || T < -1) {
+                S = 1;
+            } else {
+                const num = B_sum * (1 - T) + cogs_sum;
+                const den = A_sum * (1 - T);
+                S = den !== 0 ? num / den : 1;
+            }
+        }
+
+        // Calculate simulated financials order by order
+        let simGross = 0;
+        let simComm  = 0;
+        let simIva   = 0;
+        let simIsr   = 0;
+        let simShip  = 0;
+        let simRefunds = 0;
+        let simBonus = 0;
+        let simNet   = 0;
+        let simCogs  = 0;
+
+        orderDetails.forEach(d => {
+            let orderS = S;
+            if (type === 'fixed') {
+                const delta = fixedVal * d.pieces;
+                orderS = d.total > 0 ? (d.total + delta) / d.total : 1;
+            }
+
+            const total_sim   = d.total * orderS;
+            const comm_sim    = d.f.comm * orderS;
+            const iva_sim     = d.f.iva * orderS;
+            const isr_sim     = d.f.isr * orderS;
+            const ship_sim    = d.f.ship;    // constant
+            const refunds_sim = d.f.refunds; // constant
+            const bonus_sim   = d.f.bonus;   // constant
+
+            const net_sim = Math.max(0, total_sim - comm_sim - iva_sim - isr_sim - ship_sim - refunds_sim + bonus_sim);
+
+            simGross   += total_sim;
+            simComm    += comm_sim;
+            simIva     += iva_sim;
+            simIsr     += isr_sim;
+            simShip    += ship_sim;
+            simRefunds += refunds_sim;
+            simBonus   += bonus_sim;
+            simNet     += net_sim;
+            simCogs    += d.orderCogs;
+        });
+
+        const simProfit = Math.max(0, simNet - simCogs);
+        const simMargin = simNet > 0 ? Math.round(simProfit / simNet * 1000) / 10 : 0;
+
+        // Deltas vs Actuals
+        const actGross  = b.gross;
+        const actNet    = b.net;
+        const actProfit = p.grossProfit;
+        const actMargin = p.grossMargin;
+
+        const deltaGross  = simGross - actGross;
+        const deltaNet    = simNet - actNet;
+        const deltaProfit = simProfit - actProfit;
+        const deltaMargin = simMargin - actMargin;
+
+        const avgDeltaPrice = totalPieces > 0 ? (simGross - actGross) / totalPieces : 0;
+        const percentChange = actGross > 0 ? (simGross - actGross) / actGross * 100 : 0;
+
+        return {
+            gross: simGross,
+            net: simNet,
+            cogs: simCogs,
+            profit: simProfit,
+            margin: simMargin,
+            iva: simIva,
+            isr: simIsr,
+            comm: simComm,
+            ship: simShip,
+            deltaGross,
+            deltaNet,
+            deltaProfit,
+            deltaMargin,
+            avgDeltaPrice,
+            percentChange,
+            totalPieces,
+            ordersCount: orders.length
+        };
+    });
+
     // ── Daily timeline (last N days) ─────────────────────────────────────────
     dailyTimeline = computed(() => {
         const o = this.orders();
@@ -352,9 +564,12 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
     // ── Top 10 orders (highest net) ───────────────────────────────────────────
     topOrders = computed(() => {
         return this.orders()
-            .map(o => ({ ...o, _net: this.calcFinancials(o).net }))
-            .filter(o => o._net > 0)
-            .sort((a, b) => b._net - a._net)
+            .map(o => {
+                const f = this.calcFinancials(o);
+                return { ...o, net_receipt: f.net, shipping_seller_cost: f.ship };
+            })
+            .filter(o => o.net_receipt > 0)
+            .sort((a, b) => b.net_receipt - a.net_receipt)
             .slice(0, 10);
     });
 
@@ -363,10 +578,9 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         return this.orders()
             .map(o => {
                 const f = this.calcFinancials(o);
-                return { ...o, _net: f.net, _gross: f.total,
-                    keepRate: f.total > 0 ? Math.round(f.net / f.total * 100) : 0 };
+                return { ...o, net_receipt: f.net, shipping_seller_cost: f.ship, keepRate: f.total > 0 ? Math.round(f.net / f.total * 100) : 0 };
             })
-            .filter(o => o._gross > 0)
+            .filter(o => o.total > 0)
             .sort((a, b) => a.keepRate - b.keepRate)
             .slice(0, 10);
     });
@@ -382,7 +596,8 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         };
         o.forEach(r => {
             if (!(r.total > 0)) return;
-            const pct = Math.round((r.marketplaceFee / r.total) * 100 * 10) / 10;
+            const f = this.calcFinancials(r);
+            const pct = Math.round((f.comm / r.total) * 100 * 10) / 10;
             if      (pct >= 9.5  && pct <= 10.5) tiers['10% (Clásica)'].count++;
             else if (pct >= 10.5 && pct <= 12)   tiers['11% (Premium)'].count++;
             else if (pct >= 13.5 && pct <= 15.5) tiers['14.5% (MSI)'].count++;
@@ -390,8 +605,8 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
             const key = pct >= 9.5 && pct <= 10.5 ? '10% (Clásica)' :
                         pct >= 10.5 && pct <= 12   ? '11% (Premium)' :
                         pct >= 13.5 && pct <= 15.5 ? '14.5% (MSI)'  : 'Otro';
-            tiers[key].gross += r.total       || 0;
-            tiers[key].net   += r.net_receipt || 0;
+            tiers[key].gross += r.total || 0;
+            tiers[key].net   += f.net;
         });
         const total = o.length || 1;
         return Object.entries(tiers)
@@ -423,5 +638,22 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         if (label.includes('11%')) return '#6366f1';
         if (label.includes('14.5%')) return '#f59e0b';
         return '#71717a';
+    }
+
+    formatWithSeparators(val: number | null | undefined): string {
+        if (val === null || val === undefined || isNaN(val)) return '';
+        return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    parseAndSetProfit(valStr: string) {
+        const clean = valStr.replace(/[^\d]/g, '');
+        const num = clean ? parseInt(clean, 10) : 0;
+        this.simTargetProfit.set(num);
+    }
+
+    parseAndSetSales(valStr: string) {
+        const clean = valStr.replace(/[^\d]/g, '');
+        const num = clean ? parseInt(clean, 10) : 0;
+        this.simTargetSales.set(num);
     }
 }

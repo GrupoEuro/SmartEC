@@ -19,9 +19,13 @@ Stabilize the Command Center, fix critical analytics bugs, consolidate documenta
    - **Stockout Dates**: Implemented logic to predict accurate "Run-out Date" based on velocity.
    - **UI**: Added "Stockout Date" and "Loss/Day" columns to Reorder Recommendations.
 
+### 4. **What-If Simulator Polish**
+   - **Formatting**: Replaced standard number inputs for **Target Profit** and **Target Sales** with text inputs supporting auto-updating thousand separators.
+   - **Data Sync**: Integrated helper methods to format signal values and strip non-digit characters during parsing, keeping sliders and signals perfectly synchronized.
+
 ## 🔍 Verification Results
 ### Automated Tests
-- `ng build`: **PASSED** (Compilation Verified).
+- `ng build internal-app`: **PASSED** (Compilation Verified).
 
 ### Manual Verification
 - **Notifications**:
@@ -33,7 +37,12 @@ Stabilize the Command Center, fix critical analytics bugs, consolidate documenta
     - [x] GMROI displays reasonable values (e.g., 2.5x).
     - [x] Dead Stock table populates correctly.
     - [x] **Predictive**: Reorder table shows dates (e.g., "Jan 25, 2026") and loss (e.g., "-$45.00").
+- **What-If Simulator Polish**:
+    - [x] Target Profit and Target Sales inputs format numbers dynamically with commas (e.g., `350,000` instead of `350000`).
+    - [x] Moving range sliders updates the corresponding text input with separators.
+    - [x] Typing values in the inputs parses them cleanly back into signals.
 
 ## 🖼️ Visual Proof
 > [!NOTE]
 > Screenshots verified by User. Codebase is compilation-error free.
+

@@ -497,3 +497,163 @@ export function parseAndSaveMeliOrder(mo: any, shipData: any, billingData?: any)
     });
 }
 
+/**
+ * Centrally processes raw MercadoLibre order data, fetches related details (shipments,
+ * costs, billing info, MercadoPago collections), and writes the fully calculated
+ * order object to Firestore under meli_${orderId} using { merge: true } merge logic.
+ */
+export async function processAndSaveMeliOrderFromData(
+    mo: any,
+    accessToken: string,
+    preFetched?: {
+        shipData?: any;
+        billingData?: any;
+        shipCosts?: any;
+        mpPayment?: any;
+    }
+) {
+    const headers = { 'Authorization': `Bearer ${accessToken}` };
+
+    // Fetch shipment if not pre-fetched and shipping.id is present
+    let shipData = preFetched?.shipData;
+    if (shipData === undefined && mo.shipping?.id) {
+        try {
+            const sRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}`, {
+                headers: { ...headers, 'x-format-new': 'true' }
+            });
+            if (sRes.ok) shipData = await sRes.json();
+            else {
+                console.warn(`[Meli Shared] Shipment ${mo.shipping.id} fetch failed: ${sRes.status}`);
+                shipData = { _fetchFailed: true, logistic_type: mo.shipping?.logistic_type ?? null };
+            }
+        } catch (e) {
+            console.warn(`[Meli Shared] Shipment fetch error:`, e);
+        }
+    }
+
+    // Fetch billing info if not pre-fetched
+    let billingData = preFetched?.billingData;
+    if (billingData === undefined) {
+        try {
+            const bRes = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, {
+                headers: { ...headers, 'x-version': '2' }
+            });
+            if (bRes.ok) billingData = await bRes.json();
+            else {
+                const bRes1 = await fetch(`https://api.mercadolibre.com/orders/${mo.id}/billing_info`, { headers });
+                if (bRes1.ok) billingData = await bRes1.json();
+            }
+        } catch (e) { /* non-critical */ }
+    }
+
+    // Fetch shipment costs if not pre-fetched and shipping.id is present
+    let shipCosts = preFetched?.shipCosts;
+    if (shipCosts === undefined && mo.shipping?.id) {
+        try {
+            const cRes = await fetch(`https://api.mercadolibre.com/shipments/${mo.shipping.id}/costs`, { headers });
+            if (cRes.ok) {
+                const costsJson = await cRes.json() as any;
+                const senderCost: number  = costsJson?.senders?.[0]?.cost ?? 0;
+                const grossAmount: number = costsJson?.gross_amount ?? 0;
+                const buyerCost: number   = costsJson?.buyer_cost ?? costsJson?.buyers?.[0]?.cost ?? 0;
+                const meliSubsidy: number = (costsJson?.senders?.[0]?.discounts || [])
+                    .reduce((sum: number, d: any) => sum + (d.promoted_amount || 0), 0);
+                shipCosts = { seller_cost: senderCost, gross_amount: grossAmount, buyer_cost: buyerCost, meli_subsidy: meliSubsidy };
+            }
+        } catch (_) { /* non-critical */ }
+    }
+
+    // Fetch MercadoPago payment info if not pre-fetched and payments[0].id is present
+    let mpPayment = preFetched?.mpPayment;
+    const paymentId = mo.payments?.[0]?.id;
+    if (mpPayment === undefined && paymentId) {
+        try {
+            const mpRes = await fetch(`https://api.mercadolibre.com/collections/${paymentId}`, { headers });
+            if (mpRes.ok) {
+                const mpData = await mpRes.json() as any;
+                const col = mpData?.collection ?? mpData;
+                mpPayment = {
+                    shipping_amount: col?.shipping_amount ?? 0,
+                    mp_fee: (col?.fee_details || [])
+                        .filter((f: any) => f.type === 'mercadopago_fee' && f.fee_payer === 'collector')
+                        .reduce((s: number, f: any) => s + (f.amount || 0), 0),
+                    net_received_amount: col?.net_received_amount ?? col?.net_amount ?? 0,
+                };
+            }
+        } catch (_) { /* non-critical */ }
+    }
+
+    const newOrder = parseAndSaveMeliOrder(mo, shipData, billingData);
+
+    // ── Resolve shipping seller cost ─────────────────────────────────────────
+    const mpShipAmount:  number = mpPayment?.shipping_amount  ?? 0;
+    const buyerShipCost: number = shipCosts?.buyer_cost        ?? 0;
+    const shippingSellerCost: number = (() => {
+        const fromCosts = shipCosts?.seller_cost ?? 0;
+        if (fromCosts > 0) return fromCosts;
+        if (mpShipAmount > 0) {
+            if (newOrder.fulfillmentType === 'platform') return mpShipAmount;
+            if (mpShipAmount > buyerShipCost) return Math.round((mpShipAmount - buyerShipCost) * 100) / 100;
+        }
+        const fromOrder = (newOrder as any).orderShippingCost ?? 0;
+        if (fromOrder > 0) return fromOrder;
+        return 0;
+    })();
+    const shippingGrossAmount: number = shipCosts?.gross_amount ?? mpShipAmount;
+    const shippingMeliSubsidy: number = shipCosts?.meli_subsidy ?? 0;
+    const cffPending: boolean = newOrder.fulfillmentType === 'platform' && shippingSellerCost === 0 && mpShipAmount === 0;
+
+    // ── SAT tax retentions ───────────────────────────────────────────────────
+    const IVA_INCLUSIVE_DIVISOR = 1.16;
+    const totalAmount:   number = newOrder.total ?? 0;
+    const preIvaAmount:  number = totalAmount / IVA_INCLUSIVE_DIVISOR;
+    const retencionIVA:  number = Math.round(preIvaAmount * 0.08  * 100) / 100;
+    const retencionISR:  number = Math.round(preIvaAmount * 0.025 * 100) / 100;
+    const meliCommission: number = (newOrder as any).marketplaceFee ?? 0;
+    const refundedAmount: number = (newOrder as any).refundedAmount ?? 0;
+    const mlBonus: number        = (newOrder as any).mlBonus ?? 0;
+    const netReceipt: number = Math.round(Math.max(0,
+        totalAmount - meliCommission - retencionIVA - retencionISR
+        - shippingSellerCost - refundedAmount + mlBonus
+    ) * 100) / 100;
+
+    // Merge financial fields into the order before saving
+    const orderWithFinancials = {
+        ...newOrder,
+        shipping_seller_cost:  shippingSellerCost,
+        shipping_gross_amount: shippingGrossAmount,
+        shipping_meli_subsidy: shippingMeliSubsidy,
+        mp_shipping_amount:    mpShipAmount,
+        buyer_shipping_cost:   buyerShipCost,
+        cff_pending:           cffPending,
+        retencion_iva:         retencionIVA,
+        retencion_isr:         retencionISR,
+        total_impuestos:       retencionIVA + retencionISR,
+        refunded_amount:       refundedAmount,
+        ml_bonus:              mlBonus,
+        net_receipt:           netReceipt,
+    };
+
+    // Use the REAL individual order id as the doc key
+    const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
+
+    // Preserve the original human-readable buyer name on webhook updates.
+    try {
+        const existingSnap = await orderRef.get();
+        const existingOrigName = existingSnap.data()?.customer?.originalName;
+        const isAnonW = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
+        if (existingOrigName && !isAnonW(existingOrigName)) {
+            orderWithFinancials.customer.originalName = existingOrigName;
+        } else if (existingOrigName && isAnonW(existingOrigName) && !isAnonW(orderWithFinancials.customer.originalName)) {
+            // Upgrade: stored was anonymized, new is readable — keep new one
+        } else if (existingOrigName) {
+            orderWithFinancials.customer.originalName = existingOrigName;
+        }
+    } catch (_) { /* non-critical — proceed without preservation */ }
+
+    await orderRef.set(orderWithFinancials, { merge: true });
+
+    console.log(`[Meli Shared] Saved order ML-${mo.id} with shipping_cost=${shippingSellerCost} net=${netReceipt} (pack_id: ${mo.pack_id || 'n/a'})`);
+}
+
+

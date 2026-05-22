@@ -23,7 +23,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { db } from './shared';
-import { getValidMeliToken, parseAndSaveMeliOrder } from './meli-shared';
+import { getValidMeliToken, parseAndSaveMeliOrder, processAndSaveMeliOrderFromData } from './meli-shared';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -300,14 +300,10 @@ export const meliForceResync = functions
                     if (bRes.ok) billingData = await bRes.json();
                 } catch (_) { /* non-critical */ }
 
-                const newOrder  = parseAndSaveMeliOrder(mo, shipData, billingData);
-                const orderRef  = db.collection('orders').doc(`meli_${id}`);
-                const existing  = await orderRef.get();
-                const origName  = existing.data()?.customer?.originalName;
-                const isAnon    = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-                if (origName && !isAnon(origName)) newOrder.customer.originalName = origName;
-
-                await orderRef.set(newOrder, { merge: true });
+                await processAndSaveMeliOrderFromData(mo, accessToken, {
+                    shipData,
+                    billingData
+                });
                 synced++;
             } catch (e: any) {
                 console.error(`[ForceResync] ${id}:`, e.message);

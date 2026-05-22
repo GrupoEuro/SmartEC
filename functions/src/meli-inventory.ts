@@ -7,7 +7,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { db } from './shared';
-import { getValidMeliToken, getAppLevelToken, parseAndSaveMeliOrder } from './meli-shared'; // parseAndSaveMeliOrder also needed
+import { getValidMeliToken, getAppLevelToken, parseAndSaveMeliOrder, processAndSaveMeliOrderFromData } from './meli-shared'; // parseAndSaveMeliOrder also needed
 
 export const testMeliApi = functions.runWith({ timeoutSeconds: 120 }).https.onRequest(async (req, res) => {
     try {
@@ -1325,34 +1325,13 @@ export const meliSyncOrdersCron = functions.pubsub.schedule('every 30 minutes').
                 })
             );
 
-            // Pre-fetch existing originalNames in parallel to protect against ML name anonymization
-            const cronOrigNames = new Map<string, string>();
-            await Promise.all(
-                meliOrders.map(async (mo: any) => {
-                    try {
-                        const snap = await db.collection('orders').doc(`meli_${mo.id}`).get();
-                        const orig = snap.data()?.customer?.originalName;
-                        if (orig) cronOrigNames.set(String(mo.id), orig);
-                    } catch (_) { /* skip */ }
-                })
-            );
-
             for (const mo of meliOrders) {
-                const orderRef = db.collection('orders').doc(`meli_${mo.id}`);
                 const shipData = mo.shipping?.id ? shipmentsMap[mo.shipping.id] : null;
 
-                const newOrder = parseAndSaveMeliOrder(mo, shipData, billingMap[mo.id]);
-                const isAnonC = (s: string) => !!s && s.length >= 6 && /^[A-Z0-9]{6,}$/.test(s);
-                const preservedCron = cronOrigNames.get(String(mo.id));
-                if (preservedCron && !isAnonC(preservedCron)) {
-                    newOrder.customer.originalName = preservedCron;
-                } else if (preservedCron && isAnonC(preservedCron) && !isAnonC(newOrder.customer.originalName)) {
-                    // Upgrade: stored was anonymized, new is readable
-                } else if (preservedCron) {
-                    newOrder.customer.originalName = preservedCron;
-                }
-
-                await orderRef.set(newOrder, { merge: true });
+                await processAndSaveMeliOrderFromData(mo, meliConfig.accessToken, {
+                    shipData,
+                    billingData: billingMap[mo.id]
+                });
                 importedCount++;
             }
 

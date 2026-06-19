@@ -150,7 +150,18 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     timeframe = signal<'MTD' | 'PM' | 'YTD'>('MTD');
     channelFilter = signal<'ALL' | 'mercadolibre' | 'web' | 'pos' | 'amazon' | 'on_behalf'>('ALL');
     showProjection = signal<boolean>(true);
+    /**
+     * IMPORTANT — Signal Contract:
+     * This plain array is NOT an Angular signal, but `salesVelocity` and
+     * `yesterdaySnapshot` computed signals depend on it indirectly via
+     * `todaySalesTotalSignal`. Whenever `allFetchedOrders` is reassigned,
+     * `calculateStats()` must also be called to bump `todaySalesTotalSignal`,
+     * which triggers the computeds. Never update `allFetchedOrders` without
+     * also calling `applyFilters()` → `calculateStats()`.
+     */
     allFetchedOrders: Order[] = [];
+    readonly Math = Math;  // expose for template progress-bar clamping
+
 
     // Easter Egg Milestones
     dailyMilestone = signal<'50K' | '100K' | null>(null);
@@ -187,6 +198,85 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     /** Per-day sales array for same-month LY (MTD overlay line). Index 0 = day 1. */
     lyDailyData = signal<number[]>([]);
+
+    /**
+     * FULL prior-month totals (e.g. entire June 2025 when viewing June 2026 MTD).
+     * Loaded from monthly_stats/{YYYY-MM} aggregate doc — single Firestore read.
+     * Used by the "Mes Completo AA" comparison banner.
+     */
+    lyFullMonthStats = signal<{ sales: number; orders: number; pieces: number; month: string } | null>(null);
+    private lyFullMonthLoadedForKey: string | null = null;
+
+    /**
+     * Memoization key for loadLyDailyForMTD — tracks which YYYY-MM has already
+     * been fetched this session so we don't re-query on every timeframe toggle.
+     */
+    private lyDataLoadedForMonth: string | null = null;
+
+    /**
+     * Per-day FORECAST revenue targets for the current month, loaded from
+     * analytics_daily/{YYYY-MM-DD}.forecastRevenue.  Index 0 = day 1.
+     * Only populated in MTD mode.
+     */
+    dailyForecastData = signal<number[]>([]);
+
+    /** Raw analytics_daily rows (for accuracy summary computation) */
+    private dailyForecastRaw = signal<Array<{
+        date: string;
+        forecastRevenue: number;
+        forecastAccuracy: number | null;
+        forecastBias: number | null;
+        forecastMethod: string | null;
+    }>>([]);
+
+    /**
+     * Forecast accuracy summary for the current MTD period.
+     * Computed from the dailyForecastRaw signal so it updates reactively.
+     */
+    forecastAccuracySummary = computed(() => {
+        const rows = this.dailyForecastRaw();
+        const withAccuracy = rows.filter(r => r.forecastAccuracy !== null && r.forecastAccuracy > 0);
+        if (withAccuracy.length === 0) return null;
+
+        const mape = withAccuracy.reduce((sum, r) => {
+            return sum + Math.abs((r.forecastAccuracy! - 1) * 100);
+        }, 0) / withAccuracy.length;
+
+        const beatDays = withAccuracy.filter(r => r.forecastAccuracy! >= 1).length;
+
+        // Day-of-week breakdown (0=Mon…6=Sun)
+        const DOW_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        const dowBuckets: number[][] = Array.from({ length: 7 }, () => []);
+        withAccuracy.forEach(r => {
+            const dt = new Date(r.date + 'T12:00:00');
+            const dow = (dt.getDay() + 6) % 7;
+            dowBuckets[dow].push(r.forecastAccuracy!);
+        });
+        const dowAvg = dowBuckets.map((b, i) => ({
+            name: DOW_NAMES[i],
+            avg: b.length > 0 ? b.reduce((a, v) => a + v, 0) / b.length : null,
+            count: b.length,
+        })).filter(d => d.avg !== null);
+
+        const bestDow  = dowAvg.reduce((best, d) => !best || d.avg! > best.avg! ? d : best, dowAvg[0]);
+        const worstDow = dowAvg.reduce((worst, d) => !worst || d.avg! < worst.avg! ? d : worst, dowAvg[0]);
+
+        // Last 7 days trend
+        const last7 = withAccuracy.slice(-7);
+        const last7Mape = last7.length > 0
+            ? last7.reduce((s, r) => s + Math.abs((r.forecastAccuracy! - 1) * 100), 0) / last7.length
+            : null;
+
+        return {
+            mape:       parseFloat(mape.toFixed(1)),
+            beatDays,
+            totalDays:  withAccuracy.length,
+            bestDow:    bestDow  ? { name: bestDow.name,  pct: parseFloat(((bestDow.avg!  - 1) * 100).toFixed(1)) } : null,
+            worstDow:   worstDow ? { name: worstDow.name, pct: parseFloat(((worstDow.avg! - 1) * 100).toFixed(1)) } : null,
+            last7Mape:  last7Mape !== null ? parseFloat(last7Mape.toFixed(1)) : null,
+            improving:  last7Mape !== null && last7Mape < mape,
+        };
+    });
 
     /** Human-readable label for the LY period, adapts to MTD vs YTD.
      *  MTD exact  → 'abr 1–18, 2025'
@@ -236,6 +326,22 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         return ((this.stats().monthlyPiecesSold - ly.pieces) / ly.pieces) * 100;
     });
 
+    /**
+     * Fraction of the current month that has elapsed (0–1), factoring in intra-day progress.
+     * Day 1 at noon ≈ 0.016. Day 15 at midnight ≈ 0.483. Day 30 EOD ≈ 1.0.
+     * Used by the "Mes Completo AA" pace bars to color-code whether MTD is on track.
+     * Returns null outside MTD so bars don't render for PM/YTD.
+     */
+    lyPaceExpected = computed<number | null>(() => {
+        if (this.timeframe() !== 'MTD') return null;
+        const now       = new Date();
+        const todayDay  = now.getDate();
+        const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        // Include intra-day fraction so the bar advances smoothly during the day
+        const fracDay   = (now.getHours() * 60 + now.getMinutes()) / (24 * 60);
+        return (todayDay - 1 + fracDay) / totalDays;   // 0-1 fraction
+    });
+
     stats = signal<DashboardStats>({
         totalOrders: 0,
         pendingOrders: 0,
@@ -245,7 +351,15 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         monthlyPiecesSold: 0
     });
 
-    /** End-of-month projection: only shown for MTD mid-month (not PM/YTD — those are complete periods). */
+    /**
+     * End-of-month projection: only shown for MTD mid-month (not PM/YTD — those are complete periods).
+     *
+     * Strategy priority (best → fallback):
+     *   1. Stored forecast line: sum of stored dailyForecastData for remaining days
+     *      (nightly Holt-Winters ensemble with calendar effects + bias correction)
+     *   2. Velocity Multiplier: CY prior completed days / LY prior completed days
+     *   3. Straight-line run-rate: mtdSales / elapsed × totalDays
+     */
     mtdProjection = computed<number | null>(() => {
         if (this.timeframe() !== 'MTD') return null;
         const mtdSales = this.stats().monthlySales;
@@ -256,30 +370,54 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
 
-        // ── Strategy A: Velocity Multiplier using LY daily data ────────────────
-        // velocityMultiplier = (CY MTD sales) / (LY sales over same elapsed period)
-        // Remaining projection = future LY days × multiplier
-        const lyData = this.lyDailyData();
-        if (lyData && lyData.length === totalDays) {
-            let lySalesMTD = 0;
-            for (let i = 0; i < todayDay - 1; i++) lySalesMTD += lyData[i];
-            lySalesMTD += lyData[todayDay - 1] * fractionalDayPart;
+        // ── Strategy 1: Stored forecast line from nightly ensemble ─────────────
+        // dailyForecastData[i] = forecasted revenue for day (i+1) of the month.
+        // Sum remaining days' forecasts and add to current MTD actuals.
+        const storedForecast = this.dailyForecastData();
+        if (storedForecast.length === totalDays) {
+            let forecastedRemainder = 0;
+            let hasValues = false;
+            // Rest of today (partial)
+            const todayForecast = storedForecast[todayDay - 1] || 0;
+            if (todayForecast > 0) {
+                forecastedRemainder += todayForecast * (1 - fractionalDayPart);
+                hasValues = true;
+            }
+            // All future days
+            for (let i = todayDay; i < totalDays; i++) {
+                if (storedForecast[i] > 0) {
+                    forecastedRemainder += storedForecast[i];
+                    hasValues = true;
+                }
+            }
+            if (hasValues && forecastedRemainder > 0) {
+                return mtdSales + forecastedRemainder;
+            }
+        }
 
-            if (lySalesMTD > 0) {
-                const velocityMultiplier = mtdSales / lySalesMTD;
-                // Today's remaining portion + all future days, scaled by multiplier
+        // ── Strategy 2: Velocity Multiplier using LY daily data ────────────────
+        const lyData = this.lyDailyData();
+        if (lyData && lyData.length === totalDays && todayDay > 1) {
+            let lyPriorDays = 0;
+            for (let i = 0; i < todayDay - 1; i++) lyPriorDays += lyData[i];
+
+            const todaySales = this.todaySalesActual();
+            const cyPriorDays = mtdSales - todaySales;
+
+            if (lyPriorDays > 0 && cyPriorDays > 0) {
+                const velocityMultiplier = cyPriorDays / lyPriorDays;
                 let futureLySales = lyData[todayDay - 1] * (1 - fractionalDayPart);
                 for (let i = todayDay; i < totalDays; i++) futureLySales += lyData[i];
                 return mtdSales + (futureLySales * velocityMultiplier);
             }
         }
 
-        // ── Strategy B: Straight-line run-rate (no LY data available) ──────────
-        // Elapsed = complete days + fraction of today consumed
+        // ── Strategy 3: Straight-line run-rate (no LY data / day 1) ──────────
         const fractionalDay = (todayDay - 1) + fractionalDayPart;
         if (fractionalDay <= 0.1) return null;
         return (mtdSales / fractionalDay) * totalDays;
     });
+
 
     /**
      * Today's actual totals so far (CY).
@@ -308,28 +446,37 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         if (hoursElapsed < 0.5) return null; // too early, no meaningful data
 
         // ── Strategy A: LY same day × velocity multiplier ─────────────────────
+        // Velocity multiplier is computed from COMPLETED prior days only (days 1…yesterday).
+        // This avoids the inflated-multiplier bug where mtdSales (full CY days + today)
+        // was divided by lySalesMTD that included only a small partial-hour fraction of LY today,
+        // making the multiplier unrealistically large and blowing up the projection.
         const lyData = this.lyDailyData();
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         if (lyData && lyData.length === totalDays) {
-            const lyToday = lyData[now.getDate() - 1]; // LY sales on the same calendar day
-            if (lyToday > 0) {
-                // Velocity multiplier from the full MTD picture
-                const mtdSales = this.stats().monthlySales;
-                const todayDay = now.getDate();
-                const fractionalDayPart = now.getHours() / 24 + now.getMinutes() / 1440;
-                let lySalesMTD = 0;
-                for (let i = 0; i < todayDay - 1; i++) lySalesMTD += lyData[i];
-                lySalesMTD += lyData[todayDay - 1] * fractionalDayPart;
+            const todayDay = now.getDate();
+            const fractionalDayPart = now.getHours() / 24 + now.getMinutes() / 1440;
+            const lyToday = lyData[todayDay - 1]; // LY full-day sales on this calendar day
 
-                if (lySalesMTD > 0 && mtdSales > 0) {
-                    const velocityMultiplier = mtdSales / lySalesMTD;
+            if (lyToday > 0 && todayDay > 1) {
+                // Sum only fully-completed LY days (i < todayDay - 1 → days 1…yesterday)
+                let lyPriorDays = 0;
+                for (let i = 0; i < todayDay - 1; i++) lyPriorDays += lyData[i];
+
+                // CY sales for the same completed days (exclude today's in-progress sales)
+                const mtdSales = this.stats().monthlySales;
+                const cyPriorDays = mtdSales - todaySales;
+
+                if (lyPriorDays > 0 && cyPriorDays > 0) {
+                    // Multiplier purely from apples-to-apples completed days
+                    const velocityMultiplier = cyPriorDays / lyPriorDays;
+                    // Project remaining portion of today using LY shape × multiplier
                     const futureLyToday = lyToday * (1 - fractionalDayPart);
                     return todaySales + (futureLyToday * velocityMultiplier);
                 }
             }
         }
 
-        // ── Strategy B: Straight-line hourly run-rate ──────────────────────────
+        // ── Strategy B: Straight-line hourly run-rate (no LY data / day 1) ─────
         return (todaySales / hoursElapsed) * 24;
     });
 
@@ -404,6 +551,63 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         if (fractionalDay <= 0.1) return null;
         const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         return Math.round((mtdOrders / fractionalDay) * totalDays);
+    });
+
+    /**
+     * Average daily sales for the selected period.
+     * - MTD: monthlySales / fractional days elapsed (includes today in progress)
+     * - PM:  monthlySales / total days in that month
+     * - YTD: monthlySales / days elapsed so far this year
+     * Returns null if there are no sales yet.
+     */
+    avgDailySales = computed<number | null>(() => {
+        const sales = this.stats().monthlySales;
+        if (sales <= 0) return null;
+
+        const now = new Date();
+        const tf  = this.timeframe();
+
+        if (tf === 'MTD') {
+            // Include today's partial day so the number updates in real-time
+            const fractionalDay = now.getDate() - 1 + (now.getHours() / 24) + (now.getMinutes() / 1440);
+            if (fractionalDay < 0.1) return null;
+            return sales / fractionalDay;
+        }
+
+        if (tf === 'PM') {
+            // Previous month — figure out how many days it had
+            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const daysInPrevMonth = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+            return sales / daysInPrevMonth;
+        }
+
+        if (tf === 'YTD') {
+            // Days elapsed since Jan 1 (including today as partial)
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const msElapsed   = now.getTime() - startOfYear.getTime();
+            const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
+            if (daysElapsed < 0.1) return null;
+            return sales / daysElapsed;
+        }
+
+        return null;
+    });
+
+    /**
+     * Average ticket delta: compares MTD avg ticket vs last year same period.
+     * Positive = bigger orders this year, negative = smaller.
+     * Returns null when no LY data or no current orders.
+     */
+    avgTicketDelta = computed<{ current: number; ly: number; pct: number } | null>(() => {
+        const stats = this.stats();
+        if (stats.totalOrders <= 0 || stats.monthlySales <= 0) return null;
+        const lyStats = this.lyPeriodStats();
+        if (!lyStats || lyStats.orders <= 0 || lyStats.sales <= 0) return null;
+
+        const current = stats.monthlySales / stats.totalOrders;
+        const ly      = lyStats.sales / lyStats.orders;
+        const pct     = ((current - ly) / ly) * 100;
+        return { current, ly, pct };
     });
 
     /**
@@ -885,6 +1089,32 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     /** Live Firestore subscription — unsubscribed on destroy or timeframe change. */
     private liveOrdersSub?: Subscription;
 
+    /**
+     * Midnight rollover timers.
+     * midnightTimer  — one-shot setTimeout that fires at 00:00 local time.
+     * midnightInterval — 24h setInterval that keeps the window fresh if the tab
+     *                    stays open across multiple midnights.
+     * Both are cleared in ngOnDestroy.
+     */
+    private midnightTimer: any;
+    private midnightInterval: any;
+
+    /**
+     * 5-minute Pulso auto-refresh interval.
+     *
+     * Problem solved: the hourly sparkline bars, current-hour marker, and rate/
+     * projection values in the Pulso de Ventas panel only update when the
+     * Firestore tail emits a new/updated order. During quiet periods (e.g. 45 min
+     * with no orders), the hour marker doesn't advance, rates freeze, and the
+     * projection becomes stale.
+     *
+     * This interval bumps `todaySalesTotalSignal` every 5 minutes (re-setting the
+     * same value) to force `salesVelocity`, `sparklineData`, and other computed
+     * signals to re-evaluate with a fresh `new Date()`. Zero Firestore reads —
+     * it only recalculates from the already-cached `allFetchedOrders` array.
+     */
+    private pulsoRefreshInterval: any;
+
     /** ALL products unsorted — set by calculateTopProducts(). */
     private allProductsSorted = signal<{ name: string; units: number; revenue: number }[]>([]);
     topProductsMode = signal<'units' | 'amount'>('units');
@@ -908,6 +1138,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
     ngOnInit() {
         this.loadDashboardData();
         this.loadEuromindReport();
+        this.scheduleMidnightRollover();
+        this.startPulsoRefresh();
     }
 
     async loadEuromindReport() {
@@ -939,6 +1171,76 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         this.trendChart?.destroy();
         // Unsubscribe from live Firestore stream
         this.liveOrdersSub?.unsubscribe();
+        // Cancel midnight rollover timers
+        clearTimeout(this.midnightTimer);
+        clearInterval(this.midnightInterval);
+        // Cancel Pulso auto-refresh
+        clearInterval(this.pulsoRefreshInterval);
+    }
+
+    /**
+     * Schedules a one-shot timer that fires at exactly 00:00 local time.
+     *
+     * Problem solved: if the dashboard is already open when midnight passes, the
+     * date window (startDate/endDate) computed at session start becomes stale —
+     * it still points to yesterday, so calculateStats() finds zero orders matching
+     * "today" and shows $0 sales until the user manually refreshes.
+     *
+     * This method:
+     *   1. Calculates milliseconds until the next midnight.
+     *   2. Sets a one-shot setTimeout that calls loadDashboardData() at 00:00,
+     *      which rebuilds the window with a fresh `new Date()`.
+     *   3. After the first rollover, installs a 24h interval for subsequent nights.
+     *
+     * Zero extra Firestore reads — it simply triggers the same loadDashboardData()
+     * that a manual navigation-away-and-back would trigger.
+     */
+    private scheduleMidnightRollover(): void {
+        const now = new Date();
+        const nextMidnight = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1,   // tomorrow at...
+            0, 0, 0, 0           // ...00:00:00.000
+        );
+        const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+
+        console.log(`[Dashboard] Midnight rollover scheduled in ${Math.round(msUntilMidnight / 60000)} min.`);
+
+        this.midnightTimer = setTimeout(() => {
+            console.log('[Dashboard] Midnight rollover — reloading date window.');
+            // Invalidate LY memoization keys so the new day picks up fresh data
+            this.lyDataLoadedForMonth = null;
+            this.lyFullMonthLoadedForKey = null;
+            this.loadDashboardData();
+
+            // Keep refreshing every subsequent midnight
+            this.midnightInterval = setInterval(() => {
+                console.log('[Dashboard] 24h rollover — reloading date window.');
+                this.lyDataLoadedForMonth = null;
+                this.lyFullMonthLoadedForKey = null;
+                this.loadDashboardData();
+            }, 24 * 60 * 60 * 1000);
+        }, msUntilMidnight);
+    }
+
+    /**
+     * Bumps `todaySalesTotalSignal` every 5 minutes to keep Pulso de Ventas
+     * computeds fresh (hour marker, rate, projection) even when no new orders
+     * arrive. Zero Firestore reads.
+     */
+    private startPulsoRefresh(): void {
+        this.pulsoRefreshInterval = setInterval(() => {
+            // Re-set the same value to trigger computed re-evaluation with fresh `new Date()`
+            this.todaySalesTotalSignal.update(v => v);
+        }, 5 * 60 * 1000); // every 5 minutes
+    }
+
+    /** Returns true if both dates fall on the same calendar day. */
+    private isSameDay(d1: Date, d2: Date): boolean {
+        return d1.getFullYear() === d2.getFullYear() &&
+               d1.getMonth()    === d2.getMonth() &&
+               d1.getDate()     === d2.getDate();
     }
 
     private getJsDate(timestamp: any): Date {
@@ -997,38 +1299,50 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         // ── Pulso de Ventas guard ────────────────────────────────────────────
         // Pulso always needs today + yesterday in allFetchedOrders.
-        // For PM/YTD the window above excludes recent days, so we expand it
+        // For PM/YTD the window above may exclude recent days, so we expand it
         // to always include at least yesterday.
+        //
+        // CRITICAL EXCEPTION — do NOT cross a month boundary on MTD.
+        // On day 1 of a new month (e.g. June 1):
+        //   startDate  = June 1  00:00:00
+        //   yesterday  = May 31  08:xx:xx  (current time minus 1 day)
+        //   startDate > yesterday → TRUE → guard would set startDate = May 31
+        // This pulled an entire prior month of orders into the MTD window,
+        // inflating MTD sales by ~75 k. Guard is only safe when yesterday is
+        // in the same calendar month as the period start.
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        if (startDate > yesterday) {
+        if (startDate > yesterday && yesterday.getMonth() === startDate.getMonth()) {
             startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
         }
 
-        // Reset LY daily overlay
+        // Reset LY daily overlay + forecast data
         this.lyDailyData.set([]);
         this.lyUsingApprox.set(false);
+        this.dailyForecastData.set([]);
 
         // Kick off LY reads in parallel (non-blocking)
         this.loadLyComparison();
+        this.loadLyFullMonth();   // full prior-month totals for the comparison banner
         if (this.timeframe() === 'MTD') {
             this.loadLyDailyForMTD();
+            this.loadDailyForecastForMTD();
         }
 
-        // Cancel any previous live subscription before opening a new one.
+        // Cancel any previous hybrid subscription before opening a new one.
         this.liveOrdersSub?.unsubscribe();
 
-        // Always invalidate the live cache before opening a new socket.
-        // Without this, a cached socket from a previous session (with an old
-        // endDate = yesterday) would be reused, causing Pulso to show $0 for ayer.
-        this.globalOrderCache.invalidateLive();
+        // Invalidate the hybrid cache so the one-shot re-fetches for the new
+        // date window (e.g. when switching MTD → PM → MTD).
+        this.globalOrderCache.invalidateHybrid();
 
-        // Real-time Firestore stream — auto-updates when MeLi webhook orders land.
-        // NOTE: no debounceTime here — we need isLoading to turn false quickly so
-        // The chart canvas becomes visible BEFORE Chart.js initializes. Debouncing
-        // was causing Chart.js to render on a 0-height invisible canvas.
+        // ── Hybrid stream ─────────────────────────────────────────────────────
+        // Phase 1: getDocs loads all orders for the period once (one read per session).
+        // Phase 2: a narrow 48h onSnapshot tail delivers new/updated orders in
+        // near-real-time with ~50 docs per event instead of 900.
+        // Net result: ~92% fewer order reads vs a full-range onSnapshot.
         this.liveOrdersSub = this.globalOrderCache
-            .getLive(startDate, endDate)
+            .getHybrid(startDate, endDate)
             .subscribe({
                 next: (orders) => {
                     this.allFetchedOrders = orders;
@@ -1074,15 +1388,44 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 toDateStr = `${now.getFullYear() - 1}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             }
 
-            const kpis = await this.bqService.querySummaryKpisBetween(fromDateStr, toDateStr);
-            
+            // ── Try BigQuery for LY period KPIs ────────────────────────────────
             let sales = 0, orders = 0, pieces = 0, hasAny = false;
-            kpis.forEach((k: any) => {
-                sales += k.revenue || 0;
-                orders += k.orders || 0;
-                pieces += k.units || 0;
-                hasAny = true;
-            });
+            try {
+                const kpis = await this.bqService.querySummaryKpisBetween(fromDateStr, toDateStr);
+                kpis.forEach((k: any) => {
+                    sales += k.revenue || 0;
+                    orders += k.orders || 0;
+                    pieces += k.units || 0;
+                    hasAny = true;
+                });
+            } catch (bqErr) {
+                console.warn('[Dashboard] BQ LY KPI read failed, will try Firestore fallback:', bqErr);
+            }
+
+            // ── Fallback: aggregate analytics_daily for the same period ─────────
+            if (!hasAny) {
+                try {
+                    const ref  = collection(this.firestore, 'analytics_daily');
+                    const q    = query(ref,
+                        where('date', '>=', fromDateStr),
+                        where('date', '<=', toDateStr),
+                        orderBy('date', 'asc'),
+                    );
+                    const snap = await getDocs(q);
+                    snap.forEach(docSnap => {
+                        const d = docSnap.data();
+                        sales  += d['totalRevenue'] ?? 0;
+                        orders += d['totalOrders']  ?? 0;
+                        pieces += d['totalUnits']   ?? 0;
+                        hasAny  = true;
+                    });
+                    if (hasAny) {
+                        console.log(`[Dashboard] LY KPIs loaded from analytics_daily (BQ fallback): ${fromDateStr}–${toDateStr}`);
+                    }
+                } catch (fsErr) {
+                    console.warn('[Dashboard] Firestore LY KPI fallback failed:', fsErr);
+                }
+            }
 
             this.lyPeriodStats.set(hasAny ? { sales, orders, pieces } : null);
             this.lyUsingApprox.set(false);
@@ -1095,34 +1438,112 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     /**
      * Load per-day LY sales for MTD overlay line on trend chart.
+     *
+     * Priority:
+     *   1. BigQuery (fast, covers historical periods once BQ export runs)
+     *   2. analytics_daily Firestore collection (fallback — always has current & LY data)
      */
     private async loadLyDailyForMTD(): Promise<void> {
+        // ── Memoization guard ─────────────────────────────────────────────────
+        // Skip the Firestore fetch if we already have data for the current month.
+        // This avoids re-reading monthly_stats/*/days on every timeframe toggle.
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        if (this.lyDataLoadedForMonth === currentMonthKey && this.lyDailyData().length > 0) {
+            console.log(`[Dashboard] LY daily data already loaded for ${currentMonthKey} — skipping re-fetch.`);
+            return;
+        }
+
         try {
-            const now = new Date();
             const lyYear = now.getFullYear() - 1;
             const lyMon = String(now.getMonth() + 1).padStart(2, '0');
             const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
             const fromDateStr = `${lyYear}-${lyMon}-01`;
-            const toDateStr = `${lyYear}-${lyMon}-${String(totalDaysInMonth).padStart(2, '0')}`;
+            const toDateStr   = `${lyYear}-${lyMon}-${String(totalDaysInMonth).padStart(2, '0')}`;
 
-            const trend: any[] = await (this.bqService as any).queryDailyTrendBetween(fromDateStr, toDateStr);
-            const dailySales: number[] = new Array(totalDaysInMonth).fill(0);
-            
+            // ── Try BigQuery first ─────────────────────────────────────────────
+            let dailySales: number[] = new Array(totalDaysInMonth).fill(0);
             let hasAny = false;
-            trend.forEach((t: any) => {
-                const day = parseInt(t.order_date.split('-')[2], 10);
-                if (day >= 1 && day <= totalDaysInMonth) {
-                    dailySales[day - 1] += t.revenue || 0;
-                    hasAny = true;
+
+            try {
+                const trend: any[] = await (this.bqService as any).queryDailyTrendBetween(fromDateStr, toDateStr);
+                trend.forEach((t: any) => {
+                    const day = parseInt(t.order_date.split('-')[2], 10);
+                    if (day >= 1 && day <= totalDaysInMonth) {
+                        dailySales[day - 1] += t.revenue || 0;
+                        hasAny = true;
+                    }
+                });
+            } catch (bqErr) {
+                console.warn('[Dashboard] BQ LY daily read failed, will try Firestore fallback:', bqErr);
+            }
+
+            // ── Fallback: analytics_daily Firestore collection ─────────────────
+            if (!hasAny) {
+                try {
+                    const ref = collection(this.firestore, 'analytics_daily');
+                    const q   = query(ref,
+                        where('date', '>=', fromDateStr),
+                        where('date', '<=', toDateStr),
+                        orderBy('date', 'asc'),
+                    );
+                    const snap = await getDocs(q);
+                    dailySales = new Array(totalDaysInMonth).fill(0);
+                    snap.forEach(docSnap => {
+                        const d = docSnap.data();
+                        const day = parseInt((d['date'] as string).split('-')[2], 10);
+                        if (day >= 1 && day <= totalDaysInMonth) {
+                            dailySales[day - 1] = d['totalRevenue'] ?? 0;
+                            if (dailySales[day - 1] > 0) hasAny = true;
+                        }
+                    });
+                    if (hasAny) {
+                        console.log(`[Dashboard] LY daily loaded from analytics_daily (BQ fallback): ${lyYear}-${lyMon}`);
+                    }
+                } catch (fsErr) {
+                    console.warn('[Dashboard] Firestore LY daily fallback failed:', fsErr);
                 }
-            });
+            }
+
+            // ── Fallback 3: monthly_stats/{YYYY-MM}/days subcollection ─────────
+            // This older structure is written by backfillMonthlyStats and
+            // aggregateDailyStats cron. More likely to have historical data
+            // than analytics_daily when the newer cron hasn't backfilled yet.
+            if (!hasAny) {
+                try {
+                    const monthlyStatsRef = collection(
+                        this.firestore,
+                        `monthly_stats/${lyYear}-${lyMon}/days`
+                    );
+                    const msSnap = await getDocs(monthlyStatsRef);
+                    dailySales = new Array(totalDaysInMonth).fill(0);
+                    msSnap.forEach(docSnap => {
+                        const d = docSnap.data();
+                        const day = parseInt(docSnap.id, 10);
+                        if (day >= 1 && day <= totalDaysInMonth) {
+                            dailySales[day - 1] = d['sales'] ?? 0;
+                            if (dailySales[day - 1] > 0) hasAny = true;
+                        }
+                    });
+                    if (hasAny) {
+                        console.log(`[Dashboard] LY daily loaded from monthly_stats (fallback 3): ${lyYear}-${lyMon}`);
+                    }
+                } catch (msErr) {
+                    console.warn('[Dashboard] monthly_stats LY fallback failed:', msErr);
+                }
+            }
 
             if (hasAny) {
                 this.lyDailyData.set(dailySales);
-                // The historical data has arrived. Redraw the entire chart so 
-                // the projection curve recalculates based on this new data!
-                if (this.trendChart) this.applyFilters();
+                // Mark this month as loaded so loadLyDailyForMTD() is a no-op on
+                // subsequent timeframe toggles within the same session.
+                this.lyDataLoadedForMonth = currentMonthKey;
+                // Redraw: guard on orders being loaded rather than chart existence.
+                // Fixes the race where LY data arrives before the first chart render —
+                // if orders aren't loaded yet, the chart will use lyDailyData() when
+                // it IS created (signal is already set by then).
+                if (this.allFetchedOrders.length > 0) this.applyFilters();
             }
         } catch (err) {
             console.warn('[Dashboard] LY daily MTD read failed (non-critical):', err);
@@ -1131,8 +1552,174 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     // LY overlay natively handled inside createTrendChart()
 
+    /**
+     * Load the FULL prior-year equivalent month totals from monthly_stats/{YYYY-MM}.
+     * For MTD → reads the entire June 2025 doc.
+     * For PM  → reads the entire May 2025 doc.
+     * For YTD → reads the YTD month range and sums (or just shows the matching month).
+     *
+     * Uses memoization so re-renders / timeframe toggles within the same session
+     * do not re-query Firestore.
+     */
+    private async loadLyFullMonth(): Promise<void> {
+        const now      = new Date();
+        const lyYear   = now.getFullYear() - 1;
 
+        // Determine which LY month to show the FULL picture for
+        let lyMonthNum: number;   // 0-based
+        let lyMonthYear = lyYear;
+
+        if (this.timeframe() === 'PM') {
+            // PM compares to same month LY (e.g. May 2026 MTD vs May 2025 full)
+            const prevMon = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+            lyMonthNum = prevMon;
+            lyMonthYear = now.getMonth() === 0 ? lyYear - 1 : lyYear;
+        } else {
+            // MTD and YTD both compare to the current month LY
+            lyMonthNum = now.getMonth();
+        }
+
+        const lyMon     = String(lyMonthNum + 1).padStart(2, '0');
+        const lyMonthStr = `${lyMonthYear}-${lyMon}`;
+        const cacheKey  = `${lyMonthStr}`;
+
+        if (this.lyFullMonthLoadedForKey === cacheKey) return;  // already loaded this session
+
+        try {
+            // Primary: monthly_stats/{YYYY-MM} aggregate doc
+            const docRef  = doc(this.firestore, `monthly_stats/${lyMonthStr}`);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const d = docSnap.data();
+                const sales   = d['sales']   ?? d['revenue']   ?? 0;
+                const orders  = d['orders']  ?? 0;
+                const pieces  = d['pieces']  ?? d['units']     ?? 0;
+
+                if (sales > 0 || orders > 0) {
+                    this.lyFullMonthStats.set({ sales, orders, pieces, month: lyMonthStr });
+                    this.lyFullMonthLoadedForKey = cacheKey;
+                    console.log(`[Dashboard] LY full month loaded: ${lyMonthStr} → $${sales.toFixed(0)}, ${orders} pedidos, ${pieces} pzas`);
+                    return;
+                }
+            }
+
+            // Fallback: analytics_daily aggregate for the full month
+            const totalDaysInMonth = new Date(lyMonthYear, lyMonthNum + 1, 0).getDate();
+            const fromStr = `${lyMonthStr}-01`;
+            const toStr   = `${lyMonthStr}-${String(totalDaysInMonth).padStart(2, '0')}`;
+
+            const ref  = collection(this.firestore, 'analytics_daily');
+            const q    = query(ref,
+                where('date', '>=', fromStr),
+                where('date', '<=', toStr),
+            );
+            const snap = await getDocs(q);
+
+            let sales = 0, orders = 0, pieces = 0;
+            snap.forEach(d => {
+                const data = d.data();
+                sales   += data['totalRevenue'] ?? 0;
+                orders  += data['totalOrders']  ?? 0;
+                pieces  += data['totalPieces']  ?? data['totalUnits'] ?? 0;
+            });
+
+            if (sales > 0 || orders > 0) {
+                this.lyFullMonthStats.set({ sales, orders, pieces, month: lyMonthStr });
+                this.lyFullMonthLoadedForKey = cacheKey;
+                console.log(`[Dashboard] LY full month (analytics_daily fallback): ${lyMonthStr} → $${sales.toFixed(0)}`);
+            } else {
+                this.lyFullMonthStats.set(null);
+                console.warn(`[Dashboard] LY full month not found for ${lyMonthStr}`);
+            }
+        } catch (err) {
+            console.warn('[Dashboard] loadLyFullMonth failed (non-critical):', err);
+            this.lyFullMonthStats.set(null);
+        }
+    }
+
+    /**
+     * Load per-day forecast targets for the current month from analytics_daily.
+     * Each doc may have forecastRevenue (set the previous night) and
+     * forecastAccuracy (set by the daily cron after actuals close).
+     *
+     * Populates:
+     *   - dailyForecastData  → for the 3-line chart (forecast line)
+     *   - dailyForecastRaw   → for the accuracy summary computed signal
+     */
+    private async loadDailyForecastForMTD(): Promise<void> {
+        try {
+            const now         = new Date();
+            const year        = now.getFullYear();
+            const mon         = String(now.getMonth() + 1).padStart(2, '0');
+            const totalDays   = new Date(year, now.getMonth() + 1, 0).getDate();
+            const fromDateStr = `${year}-${mon}-01`;
+            const toDateStr   = `${year}-${mon}-${String(totalDays).padStart(2, '0')}`;
+
+            const ref = collection(this.firestore, 'analytics_daily');
+            const q   = query(ref,
+                where('date', '>=', fromDateStr),
+                where('date', '<=', toDateStr),
+                orderBy('date', 'asc'),
+            );
+            const snap = await getDocs(q);
+
+            const forecastArr: number[] = new Array(totalDays).fill(0);
+            const rawRows: Array<{
+                date: string;
+                forecastRevenue: number;
+                forecastAccuracy: number | null;
+                forecastBias: number | null;
+                forecastMethod: string | null;
+            }> = [];
+
+            snap.forEach(docSnap => {
+                const d     = docSnap.data();
+                const date  = d['date'] as string;
+                const dayNum = parseInt(date.split('-')[2], 10);
+                if (dayNum >= 1 && dayNum <= totalDays) {
+                    const fRev = (d['forecastRevenue'] as number) ?? 0;
+                    forecastArr[dayNum - 1] = fRev;
+                    if (fRev > 0) {
+                        rawRows.push({
+                            date,
+                            forecastRevenue:  fRev,
+                            forecastAccuracy: d['forecastAccuracy'] ?? null,
+                            forecastBias:     d['forecastBias']     ?? null,
+                            forecastMethod:   d['forecastMethod']   ?? null,
+                        });
+                    }
+                }
+            });
+
+            const hasAny = forecastArr.some(v => v > 0);
+            if (hasAny) {
+                this.dailyForecastData.set(forecastArr);
+                this.dailyForecastRaw.set(rawRows);
+                if (this.trendChart) this.applyFilters();
+            }
+        } catch (err) {
+            console.warn('[Dashboard] Daily forecast MTD read failed (non-critical):', err);
+        }
+    }
+
+    /**
+     * Trailing-debounce handle for chart renders.
+     *
+     * Problem solved: a single data load triggers applyFilters() up to 3× in rapid
+     * succession (initial stream emit + LY data arrival + forecast data arrival).
+     * Each call previously destroyed and recreated all 3 Chart.js instances, causing
+     * a visible canvas flash. A 300ms trailing debounce collapses all calls within
+     * the same burst into one render cycle.
+     *
+     * Data calculations (calculateStats, etc.) still run synchronously on every call
+     * so signal values are always up to date — only the expensive chart rebuild is
+     * deferred and collapsed.
+     */
     private chartRenderTimeout: any;
+    /** Snapshot of filtered orders captured at the last applyFilters() call.
+     *  Used by the debounced render so it operates on the freshest data set. */
+    private lastFilteredOrders: Order[] = [];
 
     applyFilters() {
         const filter = this.channelFilter();
@@ -1145,6 +1732,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             );
         }
 
+        // ── Synchronous data calculations — always run immediately ────────────
         this.calculateStats(filteredOrders);
         this.calculateSLAStats(filteredOrders);
         this.calculatePriorityStats(filteredOrders);
@@ -1156,20 +1744,33 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         this.recentOrders.set(filteredOrders.slice(0, 5));
 
-        if (this.chartRenderTimeout) {
-            clearTimeout(this.chartRenderTimeout);
-        }
-
-        // requestAnimationFrame ensures the DOM has been painted (isLoading = false
-        // → invisible class removed) before Chart.js reads canvas dimensions.
-        requestAnimationFrame(() => {
-            this.chartRenderTimeout = setTimeout(() => {
+        // ── Debounced chart render — collapses rapid successive calls ─────────
+        // Store the latest filtered set so the render always uses fresh data.
+        this.lastFilteredOrders = filteredOrders;
+        clearTimeout(this.chartRenderTimeout);
+        this.chartRenderTimeout = setTimeout(() => {
+            // requestAnimationFrame ensures isLoading=false has been painted
+            // and the canvas elements are visible before Chart.js reads dimensions.
+            requestAnimationFrame(() => {
                 console.log('[Dashboard] Chart render tick — trendChart canvas:', !!document.getElementById('trendChart'));
-                try { if (document.getElementById('topProductsChart')) this.createTopProductsChart(); } catch(e) { console.error('[Dashboard] topProductsChart error:', e); }
-                try { if (document.getElementById('priorityChart'))    this.createPriorityChart(); }    catch(e) { console.error('[Dashboard] priorityChart error:', e); }
-                try { if (document.getElementById('trendChart'))       this.createTrendChart(filteredOrders); } catch(e) { console.error('[Dashboard] trendChart error:', e); }
-            }, 100);
-        });
+                // Use incremental update() when charts already exist (avoids destroy/recreate flash)
+                // Fall back to full create when chart doesn't exist yet (first load after skeleton)
+                try {
+                    if (document.getElementById('topProductsChart')) {
+                        this.topProductsChart ? this.updateTopProductsChart() : this.createTopProductsChart();
+                    }
+                } catch(e) { console.error('[Dashboard] topProductsChart error:', e); }
+                try {
+                    if (document.getElementById('priorityChart')) {
+                        this.priorityChart ? this.updatePriorityChart() : this.createPriorityChart();
+                    }
+                } catch(e) { console.error('[Dashboard] priorityChart error:', e); }
+                // Trend chart always recreates — its dataset count and inline plugin change
+                // dynamically (projection lines appear/disappear based on timeframe and data)
+                // making incremental update() unreliable.
+                try { if (document.getElementById('trendChart')) this.createTrendChart(this.lastFilteredOrders); } catch(e) { console.error('[Dashboard] trendChart error:', e); }
+            });
+        }, 300);
     }
 
 
@@ -1195,14 +1796,15 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             );
 
             // GHOST_STATUSES: not real committed orders — excluded from both count AND revenue
+            // Also exclude cancelled/refunded/returned/refund_pending to align with main KPI card
             const GHOST_STATUSES = ['payment_failed', 'pending_payment'];
-            const countableChOrders = chOrders.filter(o => !GHOST_STATUSES.includes(o.status as string));
-
-            // EXCLUDED_FROM_REVENUE: real orders but money not confirmed/retained yet
             const EXCLUDED_FROM_REVENUE = ['cancelled', 'refunded', 'returned', 'refund_pending'];
-            const revenue = countableChOrders
-                .filter(o => !EXCLUDED_FROM_REVENUE.includes(o.status as string))
-                .reduce((s, o) => s + (o.total ?? 0), 0);
+            const countableChOrders = chOrders.filter(o => 
+                !GHOST_STATUSES.includes(o.status as string) &&
+                !EXCLUDED_FROM_REVENUE.includes(o.status as string)
+            );
+
+            const revenue = countableChOrders.reduce((s, o) => s + (o.total ?? 0), 0);
 
             const pending = countableChOrders.filter(o => o.status === 'pending').length;
 
@@ -1216,10 +1818,10 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             const isMerchant = (o: Order) => o.fulfillmentType !== 'platform'; // 'merchant' or undefined (legacy defaults to merchant)
             const listingType = (o: Order) => (o as any).meliListingType as 'premium' | 'classic' | 'free' | undefined;
 
-            const meliFullClassic     = isMeli ? chOrders.filter(o => isFull(o)     && listingType(o) !== 'premium').length : undefined;
-            const meliFullPremium     = isMeli ? chOrders.filter(o => isFull(o)     && listingType(o) === 'premium').length : undefined;
-            const meliMerchantClassic = isMeli ? chOrders.filter(o => isMerchant(o) && listingType(o) !== 'premium').length : undefined;
-            const meliMerchantPremium = isMeli ? chOrders.filter(o => isMerchant(o) && listingType(o) === 'premium').length : undefined;
+            const meliFullClassic     = isMeli ? countableChOrders.filter(o => isFull(o)     && listingType(o) !== 'premium').length : undefined;
+            const meliFullPremium     = isMeli ? countableChOrders.filter(o => isFull(o)     && listingType(o) === 'premium').length : undefined;
+            const meliMerchantClassic = isMeli ? countableChOrders.filter(o => isMerchant(o) && listingType(o) !== 'premium').length : undefined;
+            const meliMerchantPremium = isMeli ? countableChOrders.filter(o => isMerchant(o) && listingType(o) === 'premium').length : undefined;
 
 
             return {
@@ -1421,89 +2023,88 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
     calculateStats(orders: Order[]) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let sales = 0;
-        let piecesSold = 0;
-        let pendingOrders = 0;
-        let processingOrders = 0;
 
         // GHOST STATUSES — these are NOT real committed orders:
         // - payment_failed:   MP rejected the card. No money moved. Phantom.
         // - pending_payment:  Customer opened checkout but never submitted payment.
         //                     Nothing committed — treat as abandoned cart, not an order.
+        // Also exclude cancelled, refunded, returned, and refund_pending from KPI card totals
+        // to maintain consistency with revenue/pieces and match backend aggregation logic.
         const GHOST_STATUSES = ['payment_failed', 'pending_payment'];
-        const countableOrders = orders.filter(o => !GHOST_STATUSES.includes(o.status as string));
-        let totalOrders = countableOrders.length;
+        const EXCLUDED_FROM_REVENUE = ['cancelled', 'refunded', 'returned', 'refund_pending'];
+        const NON_REVENUE = [...GHOST_STATUSES, ...EXCLUDED_FROM_REVENUE];
 
-        countableOrders.forEach(o => {
-            if (o.status === 'pending') pendingOrders++;
-            if (o.status === 'processing') processingOrders++;
+        // ── Single-pass aggregation ──────────────────────────────────────────
+        // Merges what were previously separate iterations:
+        //   • KPI totals (sales, pieces, pending, processing)
+        //   • shippedToday count
+        //   • Today's actual sales/orders/pieces for velocity signals
+        // Reduces from 3 full iterations to 1.
+        let sales = 0;
+        let piecesSold = 0;
+        let pendingOrders = 0;
+        let processingOrders = 0;
+        let totalOrders = 0;
+        let shippedToday = 0;
+        let todaySalesSum = 0;
+        let todayOrdersCount = 0;
+        let todayPiecesSum = 0;
 
-            // Exclude cancelled, refunded, returned, and pending_payment from revenue.
-            // refund_pending = customer requested cancel — money not yet returned, but
-            // we exclude it to avoid double-counting when refund later completes.
-            const EXCLUDED_FROM_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending'];
-            if (!EXCLUDED_FROM_REVENUE.includes(o.status as string)) {
-                sales += o.total || 0;
-                if (o.items && Array.isArray(o.items)) {
-                    o.items.forEach(item => {
-                        piecesSold += item.quantity || 0;
-                    });
+        for (const o of orders) {
+            const status = o.status as string;
+            const isGhost    = GHOST_STATUSES.includes(status);
+            const isExcluded = EXCLUDED_FROM_REVENUE.includes(status);
+
+            // ── shippedToday: use shippedAt when available (more accurate than updatedAt) ──
+            if (status === 'shipped') {
+                const shipDate = this.getJsDate((o as any).shippedAt ?? o.updatedAt);
+                if (this.isSameDay(shipDate, today)) {
+                    shippedToday++;
                 }
             }
-        });
+
+            // ── KPI totals (skip ghost + excluded) ──
+            if (!isGhost && !isExcluded) {
+                totalOrders++;
+                if (status === 'pending')    pendingOrders++;
+                if (status === 'processing') processingOrders++;
+
+                sales += o.total || 0;
+                if (o.items && Array.isArray(o.items)) {
+                    for (const item of o.items) {
+                        piecesSold += item.quantity || 0;
+                    }
+                }
+            }
+
+            // ── Today's actual totals (for velocity signals) ──
+            if (!NON_REVENUE.includes(status)) {
+                const d = this.getJsDate(o.createdAt);
+                if (this.isSameDay(d, today)) {
+                    todaySalesSum += o.total || 0;
+                    todayOrdersCount++;
+                    if (o.items && Array.isArray(o.items)) {
+                        for (const item of o.items) {
+                            todayPiecesSum += item.quantity || 0;
+                        }
+                    }
+                }
+            }
+        }
 
         const stats: DashboardStats = {
             totalOrders,
             pendingOrders,
             processingOrders,
-            shippedToday: orders.filter(o => {
-                if (o.status !== 'shipped') return false;
-                const orderDate = this.getJsDate(o.updatedAt);
-                orderDate.setHours(0, 0, 0, 0);
-                return orderDate.getTime() === today.getTime();
-            }).length,
+            shippedToday,
             monthlySales: sales, // Kept property name for interface stability, represents active timeframe
             monthlyPiecesSold: piecesSold
         };
 
         this.stats.set(stats);
-
-        // Calculate today's actual totals — feeds todaySalesActual / todayOrdersActual / todayPiecesActual signals.
-        const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'pending_payment', 'refund_pending', 'payment_failed'];
-        
-        let todaySalesSum = 0;
-        let todayOrdersCount = 0;
-        let todayPiecesSum = 0;
-        
-        orders.forEach(o => {
-            if (NON_REVENUE.includes(o.status as string)) return;
-            const d = this.getJsDate(o.createdAt);
-            if (d.getFullYear() === today.getFullYear() && 
-                d.getMonth() === today.getMonth() && 
-                d.getDate() === today.getDate()) {
-                
-                todaySalesSum += o.total || 0;
-                todayOrdersCount++;
-                if (o.items && Array.isArray(o.items)) {
-                    o.items.forEach(item => {
-                        todayPiecesSum += item.quantity || 0;
-                    });
-                }
-            }
-        });
-        
         this.todaySalesTotalSignal.set(todaySalesSum);
         this.todayOrdersCountSignal.set(todayOrdersCount);
         this.todayPiecesCountSignal.set(todayPiecesSum);
-
-        // Populate specific widget stats respecting timeframe
-        // These are now called directly from applyFilters
-        // this.calculateSLAStats(orders);
-        // this.calculatePriorityStats(orders);
-        // this.calculateStaffWorkload(orders);
-        // this.calculateOverdueOrders(orders);
     }
 
     getStatusBadgeClass(status: string): string {
@@ -2107,6 +2708,7 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
         const shippedData: number[] = new Array(dataLength).fill(0);
         const deliveredData: number[] = new Array(dataLength).fill(0);
         const cancelledData: number[] = new Array(dataLength).fill(0);
+        const returnedData:  number[] = new Array(dataLength).fill(0);
         const salesData: number[] = new Array(dataLength).fill(0);
 
         orders.forEach(o => {
@@ -2120,7 +2722,8 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                 else if (o.status === 'processing') processingData[index]++;
                 else if (o.status === 'shipped') shippedData[index]++;
                 else if (o.status === 'delivered' || o.status === 'paid') deliveredData[index]++;
-                else if (o.status === 'cancelled' || o.status === 'refunded' || o.status === 'returned' || o.status === 'refund_pending') cancelledData[index]++;
+                else if (o.status === 'cancelled') cancelledData[index]++;
+                else if (o.status === 'returned' || o.status === 'refunded' || o.status === 'refund_pending') returnedData[index]++;
 
                 const NON_REVENUE = ['cancelled', 'refunded', 'returned', 'payment_failed', 'pending_payment', 'refund_pending'];
                 if (!NON_REVENUE.includes(o.status as string)) {
@@ -2134,15 +2737,20 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
 
         this.checkMilestones(safeSalesData);
 
+        // Null out future days so the teal Net Sales line ends cleanly at today
+        // instead of crashing to $0 for days that haven't happened yet.
+        const todayDayIdx = this.timeframe() === 'MTD' ? new Date().getDate() - 1 : dataLength - 1;
+        const chartSalesData: (number | null)[] = safeSalesData.map((v, i) => i <= todayDayIdx ? v : null);
+
         const datasets: any[] = [
             {
                 type: 'line',
                 label: 'Net Sales ($)',
-                data: safeSalesData,
+                data: chartSalesData,
                 borderColor: '#2dd4bf', // teal-400
                 backgroundColor: '#2dd4bf',
                 tension: 0.4,
-                spanGaps: true,
+                spanGaps: false,
                 yAxisID: 'y1',
                 borderWidth: 3,
                 pointBackgroundColor: '#2dd4bf',
@@ -2188,9 +2796,18 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             },
             {
                 type: 'bar',
-                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.CANCELLED_RETURNED'),
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.CANCELLED'),
                 data: cancelledData,
                 backgroundColor: '#dc3545', // Danger Red
+                borderWidth: 0,
+                order: 1,
+                yAxisID: 'y'
+            },
+            {
+                type: 'bar',
+                label: this.translate.instant('OPERATIONS.DASHBOARD.METRICS.RETURNED'),
+                data: returnedData,
+                backgroundColor: '#f97316', // Orange — visually distinct from cancelled red
                 borderWidth: 0,
                 order: 1,
                 yAxisID: 'y'
@@ -2204,18 +2821,26 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
             const fractionalDayPart = (now.getHours() / 24) + (now.getMinutes() / 1440);
 
             // Anchor projection line at yesterday's actual complete sales so the line connects visually.
-            if (todayIdx > 0 && todayIdx - 1 < dataLength) {
-                projData[todayIdx - 1] = safeSalesData[todayIdx - 1];
+            // ── Stored historical forecast (from analytics_daily.forecastRevenue) ──
+            // For days that already have a committed forecast written by snapshotProjections,
+            // use those stored values as the anchor for the solid forecast line.
+            const storedForecast = this.dailyForecastData();
+            const hasStoredForecast = storedForecast.length === dataLength && storedForecast.some(v => v > 0);
+
+            if (hasStoredForecast) {
+                // Past days: use stored forecast directly
+                for (let i = 0; i < todayIdx; i++) {
+                    if (storedForecast[i] > 0) projData[i] = storedForecast[i];
+                }
             }
 
-            // Set today's projection using the computed full-day projection.
-            if (todayIdx < dataLength) {
+            // Today + future: use velocity model (existing logic)
+            if (todayIdx >= 0 && todayIdx < dataLength) {
                 projData[todayIdx] = this.todayProjection() ?? safeSalesData[todayIdx];
             }
 
             const lyData = this.lyDailyData();
             if (lyData && lyData.length === dataLength) {
-                // Build LY MTD up-to-and-including today's fraction
                 let lySalesMTD = 0;
                 for (let i = 0; i < todayIdx; i++) lySalesMTD += lyData[i];
                 lySalesMTD += lyData[todayIdx] * fractionalDayPart;
@@ -2225,36 +2850,142 @@ export class OperationsDashboardComponent implements OnInit, AfterViewInit, OnDe
                     ? mtdSales / lySalesMTD
                     : 1;
 
-                // Fill future days (starting from tomorrow)
+                // ── DOW suppression guard ──────────────────────────────────────────
+                // With fewer than 7 CY data points (first week of month), the DOW lookup
+                // anchors future Sundays to today's partial-day sales — far below the
+                // extrapolated weekday average — creating deep false cliffs every 7 days.
+                // Rely purely on the LY seasonal shape (scaled by velocity multiplier)
+                // until we have at least one complete week of CY data.
+                const useDowBlend = todayIdx >= 6;
+
                 for (let i = todayIdx + 1; i < dataLength; i++) {
-                    projData[i] = lyData[i] * velocityMultiplier;
+                    // Day-of-week projection: average the last 2 CY occurrences of the
+                    // same day-of-week to capture recent weekly patterns.
+                    const targetDate = new Date(now.getFullYear(), now.getMonth(), i + 1);
+                    const targetDow  = targetDate.getDay(); // 0=Sun … 6=Sat
+                    let dowSum = 0, dowCount = 0;
+                    if (useDowBlend) {
+                        for (let d = todayIdx; d >= 0 && dowCount < 2; d--) {
+                            const candidateDate = new Date(now.getFullYear(), now.getMonth(), d + 1);
+                            if (candidateDate.getDay() === targetDow && safeSalesData[d] > 0) {
+                                dowSum += safeSalesData[d];
+                                dowCount++;
+                            }
+                        }
+                    }
+                    const dowProjection  = dowCount > 0 ? dowSum / dowCount : null;
+                    // LY seasonal signal: last year's same day scaled by current velocity.
+                    // Critical for end-of-month spikes that repeat year-over-year.
+                    const lyProjection   = (lyData && lyData[i] > 0) ? lyData[i] * velocityMultiplier : null;
+
+                    if (dowProjection !== null && lyProjection !== null) {
+                        // 50/50 blend: DOW anchors to recent CY pace; LY captures seasonal shape
+                        projData[i] = 0.5 * dowProjection + 0.5 * lyProjection;
+                    } else {
+                        projData[i] = dowProjection ?? lyProjection
+                            ?? ((hasStoredForecast && storedForecast[i] > 0) ? storedForecast[i] : lyData[i] * velocityMultiplier);
+                    }
                 }
             } else {
-                // Fallback: straight-line average.
-                // Elapsed = complete days + today's fraction (same denominator as mtdProjection computed)
                 const mtdSales = this.stats().monthlySales;
-                const elapsed = todayIdx + fractionalDayPart; // e.g. day 7 noon → 6.5
+                const elapsed = todayIdx + fractionalDayPart;
                 const averageDaily = mtdSales / Math.max(elapsed, 0.1);
+                // Same DOW suppression: no blend in first week, stored forecast or flat average.
+                const useDowNoLY = todayIdx >= 6;
                 for (let i = todayIdx + 1; i < dataLength; i++) {
-                    projData[i] = averageDaily;
+                    // DOW fallback when no LY data available
+                    let dowSum = 0, dowCount = 0;
+                    if (useDowNoLY) {
+                        const targetDate = new Date(now.getFullYear(), now.getMonth(), i + 1);
+                        const targetDow  = targetDate.getDay();
+                        for (let d = todayIdx; d >= 0 && dowCount < 2; d--) {
+                            const candidateDate = new Date(now.getFullYear(), now.getMonth(), d + 1);
+                            if (candidateDate.getDay() === targetDow && safeSalesData[d] > 0) {
+                                dowSum += safeSalesData[d];
+                                dowCount++;
+                            }
+                        }
+                    }
+                    projData[i] = dowCount > 0 ? dowSum / dowCount
+                        : ((hasStoredForecast && storedForecast[i] > 0) ? storedForecast[i] : averageDaily);
                 }
             }
 
-            datasets.push({
-                type: 'line',
-                label: 'Proyección Diaria ($)',
-                data: projData,
-                borderColor: '#f59e0b', // amber-500
-                backgroundColor: 'transparent',
-                borderDash: [5, 5],
-                tension: 0.4,
-                spanGaps: true,
-                yAxisID: 'y1',
-                borderWidth: 2,
-                pointBackgroundColor: '#f59e0b',
-                pointRadius: 3,
-                order: 0
-            });
+            if (hasStoredForecast) {
+                // ── CASE A: Historical forecast data available ─────────────────────
+                // Solid amber: only TODAY's projected full-day value (anchors dashed line).
+                // Past days intentionally left null — a retroactively-computed forecast
+                // next to actual bars creates a misleading "miss" on executive dashboards.
+                // The LY gray line provides the correct YoY historical context instead.
+                const solidProjData  = new Array(dataLength).fill(null);
+                const dashedProjData = new Array(dataLength).fill(null);
+
+                // Fill dashed line for today + all future days
+                for (let i = todayIdx; i < dataLength; i++) {
+                    if (projData[i] !== null) {
+                        dashedProjData[i] = projData[i];
+                    }
+                }
+                // Solid anchor: yesterday connects to today so the dashed line has an origin
+                if (todayIdx > 0 && projData[todayIdx] !== null) {
+                    solidProjData[todayIdx - 1] = safeSalesData[todayIdx - 1]; // yesterday's actual
+                    solidProjData[todayIdx]     = projData[todayIdx];           // today's projection
+                }
+
+                // Solid: committed past forecast
+                datasets.push({
+                    type: 'line',
+                    label: 'Pronóstico ($)',
+                    data: solidProjData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.08)',
+                    borderDash: [],
+                    tension: 0.35,
+                    spanGaps: false,
+                    yAxisID: 'y1',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#f59e0b',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    order: 0,
+                });
+
+                // Dashed: future projection
+                datasets.push({
+                    type: 'line',
+                    label: 'Proyección ($)',
+                    data: dashedProjData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 4],
+                    tension: 0.35,
+                    spanGaps: false,
+                    yAxisID: 'y1',
+                    borderWidth: 1.8,
+                    pointBackgroundColor: '#f59e0b',
+                    pointRadius: 2,
+                    order: 0,
+                });
+
+            } else {
+                // ── CASE B: No historical forecast yet (backfill pending) ───────────
+                // Show a single dashed "Proyección" line — no duplicate in legend.
+                datasets.push({
+                    type: 'line',
+                    label: 'Proyección ($)',
+                    data: projData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 4],
+                    tension: 0.4,
+                    spanGaps: true,
+                    yAxisID: 'y1',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#f59e0b',
+                    pointRadius: 3,
+                    order: 0,
+                });
+            }
         }
 
 

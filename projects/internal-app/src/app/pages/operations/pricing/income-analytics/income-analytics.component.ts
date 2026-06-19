@@ -25,7 +25,7 @@ interface OrderFinancials {
     items?: any[];
 }
 
-type Period = '7d' | '30d' | 'mtd' | '90d';
+type Period = '7d' | '30d' | 'mtd' | 'last_month' | '90d';
 
 @Component({
     selector: 'app-income-analytics',
@@ -70,10 +70,11 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
 
     // ── Period bounds ─────────────────────────────────────────────────────────
     readonly periods: { key: Period; label: string }[] = [
-        { key: '7d',  label: 'Últimos 7 días' },
-        { key: '30d', label: 'Últimos 30 días' },
-        { key: 'mtd', label: 'Mes actual' },
-        { key: '90d', label: 'Últimos 90 días' },
+        { key: '7d',        label: 'Últimos 7 días'  },
+        { key: '30d',       label: 'Últimos 30 días' },
+        { key: 'mtd',       label: 'Mes actual'      },
+        { key: 'last_month', label: 'Mes anterior'   },
+        { key: '90d',       label: 'Últimos 90 días' },
     ];
 
     readonly channels: { key: string; label: string; icon: string; color: string; available: boolean }[] = [
@@ -102,10 +103,12 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         switch (period) {
-            case '7d':  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-            case '30d': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
-            case '90d': return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
-            case 'mtd': return new Date(now.getFullYear(), now.getMonth(), 1);
+            case '7d':         return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+            case '30d':        return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+            case '90d':        return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
+            case 'mtd':        return new Date(now.getFullYear(), now.getMonth(), 1);
+            case 'last_month': return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            default:           return new Date(now.getFullYear(), now.getMonth(), 1);
         }
     }
 
@@ -141,12 +144,21 @@ export class IncomeAnalyticsComponent implements OnInit, OnDestroy {
 
     private load() {
         this.isLoading.set(true);
-        const startDate = this.getDateFrom(this.selectedPeriod());
-        const endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
+        const period    = this.selectedPeriod();
+        const startDate = this.getDateFrom(period);
+        let endDate: Date;
+        if (period === 'last_month') {
+            // Last day of last month, end of day
+            const now = new Date();
+            endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        } else {
+            endDate = new Date();
+            endDate.setHours(23, 59, 59, 999);
+        }
 
-        // Get live stream from cache to minimize firestore read quota
-        this.sub = this.globalOrderCache.getLive(startDate, endDate).subscribe({
+        // One-shot getDocs — income analytics doesn't need real-time push updates.
+        // Switching from getLive (onSnapshot) eliminates ~50 reads per order write.
+        this.sub = this.globalOrderCache.get(startDate, endDate).subscribe({
             next: (docs) => {
                 // Same status exclusion as Operations Dashboard (EXCLUDED_FROM_REVENUE + GHOST_STATUSES)
                 const EXCLUDED = new Set(['cancelled', 'refunded', 'returned',

@@ -17,65 +17,66 @@ export const commandCenterRoutes: Routes = [
                 path: 'dashboard',
                 loadComponent: () => import('./dashboard/command-center-dashboard.component')
                     .then(m => m.CommandCenterDashboardComponent),
-                data: { title: 'COMMAND_CENTER.DASHBOARD' }
+                title: 'Command Center | Dashboard'
             },
             {
                 path: 'mission-control',
-                loadComponent: () => import('./mission-control/mission-control.component').then(m => m.MissionControlComponent)
+                loadComponent: () => import('./mission-control/mission-control.component').then(m => m.MissionControlComponent),
+                title: 'Command Center | Mission Control'
             },
             {
                 path: 'approvals',
                 loadComponent: () => import('./approvals/approvals-dashboard.component')
                     .then(m => m.ApprovalsDashboardComponent),
-                data: { title: 'COMMAND_CENTER.APPROVALS.TITLE' }
+                title: 'Command Center | Aprobaciones'
             },
             {
                 path: 'approvals/:id',
                 loadComponent: () => import('./approvals/approval-detail/approval-detail.component')
                     .then(m => m.ApprovalDetailComponent),
-                data: { title: 'COMMAND_CENTER.APPROVALS.REQUEST_DETAILS' }
+                title: 'Command Center | Detalle de Aprobación'
             },
             {
                 path: 'financials',
                 loadComponent: () => import('./financials/financial-dashboard.component')
                     .then(m => m.FinancialDashboardComponent),
-                data: { title: 'COMMAND_CENTER.FINANCIALS.TITLE' }
+                title: 'Command Center | Financiero'
             },
             {
                 path: 'income-statement',
                 loadComponent: () => import('./income-statement/income-statement.component')
                     .then(m => m.IncomeStatementComponent),
-                data: { title: 'COMMAND_CENTER.INCOME_STATEMENT.TITLE' }
+                title: 'Command Center | Estado de Resultados'
             },
             {
                 path: 'expenses',
                 loadComponent: () => import('./expense-management/expense-management.component')
                     .then(m => m.ExpenseManagementComponent),
-                data: { title: 'Gastos Operativos' } // Backup if key missing
+                title: 'Command Center | Gastos Operativos'
             },
             {
                 path: 'sales-analytics',
                 loadComponent: () => import('./sales-analytics/sales-analytics.component')
                     .then(m => m.SalesAnalyticsComponent),
-                data: { title: 'Análisis de Ventas' }
+                title: 'Command Center | Análisis de Ventas'
             },
             {
                 path: 'inventory-analytics',
                 loadComponent: () => import('./inventory-analytics/inventory-analytics.component')
                     .then(m => m.InventoryAnalyticsComponent),
-                data: { title: 'COMMAND_CENTER.INVENTORY_ANALYTICS.TITLE' }
+                title: 'Command Center | Inventario'
             },
             {
                 path: 'customer-insights',
                 loadComponent: () => import('./customer-insights/customer-insights.component')
                     .then(m => m.CustomerInsightsComponent),
-                data: { title: 'COMMAND_CENTER.CUSTOMER_INSIGHTS.TITLE' }
+                title: 'Command Center | Insights de Clientes'
             },
             {
                 path: 'operational-metrics',
                 loadComponent: () => import('./operational-metrics/operational-metrics.component')
                     .then(m => m.OperationalMetricsComponent),
-                data: { title: 'Métricas Operativas' }
+                title: 'Command Center | Métricas Operativas'
             }
         ]
     }

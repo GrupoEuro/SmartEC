@@ -1,11 +1,11 @@
 import { Injectable, inject, isDevMode } from '@angular/core';
 import {
     Firestore,
-    collection, collectionData, collectionGroup,
+    collection, collectionGroup,
     query, limit, where, orderBy,
     getDocs
 } from '@angular/fire/firestore';
-import { Observable, combineLatest, map, catchError, of, tap, from } from 'rxjs';
+import { Observable, combineLatest, map, catchError, of, tap, from, timer, switchMap } from 'rxjs';
 
 export interface AbandonedCartItem {
     name: string;
@@ -76,15 +76,19 @@ export class AbandonedCartsService {
     getAbandonedCarts(): Observable<AbandonedCart[]> {
         // NOTE: NO orderBy — Firestore orderBy silently excludes docs missing that field.
         // Fetch all docs and sort client-side to handle schema evolution.
+        //
+        // Switched from collectionData (persistent onSnapshot) to getDocs + hourly timer.
+        // The live listeners were re-delivering 500 docs every time any customer updated
+        // their storefront cart, causing ~4,400 reads/month from this page alone.
 
-        const guestCarts$ = (collectionData(
-            query(collection(this.fs, 'guestCarts'), limit(500)),
-            { idField: 'docId' }
-        ) as Observable<any[]>).pipe(
+        const fetchGuestCarts$ = from(
+            getDocs(query(collection(this.fs, 'guestCarts'), limit(500)))
+        ).pipe(
+            map(snap => snap.docs.map(d => ({ docId: d.id, ...d.data() }))),
             tap(docs => {
                 if (isDevMode()) {
                     console.group('[AbandonedCarts] guestCarts raw docs:', docs.length);
-                    docs.forEach(c => console.log(
+                    docs.forEach((c: any) => console.log(
                         c.docId, '| status:', c.status,
                         '| items:', Array.isArray(c.items) ? c.items.length : 'N/A',
                         '| minutesIdle:', Math.floor((Date.now() - this.resolveLastMs(c)) / 60000)
@@ -94,18 +98,18 @@ export class AbandonedCartsService {
             }),
             catchError(err => {
                 console.warn('[AbandonedCarts] guestCarts query failed:', err);
-                return of([]);
+                return of([] as any[]);
             })
         );
 
-        const authCarts$ = (collectionData(
-            query(collection(this.fs, 'carts'), limit(500)),
-            { idField: 'docId' }
-        ) as Observable<any[]>).pipe(
+        const fetchAuthCarts$ = from(
+            getDocs(query(collection(this.fs, 'carts'), limit(500)))
+        ).pipe(
+            map(snap => snap.docs.map(d => ({ docId: d.id, ...d.data() }))),
             tap(docs => {
                 if (isDevMode()) {
                     console.group('[AbandonedCarts] carts (auth) raw docs:', docs.length);
-                    docs.forEach(c => console.log(
+                    docs.forEach((c: any) => console.log(
                         c.docId, '| status:', c.status,
                         '| items.length:', Array.isArray(c.items) ? c.items.length : 'N/A',
                         '| minutesIdle:', Math.floor((Date.now() - this.resolveLastMs(c)) / 60000)
@@ -115,21 +119,23 @@ export class AbandonedCartsService {
             }),
             catchError(err => {
                 console.warn('[AbandonedCarts] carts query failed:', err);
-                return of([]);
+                return of([] as any[]);
             })
         );
 
-        return combineLatest([guestCarts$, authCarts$]).pipe(
+        // Emit immediately, then re-fetch every hour.
+        return timer(0, 3_600_000).pipe(
+            switchMap(() => combineLatest([fetchGuestCarts$, fetchAuthCarts$])),
             map(([guests, auths]) => {
                 const now = Date.now();
 
                 const fromGuests: AbandonedCart[] = guests
-                    .filter(c => this.isAbandoned(c, now))
-                    .map(c  => this.mapGuest(c, now));
+                    .filter((c: any) => this.isAbandoned(c, now))
+                    .map((c: any)  => this.mapGuest(c, now));
 
                 const fromAuths: AbandonedCart[] = auths
-                    .filter(c => this.isCartDoc(c) && this.isAbandoned(c, now))
-                    .map(c  => this.mapAuth(c, now));
+                    .filter((c: any) => this.isCartDoc(c) && this.isAbandoned(c, now))
+                    .map((c: any)  => this.mapAuth(c, now));
 
                 return [...fromGuests, ...fromAuths]
                     .sort((a, b) => b.lastSeenMs - a.lastSeenMs);

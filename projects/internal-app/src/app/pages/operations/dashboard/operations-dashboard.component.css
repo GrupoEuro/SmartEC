@@ -1,4 +1,36 @@
-/* Spinner Animation */
+/* ── Skeleton Shimmer ─────────────────────────────────────────────────────── */
+.sk-block {
+    background: linear-gradient(
+        90deg,
+        rgba(63, 63, 70, 0.8)   0%,
+        rgba(82, 82, 91, 0.9)   40%,
+        rgba(63, 63, 70, 0.8)  100%
+    );
+    background-size: 200% 100%;
+    animation: sk-shimmer 1.6s ease-in-out infinite;
+}
+
+.sk-card {
+    animation: sk-fade-in 0.3s ease-out both;
+}
+
+@keyframes sk-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes sk-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stagger skeleton cards */
+.skeleton-dashboard .grid > *:nth-child(1) { animation-delay: 0ms; }
+.skeleton-dashboard .grid > *:nth-child(2) { animation-delay: 60ms; }
+.skeleton-dashboard .grid > *:nth-child(3) { animation-delay: 120ms; }
+.skeleton-dashboard .grid > *:nth-child(4) { animation-delay: 180ms; }
+
+/* ── Legacy spinner (kept for compatibility) ─────────────────────────────── */
 .spinner {
     width: 40px;
     height: 40px;
@@ -10,13 +42,8 @@
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Status Badges - Using standard CSS (Tailwind inline preferred but keeping for reference if needed) can run alongside */

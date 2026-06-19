@@ -12,7 +12,7 @@ export const ADMIN_ROUTES: Routes = [
         component: AdminLayoutComponent,
         canActivate: [adminGuard],
         children: [
-            { path: 'dashboard', component: DashboardComponent },
+            { path: 'dashboard', component: DashboardComponent, title: 'Admin | Dashboard' },
             // ── IA Agents (EuroMind) ───────────────────────────────────────────────
             {
                 path: 'ai-agents',
@@ -44,143 +44,176 @@ export const ADMIN_ROUTES: Routes = [
             },
             {
                 path: 'catalog-overview',
-                loadComponent: () => import('./catalog-overview/catalog-overview.component').then(m => m.CatalogOverviewComponent)
+                loadComponent: () => import('./catalog-overview/catalog-overview.component').then(m => m.CatalogOverviewComponent),
+                title: 'Admin | Catálogo Overview'
             },
             {
                 path: 'populate-data',
                 loadComponent: () => import('./populate-data/populate-data.component').then(m => m.PopulateDataComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Poblar Datos'
             },
             {
                 path: 'orders',
-                loadComponent: () => import('./orders/order-list/order-list.component').then(m => m.OrderListComponent)
+                loadComponent: () => import('./orders/order-list/order-list.component').then(m => m.OrderListComponent),
+                title: 'Admin | Pedidos'
             },
             {
                 path: 'orders/:id',
-                loadComponent: () => import('./orders/order-detail/order-detail.component').then(m => m.OrderDetailComponent)
+                loadComponent: () => import('./orders/order-detail/order-detail.component').then(m => m.OrderDetailComponent),
+                title: 'Admin | Detalle de Pedido'
             },
             {
                 path: 'brands',
-                loadComponent: () => import('./brands/brand-list/brand-list.component').then(m => m.BrandListComponent)
+                loadComponent: () => import('./brands/brand-list/brand-list.component').then(m => m.BrandListComponent),
+                title: 'Admin | Marcas'
             },
             {
                 path: 'brands/new',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./brands/brand-form/brand-form.component').then(m => m.BrandFormComponent)
+                loadComponent: () => import('./brands/brand-form/brand-form.component').then(m => m.BrandFormComponent),
+                title: 'Admin | Nueva Marca'
             },
             {
                 path: 'brands/:id/edit',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./brands/brand-form/brand-form.component').then(m => m.BrandFormComponent)
+                loadComponent: () => import('./brands/brand-form/brand-form.component').then(m => m.BrandFormComponent),
+                title: 'Admin | Editar Marca'
             },
             {
                 path: 'categories',
-                loadComponent: () => import('./categories/category-list/category-list.component').then(m => m.CategoryListComponent)
+                loadComponent: () => import('./categories/category-list/category-list.component').then(m => m.CategoryListComponent),
+                title: 'Admin | Categorías'
             },
             {
                 path: 'categories/new',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./categories/category-form/category-form.component').then(m => m.CategoryFormComponent)
+                loadComponent: () => import('./categories/category-form/category-form.component').then(m => m.CategoryFormComponent),
+                title: 'Admin | Nueva Categoría'
             },
             {
                 path: 'categories/:id/edit',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./categories/category-form/category-form.component').then(m => m.CategoryFormComponent)
+                loadComponent: () => import('./categories/category-form/category-form.component').then(m => m.CategoryFormComponent),
+                title: 'Admin | Editar Categoría'
             },
             {
                 path: 'kits',
-                loadComponent: () => import('./kits/kit-list/kit-list.component').then(m => m.KitListComponent)
+                loadComponent: () => import('./kits/kit-list/kit-list.component').then(m => m.KitListComponent),
+                title: 'Admin | Kits'
             },
             {
                 path: 'kits/new',
-                loadComponent: () => import('./kits/kit-form/kit-form.component').then(m => m.KitFormComponent)
+                loadComponent: () => import('./kits/kit-form/kit-form.component').then(m => m.KitFormComponent),
+                title: 'Admin | Nuevo Kit'
             },
             {
                 path: 'kits/:id/edit',
-                loadComponent: () => import('./kits/kit-form/kit-form.component').then(m => m.KitFormComponent)
+                loadComponent: () => import('./kits/kit-form/kit-form.component').then(m => m.KitFormComponent),
+                title: 'Admin | Editar Kit'
             },
             {
                 path: 'products',
-                loadComponent: () => import('./products/product-list/product-list.component').then(m => m.ProductListComponent)
+                loadComponent: () => import('./products/product-list/product-list.component').then(m => m.ProductListComponent),
+                title: 'Admin | Productos'
             },
             {
                 path: 'products/new',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./products/product-form/product-form.component').then(m => m.ProductFormComponent)
+                loadComponent: () => import('./products/product-form/product-form.component').then(m => m.ProductFormComponent),
+                title: 'Admin | Nuevo Producto'
             },
             {
                 path: 'products/:id/edit',
                 canDeactivate: [UnsavedChangesGuard],
-                loadComponent: () => import('./products/product-form/product-form.component').then(m => m.ProductFormComponent)
+                loadComponent: () => import('./products/product-form/product-form.component').then(m => m.ProductFormComponent),
+                title: 'Admin | Editar Producto'
             },
             {
                 path: 'product-types',
-                loadComponent: () => import('./product-types/product-type-list/product-type-list.component').then(m => m.ProductTypeListComponent)
+                loadComponent: () => import('./product-types/product-type-list/product-type-list.component').then(m => m.ProductTypeListComponent),
+                title: 'Admin | Tipos de Producto'
             },
             {
                 path: 'product-types/new',
-                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent)
+                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent),
+                title: 'Admin | Nuevo Tipo'
             },
             {
                 path: 'product-types/edit/:id',
-                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent)
+                loadComponent: () => import('./product-types/product-type-form/product-type-form.component').then(m => m.ProductTypeFormComponent),
+                title: 'Admin | Editar Tipo'
             },
             {
                 path: 'blog',
-                loadComponent: () => import('./blog/blog-list/blog-list.component').then(m => m.BlogListComponent)
+                loadComponent: () => import('./blog/blog-list/blog-list.component').then(m => m.BlogListComponent),
+                title: 'Admin | Blog'
             },
             {
                 path: 'blog/new',
-                loadComponent: () => import('./blog/blog-form/blog-form.component').then(m => m.BlogFormComponent)
+                loadComponent: () => import('./blog/blog-form/blog-form.component').then(m => m.BlogFormComponent),
+                title: 'Admin | Nuevo Artículo'
             },
             {
                 path: 'blog/edit/:id',
-                loadComponent: () => import('./blog/blog-form/blog-form.component').then(m => m.BlogFormComponent)
+                loadComponent: () => import('./blog/blog-form/blog-form.component').then(m => m.BlogFormComponent),
+                title: 'Admin | Editar Artículo'
             },
             {
                 path: 'media-library',
-                loadComponent: () => import('./media-library/media-library.component').then(m => m.MediaLibraryComponent)
+                loadComponent: () => import('./media-library/media-library.component').then(m => m.MediaLibraryComponent),
+                title: 'Admin | Biblioteca de Medios'
             },
             {
                 path: 'pdfs',
-                loadComponent: () => import('./pdfs/pdf-list/pdf-list.component').then(m => m.PdfListComponent)
+                loadComponent: () => import('./pdfs/pdf-list/pdf-list.component').then(m => m.PdfListComponent),
+                title: 'Admin | PDFs'
             },
             {
                 path: 'pdfs/new',
-                loadComponent: () => import('./pdfs/pdf-form/pdf-form.component').then(m => m.PdfFormComponent)
+                loadComponent: () => import('./pdfs/pdf-form/pdf-form.component').then(m => m.PdfFormComponent),
+                title: 'Admin | Nuevo PDF'
             },
             {
                 path: 'pdfs/edit/:id',
-                loadComponent: () => import('./pdfs/pdf-form/pdf-form.component').then(m => m.PdfFormComponent)
+                loadComponent: () => import('./pdfs/pdf-form/pdf-form.component').then(m => m.PdfFormComponent),
+                title: 'Admin | Editar PDF'
             },
             {
                 path: 'logs',
-                loadComponent: () => import('./logs/admin-log-list/admin-log-list.component').then(m => m.AdminLogListComponent)
+                loadComponent: () => import('./logs/admin-log-list/admin-log-list.component').then(m => m.AdminLogListComponent),
+                title: 'Admin | Logs'
             },
             {
                 path: 'distributors',
-                loadComponent: () => import('./distributors/distributor-list/distributor-list.component').then(m => m.DistributorListComponent)
+                loadComponent: () => import('./distributors/distributor-list/distributor-list.component').then(m => m.DistributorListComponent),
+                title: 'Admin | Distribuidores'
             },
             {
                 path: 'customers',
-                loadComponent: () => import('./customers/customer-list/customer-list.component').then(m => m.CustomerListComponent)
+                loadComponent: () => import('./customers/customer-list/customer-list.component').then(m => m.CustomerListComponent),
+                title: 'Admin | Clientes'
             },
             {
                 path: 'customers/:id',
-                loadComponent: () => import('./customers/customer-detail/customer-detail.component').then(m => m.CustomerDetailComponent)
+                loadComponent: () => import('./customers/customer-detail/customer-detail.component').then(m => m.CustomerDetailComponent),
+                title: 'Admin | Detalle de Cliente'
             },
             {
                 path: 'coupons',
-                loadComponent: () => import('./coupons/coupon-list/coupon-list.component').then(m => m.CouponListComponent)
+                loadComponent: () => import('./coupons/coupon-list/coupon-list.component').then(m => m.CouponListComponent),
+                title: 'Admin | Cupones'
             },
             {
                 path: 'coupons/new',
-                loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent)
+                loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent),
+                title: 'Admin | Nuevo Cupón'
             },
             {
                 path: 'coupons/edit/:id',
-                loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent)
+                loadComponent: () => import('./coupons/coupon-form/coupon-form.component').then(m => m.CouponFormComponent),
+                title: 'Admin | Editar Cupón'
             },
             {
                 path: 'coupons/:id/analytics',
@@ -189,44 +222,53 @@ export const ADMIN_ROUTES: Routes = [
             },
             {
                 path: 'promotions',
-                loadComponent: () => import('./promotions/promotion-list/promotion-list.component').then(m => m.PromotionListComponent)
+                loadComponent: () => import('./promotions/promotion-list/promotion-list.component').then(m => m.PromotionListComponent),
+                title: 'Admin | Promociones'
             },
             {
                 path: 'promotions/new',
-                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent)
+                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent),
+                title: 'Admin | Nueva Promoción'
             },
             {
                 path: 'promotions/edit/:id',
-                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent)
+                loadComponent: () => import('./promotions/promotion-form/promotion-form.component').then(m => m.PromotionFormComponent),
+                title: 'Admin | Editar Promoción'
             },
             {
                 path: 'staff',
                 loadComponent: () => import('./system/staff/staff-list/staff-list.component').then(m => m.StaffListComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] }
+                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'] },
+                title: 'Admin | Staff'
             },
             {
                 path: 'users',
                 loadComponent: () => import('./users/user-list/user-list.component')
                     .then(m => m.UserListComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Usuarios'
             },
             {
                 path: 'warehouses',
-                loadComponent: () => import('./warehouse/warehouse-list/warehouse-list.component').then(m => m.WarehouseListComponent)
+                loadComponent: () => import('./warehouse/warehouse-list/warehouse-list.component').then(m => m.WarehouseListComponent),
+                title: 'Admin | Almacenes'
             },
             {
                 path: 'warehouses/new',
-                loadComponent: () => import('./warehouse/warehouse-wizard/warehouse-wizard.component').then(m => m.WarehouseWizardComponent)
+                loadComponent: () => import('./warehouse/warehouse-wizard/warehouse-wizard.component').then(m => m.WarehouseWizardComponent),
+                title: 'Admin | Nuevo Almacén'
             },
             {
                 path: 'warehouses/locator',
-                loadComponent: () => import('./warehouse/product-locator/product-locator.component').then(m => m.ProductLocatorComponent)
+                loadComponent: () => import('./warehouse/product-locator/product-locator.component').then(m => m.ProductLocatorComponent),
+                title: 'Admin | Localizador de Almacén'
             },
             {
                 path: 'warehouses/:id',
-                loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent)
+                loadComponent: () => import('./warehouse/layout-editor/layout-editor.component').then(m => m.LayoutEditorComponent),
+                title: 'Admin | Editor de Almacén'
             },
 
             // ── Integrations subroutes MUST come before the base 'integrations' route ──
@@ -234,31 +276,36 @@ export const ADMIN_ROUTES: Routes = [
                 path: 'integrations/callback',
                 loadComponent: () => import('./settings/integrations/callback/integration-callback.component').then(m => m.IntegrationCallbackComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Integraciones'
             },
             {
                 path: 'integrations/skydropx-debug',
                 loadComponent: () => import('./settings/integrations/skydropx-debug/skydropx-debug.component').then(m => m.SkydropxDebugComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Skydropx Debug'
             },
             {
                 path: 'integrations/mp-debug',
                 loadComponent: () => import('./settings/integrations/mp-debug/mp-debug.component').then(m => m.MpDebugComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | MP Debug'
             },
             {
                 path: 'integrations/zip-debug',
                 loadComponent: () => import('./settings/integrations/zip-debug/zip-debug.component').then(m => m.ZipDebugComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | ZIP Debug'
             },
             {
                 path: 'integrations/products',
                 loadComponent: () => import('./settings/integrations/product-link/product-link.component').then(m => m.ProductLinkComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Vincular Productos'
             },
             // ── Inbox Channels config ─────────────────────────────────────────────
             {
@@ -274,7 +321,8 @@ export const ADMIN_ROUTES: Routes = [
                 pathMatch: 'full',
                 loadComponent: () => import('./settings/integrations/integration-manager.component').then(m => m.IntegrationManagerComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Integraciones'
             },
 
             // ── Customer Care / Universal Inbox settings ──────────────────────────
@@ -290,13 +338,15 @@ export const ADMIN_ROUTES: Routes = [
                 path: 'themes',
                 loadComponent: () => import('./themes/theme-manager.component').then(m => m.ThemeManagerComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN', 'ADMIN'] }
+                data: { roles: ['SUPER_ADMIN', 'ADMIN'] },
+                title: 'Admin | Temas'
             },
             {
                 path: 'settings',
                 loadComponent: () => import('./settings/settings.component').then(m => m.SettingsComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['SUPER_ADMIN'] }
+                data: { roles: ['SUPER_ADMIN'] },
+                title: 'Admin | Configuración'
             },
             {
                 path: 'tracking',

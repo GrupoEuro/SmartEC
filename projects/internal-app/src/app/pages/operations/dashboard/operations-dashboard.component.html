@@ -73,9 +73,84 @@
 
 <div class="dashboard-container p-6 max-w-7xl mx-auto space-y-8">
 
+    <!-- ── Loading Skeleton — mirrors the full dashboard layout ──────────── -->
+    @if (isLoading()) {
+    <div class="skeleton-dashboard space-y-6">
+
+        <!-- Row 1: 3 KPI stat cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            @for (_ of [1,2,3]; track $index) {
+            <div class="sk-card bg-zinc-800 rounded-xl p-5 border-l-4 border-zinc-700 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="sk-block h-10 w-10 rounded-lg"></div>
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="sk-block h-8 w-24 rounded-md"></div>
+                        <div class="sk-block h-4 w-16 rounded"></div>
+                    </div>
+                </div>
+                <div class="sk-block h-3 w-28 rounded mt-1"></div>
+                <div class="pt-2 border-t border-zinc-700/50 flex justify-between">
+                    <div class="sk-block h-3 w-16 rounded"></div>
+                    <div class="sk-block h-3 w-20 rounded"></div>
+                </div>
+            </div>
+            }
+        </div>
+
+        <!-- Pulso de Ventas skeleton -->
+        <div class="sk-card bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
+            <div class="px-5 py-3 border-b border-zinc-700/50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="sk-block h-4 w-4 rounded"></div>
+                    <div class="sk-block h-3 w-32 rounded"></div>
+                </div>
+                <div class="sk-block h-3 w-44 rounded"></div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-0 divide-x divide-zinc-700/60">
+                @for (_ of [1,2,3,4,5]; track $index) {
+                <div class="px-5 py-4 flex flex-col gap-2">
+                    <div class="sk-block h-2 w-16 rounded"></div>
+                    <div class="sk-block h-6 w-20 rounded"></div>
+                    <div class="sk-block h-2 w-14 rounded"></div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- Metrics grid (4 columns) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+            @for (_ of [1,2,3,4]; track $index) {
+            <div class="sk-card bg-zinc-800 rounded-xl p-5 flex flex-col gap-3">
+                <div class="sk-block h-4 w-24 rounded"></div>
+                <div class="sk-block h-6 w-16 rounded"></div>
+                <div class="space-y-2">
+                    <div class="sk-block h-3 w-full rounded"></div>
+                    <div class="sk-block h-3 w-4/5 rounded"></div>
+                    <div class="sk-block h-3 w-3/5 rounded"></div>
+                </div>
+            </div>
+            }
+        </div>
+
+        <!-- Trend chart card -->
+        <div class="sk-card bg-zinc-800 rounded-xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="sk-block h-5 w-40 rounded"></div>
+                <div class="flex gap-2">
+                    <div class="sk-block h-7 w-16 rounded-lg"></div>
+                    <div class="sk-block h-7 w-16 rounded-lg"></div>
+                    <div class="sk-block h-7 w-16 rounded-lg"></div>
+                </div>
+            </div>
+            <div class="sk-block h-72 w-full rounded-xl"></div>
+        </div>
+
+    </div>
+    } @else {
+
+    <!-- ── Main Dashboard Content ─────────────────────────────────────────── -->
 
     <!-- Stats Cards — Row 1: KPI metrics with YoY comparison -->
-    @if (!isLoading()) {
     <div class="stats-grid grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <!-- Total Orders -->
@@ -131,6 +206,40 @@
             </div>
             }
             }
+            <!-- ── Mes Completo AA ────────────────────────────────────── -->
+            @if (timeframe() === 'MTD' && lyFullMonthStats(); as lyFull) {
+            <div class="mt-auto pt-2 border-t border-dashed border-zinc-700/50">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1">
+                        <app-icon name="calendar" [size]="10" class="text-zinc-600 shrink-0"></app-icon>
+                        <span class="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Mes completo AA</span>
+                        <span class="text-[9px] font-mono text-zinc-600 ml-0.5">{{ lyFull.month | date:'MMM yy':'UTC' }}</span>
+                    </div>
+                    <span class="text-[11px] font-bold font-mono text-zinc-300">{{ lyFull.orders | number }}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <div class="h-3 flex-1 bg-zinc-700/80 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-700"
+                             [style.width.%]="Math.min((stats().totalOrders / lyFull.orders) * 100, 100)"
+                             [class]="(stats().totalOrders / lyFull.orders) >= (lyPaceExpected() ?? 1)
+                                 ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,.5)]'
+                                 : (stats().totalOrders / lyFull.orders) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                     ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,.4)]'
+                                     : 'bg-red-500/80'">
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold shrink-0 w-9 text-right"
+                          [class]="(stats().totalOrders / lyFull.orders) >= (lyPaceExpected() ?? 1)
+                              ? 'text-emerald-400'
+                              : (stats().totalOrders / lyFull.orders) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                  ? 'text-amber-400'
+                                  : 'text-red-400'">
+                        {{ (stats().totalOrders / lyFull.orders * 100) | number:'1.0-0' }}%
+                    </span>
+                </div>
+                <span class="text-[8px] text-zinc-600 mt-0.5 block">pace req. {{ (lyPaceExpected() ?? 0) * 100 | number:'1.0-0' }}% del total AA</span>
+            </div>
+            }
         </div>
 
         <!-- Monthly Sales -->
@@ -165,6 +274,26 @@
             </div>
             <div class="stat-label text-sm font-medium text-zinc-400 uppercase tracking-wide mt-2">
                 {{ 'OPERATIONS.DASHBOARD.METRICS.SALES' | translate: { timeframe: timeframe() } }}</div>
+            <!-- Avg / day — always visible for any timeframe -->
+            @if (avgDailySales() !== null) {
+            <div class="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-zinc-700/40">
+                <app-icon name="bar-chart-2" [size]="12" class="text-violet-400 shrink-0"></app-icon>
+                <span class="text-[10px] text-zinc-500">Promedio / día {{ timeframe() }}</span>
+                <span class="text-[10px] font-bold text-violet-300 ml-auto font-mono"
+                      title="Venta diaria promedio del período">{{ formatCurrency(avgDailySales()!) }}</span>
+            </div>
+            }
+            @if (avgTicketDelta(); as atd) {
+            <div class="flex items-center gap-1.5 mt-1 pt-1 border-t border-zinc-700/40">
+                <app-icon name="credit-card" [size]="12" class="text-zinc-500 shrink-0"></app-icon>
+                <span class="text-[10px] text-zinc-500">Ticket prom. {{ timeframe() }}</span>
+                <span class="text-[10px] font-bold ml-auto font-mono"
+                      [class]="atd.pct >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                    {{ formatCurrency(atd.current) }}
+                    <span class="text-[9px] opacity-70">({{ atd.pct >= 0 ? '+' : '' }}{{ atd.pct | number:'1.0-0' }}% vs AA)</span>
+                </span>
+            </div>
+            }
             @if (showProjection() && timeframe() === 'MTD') {
             <!-- Today actual + today projection -->
             <div class="fdm-projection flex items-center justify-between gap-2 mt-1 pt-2 border-t border-zinc-700/60">
@@ -174,9 +303,9 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-semibold text-white font-mono">{{ formatCurrency(todaySalesActual()) }}</span>
-                    @if (todayProjection() !== null) {
+                    @if (salesVelocity()?.projectedClose) {
                     <span class="text-[10px] text-zinc-500">→</span>
-                    <span class="text-[10px] font-bold text-amber-400 font-mono" title="Proyección de cierre del día (fórmula LY × velocidad)">{{ formatCurrency(todayProjection()!) }}</span>
+                    <span class="text-[10px] font-bold text-amber-400 font-mono" title="Proyección de cierre del día (ritmo actual × 24h)">{{ formatCurrency(salesVelocity()!.projectedClose) }}</span>
                     }
                 </div>
             </div>
@@ -187,6 +316,7 @@
                 <span class="text-xs text-zinc-400">{{ 'OPERATIONS.DASHBOARD.METRICS.FDM_LABEL' | translate }}</span>
                 <span class="text-xs font-semibold text-teal-300 ml-auto font-mono">{{ formatCurrency(mtdProjection()!) }}</span>
             </div>
+
             <!-- LY indicator -->
             <div class="flex items-center gap-1 mt-0.5">
                 <app-icon name="zap" [size]="10" class="text-zinc-600 shrink-0"></app-icon>
@@ -194,7 +324,82 @@
                     {{ lyDailyData().length > 0 ? 'Fórmula: velocidad × AA' : 'Fórmula: promedio diario (sin dato AA)' }}
                 </span>
             </div>
+            <!-- Forecast Accuracy mini-card -->
+            @if (forecastAccuracySummary(); as acc) {
+            <div class="mt-2 pt-2 border-t border-zinc-700/50 flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1">
+                        <app-icon name="target" [size]="11" class="text-violet-400 shrink-0"></app-icon>
+                        <span class="text-[10px] text-zinc-400 font-medium">Precisión del pronóstico</span>
+                    </div>
+                    @if (acc.improving) {
+                    <span class="text-[9px] text-emerald-400 font-semibold">↗ mejorando</span>
+                    }
+                </div>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                    <div class="flex items-center justify-between">
+                        <span class="text-zinc-500">MAPE</span>
+                        <span class="font-mono font-semibold"
+                              [class]="acc.mape <= 8 ? 'text-emerald-400' : acc.mape <= 15 ? 'text-amber-400' : 'text-red-400'">
+                            {{ acc.mape }}%
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-zinc-500">Días beat</span>
+                        <span class="font-mono font-semibold text-white">{{ acc.beatDays }}/{{ acc.totalDays }}</span>
+                    </div>
+                    @if (acc.bestDow) {
+                    <div class="flex items-center justify-between">
+                        <span class="text-zinc-500">Mejor</span>
+                        <span class="font-mono font-semibold text-emerald-400">{{ acc.bestDow.name }}
+                            {{ acc.bestDow.pct >= 0 ? '+' : '' }}{{ acc.bestDow.pct }}%</span>
+                    </div>
+                    }
+                    @if (acc.worstDow) {
+                    <div class="flex items-center justify-between">
+                        <span class="text-zinc-500">Peor</span>
+                        <span class="font-mono font-semibold text-red-400">{{ acc.worstDow.name }}
+                            {{ acc.worstDow.pct >= 0 ? '+' : '' }}{{ acc.worstDow.pct }}%</span>
+                    </div>
+                    }
+                </div>
+            </div>
             }
+            }
+            }
+            <!-- ── Mes Completo AA ────────────────────────────────────── -->
+            @if (timeframe() === 'MTD' && lyFullMonthStats(); as lyFull) {
+            <div class="mt-auto pt-2 border-t border-dashed border-zinc-700/50">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1">
+                        <app-icon name="calendar" [size]="10" class="text-zinc-600 shrink-0"></app-icon>
+                        <span class="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Mes completo AA</span>
+                        <span class="text-[9px] font-mono text-zinc-600 ml-0.5">{{ lyFull.month | date:'MMM yy':'UTC' }}</span>
+                    </div>
+                    <span class="text-[11px] font-bold font-mono text-zinc-300">{{ formatCurrency(lyFull.sales) }}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <div class="h-3 flex-1 bg-zinc-700/80 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-700"
+                             [style.width.%]="Math.min((stats().monthlySales / lyFull.sales) * 100, 100)"
+                             [class]="(stats().monthlySales / lyFull.sales) >= (lyPaceExpected() ?? 1)
+                                 ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,.5)]'
+                                 : (stats().monthlySales / lyFull.sales) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                     ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,.4)]'
+                                     : 'bg-red-500/80'">
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold shrink-0 w-9 text-right"
+                          [class]="(stats().monthlySales / lyFull.sales) >= (lyPaceExpected() ?? 1)
+                              ? 'text-emerald-400'
+                              : (stats().monthlySales / lyFull.sales) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                  ? 'text-amber-400'
+                                  : 'text-red-400'">
+                        {{ (stats().monthlySales / lyFull.sales * 100) | number:'1.0-0' }}%
+                    </span>
+                </div>
+                <span class="text-[8px] text-zinc-600 mt-0.5 block">pace req. {{ (lyPaceExpected() ?? 0) * 100 | number:'1.0-0' }}% del total AA</span>
+            </div>
             }
         </div>
 
@@ -252,10 +457,53 @@
             </div>
             }
             }
+            <!-- ── Mes Completo AA ────────────────────────────────────── -->
+            @if (timeframe() === 'MTD' && lyFullMonthStats(); as lyFull) {
+            <div class="mt-auto pt-2 border-t border-dashed border-zinc-700/50">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1">
+                        <app-icon name="calendar" [size]="10" class="text-zinc-600 shrink-0"></app-icon>
+                        <span class="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Mes completo AA</span>
+                        <span class="text-[9px] font-mono text-zinc-600 ml-0.5">{{ lyFull.month | date:'MMM yy':'UTC' }}</span>
+                    </div>
+                    <!-- Data quality guard: pieces must be >= orders -->
+                    @if (lyFull.pieces >= lyFull.orders && lyFull.pieces > 0) {
+                    <span class="text-[11px] font-bold font-mono text-zinc-300">{{ lyFull.pieces | number }}</span>
+                    } @else {
+                    <span class="text-[10px] text-amber-600/70 italic flex items-center gap-1">
+                        <app-icon name="alert-triangle" [size]="9"></app-icon>rebackfill
+                    </span>
+                    }
+                </div>
+                @if (lyFull.pieces >= lyFull.orders && lyFull.pieces > 0) {
+                <div class="flex items-center gap-1.5">
+                    <div class="h-3 flex-1 bg-zinc-700/80 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-700"
+                             [style.width.%]="Math.min((stats().monthlyPiecesSold / lyFull.pieces) * 100, 100)"
+                             [class]="(stats().monthlyPiecesSold / lyFull.pieces) >= (lyPaceExpected() ?? 1)
+                                 ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,.5)]'
+                                 : (stats().monthlyPiecesSold / lyFull.pieces) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                     ? 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,.4)]'
+                                     : 'bg-red-500/80'">
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold shrink-0 w-9 text-right"
+                          [class]="(stats().monthlyPiecesSold / lyFull.pieces) >= (lyPaceExpected() ?? 1)
+                              ? 'text-emerald-400'
+                              : (stats().monthlyPiecesSold / lyFull.pieces) >= ((lyPaceExpected() ?? 1) * 0.85)
+                                  ? 'text-amber-400'
+                                  : 'text-red-400'">
+                        {{ (stats().monthlyPiecesSold / lyFull.pieces * 100) | number:'1.0-0' }}%
+                    </span>
+                </div>
+                <span class="text-[8px] text-zinc-600 mt-0.5 block">pace req. {{ (lyPaceExpected() ?? 0) * 100 | number:'1.0-0' }}% del total AA</span>
+                }
+            </div>
+            }
         </div>
     </div>
 
-    <!-- Stats Cards — Row 2: Live operational statuses (no YoY — these are real-time, not period metrics) -->
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <!-- Shipped Today -->
@@ -302,13 +550,11 @@
             </a>
         </div>
     </div>
-    }
-
 
 
     <!-- New Metrics Widgets -->
 
-    <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 transition-opacity duration-300">
+    <div class="metrics-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
         <!-- SLA Compliance -->
         <div
             class="metric-card sla-card bg-zinc-800 rounded-xl overflow-hidden shadow-lg border border-zinc-700 hover:shadow-xl transition-shadow">
@@ -515,6 +761,11 @@
                              salesVelocity()!.status === 'critical' ? 'text-red-400'     : 'text-zinc-500'">
                 </app-icon>
                 <span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Pulso de Ventas</span>
+                @if (channelFilter() !== 'ALL') {
+                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-zinc-700/60 text-zinc-400 border border-zinc-600/50" title="El Pulso siempre muestra todos los canales combinados">
+                    Todos los canales
+                </span>
+                }
                 <!-- Live dot -->
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
@@ -795,6 +1046,24 @@
                 </span>
                 }
                 <span class="text-[10px] text-zinc-600 mt-0.5">basado en ritmo actual</span>
+                <!-- Avg/day comparison — shows how today's close compares to the period baseline -->
+                @if (avgDailySales() !== null) {
+                <div class="mt-2 pt-1.5 border-t border-zinc-700/40 flex flex-col gap-0.5">
+                    <span class="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">vs. promedio día {{ timeframe() }}</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-mono text-zinc-400">{{ formatCurrency(avgDailySales()!) }}</span>
+                        @if (salesVelocity()!.todayOrderCount > 0) {
+                        <span class="text-[10px] font-bold px-1 py-0.5 rounded font-mono"
+                              [class]="(salesVelocity()!.projectedClose - avgDailySales()!) >= 0
+                                  ? 'bg-emerald-500/15 text-emerald-400'
+                                  : 'bg-red-500/15 text-red-400'">
+                            {{ (salesVelocity()!.projectedClose - avgDailySales()!) >= 0 ? '+' : '' }}{{ ((salesVelocity()!.projectedClose - avgDailySales()!) / avgDailySales()! * 100) | number:'1.0-0' }}%
+                        </span>
+                        }
+                    </div>
+                </div>
+                }
+
                 } @else {
                 <span class="text-sm text-zinc-600 italic">Sin ventas aún</span>
                 }
@@ -886,7 +1155,7 @@
     }
 
     <!-- Charts Section -->
-    <div [class.invisible]="isLoading()" [class.opacity-0]="isLoading()" class="charts-section transition-opacity duration-300">
+    <div class="charts-section">
         <h2 class="text-xl font-bold text-white mb-4">{{ 'OPERATIONS.DASHBOARD.METRICS.PERFORMANCE_ANALYSIS' | translate
             }}</h2>
 
@@ -1299,9 +1568,20 @@
                             [size]="15" class="text-zinc-500"></app-icon>
                     </div>
 
-                    <!-- Order # -->
-                    <div>
+                    <!-- Order # + Meli fulfillment badge -->
+                    <div class="flex flex-col gap-0.5">
                         <span class="font-mono font-bold text-white text-sm">{{ order.orderNumber }}</span>
+                        @if (order.sourceChannel === 'mercadolibre') {
+                            @if (order.fulfillmentType === 'platform') {
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full self-start leading-none bg-yellow-500/15 text-yellow-300 border border-yellow-600/30 whitespace-nowrap">
+                                🟡 Meli Full
+                            </span>
+                            } @else {
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full self-start leading-none bg-blue-500/15 text-blue-300 border border-blue-600/30 whitespace-nowrap">
+                                🔵 Clásico
+                            </span>
+                            }
+                        }
                     </div>
 
                     <!-- Customer -->
@@ -1510,14 +1790,7 @@
     </div>
     }
 
-
-    <!-- Loading State -->
-    @if (isLoading()) {
-    <div class="loading-state">
-        <div class="spinner"></div>
-        <p>{{ 'OPERATIONS.DASHBOARD.LOADING' | translate }}</p>
-    </div>
-    }
+    } <!-- end main dashboard @else content -->
 
 
     <!-- ── Contexto de Marketing ──────────────────────────────────────────── -->

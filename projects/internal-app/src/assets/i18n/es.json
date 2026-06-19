@@ -4046,6 +4046,8 @@
         "SHIPPED": "Enviado",
         "DELIVERED": "Entregado",
         "CANCELLED_RETURNED": "Cancelado/Devuelto",
+        "CANCELLED": "Cancelado",
+        "RETURNED": "Devuelto/Reembolsado",
         "SALES": "Ventas ({{timeframe}})",
         "NET_SALES": "Ventas Netas",
         "PIECES_SOLD": "Piezas Vendidas ({{timeframe}})",

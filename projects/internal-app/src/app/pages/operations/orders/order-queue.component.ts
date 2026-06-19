@@ -10,8 +10,8 @@ import { OrderAssignmentService } from '../../../core/services/order-assignment.
 import { OrderAssignment } from '../../../core/models/order-assignment.model';
 import { OrderPriorityService } from '../../../core/services/order-priority.service';
 import { UserProfile } from '../../../core/models/user.model';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { Subject, interval } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil, startWith } from 'rxjs';
 import { PaginationComponent, PaginationConfig } from '../../admin/shared/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../admin/shared/admin-page-header/admin-page-header.component';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
@@ -104,9 +104,11 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     /** Toggle to surface ghost orders for debugging */
     showGhostOrders = signal(false);
 
-    /** For real-time new-order notifications — tracks last-known order set */
+    /** For new-order notifications — tracks last-known order set */
     private knownOrderIds = new Set<string>();
     private destroy$ = new Subject<void>();
+    /** setInterval handle for 5s polling */
+    private pollHandle?: ReturnType<typeof setInterval>;
 
     ngOnInit() {
         this.loadCurrentUser();
@@ -119,6 +121,7 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
     ngOnDestroy() {
         this.destroy$.next();
         this.destroy$.complete();
+        if (this.pollHandle) clearInterval(this.pollHandle);
     }
 
     private getJsDate(timestamp: any): Date {
@@ -181,41 +184,53 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
         const range = this.tf.selected();
         const [startDate, endDate] = this.analyticsSvc.getDateRange(range.type);
 
+        // Stop any existing poll before starting a new one
         if (this.ordersSub) this.ordersSub.unsubscribe();
+        if (this.pollHandle) clearInterval(this.pollHandle);
 
-        this.ordersSub = this.globalOrderCache.getLive(startDate, endDate)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-            next: (orders) => {
-                // ── Real-time new-order notification ─────────────────────────
-                if (this.knownOrderIds.size > 0) {
-                    const newly = orders.filter(
-                        o => (o.status === 'paid' || o.status === 'pending') &&
-                             o.id && !this.knownOrderIds.has(o.id)
-                    );
-                    for (const o of newly) {
-                        const ch = (o as any).sourceChannel ?? 'Web';
-                        this.toast.success(
-                            `🆕 Nueva orden — ${o.orderNumber ?? o.id} (${ch.toUpperCase()})`,
-                            8000
+        const fetchOnce = () => {
+            this.globalOrderCache.get(startDate, endDate).subscribe({
+                next: (orders) => {
+                    // ── New-order toast notification ─────────────────────────
+                    if (this.knownOrderIds.size > 0) {
+                        const newly = orders.filter(
+                            o => (o.status === 'paid' || o.status === 'pending') &&
+                                 o.id && !this.knownOrderIds.has(o.id)
                         );
+                        for (const o of newly) {
+                            const ch = (o as any).sourceChannel ?? 'Web';
+                            this.toast.success(
+                                `🆕 Nueva orden — ${o.orderNumber ?? o.id} (${ch.toUpperCase()})`,
+                                8000
+                            );
+                        }
                     }
-                }
-                this.knownOrderIds = new Set(orders.filter(o => !!o.id).map(o => o.id!));
-                // ─────────────────────────────────────────────────────────────
+                    this.knownOrderIds = new Set(orders.filter(o => !!o.id).map(o => o.id!));
+                    // ────────────────────────────────────────────────────────
 
-                this.orders.set(orders);
-                this.calculateCounts();
-                this.dataSource.setData(orders);
-                this.applyFilters();
-                this.isLoading.set(false);
-            },
-            error: (error) => {
-                console.error('Error loading orders:', error);
-                this.toast.error('Error loading orders');
-                this.isLoading.set(false);
-            }
-        });
+                    this.orders.set(orders);
+                    this.calculateCounts();
+                    this.dataSource.setData(orders);
+                    this.applyFilters();
+                    this.isLoading.set(false);
+                },
+                error: (error) => {
+                    console.error('Error loading orders:', error);
+                    this.toast.error('Error loading orders');
+                    this.isLoading.set(false);
+                }
+            });
+        };
+
+        // Initial fetch
+        fetchOnce();
+
+        // Poll every 5s — invalidate the one-shot cache each cycle so we get fresh data.
+        // Each poll re-reads only the orders in this date range (~100–200 docs max).
+        this.pollHandle = setInterval(() => {
+            this.globalOrderCache.invalidate();
+            fetchOnce();
+        }, 5_000);
     }
 
     setupSearch() {

@@ -8,7 +8,7 @@
  *   shared.ts              — db, bigquery, config cache (singletons)
  *   meli-shared.ts         — MeLi token helpers, parseAndSaveMeliOrder (internal)
  *   ai-agents.ts           — EuroMind AI agent functions
- *   analytics.ts           — snapshotProjections
+ *   analytics.ts           — snapshotProjections, backfillDailyForecasts
  *   competitor-intelligence.ts — competitor price scanning
  *   meli-orders-sync.ts    — computeMeliSkuStats, scheduledMeliSkuStats
  *   meli-auth.ts           — meliAuthUrl, meliCallback, meliRefreshTokenScheduled
@@ -45,7 +45,7 @@ export {
 } from './ai-agents';
 
 // ── Analytics & Projections ────────────────────────────────────────────────────
-export { snapshotProjections } from './analytics';
+export { snapshotProjections, backfillDailyForecasts } from './analytics';
 
 // ── Competitor Intelligence ────────────────────────────────────────────────────
 export {

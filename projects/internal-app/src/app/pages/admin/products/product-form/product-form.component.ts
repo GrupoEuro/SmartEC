@@ -204,6 +204,7 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
         this.loadCategories();
         this.checkEditMode();
         this.setupAutoSKU();
+        this.settingsService.loadSettings().catch(err => console.error('Error loading settings on init:', err));
     }
 
     initForm() {
@@ -676,6 +677,11 @@ export class ProductFormComponent implements OnInit, CanComponentDeactivate {
 
                 if (oldPrice > 0 && newPrice !== oldPrice) {
                     priceChangePct = Math.abs(newPrice - oldPrice) / oldPrice * 100;
+                    try {
+                        await this.settingsService.loadSettings();
+                    } catch (e) {
+                        console.error('Error loading settings before price check:', e);
+                    }
                     const settings = await firstValueFrom(this.settingsService.settings$);
                     const threshold = settings?.approvals?.priceChangeThreshold || 15;
 

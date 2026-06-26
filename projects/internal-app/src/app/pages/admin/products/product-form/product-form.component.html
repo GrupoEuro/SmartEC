@@ -490,7 +490,7 @@
             <!-- New Arrival Toggle -->
             <div class="form-row">
                 <div class="form-group">
-                    <app-toggle-switch [control]="$any(productForm.get('isNewArrival'))" label="New Arrival" icon="🆕">
+                    <app-toggle-switch [control]="$any(productForm.get('newArrival'))" label="New Arrival" icon="🆕">
                     </app-toggle-switch>
                     <small class="form-hint toggle-hint">Mark as new arrival to highlight recent additions</small>
                 </div>
@@ -499,7 +499,7 @@
             <!-- Best Seller Toggle -->
             <div class="form-row">
                 <div class="form-group">
-                    <app-toggle-switch [control]="$any(productForm.get('isBestSeller'))" label="Best Seller" icon="🔥">
+                    <app-toggle-switch [control]="$any(productForm.get('bestSeller'))" label="Best Seller" icon="🔥">
                     </app-toggle-switch>
                     <small class="form-hint toggle-hint">Highlight top-selling products</small>
                 </div>

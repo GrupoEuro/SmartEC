@@ -430,7 +430,7 @@ export class ProductService {
         const stub: Product = {
             productType: 'tire', // Default to tire for legacy compatibility
             type: 'simple',
-            active: true,
+            active: true,        // Visible in catalog (admin can deactivate individually)
             name: { es: description, en: description },
             description: { es: description, en: description },
             sku: supplierSku,
@@ -457,8 +457,9 @@ export class ProductService {
             featured: false,
             newArrival: false,
             bestSeller: false,
-            publishStatus: 'draft', // Important: Hidden
-            visibility: 'private',
+            // NOTE: Do NOT set publishStatus/visibility here.
+            // active=true is the single gate. Draft/private were preventing
+            // these products from appearing in the storefront catalog.
             supplierId: supplierId,
             createdAt: new Date(),
             updatedAt: new Date()

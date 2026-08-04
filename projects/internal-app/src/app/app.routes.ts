@@ -23,7 +23,16 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/legal/privacy/privacy.component').then(m => m.PrivacyComponent)
     },
 
-    // ── Internal: Staff login required ───────────────────────────────────────
+    {
+        path: 'work-orders',
+        loadComponent: () => import('./pages/operations/orders/order-queue.component').then(m => m.OrderQueueComponent),
+        title: 'Work Orders | Eurollantas'
+    },
+    {
+        path: 'work-orders/:id',
+        loadComponent: () => import('./pages/operations/orders/order-fulfillment.component').then(m => m.OrderFulfillmentComponent),
+        title: 'Work Order Fulfillment'
+    },
     {
         path: 'checkout',
         canActivate: [adminGuard],

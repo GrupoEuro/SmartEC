@@ -1,0 +1,430 @@
+<div class="storefront-v3">
+
+  <!-- ── 1. HERO COMMERCIAL CAROUSEL BANNER & TIRE FINDER ENGINE ───────────── -->
+  <section class="v3-hero-section">
+    <div class="v3-container v3-hero-grid">
+
+      <!-- Left Column: Hero Carousel Banner Card (Banner constrained to this card only!) -->
+      <div class="v3-hero-banner-card">
+        <div class="v3-card-bg-img" [style.background-image]="'url(' + heroSlides[currentSlide()].bgImage + ')'"></div>
+        <div class="v3-card-overlay" [style.background]="heroSlides[currentSlide()].bgGradient"></div>
+
+        <div class="v3-hero-content">
+          <div class="v3-promo-pill">
+            <span class="pill-dot"></span>
+            <span>{{ heroSlides[currentSlide()].badge }}</span>
+          </div>
+
+          <h1 class="v3-hero-title">
+            {{ heroSlides[currentSlide()].title }}
+            <span class="text-gradient">{{ heroSlides[currentSlide()].highlight }}</span>
+          </h1>
+
+          <p class="v3-hero-subtitle">
+            {{ heroSlides[currentSlide()].subtitle }}
+          </p>
+
+          <div class="hero-cta-line">
+            <a [routerLink]="heroSlides[currentSlide()].ctaLink" class="v3-hero-cta-btn">
+              {{ heroSlides[currentSlide()].ctaText }}
+            </a>
+          </div>
+
+          <!-- Carousel Slide Indicators -->
+          <div class="hero-carousel-dots">
+            <button *ngFor="let slide of heroSlides; let i = index"
+                    [class.active]="currentSlide() === i"
+                    (click)="setSlide(i)"
+                    [attr.aria-label]="'Slide ' + (i + 1)">
+            </button>
+          </div>
+
+          <!-- Rapid Badges -->
+          <div class="v3-hero-badges">
+            <div class="badge-item">
+              <span class="badge-icon">⚡</span>
+              <span>Envíos 24/48 hrs</span>
+            </div>
+            <div class="badge-item">
+              <span class="badge-icon">💳</span>
+              <span>Hasta 6 MSI MercadoPago</span>
+            </div>
+            <div class="badge-item">
+              <span class="badge-icon">🛡️</span>
+              <span>Garantía Directa 1 Año</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Tire Search Engine (Buscador por Medida) -->
+      <div class="v3-finder-card">
+        <div class="finder-header">
+          <div class="finder-title-group">
+            <span class="finder-icon">🔍</span>
+            <h3>Buscador por Medida</h3>
+          </div>
+          <span class="finder-tag">Búsqueda Rápida</span>
+        </div>
+
+        <div class="finder-form">
+          <div class="form-row">
+            <!-- Rin Select -->
+            <div class="form-group">
+              <label>Rin</label>
+              <select [ngModel]="selectedRim()" (ngModelChange)="selectedRim.set($event)" class="v3-input">
+                <option value="">Cualquiera</option>
+                <option *ngFor="let rim of rimOptions" [value]="rim">Rin {{ rim }}</option>
+              </select>
+            </div>
+
+            <!-- Ancho Select -->
+            <div class="form-group">
+              <label>Ancho</label>
+              <select [ngModel]="selectedWidth()" (ngModelChange)="selectedWidth.set($event)" class="v3-input">
+                <option value="">Cualquiera</option>
+                <option *ngFor="let w of widthOptions" [value]="w">{{ w }} mm</option>
+              </select>
+            </div>
+
+            <!-- Perfil Select -->
+            <div class="form-group">
+              <label>Perfil</label>
+              <select [ngModel]="selectedAspect()" (ngModelChange)="selectedAspect.set($event)" class="v3-input">
+                <option value="">Cualquiera</option>
+                <option *ngFor="let a of aspectOptions" [value]="a">{{ a }}%</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <!-- Posición -->
+            <div class="form-group">
+              <label>Posición</label>
+              <select [ngModel]="selectedPosition()" (ngModelChange)="selectedPosition.set($event)" class="v3-input">
+                <option value="">Delantera / Trasera</option>
+                <option value="delantera">Delantera (Front)</option>
+                <option value="trasera">Trasera (Rear)</option>
+              </select>
+            </div>
+
+            <!-- Uso -->
+            <div class="form-group">
+              <label>Tipo de Uso</label>
+              <select [ngModel]="selectedUsage()" (ngModelChange)="selectedUsage.set($event)" class="v3-input">
+                <option value="">Cualquier Uso</option>
+                <option value="trabajo">Trabajo / Reparto (Italika/Honda)</option>
+                <option value="deportiva">Deportiva / Pista (Praxis Raptor)</option>
+                <option value="doble-proposito">Doble Propósito / Offroad</option>
+                <option value="scooter">Scooter Urbana</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button (click)="searchTires()" class="v3-btn-search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>BUSCAR LLANTAS DISPONIBLES</span>
+          </button>
+
+          <div class="finder-footer-link">
+            <a routerLink="/catalogo" class="link-full-catalog">Ver todo el catálogo completo (150+ modelos) →</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── 2. E-COMMERCE TRUST & ZIP CODE DELIVERY CALCULATOR BAR ────────────── -->
+  <section class="v3-benefits-bar">
+    <div class="v3-container benefits-grid">
+      <div class="benefit-item">
+        <div class="benefit-icon">🚚</div>
+        <div class="benefit-text">
+          <h4>Envíos a Todo México</h4>
+          <p>Entregas en 1-3 días hábiles desde San Luis Potosí</p>
+        </div>
+      </div>
+
+      <div class="benefit-item">
+        <div class="benefit-icon">💳</div>
+        <div class="benefit-text">
+          <h4>Hasta 6 MSI MercadoPago</h4>
+          <p>Tarjetas de crédito, débito, OXXO y transferencia SPEI</p>
+        </div>
+      </div>
+
+      <div class="benefit-item">
+        <div class="benefit-icon">🛡️</div>
+        <div class="benefit-text">
+          <h4>Garantía Directa de Fábrica</h4>
+          <p>Cobertura contra defectos de fabricación por 1 año</p>
+        </div>
+      </div>
+
+      <!-- Quick Delivery Date Calculator -->
+      <div class="benefit-item delivery-calculator-item">
+        <div class="benefit-icon">📍</div>
+        <div class="benefit-text zip-calc-wrapper">
+          <h4>Calcula Tu Fecha de Entrega</h4>
+          <div class="zip-calc-input-group">
+            <input type="text" [ngModel]="userZip()" (ngModelChange)="userZip.set($event)" placeholder="Ingresa C.P. (ej. 78000)" maxlength="5" class="zip-input">
+            <button (click)="calculateDelivery()" class="zip-calc-btn">Consultar</button>
+          </div>
+          <p *ngIf="calculatedDelivery()" class="zip-delivery-result">{{ calculatedDelivery() }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. OFERTAS RELÁMPAGO / FLASH DEALS SECTION ────────────────────────── -->
+  <section class="v3-section flash-deals-section">
+    <div class="v3-container">
+      <div class="v3-section-header">
+        <div>
+          <span class="v3-section-tag tag-red">OFERTAS DE HOY ⚡</span>
+          <h2 class="v3-section-title">Llantas con Descuento Directo</h2>
+        </div>
+        <a routerLink="/catalogo" [queryParams]="{ onSale: true }" class="v3-view-all">Ver todas las ofertas →</a>
+      </div>
+
+      <div class="product-grid">
+        <div *ngFor="let deal of flashDeals" class="product-card">
+          <!-- Discount Tag -->
+          <div class="discount-badge">-{{ deal.discountPct }}%</div>
+          <div *ngIf="deal.badge" class="custom-badge">{{ deal.badge }}</div>
+
+          <!-- Product Image Link -->
+          <a [routerLink]="['/product', deal.slug]" class="product-img-wrapper">
+            <img [src]="deal.image" [alt]="deal.name" (error)="onImgError($event)" loading="lazy" class="product-img">
+          </a>
+
+          <!-- Details -->
+          <div class="product-body">
+            <div class="product-brand-line">
+              <span class="product-brand">{{ deal.brand }}</span>
+              <span class="product-size">{{ deal.size }}</span>
+            </div>
+
+            <h3 class="product-title">
+              <a [routerLink]="['/product', deal.slug]">{{ deal.name }}</a>
+            </h3>
+
+            <div class="product-rating">
+              <span class="stars">★★★★★</span>
+              <span class="rating-val">{{ deal.rating }}</span>
+              <span class="reviews-count">({{ deal.reviewsCount }})</span>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div class="price-container">
+              <div class="prices">
+                <span class="promo-price">{{ deal.promoPrice | currency:'MXN':'symbol':'1.0-0' }}</span>
+                <span class="original-price">{{ deal.originalPrice | currency:'MXN':'symbol':'1.0-0' }}</span>
+              </div>
+              <span class="shipping-tag">Envío gratis ⚡ Pide hoy y recibe express</span>
+            </div>
+
+            <!-- Dual CTA Group: Buy Now (Left) & Add to Cart (Right) -->
+            <div class="product-cta-group">
+              <button (click)="buyNow(deal, $event)" class="v3-btn-buynow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+                <span>COMPRAR AHORA</span>
+              </button>
+              <button (click)="addToCart(deal, $event)" class="v3-btn-cart" title="Agregar al Carrito">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span>CARRITO</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. COMMERCIAL MID-PAGE SPLIT BANNERS (B2B & COMBOS) ────────────────── -->
+  <section class="v3-section mid-banners-section">
+    <div class="v3-container">
+      <div class="mid-banners-grid">
+
+        <!-- Banner 1: Mayoreo & Flotillas -->
+        <div class="commercial-banner-card banner-b2b">
+          <div class="banner-bg-img" style="background-image: url('assets/images/banners/b2b-wholesale-banner.png');"></div>
+          <div class="banner-overlay"></div>
+          <div class="banner-content">
+            <span class="banner-pill pill-gold">MAYOREO & FLOTILLAS 📦</span>
+            <h2>¿Tienes Taller, Refaccionaria o Flotilla?</h2>
+            <p>Accede a precios de distribuidor directo, facturación CFDI 4.0 inmediata y crédito para negocios.</p>
+            <a routerLink="/nosotros" fragment="contact" class="v3-banner-cta cta-gold">SOLICITAR PRECIOS MAYOREO →</a>
+          </div>
+        </div>
+
+        <!-- Banner 2: Combos & Juegos Completos -->
+        <div class="commercial-banner-card banner-combos">
+          <div class="banner-bg-img" style="background-image: url('assets/images/banners/combo-set-banner.png');"></div>
+          <div class="banner-overlay"></div>
+          <div class="banner-content">
+            <span class="banner-pill pill-cyan">COMBOS EN JUEGO 🏁</span>
+            <h2>Ahorra 15% Adicional Comprando el Par</h2>
+            <p>Llévate el juego completo (Delantera + Trasera) para tu moto deportiva, trabajo o doble propósito.</p>
+            <a routerLink="/catalogo" [queryParams]="{ combo: true }" class="v3-banner-cta cta-cyan">VER COMBOS CON DESCUENTO →</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. CATEGORÍAS RÁPIDAS / SHORTCUT GRID ────────────────────────────── -->
+  <section class="v3-section categories-section">
+    <div class="v3-container">
+      <div class="v3-section-header">
+        <div>
+          <span class="v3-section-tag">EXPLORA POR CATEGORÍA</span>
+          <h2 class="v3-section-title">Encuentra por Estilo de Manejo</h2>
+        </div>
+      </div>
+
+      <div class="categories-grid">
+        <div *ngFor="let cat of categories" class="category-card" (click)="quickCategorySearch(cat.searchParam)">
+          <div class="cat-icon">{{ cat.icon }}</div>
+          <span class="cat-tag">{{ cat.tag }}</span>
+          <h3>{{ cat.title }}</h3>
+          <p>{{ cat.subtitle }}</p>
+          <span class="cat-link">Ver catálogo →</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. MÁS VENDIDOS / BEST SELLERS SECTION ────────────────────────────── -->
+  <section class="v3-section best-sellers-section">
+    <div class="v3-container">
+      <div class="v3-section-header">
+        <div>
+          <span class="v3-section-tag tag-cyan">TOP VENTAS 🏆</span>
+          <h2 class="v3-section-title">Las Llantas Preferidas por Motociclistas</h2>
+        </div>
+        <a routerLink="/catalogo" class="v3-view-all">Ver catálogo completo →</a>
+      </div>
+
+      <div class="product-grid">
+        <div *ngFor="let item of bestSellers" class="product-card">
+          <div *ngIf="item.badge" class="custom-badge badge-blue">{{ item.badge }}</div>
+
+          <a [routerLink]="['/product', item.slug]" class="product-img-wrapper">
+            <img [src]="item.image" [alt]="item.name" (error)="onImgError($event)" loading="lazy" class="product-img">
+          </a>
+
+          <div class="product-body">
+            <div class="product-brand-line">
+              <span class="product-brand">{{ item.brand }}</span>
+              <span class="product-size">{{ item.size }}</span>
+            </div>
+
+            <h3 class="product-title">
+              <a [routerLink]="['/product', item.slug]">{{ item.name }}</a>
+            </h3>
+
+            <div class="stock-status">
+              <span class="status-dot"></span>
+              <span>En stock — Listo para envío hoy</span>
+            </div>
+
+            <div class="price-container">
+              <div class="prices">
+                <span class="promo-price">{{ item.promoPrice | currency:'MXN':'symbol':'1.0-0' }}</span>
+                <span class="original-price">{{ item.originalPrice | currency:'MXN':'symbol':'1.0-0' }}</span>
+              </div>
+            </div>
+
+            <!-- Dual CTA Group: Buy Now (Left) & Add to Cart (Right) -->
+            <div class="product-cta-group">
+              <button (click)="buyNow(item, $event)" class="v3-btn-buynow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+                <span>COMPRAR AHORA</span>
+              </button>
+              <button (click)="addToCart(item, $event)" class="v3-btn-cart" title="Agregar al Carrito">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span>CARRITO</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. MARCAS PRINCIPALES / BRAND FILTER BAR ────────────────────────── -->
+  <section class="v3-section brands-bar-section">
+    <div class="v3-container">
+      <div class="brands-bar-header">
+        <h3>MARCAS PRINCIPALES CON DISPONIBILIDAD INMEDIATA</h3>
+      </div>
+      <div class="brands-bar-grid">
+        <button (click)="quickFilterBrand('Praxis')" class="brand-btn active-praxis">
+          <span class="brand-name">PRAXIS TYRES</span>
+          <span class="brand-sub">Distribuidor Exclusivo</span>
+        </button>
+        <button (click)="quickFilterBrand('Michelin')" class="brand-btn">
+          <span class="brand-name">MICHELIN</span>
+          <span class="brand-sub">Gama Premium</span>
+        </button>
+        <button (click)="quickFilterBrand('Continental')" class="brand-btn">
+          <span class="brand-name">CONTINENTAL</span>
+          <span class="brand-sub">Tecnología Alemana</span>
+        </button>
+        <button (click)="quickFilterBrand('Pirelli')" class="brand-btn">
+          <span class="brand-name">PIRELLI</span>
+          <span class="brand-sub">High Performance</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 8. COMPRA CON CONFIANZA & CONOCIMIENTO ───────────────────────────── -->
+  <section class="v3-section buying-guide-section">
+    <div class="v3-container guide-box">
+      <div class="guide-content">
+        <span class="guide-tag">¿DUDAS SOBRE TU TALLA?</span>
+        <h2>¿Cómo Leer la Medida de Tu Llanta de Moto?</h2>
+        <p>
+          En el lateral de tu llanta encontrarás una nomenclatura como <strong>120/70 R 17</strong>.
+          El primer número (120) es el ancho en milímetros; el segundo (70) es el perfil en porcentaje; y el 17 representa el tamaño del rin en pulgadas.
+        </p>
+        <div class="guide-actions">
+          <a routerLink="/blog/guia-tallas-llanta-moto" class="v3-btn-guide">Leer Guía de Tallas Completa →</a>
+          <a routerLink="/nosotros" class="v3-btn-about-link">Conocer sobre Importadora Eurollantas →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Floating Social Proof Sales Toast -->
+  <div *ngIf="recentSale()" class="social-proof-toast">
+    <div class="toast-avatar">🔥</div>
+    <div class="toast-body">
+      <strong>{{ recentSale()!.name }}</strong> en {{ recentSale()!.city }}
+      <p>Compró: <span>{{ recentSale()!.item }}</span> ({{ recentSale()!.time }})</p>
+    </div>
+  </div>
+
+</div>

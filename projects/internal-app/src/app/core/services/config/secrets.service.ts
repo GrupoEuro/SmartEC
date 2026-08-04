@@ -56,6 +56,17 @@ export interface IntegrationConfig {
         refreshToken: string;
         connected: boolean;
     };
+    swsapien?: {
+        user?: string;
+        password?: string;
+        token?: string;
+        rfcEmisor: string;
+        nombreEmisor: string;
+        regimenFiscalEmisor: string;
+        lugarExpedicion: string;
+        isSandbox?: boolean;
+        connected: boolean;
+    };
 }
 
 @Injectable({

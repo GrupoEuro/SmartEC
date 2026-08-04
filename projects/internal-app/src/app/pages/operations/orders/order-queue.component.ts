@@ -292,7 +292,9 @@ export class OrderQueueComponent implements OnInit, OnDestroy {
             const searchTerm = this.searchControl.value?.toLowerCase() || '';
             if (searchTerm) {
                 const matchesSearch =
-                    order.orderNumber.toLowerCase().includes(searchTerm) ||
+                    (order.orderNumber || '').toLowerCase().includes(searchTerm) ||
+                    ((order as any).orderId || '').toLowerCase().includes(searchTerm) ||
+                    (order.id || '').toLowerCase().includes(searchTerm) ||
                     (order.customer?.name || '').toLowerCase().includes(searchTerm) ||
                     (order.customer?.email || '').toLowerCase().includes(searchTerm);
                 if (!matchesSearch) return false;

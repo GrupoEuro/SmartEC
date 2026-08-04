@@ -6,15 +6,16 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { UserProfile, UserRole } from '../../../../core/models/user.model';
 import { AuthService } from '../../../../core/services/auth.service';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AdminPageHeaderComponent } from '../../shared/admin-page-header/admin-page-header.component';
 import { PaginationComponent, PaginationConfig } from '../../shared/pagination/pagination.component';
+import { AppIconComponent } from '../../../../shared/components/app-icon/app-icon.component';
 
 @Component({
     selector: 'app-user-list',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, TranslateModule, AdminPageHeaderComponent, PaginationComponent, AppIconComponent],
     templateUrl: './user-list.component.html',
     styleUrls: ['./user-list.component.css']
 })
@@ -164,13 +165,13 @@ export class UserListComponent implements OnInit {
         const { email, role } = this.inviteForm.value;
 
         try {
-            await this.userService.inviteUser(email, role);
-            this.toast.success('User invited successfully');
+            await firstValueFrom(this.userService.inviteUser(email, role));
+            this.toast.success('Usuario invitado exitosamente');
             this.closeInviteModal();
             this.loadUsers(); // Reload list
         } catch (error: any) {
-            console.error(error);
-            this.toast.error('Failed to invite user');
+            console.error('Error inviting user:', error);
+            this.toast.error('Error al enviar la invitación');
         } finally {
             this.isSubmitting = false;
             this.cdr.detectChanges();

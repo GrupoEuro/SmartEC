@@ -2,11 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import {
     Firestore, collection, collectionData, doc, docData,
     query, where, orderBy, limit, updateDoc, serverTimestamp,
-    addDoc, getDocs, getDoc, Timestamp
+    addDoc, getDocs, getDoc, Timestamp, deleteDoc
 } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Auth } from '@angular/fire/auth';
-import { Observable, of, switchMap } from 'rxjs';
+import { Observable, of, switchMap, map } from 'rxjs';
 import { UserProfile } from '../../../core/models/user.model';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -168,11 +168,15 @@ export class InboxService {
         });
     }
 
-    async linkCustomer(id: string, customerId: string): Promise<void> {
-        await updateDoc(doc(this.fs, `customer_conversations/${id}`), {
+    async linkCustomer(id: string, customerId: string, customerName?: string): Promise<void> {
+        const updatePayload: any = {
             customerId,
             updatedAt: serverTimestamp(),
-        });
+        };
+        if (customerName) {
+            updatePayload['customerName'] = customerName;
+        }
+        await updateDoc(doc(this.fs, `customer_conversations/${id}`), updatePayload);
     }
 
     // ── Customer 360 ───────────────────────────────────────────────────────────
@@ -184,12 +188,100 @@ export class InboxService {
         ) as Observable<UserProfile | undefined>;
     }
 
-    getCustomerOrders(customerId: string): Observable<any[]> {
+    getCustomerOrders(customerId: string, phone?: string, email?: string): Observable<any[]> {
         const ref = collection(this.fs, 'orders');
-        return collectionData(
-            query(ref, where('userId', '==', customerId), orderBy('createdAt', 'desc'), limit(5)),
+        return (collectionData(
+            query(ref, orderBy('createdAt', 'desc'), limit(100)),
             { idField: 'id' }
+        ) as Observable<any[]>).pipe(
+            map(orders => {
+                const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
+                const cleanEmail = (email || '').toLowerCase().trim();
+                return orders.filter(o => {
+                    const uId = o['userId'];
+                    const cId = o['customer']?.id;
+                    const oPhone = (o['customer']?.phone || o['phone'] || '').replace(/\D/g, '').slice(-10);
+                    const oEmail = (o['customer']?.email || o['email'] || '').toLowerCase().trim();
+
+                    if (customerId && (uId === customerId || cId === customerId || cId === `ml_${customerId}`)) return true;
+                    if (cleanPhone && cleanPhone.length === 10 && oPhone === cleanPhone) return true;
+                    if (cleanEmail && cleanEmail.includes('@') && !cleanEmail.endsWith('@mail.mercadolibre.com') && oEmail === cleanEmail) return true;
+                    return false;
+                });
+            })
         );
+    }
+
+    /** Auto-search orders to detect if an unlinked handle matches a MercadoLibre buyer via exact phone/email/ID */
+    async findSuggestedCustomerMatch(handleOrPhone: string): Promise<{ customerId: string; displayName: string; email?: string; phone?: string; meliOrdersCount: number; lastChannel?: string } | null> {
+        if (!handleOrPhone) return null;
+        const target = handleOrPhone.trim();
+        const cleanDigits = target.replace(/\D/g, '');
+        const cleanPhone = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : '';
+        const isEmail = target.includes('@') && !target.endsWith('@mail.mercadolibre.com');
+        const isMeliId = target.startsWith('ml_') || target.startsWith('usr_');
+
+        // Do not attempt lookup if target is not a valid 10-digit phone, clean email, or explicit ID
+        if (!cleanPhone && !isEmail && !isMeliId) return null;
+
+        const ref = collection(this.fs, 'orders');
+        const snap = await getDocs(query(ref, orderBy('createdAt', 'desc'), limit(100)));
+
+        let matchingDoc: any = null;
+
+        for (const docSnap of snap.docs) {
+            const data = docSnap.data();
+            const p1 = (data['customer']?.phone || '').replace(/\D/g, '').slice(-10);
+            const p2 = (data['phone'] || '').replace(/\D/g, '').slice(-10);
+            const oEmail = (data['customer']?.email || data['email'] || '').toLowerCase().trim();
+            const cId = data['customer']?.id;
+            const uId = data['userId'];
+
+            let isMatch = false;
+            if (cleanPhone && (p1 === cleanPhone || p2 === cleanPhone)) {
+                isMatch = true;
+            } else if (isEmail && oEmail === target.toLowerCase()) {
+                isMatch = true;
+            } else if (isMeliId && (cId === target || uId === target)) {
+                isMatch = true;
+            }
+
+            if (isMatch) {
+                matchingDoc = data;
+                break;
+            }
+        }
+
+        if (!matchingDoc) return null;
+
+        const custId = matchingDoc['userId'] || matchingDoc['customer']?.id || `ml_${matchingDoc['externalOrderId'] || matchingDoc['id']}`;
+        const name = matchingDoc['customer']?.name || matchingDoc['customer']?.originalName || '';
+
+        // If name is blank or generic, do not present false match
+        if (!name || name === 'Cliente ML' || name === 'Cliente' || name === 'Meli Buyer') return null;
+
+        // Count all orders belonging to this exact matching customer
+        const matchedOrders = snap.docs.filter(d => {
+            const data = d.data();
+            const cId = data['customer']?.id;
+            const uId = data['userId'];
+            const p1 = (data['customer']?.phone || '').replace(/\D/g, '').slice(-10);
+            return (custId && (cId === custId || uId === custId)) || (cleanPhone && p1 === cleanPhone);
+        });
+
+        const meliCount = matchedOrders.filter(d => {
+            const sc = (d.data()['sourceChannel'] || d.data()['acquisitionChannel'] || '').toLowerCase();
+            return sc === 'mercadolibre' || sc === 'meli';
+        }).length;
+
+        return {
+            customerId: custId,
+            displayName: name,
+            email: matchingDoc['customer']?.email || '',
+            phone: matchingDoc['customer']?.phone || handleOrPhone,
+            meliOrdersCount: meliCount || (matchingDoc['sourceChannel'] === 'mercadolibre' ? 1 : 0),
+            lastChannel: matchingDoc['sourceChannel'] || 'mercadolibre'
+        };
     }
 
     getCustomerHistory(customerId: string): Observable<Conversation[]> {
@@ -233,6 +325,27 @@ export class InboxService {
         });
     }
 
+    /** Notes stored on the conversation itself (no customerId needed) */
+    getConversationNotes(conversationId: string): Observable<any[]> {
+        const ref = collection(this.fs, `customer_conversations/${conversationId}/notes`);
+        return collectionData(
+            query(ref, orderBy('timestamp', 'desc')),
+            { idField: 'id' }
+        );
+    }
+
+    async addConversationNote(conversationId: string, text: string, agentUid: string, agentName: string): Promise<void> {
+        await addDoc(
+            collection(this.fs, `customer_conversations/${conversationId}/notes`),
+            { text, agentUid, agentName, timestamp: serverTimestamp() }
+        );
+    }
+
+    async deleteConversationNote(conversationId: string, noteId: string): Promise<void> {
+        await deleteDoc(doc(this.fs, `customer_conversations/${conversationId}/notes/${noteId}`));
+    }
+
+    /** @deprecated Use getConversationNotes. Legacy path kept for migration. */
     getCustomerNotes(customerId: string): Observable<any[]> {
         const ref = collection(this.fs, `users/${customerId}/notes`);
         return collectionData(
@@ -252,6 +365,41 @@ export class InboxService {
             }
         );
     }
+
+    async deleteCustomerNote(customerId: string, noteId: string): Promise<void> {
+        await deleteDoc(doc(this.fs, `users/${customerId}/notes/${noteId}`));
+    }
+
+    /** Update customer info on the conversation (name, phone, email, tags) */
+    async updateConversationCustomerInfo(convId: string, data: {
+        customerName?: string;
+        customerPhone?: string;
+        customerEmail?: string;
+        customerTags?: string[];
+    }): Promise<void> {
+        const payload: any = { updatedAt: serverTimestamp() };
+        if (data.customerName  !== undefined) payload['customerName']  = data.customerName;
+        if (data.customerPhone !== undefined) payload['customerPhone'] = data.customerPhone;
+        if (data.customerEmail !== undefined) payload['customerEmail'] = data.customerEmail;
+        if (data.customerTags  !== undefined) payload['customerTags']  = data.customerTags;
+        await updateDoc(doc(this.fs, `customer_conversations/${convId}`), payload);
+    }
+
+    /** Optionally sync profile updates to the users/{uid} document */
+    async updateUserProfile(uid: string, data: {
+        displayName?: string;
+        phone?: string;
+        email?: string;
+        tags?: string[];
+    }): Promise<void> {
+        const payload: any = { updatedAt: serverTimestamp() };
+        if (data.displayName !== undefined) payload['displayName'] = data.displayName;
+        if (data.phone       !== undefined) payload['phone']       = data.phone;
+        if (data.email       !== undefined) payload['email']       = data.email;
+        if (data.tags        !== undefined) payload['tags']        = data.tags;
+        await updateDoc(doc(this.fs, `users/${uid}`), payload);
+    }
+
 
     // ── Reply ──────────────────────────────────────────────────────────────────
 
@@ -304,16 +452,18 @@ export class InboxService {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     /** Human-readable time label for last message (e.g. "2m", "1h", "Ayer") */
-    timeAgo(ts: Timestamp): string {
-        if (!ts?.toDate) return '';
-        const diff = Date.now() - ts.toDate().getTime();
+    timeAgo(ts: any): string {
+        if (!ts) return '';
+        const d = typeof ts?.toDate === 'function' ? ts.toDate() : (ts instanceof Date ? ts : new Date(ts));
+        if (!d || isNaN(d.getTime())) return '';
+        const diff = Date.now() - d.getTime();
         const m = Math.floor(diff / 60000);
         if (m < 1)  return 'ahora';
         if (m < 60) return `${m}m`;
         const h = Math.floor(m / 60);
         if (h < 24) return `${h}h`;
-        const d = Math.floor(h / 24);
-        return d === 1 ? 'ayer' : `${d}d`;
+        const days = Math.floor(h / 24);
+        return days === 1 ? 'ayer' : `${days}d`;
     }
 
     channelLabel(channel: Channel): string {

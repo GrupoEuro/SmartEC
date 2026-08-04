@@ -92,7 +92,7 @@ export { syncMeliToInbox, backfillMeliToInbox } from './meli-inbox-sync';
 
 // ── MercadoPago Payments ───────────────────────────────────────────────────────
 export {
-    processPayment, cancelOrder, refundOrder,
+    processPayment, createPaymentLink, cancelOrder, refundOrder,
     mpWebhook, mpAuthUrl, mpCallback, mpDiag,
 } from './payments';
 
@@ -137,7 +137,7 @@ export {
 } from './seo';
 
 // ── Invoice / Billing ─────────────────────────────────────────────────────────
-export { generateInvoice, testMeliBilling } from './invoice';
+export { generateInvoice, cancelInvoice, testMeliBilling, testSwSapienConnection, testSwSapienStamp } from './invoice';
 
 // ── BigQuery Analytics ────────────────────────────────────────────────────────
 export {

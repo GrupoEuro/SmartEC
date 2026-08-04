@@ -50,7 +50,12 @@ export class ConversationsComponent implements OnInit {
                 status: this.filterStatus(),
                 channel: this.filterChannel()
             });
-            this.conversations.set(data);
+            const sorted = [...(data || [])].sort((a, b) => {
+                const tA = this.toJsDate(a.updatedAt || a.createdAt)?.getTime() || 0;
+                const tB = this.toJsDate(b.updatedAt || b.createdAt)?.getTime() || 0;
+                return tB - tA; // Recent on top
+            });
+            this.conversations.set(sorted);
         } catch (e) {
             console.error('[ConversationsComponent] Error loading history:', e);
         } finally {
@@ -66,9 +71,24 @@ export class ConversationsComponent implements OnInit {
         return (name || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
     }
 
+    private toJsDate(ts: any): Date | null {
+        if (!ts) return null;
+        if (typeof ts.toDate === 'function') return ts.toDate();
+        if (ts instanceof Date) return ts;
+        if (typeof ts === 'number') return new Date(ts);
+        if (typeof ts === 'string') {
+            const parsed = new Date(ts);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        if (typeof ts === 'object' && ts.seconds !== undefined) {
+            return new Date(ts.seconds * 1000);
+        }
+        return null;
+    }
+
     formatDate(ts: any): string {
-        if (!ts?.toDate) return '-';
-        const d = ts.toDate();
+        const d = this.toJsDate(ts);
+        if (!d) return '-';
         return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 

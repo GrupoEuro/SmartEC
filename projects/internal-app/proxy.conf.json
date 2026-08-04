@@ -1,0 +1,26 @@
+{
+  "/sw-api": {
+    "target": "https://services.test.sw.com.mx",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/sw-api": ""
+    }
+  },
+  "/sw-api-prod": {
+    "target": "https://services.sw.com.mx",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/sw-api-prod": ""
+    }
+  },
+  "/sap-api": {
+    "target": "https://apib2c.grupoeuro.com.mx:40405",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/sap-api": ""
+    }
+  }
+}

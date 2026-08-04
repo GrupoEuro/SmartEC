@@ -21,9 +21,9 @@ export interface TrackingConfig {
 }
 
 export const DEFAULT_TRACKING_CONFIG: TrackingConfig = {
-    ga4:       { enabled: false, id: '' },
+    ga4:       { enabled: true,  id: 'G-DS1P5LCE99' },
     meta:      { enabled: false, id: '' },
-    clarity:   { enabled: false, id: '' },
+    clarity:   { enabled: true,  id: 'ur5ya510na' },
     tiktok:    { enabled: false, id: '' },
     gtm:       { enabled: false, id: '' },
     pinterest: { enabled: false, id: '' },

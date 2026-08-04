@@ -40,6 +40,11 @@ export const operationsRoutes: Routes = [
                 title: 'Invoicing'
             },
             {
+                path: 'invoicing/sw-debug',
+                loadComponent: () => import('../admin/settings/integrations/sw-debug/sw-debug.component').then(m => m.SwDebugComponent),
+                title: 'Facturación | SW Sapien Debug'
+            },
+            {
                 path: 'customers',
                 loadComponent: () => import('./customers/customer-lookup.component').then(m => m.CustomerLookupComponent),
                 title: 'Operations | Clientes'
@@ -236,6 +241,11 @@ export const operationsRoutes: Routes = [
                 path: 'price-intelligence',
                 loadComponent: () => import('./price-intelligence/price-intelligence.component').then(m => m.PriceIntelligenceComponent),
                 title: 'Price Intelligence'
+            },
+            {
+                path: 'invoicing/sap-debug',
+                loadComponent: () => import('../admin/settings/integrations/sap-debug/sap-debug.component').then(m => m.SapDebugComponent),
+                title: 'Operaciones | SAP B1 Debug'
             },
             // Legacy / Redirects
             {

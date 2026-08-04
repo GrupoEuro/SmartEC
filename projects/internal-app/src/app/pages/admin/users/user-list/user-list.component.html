@@ -159,7 +159,9 @@
     <div class="glass-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
             <h2>{{ 'ADMIN.USERS.INVITE_TITLE' | translate }}</h2>
-            <button class="btn-icon-ghost close-btn" (click)="closeInviteModal()">✖</button>
+            <button class="close-btn" (click)="closeInviteModal()" title="Cerrar">
+                <app-icon name="x" [size]="18"></app-icon>
+            </button>
         </div>
 
         <div class="modal-body">

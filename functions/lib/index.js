@@ -9,7 +9,7 @@
  *   shared.ts              — db, bigquery, config cache (singletons)
  *   meli-shared.ts         — MeLi token helpers, parseAndSaveMeliOrder (internal)
  *   ai-agents.ts           — EuroMind AI agent functions
- *   analytics.ts           — snapshotProjections
+ *   analytics.ts           — snapshotProjections, backfillDailyForecasts
  *   competitor-intelligence.ts — competitor price scanning
  *   meli-orders-sync.ts    — computeMeliSkuStats, scheduledMeliSkuStats
  *   meli-auth.ts           — meliAuthUrl, meliCallback, meliRefreshTokenScheduled
@@ -33,8 +33,9 @@
  *   customer-analytics.ts  — queryCustomerInsights, queryCohortAnalysis, queryGrowthMetrics, etc.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncUserClaims = exports.skydropxGetTracking = exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.processPayment = exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.meliGetAdsSummary = exports.meliSyncAdsSpend = exports.meliXlsAudit = exports.meliForceResync = exports.meliReconciliator = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.scheduledMeliSkuStats = exports.computeMeliSkuStats = exports.updateCompetitorConfig = exports.getCompetitorIntelligence = exports.meliCompetitorScanManual = exports.meliCompetitorScanCron = exports.snapshotProjections = exports.askEuroMind = exports.euromindWeeklyReport = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
-exports.commitPricingSimulation = exports.processPricingUpload = exports.queryGrowthMetrics = exports.queryPeriodData = exports.queryCustomerSegmentation = exports.queryCustomerMetrics = exports.queryCohortAnalysis = exports.queryCustomerInsights = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.appendOrdersToBQForDate = exports.backfillOrdersToBigQuery = exports.queryMetrics = exports.testMeliBilling = exports.generateInvoice = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.sitemapXml = exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.backfillUserClaims = void 0;
+exports.skydropxCreateLabel = exports.skydropxRawTest = exports.skydropxGetRates = exports.skydropxTestConnection = exports.mpDiag = exports.mpCallback = exports.mpAuthUrl = exports.mpWebhook = exports.refundOrder = exports.cancelOrder = exports.createPaymentLink = exports.processPayment = exports.backfillMeliToInbox = exports.syncMeliToInbox = exports.meliGetAdsSummary = exports.meliSyncAdsSpend = exports.meliXlsAudit = exports.meliForceResync = exports.meliReconciliator = exports.getMeliRawOrderDebug = exports.meliWebhook = exports.meliSyncOrdersCron = exports.prunePriceHistory = exports.meliPriceScan = exports.meliSyncListings = exports.meliSyncFullInventory = exports.meliGetShippingLabel = exports.testMeliApi = exports.meliSyncHistorical = exports.meliAnalyzeHistoricalSync = exports.meliBackfillShippingCosts = exports.meliSyncOrders = exports.meliRefreshTokenScheduled = exports.meliCallback = exports.meliAuthUrl = exports.scheduledMeliSkuStats = exports.computeMeliSkuStats = exports.updateCompetitorConfig = exports.getCompetitorIntelligence = exports.meliCompetitorScanManual = exports.meliCompetitorScanCron = exports.backfillDailyForecasts = exports.snapshotProjections = exports.askEuroMind = exports.euromindWeeklyReport = exports.testAnalyzeMeliInsights = exports.analyzeMeliInsights = exports.agentHandoff = exports.agentOrchestrator = exports.inboxMessageRouter = void 0;
+exports.processPricingUpload = exports.queryGrowthMetrics = exports.queryPeriodData = exports.queryCustomerSegmentation = exports.queryCustomerMetrics = exports.queryCohortAnalysis = exports.queryCustomerInsights = exports.querySearchAnalytics = exports.backfillSearchEventsToBigQuery = exports.onSearchEventCreated = exports.sendInboxReply = exports.applyInboxChannelConfig = exports.emailInboxWebhook = exports.telegramInboxWebhook = exports.metaInboxWebhook = exports.appendOrdersToBQForDate = exports.backfillOrdersToBigQuery = exports.queryMetrics = exports.testSwSapienStamp = exports.testSwSapienConnection = exports.testMeliBilling = exports.cancelInvoice = exports.generateInvoice = exports.onProductWriteIndexNow = exports.notifyIndexNow = exports.googleShoppingFeed = exports.sitemapXml = exports.getPaidMediaInsights = exports.triggerPaidMediaSync = exports.syncPaidMediaSnapshots = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = exports.onReferralOrderCompleted = exports.processReviewRequests = exports.onOrderCompleted = exports.processRecoveryQueue = exports.onCartAbandoned = exports.amazonOAuthCallback = exports.amazonSyncCron = exports.amazonManualSync = exports.backfillUserClaims = exports.syncUserClaims = exports.skydropxGetTracking = void 0;
+exports.commitPricingSimulation = void 0;
 const admin = require("firebase-admin");
 // ── MUST be first: initialize Firebase Admin before any module imports db ──────
 admin.initializeApp();
@@ -50,6 +51,7 @@ Object.defineProperty(exports, "askEuroMind", { enumerable: true, get: function 
 // ── Analytics & Projections ────────────────────────────────────────────────────
 var analytics_1 = require("./analytics");
 Object.defineProperty(exports, "snapshotProjections", { enumerable: true, get: function () { return analytics_1.snapshotProjections; } });
+Object.defineProperty(exports, "backfillDailyForecasts", { enumerable: true, get: function () { return analytics_1.backfillDailyForecasts; } });
 // ── Competitor Intelligence ────────────────────────────────────────────────────
 var competitor_intelligence_1 = require("./competitor-intelligence");
 Object.defineProperty(exports, "meliCompetitorScanCron", { enumerable: true, get: function () { return competitor_intelligence_1.meliCompetitorScanCron; } });
@@ -100,6 +102,7 @@ Object.defineProperty(exports, "backfillMeliToInbox", { enumerable: true, get: f
 // ── MercadoPago Payments ───────────────────────────────────────────────────────
 var payments_1 = require("./payments");
 Object.defineProperty(exports, "processPayment", { enumerable: true, get: function () { return payments_1.processPayment; } });
+Object.defineProperty(exports, "createPaymentLink", { enumerable: true, get: function () { return payments_1.createPaymentLink; } });
 Object.defineProperty(exports, "cancelOrder", { enumerable: true, get: function () { return payments_1.cancelOrder; } });
 Object.defineProperty(exports, "refundOrder", { enumerable: true, get: function () { return payments_1.refundOrder; } });
 Object.defineProperty(exports, "mpWebhook", { enumerable: true, get: function () { return payments_1.mpWebhook; } });
@@ -154,7 +157,10 @@ Object.defineProperty(exports, "onProductWriteIndexNow", { enumerable: true, get
 // ── Invoice / Billing ─────────────────────────────────────────────────────────
 var invoice_1 = require("./invoice");
 Object.defineProperty(exports, "generateInvoice", { enumerable: true, get: function () { return invoice_1.generateInvoice; } });
+Object.defineProperty(exports, "cancelInvoice", { enumerable: true, get: function () { return invoice_1.cancelInvoice; } });
 Object.defineProperty(exports, "testMeliBilling", { enumerable: true, get: function () { return invoice_1.testMeliBilling; } });
+Object.defineProperty(exports, "testSwSapienConnection", { enumerable: true, get: function () { return invoice_1.testSwSapienConnection; } });
+Object.defineProperty(exports, "testSwSapienStamp", { enumerable: true, get: function () { return invoice_1.testSwSapienStamp; } });
 // ── BigQuery Analytics ────────────────────────────────────────────────────────
 var bq_analytics_1 = require("./bq-analytics");
 Object.defineProperty(exports, "queryMetrics", { enumerable: true, get: function () { return bq_analytics_1.queryMetrics; } });

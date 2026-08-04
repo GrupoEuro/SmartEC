@@ -4,7 +4,16 @@ import { Router } from '@angular/router';
 import { CartService } from './core/services/cart.service';
 
 export const routes: Routes = [
-    { path: '', loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent) },
+    {
+        path: '',
+        loadComponent: () => import('./pages/home-v3/home-v3.component').then(m => m.HomeV3Component),
+        title: 'Importadora Eurollantas | Llantas para Moto en México'
+    },
+    {
+        path: 'nosotros',
+        loadComponent: () => import('./pages/nosotros/nosotros.component').then(m => m.NosotrosComponent),
+        title: 'Nosotros | Importadora Eurollantas'
+    },
     {
         path: 'login',
         loadComponent: () => import('./pages/auth/login/login.component').then(m => m.LoginComponent),

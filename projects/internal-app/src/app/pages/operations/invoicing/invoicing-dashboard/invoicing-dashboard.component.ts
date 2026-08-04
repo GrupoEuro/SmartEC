@@ -216,10 +216,27 @@ export class InvoicingDashboardComponent implements OnInit {
         try {
             const genInvoice = httpsCallable(this.fns, 'generateInvoice');
             await genInvoice({ orderId: order.id });
-            this.toast.success('CFDI generado exitosamente vía Facturapi.');
+            this.toast.success('CFDI generado exitosamente vía SW Sapien.');
         } catch (error: any) {
             console.error('Invoice error:', error);
             this.toast.error(`Error PAC: ${error.message}`);
+        } finally {
+            this.processingIds.update(v => ({ ...v, [order.id]: false }));
+        }
+    }
+
+    async cancelOrderInvoice(order: any, event: Event) {
+        event.stopPropagation();
+        if (!confirm(`¿Está seguro de cancelar el CFDI ${order.invoiceUuid || ''}?`)) return;
+
+        this.processingIds.update(v => ({ ...v, [order.id]: true }));
+        try {
+            const cancelFn = httpsCallable(this.fns, 'cancelInvoice');
+            await cancelFn({ orderId: order.id, motivo: '02' });
+            this.toast.success('CFDI cancelado exitosamente ante el SAT.');
+        } catch (error: any) {
+            console.error('Cancel error:', error);
+            this.toast.error(`Error cancelando CFDI: ${error.message}`);
         } finally {
             this.processingIds.update(v => ({ ...v, [order.id]: false }));
         }

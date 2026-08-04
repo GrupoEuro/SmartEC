@@ -161,13 +161,21 @@ export class CatalogV2Component implements OnInit, OnDestroy {
     // ==========================================================================
 
     private buildPipeline() {
-        // One-time fetch; visibility guard keeps draft/private off the storefront.
+        // One-time fetch; active flag is the single source of truth for catalog visibility.
+        // publishStatus and visibility are internal workflow fields — the admin 'active' toggle
+        // is the correct public-facing gate. Products created via procurement Quick Create
+        // default to draft/private but should still be visible once they are active.
         const allProducts$ = this.productService.getProducts().pipe(
-            map(products => products.filter(p =>
-                p.active !== false &&                                          // respect admin deactivation
-                (!p.publishStatus || p.publishStatus === 'published') &&
-                (!p.visibility    || p.visibility   === 'public')
-            )),
+            map(products => {
+                const all = products.filter(p => p.active !== false);
+                if (typeof console !== 'undefined') {
+                    const hidden = products.filter(p => p.active === false);
+                    if (hidden.length > 0) {
+                        console.log(`[Catalog] ${all.length} active products loaded. ${hidden.length} hidden (active=false).`);
+                    }
+                }
+                return all;
+            }),
             shareReplay(1) // multicast so combineLatest doesn't double-subscribe
         );
 

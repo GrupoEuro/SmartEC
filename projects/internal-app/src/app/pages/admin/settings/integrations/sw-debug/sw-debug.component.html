@@ -1,0 +1,196 @@
+<div class="min-h-screen bg-slate-900 text-slate-100 p-6 space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
+        <div class="flex items-center gap-4">
+            <a routerLink="/admin/integrations" class="p-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl font-bold text-white">SW Sapien PAC — CFDI 4.0 Debugger</h1>
+                    <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Pruebas en Vivo</span>
+                </div>
+                <p class="text-sm text-slate-400 mt-1">Herramienta de diagnóstico de Autenticación, Timbrado de Comprobantes CFDI 4.0 y Generación de PDF.</p>
+            </div>
+        </div>
+        <button (click)="testAuth()" [disabled]="isTestingAuth()"
+            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition flex items-center gap-2 shadow-lg shadow-emerald-900/30">
+            <i class="fas" [class.fa-spinner]="isTestingAuth()" [class.fa-spin]="isTestingAuth()" [class.fa-key]="!isTestingAuth()"></i>
+            Probar Autenticación PAC
+        </button>
+    </div>
+
+    <!-- Auth Test Result Banner -->
+    <div *ngIf="authResult()" class="p-4 rounded-xl border animate-fade-in"
+        [ngClass]="authResult().success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'">
+        <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fas text-xl" [class.fa-check-circle]="authResult().success" [class.fa-exclamation-triangle]="!authResult().success"></i>
+                <div>
+                    <div class="font-bold text-base">{{ authResult().message || authResult().error }}</div>
+                    <div *ngIf="authResult().success" class="text-xs text-slate-400 mt-1 flex gap-4">
+                        <span>Emisor: <strong class="text-slate-200">{{ authResult().rfcEmisor }} ({{ authResult().nombreEmisor }})</strong></span>
+                        <span>C.P. Expedición: <strong class="text-slate-200">{{ authResult().lugarExpedicion }}</strong></span>
+                        <span>Entorno: <strong class="text-emerald-400">{{ authResult().isSandbox ? 'Pruebas / Sandbox' : 'Producción' }}</strong></span>
+                        <span>Token Preview: <code class="text-emerald-400 font-mono">{{ authResult().tokenPreview }}</code></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Test Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Column 1: Test Form -->
+        <div class="lg:col-span-1 bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 shadow-xl">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-3">
+                <i class="fas fa-file-invoice text-emerald-400"></i>
+                Parámetros de Prueba (Timbrado)
+            </h2>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">RFC Receptor</label>
+                <input type="text" [(ngModel)]="rfcReceptor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono text-sm uppercase">
+                <span class="text-[10px] text-slate-500 mt-0.5 block">Use XAXX010101000 para Público en General</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Nombre / Razón Social Receptor</label>
+                <input type="text" [(ngModel)]="nombreReceptor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">C.P. Receptor</label>
+                    <input type="text" [(ngModel)]="zipReceptor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Régimen Receptor</label>
+                    <input type="text" [(ngModel)]="regimenReceptor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Uso de CFDI</label>
+                <select [(ngModel)]="usoCfdi" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+                    <option value="S01">S01 - Sin efectos fiscales</option>
+                    <option value="G01">G01 - Adquisición de mercancías</option>
+                    <option value="G03">G03 - Gastos en general</option>
+                    <option value="CP01">CP01 - Pagos</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Concepto de Prueba</label>
+                <input type="text" [(ngModel)]="descripcion" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Monto Total (MXN IVA Incluido)</label>
+                <input type="number" [(ngModel)]="montoTotal" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
+            </div>
+
+            <button (click)="runStampTest()" [disabled]="isStamping()"
+                class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-lg text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40">
+                <i class="fas" [class.fa-spinner]="isStamping()" [class.fa-spin]="isStamping()" [class.fa-stamp]="!isStamping()"></i>
+                Ejecutar Timbrado de Prueba
+            </button>
+        </div>
+
+        <!-- Column 2 & 3: Results Inspector -->
+        <div class="lg:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl flex flex-col space-y-4">
+            
+            <!-- Result Tabs -->
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <div class="flex gap-2">
+                    <button (click)="activeViewTab.set('visual')"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                        [ngClass]="activeViewTab() === 'visual' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-700'">
+                        <i class="fas fa-desktop mr-1"></i> Resumen de Timbrado
+                    </button>
+                    <button (click)="activeViewTab.set('xml')"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                        [ngClass]="activeViewTab() === 'xml' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-700'">
+                        <i class="fas fa-code mr-1"></i> XML Generado
+                    </button>
+                    <button (click)="activeViewTab.set('stampedXml')"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                        [ngClass]="activeViewTab() === 'stampedXml' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-700'">
+                        <i class="fas fa-stamp mr-1"></i> XML Timbrado
+                    </button>
+                </div>
+
+                <div *ngIf="stampResult()?.pdfBase64">
+                    <button (click)="downloadPdfFromBase64(stampResult().pdfBase64)"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition flex items-center gap-1.5">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF Generado
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div *ngIf="isStamping()" class="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
+                <i class="fas fa-circle-notch fa-spin text-3xl text-emerald-400"></i>
+                <span class="text-sm font-medium">Timbrando comprobante CFDI 4.0 con SW Sapien...</span>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="!isStamping() && !stampResult()" class="flex flex-col items-center justify-center py-20 text-slate-500 space-y-3">
+                <i class="fas fa-flask text-4xl text-slate-600"></i>
+                <span class="text-sm font-medium">Presione "Ejecutar Timbrado de Prueba" para enviar una solicitud al PAC SW Sapien.</span>
+            </div>
+
+            <!-- Content Area -->
+            <div *ngIf="!isStamping() && stampResult()" class="flex-1 space-y-4 animate-fade-in">
+                
+                <!-- Status Banner -->
+                <div class="p-4 rounded-xl border flex items-center justify-between"
+                    [ngClass]="stampResult().success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'">
+                    <div class="flex items-center gap-3">
+                        <i class="fas text-xl" [class.fa-check-circle]="stampResult().success" [class.fa-times-circle]="!stampResult().success"></i>
+                        <div>
+                            <div class="font-bold text-sm">
+                                {{ stampResult().success ? '¡CFDI 4.0 Timbrado Exitosamente!' : 'Error al timbrar comprobante' }}
+                            </div>
+                            <div *ngIf="stampResult().error" class="text-xs text-red-300 font-mono mt-0.5">{{ stampResult().error }}</div>
+                        </div>
+                    </div>
+                    <span *ngIf="stampResult().uuid" class="text-xs font-mono font-bold bg-slate-900 px-3 py-1 rounded text-emerald-400 border border-slate-700">
+                        UUID: {{ stampResult().uuid }}
+                    </span>
+                </div>
+
+                <!-- Visual Tab -->
+                <div *ngIf="activeViewTab() === 'visual' && stampResult().success" class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Folio Fiscal (UUID)</span>
+                        <div class="text-xs font-mono text-emerald-400 select-all break-all bg-slate-950 p-2 rounded border border-slate-800">{{ stampResult().uuid }}</div>
+                    </div>
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Fecha de Timbrado SAT</span>
+                        <div class="text-xs font-mono text-slate-200 bg-slate-950 p-2 rounded border border-slate-800">{{ stampResult().fechaTimbrado || '—' }}</div>
+                    </div>
+                    <div class="col-span-2 bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Sello SAT</span>
+                        <div class="text-[11px] font-mono text-slate-400 select-all break-all bg-slate-950 p-2 rounded border border-slate-800 max-h-20 overflow-y-auto">{{ stampResult().selloSAT || '—' }}</div>
+                    </div>
+                </div>
+
+                <!-- Raw XML View -->
+                <div *ngIf="activeViewTab() === 'xml'" class="space-y-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase">XML Enviado al PAC (Antes de Timbrar)</span>
+                    <pre class="bg-slate-950 p-4 rounded-xl border border-slate-700 text-xs font-mono text-emerald-400 max-h-96 overflow-auto select-all whitespace-pre-wrap">{{ stampResult().rawXml }}</pre>
+                </div>
+
+                <!-- Stamped XML View -->
+                <div *ngIf="activeViewTab() === 'stampedXml'" class="space-y-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase">XML Respuesta Timbrado (Con TimbreFiscalDigital)</span>
+                    <pre class="bg-slate-950 p-4 rounded-xl border border-slate-700 text-xs font-mono text-emerald-400 max-h-96 overflow-auto select-all whitespace-pre-wrap">{{ stampResult().stampedXml }}</pre>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>

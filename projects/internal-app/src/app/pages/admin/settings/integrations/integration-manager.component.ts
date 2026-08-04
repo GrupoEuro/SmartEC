@@ -104,6 +104,17 @@ export class IntegrationManagerComponent implements OnInit {
     geminiConnected  = false;
     isSavingGemini   = false;
 
+    // ── SW Sapien PAC (CFDI 4.0) ──────────────────────────────────────────────
+    swUser = '';
+    swPassword = '';
+    swToken = '';
+    swRfcEmisor = '';
+    swNombreEmisor = '';
+    swRegimenFiscalEmisor = '601';
+    swLugarExpedicion = '';
+    swIsSandbox = true;
+    isSavingSwSapien = false;
+
     async ngOnInit() {
         this.settingsService.settings$.subscribe(settings => {
             if (settings?.shipping?.origin) {
@@ -209,6 +220,44 @@ export class IntegrationManagerComponent implements OnInit {
             this.googleDeveloperToken = conf.google.developerToken || '';
             this.googleClientId       = conf.google.clientId       || '';
             this.googleRefreshToken   = conf.google.refreshToken   || '';
+        }
+        if (conf.swsapien) {
+            this.swUser                = conf.swsapien.user || '';
+            this.swPassword            = conf.swsapien.password || '';
+            this.swToken               = conf.swsapien.token || '';
+            this.swRfcEmisor           = conf.swsapien.rfcEmisor || '';
+            this.swNombreEmisor        = conf.swsapien.nombreEmisor || '';
+            this.swRegimenFiscalEmisor = conf.swsapien.regimenFiscalEmisor || '601';
+            this.swLugarExpedicion     = conf.swsapien.lugarExpedicion || '';
+            this.swIsSandbox           = conf.swsapien.isSandbox ?? true;
+        }
+    }
+
+    async saveSwSapien() {
+        this.isSavingSwSapien = true;
+        try {
+            const current = this.config() || {};
+            await this.secrets.saveConfig({
+                ...current,
+                swsapien: {
+                    user: this.swUser.trim(),
+                    password: this.swPassword.trim(),
+                    token: this.swToken.trim(),
+                    rfcEmisor: this.swRfcEmisor.trim().toUpperCase(),
+                    nombreEmisor: this.swNombreEmisor.trim(),
+                    regimenFiscalEmisor: this.swRegimenFiscalEmisor.trim(),
+                    lugarExpedicion: this.swLugarExpedicion.trim(),
+                    isSandbox: this.swIsSandbox,
+                    connected: !!(this.swRfcEmisor && this.swNombreEmisor && this.swLugarExpedicion)
+                }
+            });
+            await this.loadConfig();
+            alert('Configuración de SW Sapien PAC guardada exitosamente.');
+        } catch (e) {
+            console.error('Error al guardar SW Sapien', e);
+            alert('Error al guardar. Revisa la consola.');
+        } finally {
+            this.isSavingSwSapien = false;
         }
     }
 

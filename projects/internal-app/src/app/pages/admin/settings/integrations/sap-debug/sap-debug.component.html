@@ -1,0 +1,181 @@
+<div class="sap-debug-container">
+    <!-- Header -->
+    <div class="debug-header">
+        <div class="header-left">
+            <a routerLink="/admin/integrations" class="back-link">← Volver a Integraciones</a>
+            <h1 class="page-title">
+                SAP Business One REST API — Diagnóstico & Pruebas
+                <span class="badge proxy-badge" *ngIf="isLocalProxyActive">✦ Proxy Local Enabled</span>
+            </h1>
+            <p class="page-sub">Herramienta de diagnóstico de conectividad, autenticación JWT, sincronización de catálogo/inventario y facturación.</p>
+        </div>
+        <div class="header-right">
+            <span class="status-pill" [class.connected]="sapConnected()" [class.disconnected]="!sapConnected()">
+                <span class="status-dot"></span>
+                {{ sapConnected() ? 'Servicio Activo' : 'Pendiente / Desconectado' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Overview Box -->
+    <div class="info-box">
+        <p>Servicio REST de integración SAP B1 — inventario, artículos, facturas. <strong>Soporta conexión segura HTTPS (Puerto 40405) y local (Puerto 40404).</strong></p>
+    </div>
+
+    <!-- Connection Parameters Card -->
+    <div class="card param-card">
+        <div class="card-title">Parámetros de Conexión REST</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>HOST / IP</label>
+                <input type="text" [(ngModel)]="sapHost" class="form-control font-mono" placeholder="apib2c.grupoeuro.com.mx">
+            </div>
+            <div class="form-group">
+                <label>PUERTO</label>
+                <input type="text" [(ngModel)]="sapPort" class="form-control font-mono" placeholder="40405">
+            </div>
+            <div class="form-group full-width">
+                <label>API KEY DE AUTENTICACIÓN</label>
+                <input type="password" [(ngModel)]="apiKey" class="form-control font-mono" placeholder="fe141323-78b8-435d-b105-b0f645353d92">
+            </div>
+
+            <div class="form-group full-width mt-2">
+                <label class="flex justify-between items-center text-slate-300">
+                    <span>FECHA DE CONTABILIZACIÓN PARA PRUEBAS (fechaContable)</span>
+                    <span class="text-[10px] text-teal-400 font-mono">Selecciona fecha de período abierto o actual</span>
+                </label>
+                <div class="flex gap-2 items-center flex-wrap mt-1">
+                    <input type="date" [(ngModel)]="testPostingDate" class="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 font-mono text-xs w-48">
+                    
+                    <button type="button" (click)="setSampleDate('2026-06-15')" class="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold transition flex items-center gap-1">
+                        <span>🟢 2026-06-15</span>
+                        <span class="text-[10px] opacity-75">(Junio OK)</span>
+                    </button>
+
+                    <button type="button" (click)="setSampleDate('2026-05-01')" class="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold transition flex items-center gap-1">
+                        <span>🟢 2026-05-01</span>
+                        <span class="text-[10px] opacity-75">(Mayo OK)</span>
+                    </button>
+
+                    <button type="button" (click)="setSampleDate('2026-07-27')" class="px-2.5 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded text-xs font-bold transition flex items-center gap-1">
+                        <span>🔴 2026-07-27</span>
+                        <span class="text-[10px] opacity-75">(Julio Bloqueado)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interactive Action Buttons -->
+        <div class="action-bar">
+            <button class="btn btn-primary" (click)="testSapConnection()" [disabled]="isLoading()">
+                <span *ngIf="activeAction() === 'Auth/Test'" class="spinner"></span>
+                Probar Conexión (Auth/Test)
+            </button>
+            <button class="btn btn-secondary" (click)="sapLogin()" [disabled]="isLoading()">
+                <span *ngIf="activeAction() === 'Auth/Login'" class="spinner"></span>
+                Auth/Login
+            </button>
+            <button class="btn btn-outline" (click)="testSapEndpoint('Catalogos/Articulos', 'GET')" [disabled]="isLoading()">
+                Artículos (GET)
+            </button>
+            <button class="btn btn-outline" (click)="testSapEndpoint('Catalogos/Inventario', 'GET')" [disabled]="isLoading()">
+                Inventario (GET)
+            </button>
+            <button class="btn btn-outline" (click)="testSapEndpoint('MktDocs/Factura', 'POST')" [disabled]="isLoading()">
+                Facturar (POST)
+            </button>
+        </div>
+
+        <!-- Auth Status Pill -->
+        <div *ngIf="sapToken()" class="token-alert">
+            <span class="token-icon">🔒</span>
+            <div class="token-info">
+                <strong>Token JWT Activo:</strong>
+                <span class="token-preview font-mono">{{ sapToken() }}</span>
+            </div>
+        </div>
+
+        <!-- Error Banner -->
+        <div *ngIf="errorMessage()" class="error-banner">
+            <strong>❌ Error de Conexión SAP B1:</strong>
+            <p>{{ errorMessage() }}</p>
+        </div>
+    </div>
+
+    <!-- Inspection Result Card -->
+    <div *ngIf="lastResult()" class="card result-card fade-in">
+        <div class="card-header">
+            <h3>Resultado de la Petición & Diagnóstico Completo</h3>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-mono text-slate-400">🕒 {{ lastResult()?.timestamp }}</span>
+                <span class="http-status" [class.success]="lastResult()?.ok" [class.fail]="!lastResult()?.ok">
+                    HTTP {{ lastResult()?.status }} ({{ lastResult()?.time }}ms)
+                </span>
+            </div>
+        </div>
+
+        <div class="meta-grid">
+            <div class="meta-item">
+                <span class="meta-label">MÉTODOS & ENDPOINT</span>
+                <span class="meta-value font-mono">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold mr-1 bg-blue-500 text-white">
+                        {{ lastResult()?.requestMethod || 'GET' }}
+                    </span>
+                    {{ lastResult()?.endpoint }}
+                </span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">LATENCIA DE RED</span>
+                <span class="meta-value" [style.color]="(lastResult()?.time || 0) < 500 ? '#22c55e' : '#f59e0b'">{{ lastResult()?.time }}ms</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">CONTENT-TYPE</span>
+                <span class="meta-value font-mono">{{ lastResult()?.contentType }}</span>
+            </div>
+        </div>
+
+        <!-- Request Details Inspector -->
+        <div class="mt-4 p-3 bg-slate-900/80 border border-slate-700/80 rounded-lg">
+            <div class="text-xs uppercase font-bold text-slate-400 mb-2 flex items-center justify-between">
+                <span>📡 Petición Enviada (Request Details)</span>
+                <span class="font-mono text-[10px] text-slate-400">{{ lastResult()?.requestUrl }}</span>
+            </div>
+            
+            <div *ngIf="lastResult()?.requestHeaders" class="mb-2 text-[11px] font-mono text-slate-400 bg-slate-950 p-2 rounded">
+                <strong>Headers:</strong>
+                <div *ngFor="let h of lastResult()?.requestHeaders | keyvalue" class="text-slate-300">
+                    <span class="text-indigo-400">{{ h.key }}:</span> {{ h.value }}
+                </div>
+            </div>
+
+            <div *ngIf="lastResult()?.requestBody" class="text-[11px] font-mono">
+                <strong class="text-slate-400 block mb-1">Payload JSON Enviado:</strong>
+                <pre class="json-viewer bg-slate-950 p-3 rounded text-slate-300 overflow-x-auto max-h-48">{{ lastResult()?.requestBody | json }}</pre>
+            </div>
+        </div>
+
+        <!-- Response Body Inspector -->
+        <div class="response-body-wrapper mt-4" *ngIf="lastResult()?.body">
+            <div class="body-header flex justify-between items-center mb-2">
+                <span class="text-xs uppercase font-bold text-slate-400">📥 Respuesta Raw JSON del Servidor</span>
+                <span class="text-[10px] text-slate-500 font-mono">Size: {{ lastResult()?.body?.length || 0 }} bytes</span>
+            </div>
+            <pre class="json-viewer bg-slate-950 p-3 rounded text-emerald-400 font-mono text-xs overflow-x-auto max-h-96 border border-slate-800">{{ lastResult()?.body }}</pre>
+        </div>
+    </div>
+
+    <!-- Expected Endpoints Grid -->
+    <div class="card endpoints-card">
+        <div class="card-title">Endpoints Disponibles (Esperados en SAP B1 REST)</div>
+        <div class="endpoints-grid">
+            <div *ngFor="let ep of sapEndpoints" class="ep-item" (click)="ep.path === 'Auth/Login' ? sapLogin() : testSapEndpoint(ep.path, ep.method)">
+                <span class="method-tag" [class.get]="ep.method === 'GET'" [class.post]="ep.method === 'POST'">{{ ep.method }}</span>
+                <div class="ep-details">
+                    <span class="ep-path font-mono">{{ ep.path }}</span>
+                    <span class="ep-desc">{{ ep.desc }}</span>
+                    <span *ngIf="ep.params" class="ep-params font-mono">{{ ep.params }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

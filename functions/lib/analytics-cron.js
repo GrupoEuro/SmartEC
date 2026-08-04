@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = void 0;
+exports.snapshotProjectionsCallable = exports.snapshotProjections = exports.meliPriceScanDiag = exports.backfillAnalytics = exports.meliEnrichInventoryVelocityCallable = exports.meliEnrichInventoryVelocity = exports.cleanupAbandonedCheckouts = exports.aggregateDailyStats = exports.backfillMonthlyStats = exports.detectAbandonedCartsHttp = exports.detectAbandonedCarts = void 0;
 /**
  * analytics-cron.ts
  * Scheduled analytics: abandoned cart detection, daily stats aggregation,
@@ -220,7 +220,7 @@ exports.aggregateDailyStats = functions.pubsub
     .schedule('0 * * * *')
     .timeZone('America/Mexico_City')
     .onRun(async (_context) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f;
     // Force evaluation in Mexico City Timezone
     const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
     const today = new Date(nowStr);
@@ -371,6 +371,42 @@ exports.aggregateDailyStats = functions.pubsub
         catch (bqErr) {
             console.warn(`[DailyStats] BigQuery append failed for ${dateStr} (non-critical):`, bqErr);
         }
+        // ── 5b. Forecast Accuracy Feedback (ensemble + per-model) ──────────────
+        // Now that we have final actuals for dateStr, compute accuracy for:
+        //   1. The ensemble forecast (forecastRevenue) → forecastAccuracy
+        //   2. Each individual model (forecastByModel.modelA/B/C) → forecastAccuracyByModel
+        // The per-model accuracy feeds the adaptive weight computation in snapshotProjections.
+        try {
+            const dailyDocRef = shared_1.db.collection('analytics_daily').doc(dateStr);
+            const dailyDoc = await dailyDocRef.get();
+            if (dailyDoc.exists) {
+                const dailyData = dailyDoc.data();
+                const forecastRev = dailyData['forecastRevenue'];
+                if (forecastRev && forecastRev > 0 && totalSales >= 0) {
+                    const accuracy = totalSales / forecastRev;
+                    const bias = totalSales - forecastRev;
+                    // Per-model accuracy (actual / model_forecast)
+                    const byModel = dailyData['forecastByModel'];
+                    const modelAccuracy = {};
+                    if (byModel) {
+                        for (const key of ['modelA', 'modelB', 'modelC']) {
+                            const mForecast = byModel[key];
+                            if (mForecast && mForecast > 0) {
+                                modelAccuracy[key] = parseFloat((totalSales / mForecast).toFixed(4));
+                            }
+                        }
+                    }
+                    await dailyDocRef.set(Object.assign({ forecastAccuracy: parseFloat(accuracy.toFixed(4)), forecastBias: parseFloat(bias.toFixed(2)) }, (Object.keys(modelAccuracy).length > 0 ? { forecastAccuracyByModel: modelAccuracy } : {})), { merge: true });
+                    console.log(`[DailyStats] Forecast accuracy for ${dateStr}: ` +
+                        `${(accuracy * 100).toFixed(1)}% (actual=$${totalSales.toFixed(0)}, ` +
+                        `forecast=$${forecastRev.toFixed(0)}, bias=$${bias.toFixed(0)}` +
+                        `${Object.keys(modelAccuracy).length > 0 ? `, per-model: A=${(_c = modelAccuracy['modelA']) === null || _c === void 0 ? void 0 : _c.toFixed(2)}, B=${(_d = modelAccuracy['modelB']) === null || _d === void 0 ? void 0 : _d.toFixed(2)}, C=${(_e = modelAccuracy['modelC']) === null || _e === void 0 ? void 0 : _e.toFixed(2)}` : ''})`);
+                }
+            }
+        }
+        catch (accErr) {
+            console.warn(`[DailyStats] Forecast accuracy write failed for ${dateStr} (non-critical):`, accErr);
+        }
     }
     // ── 6. Re-sum current month aggregate ──────────────────────────────────
     // Instead of incrementing, we recalculate the whole month to ensure it perfectly
@@ -411,7 +447,7 @@ exports.aggregateDailyStats = functions.pubsub
             syncedAt: admin.firestore.FieldValue.serverTimestamp(),
             ordersAppended: 0,
             status: 'error',
-            errorMessage: (_c = err === null || err === void 0 ? void 0 : err.message) !== null && _c !== void 0 ? _c : 'unknown',
+            errorMessage: (_f = err === null || err === void 0 ? void 0 : err.message) !== null && _f !== void 0 ? _f : 'unknown',
         }, { merge: true });
     }
 });
@@ -1025,15 +1061,485 @@ exports.meliPriceScanDiag = functions
     console.log('[PriceIntelDiag]', report.verdict);
     return report;
 });
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── Paid Media Intelligence ──────────────────────────────────────────────────
-// Pulls Meta Ads + Google Ads snapshots daily → stores in Firestore.
-// Tokens/credentials stay server-side (config/integrations → meta / google).
+/**
+ * Fit Holt-Winters multiplicative seasonality model on a daily revenue series.
+ *
+ * @param data   Daily revenue values in chronological order. Zeros are tolerated.
+ * @param alpha  Level smoothing factor  (0 < α < 1, suggested 0.3)
+ * @param beta   Trend smoothing factor  (0 < β < 1, suggested 0.1)
+ * @param gamma  Seasonal smoothing      (0 < γ < 1, suggested 0.15)
+ * @param phi    Damping parameter (Gardner 1985) — prevents trend over-extrapolation
+ * @param period Seasonality period in days (7 for weekly)
+ * @param startDow ISO weekday (Mon=0) of data[0]
+ */
+function hwFit(data, alpha = 0.30, beta = 0.10, gamma = 0.15, phi = 0.90, period = 7, startDow = 0) {
+    if (data.length < period * 2) {
+        const avg = data.reduce((s, v) => s + v, 0) / Math.max(data.length, 1);
+        return { level: avg, trend: 0, seasonal: new Array(period).fill(1.0) };
+    }
+    const clean = data.map(v => Math.max(v, 1));
+    const p1mean = clean.slice(0, period).reduce((s, v) => s + v, 0) / period;
+    const p2mean = clean.slice(period, period * 2).reduce((s, v) => s + v, 0) / period;
+    let L = p1mean;
+    let T = (p2mean - p1mean) / period;
+    const numInitSeasons = Math.min(4, Math.floor(clean.length / period));
+    const seasonal = new Array(period).fill(0);
+    const seasonalCount = new Array(period).fill(0);
+    for (let s = 0; s < numInitSeasons; s++) {
+        const slice = clean.slice(s * period, (s + 1) * period);
+        const sliceMean = slice.reduce((a, b) => a + b, 0) / period;
+        if (sliceMean === 0)
+            continue;
+        for (let j = 0; j < period; j++) {
+            const isoJ = (startDow + s * period + j) % period;
+            seasonal[isoJ] += slice[j] / sliceMean;
+            seasonalCount[isoJ]++;
+        }
+    }
+    for (let j = 0; j < period; j++) {
+        seasonal[j] = seasonalCount[j] > 0 ? seasonal[j] / seasonalCount[j] : 1.0;
+    }
+    const sSum = seasonal.reduce((a, b) => a + b, 0);
+    if (sSum > 0)
+        for (let j = 0; j < period; j++)
+            seasonal[j] = (seasonal[j] / sSum) * period;
+    for (let t = 0; t < clean.length; t++) {
+        const isoT = (startDow + t) % period;
+        const sT = seasonal[isoT] || 1;
+        const prevL = L;
+        const prevT = T;
+        L = alpha * (clean[t] / sT) + (1 - alpha) * (prevL + phi * prevT);
+        T = beta * (L - prevL) + (1 - beta) * (phi * prevT);
+        seasonal[isoT] = gamma * (clean[t] / Math.max(L, 1)) + (1 - gamma) * sT;
+    }
+    const sSum2 = seasonal.reduce((a, b) => a + b, 0);
+    if (sSum2 > 0)
+        for (let j = 0; j < period; j++)
+            seasonal[j] = (seasonal[j] / sSum2) * period;
+    return { level: L, trend: T, seasonal };
+}
+function hwForecast(state, firstDow, h, phi = 0.90) {
+    const { level, trend, seasonal } = state;
+    const period = seasonal.length;
+    return Array.from({ length: h }, (_, i) => {
+        const isoDay = (firstDow + i) % period;
+        const dampedTrend = trend * phi * (1 - Math.pow(phi, i + 1)) / (1 - phi);
+        return Math.max(0, (level + dampedTrend) * (seasonal[isoDay] || 1));
+    });
+}
+function recentDowForecast(cyDailyActuals, cyDailyDates, targetDow) {
+    const sameDow = [];
+    for (let i = cyDailyActuals.length - 1; i >= 0 && sameDow.length < 3; i--) {
+        const dt = new Date(cyDailyDates[i] + 'T12:00:00');
+        const dow = (dt.getDay() + 6) % 7;
+        if (dow === targetDow && cyDailyActuals[i] > 0) {
+            sameDow.unshift(cyDailyActuals[i]);
+        }
+    }
+    if (sameDow.length === 0)
+        return 0;
+    if (sameDow.length === 1)
+        return sameDow[0];
+    const weights = sameDow.length === 3 ? [0.2, 0.3, 0.5] : [0.4, 0.6];
+    let ewm = 0;
+    for (let i = 0; i < sameDow.length; i++)
+        ewm += sameDow[i] * weights[i];
+    if (sameDow.length >= 2) {
+        const lastTwo = sameDow.slice(-2);
+        const weekOverWeek = lastTwo[1] / lastTwo[0];
+        const dampedMomentum = 1 + (weekOverWeek - 1) * 0.5;
+        ewm *= Math.max(0.7, Math.min(1.3, dampedMomentum));
+    }
+    return ewm;
+}
+function weightedRunRateForecast(cyDailyActuals, cyDailyDates, targetDow, dowFactors) {
+    if (cyDailyActuals.length === 0)
+        return 0;
+    const neutralRates = [];
+    for (let i = 0; i < cyDailyActuals.length; i++) {
+        if (cyDailyActuals[i] <= 0)
+            continue;
+        const dt = new Date(cyDailyDates[i] + 'T12:00:00');
+        const dow = (dt.getDay() + 6) % 7;
+        const factor = dowFactors[dow] || 1;
+        neutralRates.push(cyDailyActuals[i] / factor);
+    }
+    if (neutralRates.length === 0)
+        return 0;
+    const alpha = 0.85;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (let i = 0; i < neutralRates.length; i++) {
+        const w = Math.pow(alpha, neutralRates.length - 1 - i);
+        weightedSum += neutralRates[i] * w;
+        weightSum += w;
+    }
+    const neutralRate = weightedSum / weightSum;
+    const targetFactor = dowFactors[targetDow] || 1;
+    return Math.max(0, neutralRate * targetFactor);
+}
+function computeAdaptiveWeights(modelAccuracies, minDays = 7) {
+    const equal = { wA: 1 / 3, wB: 1 / 3, wC: 1 / 3 };
+    const validA = modelAccuracies.modelA.filter(v => v > 0 && isFinite(v));
+    const validB = modelAccuracies.modelB.filter(v => v > 0 && isFinite(v));
+    const validC = modelAccuracies.modelC.filter(v => v > 0 && isFinite(v));
+    if (validA.length < minDays || validB.length < minDays || validC.length < minDays)
+        return equal;
+    const mape = (arr) => {
+        const recent = arr.slice(-14);
+        return recent.reduce((s, v) => s + Math.abs(v - 1) * 100, 0) / recent.length;
+    };
+    const mA = Math.max(mape(validA), 0.1);
+    const mB = Math.max(mape(validB), 0.1);
+    const mC = Math.max(mape(validC), 0.1);
+    const invA = 1 / mA, invB = 1 / mB, invC = 1 / mC;
+    const total = invA + invB + invC;
+    let wA = Math.max(0.15, Math.min(0.60, invA / total));
+    let wB = Math.max(0.15, Math.min(0.60, invB / total));
+    let wC = Math.max(0.15, Math.min(0.60, invC / total));
+    const wTotal = wA + wB + wC;
+    wA /= wTotal;
+    wB /= wTotal;
+    wC /= wTotal;
+    return { wA, wB, wC };
+}
+function convergenceFactor(dayOfMonth, daysInMonth) {
+    return 1 - Math.pow(dayOfMonth / daysInMonth, 2);
+}
+function computeTrackingSignal(ensembleAccuracies, // actual/forecast ratios, recent last
+lambda = 0.3) {
+    const noSignal = {
+        signal: 0, smoothedError: 0, smoothedAbsError: 0,
+        consecutiveSameSign: 0, driftDetected: false, driftDirection: 'none',
+    };
+    const valid = ensembleAccuracies.filter(v => v > 0 && isFinite(v));
+    if (valid.length < 5)
+        return noSignal;
+    let smoothedError = 0;
+    let smoothedAbsError = 0;
+    let consecutiveSameSign = 0;
+    let lastSign = 0;
+    for (const accuracy of valid) {
+        const error = accuracy - 1; // >0 means under-predicted, <0 means over-predicted
+        smoothedError = lambda * error + (1 - lambda) * smoothedError;
+        smoothedAbsError = lambda * Math.abs(error) + (1 - lambda) * smoothedAbsError;
+        const sign = error > 0 ? 1 : error < 0 ? -1 : 0;
+        if (sign !== 0 && sign === lastSign) {
+            consecutiveSameSign++;
+        }
+        else {
+            consecutiveSameSign = 1;
+        }
+        lastSign = sign;
+    }
+    const signal = smoothedAbsError > 0.001
+        ? Math.abs(smoothedError) / smoothedAbsError
+        : 0;
+    // Drift detected: signal > 0.5 AND 5+ consecutive same-direction errors
+    const driftDetected = signal > 0.5 && consecutiveSameSign >= 5;
+    const driftDirection = !driftDetected ? 'none'
+        : smoothedError > 0 ? 'under' // actuals > forecasts → we under-predict
+            : 'over'; // actuals < forecasts → we over-predict
+    return {
+        signal: parseFloat(signal.toFixed(4)),
+        smoothedError: parseFloat(smoothedError.toFixed(6)),
+        smoothedAbsError: parseFloat(smoothedAbsError.toFixed(6)),
+        consecutiveSameSign,
+        driftDetected,
+        driftDirection,
+    };
+}
+/**
+ * Adjusts ensemble weights when tracking signal detects structural drift.
+ * Reduces Model A (HW, anchored to LY history) and boosts Model B+C (CY-reactive)
+ * to accelerate self-correction during regime changes.
+ */
+function applyDriftCorrection(weights, tracking) {
+    if (!tracking.driftDetected)
+        return weights;
+    // Severity: how strong is the drift signal (0.5 to 1.0)
+    const severity = Math.min(1.0, (tracking.signal - 0.5) * 2); // normalize 0.5-1.0 → 0-1
+    // Reduce Model A by up to 50% of its weight, redistribute to B+C
+    const aReduction = weights.wA * severity * 0.5;
+    let wA = weights.wA - aReduction;
+    let wB = weights.wB + aReduction * 0.6; // B gets 60% (most reactive)
+    let wC = weights.wC + aReduction * 0.4; // C gets 40%
+    // Re-normalize
+    const total = wA + wB + wC;
+    wA /= total;
+    wB /= total;
+    wC /= total;
+    return { wA, wB, wC };
+}
+function getEasterDate(year) {
+    const a = year % 19;
+    const b = Math.floor(year / 100), c = year % 100;
+    const d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+}
+function getCalendarEffect(date) {
+    var _a;
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const mmdd = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const FIXED_HOLIDAYS = {
+        '01-01': 0.10, '02-05': 0.65, '03-21': 0.65, '05-01': 0.15,
+        '09-16': 0.35, '11-02': 0.55, '11-20': 0.65, '12-12': 0.70,
+        '12-24': 0.25, '12-25': 0.05, '12-31': 0.30,
+    };
+    let effect = (_a = FIXED_HOLIDAYS[mmdd]) !== null && _a !== void 0 ? _a : 1.0;
+    const easter = getEasterDate(date.getFullYear());
+    const dayFromEaster = Math.round((new Date(date.getFullYear(), date.getMonth(), day).getTime() - easter.getTime()) / 86400000);
+    if (dayFromEaster === -3)
+        effect = Math.min(effect, 0.40);
+    if (dayFromEaster === -2)
+        effect = Math.min(effect, 0.20);
+    if (dayFromEaster === -1)
+        effect = Math.min(effect, 0.55);
+    if (dayFromEaster === 0)
+        effect = Math.min(effect, 0.30);
+    if (effect === 1.0) {
+        if (day >= 14 && day <= 16)
+            effect *= 1.12;
+        if (day >= 28)
+            effect *= 1.15;
+    }
+    return Math.max(0.05, Math.min(effect, 1.5));
+}
+function computeVelocityBias(actuals, forecasts) {
+    const pairs = actuals.map((a, i) => ({ a, f: forecasts[i] })).filter(p => p.f > 100 && p.a >= 0);
+    if (pairs.length < 5)
+        return 1.0;
+    const logRatios = pairs.map(p => Math.log(Math.max(p.a, 1) / p.f));
+    const geomMean = Math.exp(logRatios.reduce((s, v) => s + v, 0) / logRatios.length);
+    const bias = 0.6 + 0.4 * geomMean;
+    return Math.max(0.3, Math.min(bias, 2.5));
+}
+exports.snapshotProjections = functions.pubsub
+    .schedule('55 23 * * *')
+    .timeZone('America/Mexico_City')
+    .onRun(async (_context) => {
+    var _a, _b;
+    const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+    const today = new Date(nowStr);
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const todayDay = today.getDate();
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const toMxDs = (d) => d.toLocaleDateString('sv-SE', { timeZone: 'America/Mexico_City' });
+    const todayStr = toMxDs(today);
+    console.log(`[SnapshotProjections] Running for ${monthStr}, today=${todayDay}, daysLeft=${daysInMonth - todayDay}`);
+    const trainStart = new Date(year, month - 24, 1);
+    const trainEnd = new Date(year, month, todayDay - 1);
+    const trainStartStr = toMxDs(trainStart);
+    const trainEndStr = toMxDs(trainEnd);
+    const trainSnap = await shared_1.db.collection('analytics_daily')
+        .where('date', '>=', trainStartStr)
+        .where('date', '<=', trainEndStr)
+        .orderBy('date', 'asc')
+        .get();
+    const revByDate = {};
+    const modelAccuracyMap = {};
+    trainSnap.forEach(doc => {
+        var _a, _b, _c, _d;
+        const d = doc.data();
+        revByDate[doc.id] = (_a = d['totalRevenue']) !== null && _a !== void 0 ? _a : 0;
+        const byModel = d['forecastAccuracyByModel'];
+        if (byModel) {
+            modelAccuracyMap[doc.id] = { mA: (_b = byModel.modelA) !== null && _b !== void 0 ? _b : 0, mB: (_c = byModel.modelB) !== null && _c !== void 0 ? _c : 0, mC: (_d = byModel.modelC) !== null && _d !== void 0 ? _d : 0 };
+        }
+    });
+    const trainSeries = [];
+    const trainDates = [];
+    const cur = new Date(trainStart);
+    while (cur <= trainEnd) {
+        const ds = toMxDs(cur);
+        trainSeries.push((_a = revByDate[ds]) !== null && _a !== void 0 ? _a : 0);
+        trainDates.push(ds);
+        cur.setDate(cur.getDate() + 1);
+    }
+    if (trainSeries.length < 14) {
+        console.warn('[SnapshotProjections] Insufficient training data — aborting.');
+        return;
+    }
+    const cyMonthStart = `${monthStr}-01`;
+    const cyMonthEnd = `${monthStr}-${String(todayDay).padStart(2, '0')}`;
+    const cySnap = await shared_1.db.collection('analytics_daily')
+        .where('date', '>=', cyMonthStart)
+        .where('date', '<=', cyMonthEnd)
+        .orderBy('date', 'asc')
+        .get();
+    const cyDailyActuals = [];
+    const cyDailyDates = [];
+    cySnap.forEach(doc => {
+        var _a;
+        const d = doc.data();
+        cyDailyActuals.push((_a = d['totalRevenue']) !== null && _a !== void 0 ? _a : 0);
+        cyDailyDates.push(d['date']);
+    });
+    const last28Dates = trainDates.slice(-28);
+    const modelAcc = {
+        modelA: last28Dates.map(d => { var _a, _b; return (_b = (_a = modelAccuracyMap[d]) === null || _a === void 0 ? void 0 : _a.mA) !== null && _b !== void 0 ? _b : 0; }),
+        modelB: last28Dates.map(d => { var _a, _b; return (_b = (_a = modelAccuracyMap[d]) === null || _a === void 0 ? void 0 : _a.mB) !== null && _b !== void 0 ? _b : 0; }),
+        modelC: last28Dates.map(d => { var _a, _b; return (_b = (_a = modelAccuracyMap[d]) === null || _a === void 0 ? void 0 : _a.mC) !== null && _b !== void 0 ? _b : 0; }),
+    };
+    // Load ensemble-level accuracy for tracking signal (Trigg & Leach)
+    const ensembleAccFromSnap = [];
+    trainSnap.forEach(doc => {
+        const d = doc.data();
+        const acc = d['forecastAccuracy'];
+        if (acc && acc > 0 && isFinite(acc)) {
+            ensembleAccFromSnap.push(acc);
+        }
+    });
+    const trackingSignal = computeTrackingSignal(ensembleAccFromSnap.slice(-28));
+    const trainStartDow = (new Date(trainStartStr + 'T12:00:00-06:00').getDay() + 6) % 7;
+    const fullModel = hwFit(trainSeries, 0.30, 0.10, 0.15, 0.90, 7, trainStartDow);
+    const last14Dates = trainDates.slice(-14);
+    const last14Actuals = last14Dates.map(d => { var _a; return (_a = revByDate[d]) !== null && _a !== void 0 ? _a : 0; });
+    const preSeriesLen = trainSeries.length - 14;
+    const preSeries = trainSeries.slice(0, preSeriesLen);
+    const preModel = preSeries.length >= 14
+        ? hwFit(preSeries, 0.30, 0.10, 0.15, 0.90, 7, trainStartDow)
+        : fullModel;
+    const first14Dow = (new Date(last14Dates[0] + 'T12:00:00-06:00').getDay() + 6) % 7;
+    const last14Preds = hwForecast(preModel, first14Dow, 14, 0.90);
+    const biasCorrection = computeVelocityBias(last14Actuals, last14Preds);
+    const dowBuckets = Array.from({ length: 7 }, () => []);
+    for (let i = 0; i < cyDailyActuals.length; i++) {
+        if (cyDailyActuals[i] > 0) {
+            const dt = new Date(cyDailyDates[i] + 'T12:00:00');
+            dowBuckets[(dt.getDay() + 6) % 7].push(cyDailyActuals[i]);
+        }
+    }
+    const dowMeans = dowBuckets.map(b => b.length > 0 ? b.reduce((a, v) => a + v, 0) / b.length : 0);
+    const overallMean = dowMeans.reduce((a, v) => a + v, 0) / 7;
+    const dowFactors = overallMean > 0 ? dowMeans.map(m => m / overallMean) : new Array(7).fill(1);
+    const baseWeights = computeAdaptiveWeights(modelAcc);
+    const weights = applyDriftCorrection(baseWeights, trackingSignal);
+    const remainingDays = daysInMonth - todayDay;
+    if (remainingDays <= 0)
+        return;
+    const firstForecastDate = new Date(year, month, todayDay + 1);
+    const firstForecastDow = (firstForecastDate.getDay() + 6) % 7;
+    const hwForecasts = hwForecast(fullModel, firstForecastDow, remainingDays, 0.90);
+    console.log(`[SnapshotProjections] HW fit (damped φ=0.9): level=${fullModel.level.toFixed(0)}, ` +
+        `trend=${fullModel.trend.toFixed(2)}, ` +
+        `seasonal=[${fullModel.seasonal.map(s => s.toFixed(2)).join(',')}]`);
+    console.log(`[SnapshotProjections] Adaptive weights: A=${weights.wA.toFixed(2)}, B=${weights.wB.toFixed(2)}, C=${weights.wC.toFixed(2)}` +
+        (trackingSignal.driftDetected ? ` [DRIFT CORRECTED from A:${baseWeights.wA.toFixed(2)}/B:${baseWeights.wB.toFixed(2)}/C:${baseWeights.wC.toFixed(2)}]` : ''));
+    console.log(`[SnapshotProjections] Velocity bias: ${biasCorrection.toFixed(3)}`);
+    console.log(`[SnapshotProjections] Tracking signal: ${trackingSignal.signal.toFixed(3)}, ` +
+        `streak=${trackingSignal.consecutiveSameSign}, drift=${trackingSignal.driftDetected ? trackingSignal.driftDirection : 'none'}`);
+    // ── 3-Model Ensemble Forecast Loop ────────────────────────────────────
+    let batch = shared_1.db.batch();
+    let batchOps = 0;
+    let eomForecastSum = 0;
+    const cyMtdActuals = cyDailyActuals.reduce((s, v) => s + v, 0);
+    for (let i = 0; i < remainingDays; i++) {
+        const forecastDate = new Date(year, month, todayDay + 1 + i);
+        const dateStr = toMxDs(forecastDate);
+        const calEffect = getCalendarEffect(forecastDate);
+        const targetDow = (firstForecastDow + i) % 7;
+        // Model A: Damped HW + velocity bias + calendar
+        const modelA = Math.max(0, hwForecasts[i] * biasCorrection * calEffect);
+        // Model B: CY Recent Day-of-Week Velocity
+        const modelB = Math.max(0, recentDowForecast(cyDailyActuals, cyDailyDates, targetDow) * calEffect);
+        // Model C: DoW-Normalized Weighted Run-Rate
+        const modelC = Math.max(0, weightedRunRateForecast(cyDailyActuals, cyDailyDates, targetDow, dowFactors) * calEffect);
+        // Ensemble: adaptive weighted average
+        const ensemble = (modelA * weights.wA) + (modelB * weights.wB) + (modelC * weights.wC);
+        const finalF = Math.max(0, ensemble);
+        eomForecastSum += finalF;
+        const docRef = shared_1.db.collection('analytics_daily').doc(dateStr);
+        batch.set(docRef, {
+            date: dateStr,
+            month: monthStr,
+            forecastRevenue: parseFloat(finalF.toFixed(2)),
+            forecastMethod: 'ensemble_v2',
+            forecastUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            forecastByModel: {
+                modelA: parseFloat(modelA.toFixed(2)),
+                modelB: parseFloat(modelB.toFixed(2)),
+                modelC: parseFloat(modelC.toFixed(2)),
+            },
+            forecastWeights: {
+                wA: parseFloat(weights.wA.toFixed(4)),
+                wB: parseFloat(weights.wB.toFixed(4)),
+                wC: parseFloat(weights.wC.toFixed(4)),
+            },
+            forecastComponents: {
+                hwRaw: parseFloat(hwForecasts[i].toFixed(2)),
+                velocityBias: parseFloat(biasCorrection.toFixed(4)),
+                calendarEffect: parseFloat(calEffect.toFixed(4)),
+            },
+        }, { merge: true });
+        batchOps++;
+        if (batchOps >= 400) {
+            await batch.commit();
+            batch = shared_1.db.batch();
+            batchOps = 0;
+        }
+    }
+    // ── Write EOM projection + tracking signal to today's doc ──────────────
+    const eomProjection = cyMtdActuals + eomForecastSum;
+    const convFactor = convergenceFactor(todayDay, daysInMonth);
+    const todayDocRef = shared_1.db.collection('analytics_daily').doc(todayStr);
+    batch.set(todayDocRef, {
+        eomProjection: parseFloat(eomProjection.toFixed(2)),
+        eomConvergence: parseFloat(convFactor.toFixed(4)),
+        eomForecastMethod: 'ensemble_v2',
+        eomUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        trackingSignal: {
+            signal: trackingSignal.signal,
+            smoothedError: trackingSignal.smoothedError,
+            smoothedAbsError: trackingSignal.smoothedAbsError,
+            consecutiveSameSign: trackingSignal.consecutiveSameSign,
+            driftDetected: trackingSignal.driftDetected,
+            driftDirection: trackingSignal.driftDirection,
+        },
+    }, { merge: true });
+    batchOps++;
+    if (batchOps > 0)
+        await batch.commit();
+    console.log(`[SnapshotProjections] ✓ Wrote ${remainingDays} ensemble forecasts for ${monthStr} ` +
+        `(bias=${biasCorrection.toFixed(3)}, weights=A:${weights.wA.toFixed(2)}/B:${weights.wB.toFixed(2)}/C:${weights.wC.toFixed(2)}, ` +
+        `EOM=$${eomProjection.toFixed(0)}, first=$${(_b = hwForecasts[0]) === null || _b === void 0 ? void 0 : _b.toFixed(0)})`);
+});
+// Also expose as callable for on-demand refresh (admin only)
+exports.snapshotProjectionsCallable = functions
+    .runWith({ timeoutSeconds: 120, memory: '512MB' })
+    .https.onCall(async (_data, context) => {
+    var _a;
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in.');
+    }
+    const role = (_a = context.auth.token) === null || _a === void 0 ? void 0 : _a.role;
+    if (!['SUPER_ADMIN', 'ADMIN'].includes(role)) {
+        throw new functions.https.HttpsError('permission-denied', 'Admin required.');
+    }
+    // Re-use the same logic via a direct invocation
+    await exports.snapshotProjections.run(null);
+    return { success: true };
+});
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+// \u2500\u2500\u2500 Paid Media Intelligence \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Pulls Meta Ads + Google Ads snapshots daily \u2192 stores in Firestore.
+// Tokens/credentials stay server-side (config/integrations \u2192 meta / google).
 //
 // Firestore paths written:
-//   advertising_snapshots/{YYYY-MM-DD}/meta/{campaignId}   → MetaInsights
-//   advertising_snapshots/{YYYY-MM-DD}/google/{campaignId} → GoogleInsights
-//   advertising_cache/latest                                → PaidMediaDailySummary
-// ═══════════════════════════════════════════════════════════════════════════════
+//   advertising_snapshots/{YYYY-MM-DD}/meta/{campaignId}   \u2192 MetaInsights
+//   advertising_snapshots/{YYYY-MM-DD}/google/{campaignId} \u2192 GoogleInsights
+//   advertising_cache/latest                                \u2192 PaidMediaDailySummary
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 /** Reads paid media credentials from config/integrations */
 //# sourceMappingURL=analytics-cron.js.map

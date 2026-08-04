@@ -301,6 +301,20 @@ export const ADMIN_ROUTES: Routes = [
                 title: 'Admin | ZIP Debug'
             },
             {
+                path: 'integrations/sw-debug',
+                loadComponent: () => import('./settings/integrations/sw-debug/sw-debug.component').then(m => m.SwDebugComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'OPERATIONS', 'MANAGER'] },
+                title: 'Admin | SW Sapien Debug'
+            },
+            {
+                path: 'integrations/sap-debug',
+                loadComponent: () => import('./settings/integrations/sap-debug/sap-debug.component').then(m => m.SapDebugComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['SUPER_ADMIN', 'ADMIN', 'OPERATIONS', 'MANAGER'] },
+                title: 'Admin | SAP B1 REST Debug'
+            },
+            {
                 path: 'integrations/products',
                 loadComponent: () => import('./settings/integrations/product-link/product-link.component').then(m => m.ProductLinkComponent),
                 canActivate: [roleGuard],

@@ -297,6 +297,136 @@ export const processPayment = functions.https.onCall(async (data, context) => {
     }
 });
 
+// ─── Create Payment Link (Checkout Pro Preference) ───────────────────────────
+//
+// Callable function to generate a MercadoPago Payment Link (init_point)
+// for an existing order or dynamic order draft.
+// Returns preferenceId, paymentUrl, qrCodeUrl, and updates Firestore order if orderId provided.
+//
+export const createPaymentLink = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        console.warn('[createPaymentLink] Guest/unauthenticated call — processing with inputs.');
+    }
+
+    const { orderId, amount, description, payerEmail, items, externalReference } = data;
+
+    if (!amount || (!orderId && !externalReference)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Missing required payment link parameters (amount, orderId).');
+    }
+
+    let accessToken = process.env.MP_ACCESS_TOKEN;
+    try {
+        const snap = await db.collection('config').doc('integrations').get();
+        if (snap.exists) {
+            const mpConfig = snap.data()?.mercadopago || {};
+            if (mpConfig.accessToken) accessToken = mpConfig.accessToken;
+        }
+    } catch (err) {
+        console.warn('Could not read MP config from Firestore:', err);
+    }
+
+    if (!accessToken) {
+        throw new functions.https.HttpsError('internal', 'MercadoPago access token not configured in Firestore.');
+    }
+
+    const ref = externalReference || orderId || `order-${Date.now()}`;
+    const desc = description || `Pedido ${ref} - Eurollantas`;
+    const email = payerEmail || 'cliente@eurollantas.com.mx';
+
+    try {
+        const totalAmount = Number(Number(amount).toFixed(2));
+
+        let preferenceItems: any[];
+
+        if (Array.isArray(items) && items.length > 0) {
+            preferenceItems = items.map((it: any) => ({
+                id: String(it.productId || it.sku || 'item'),
+                title: String(it.productName || it.title || desc),
+                quantity: Number(it.quantity) || 1,
+                currency_id: 'MXN',
+                unit_price: Number(it.price || it.unit_price || amount),
+            }));
+
+            const sumItems = preferenceItems.reduce((acc: number, item: any) => acc + (item.quantity * item.unit_price), 0);
+            if (Math.abs(sumItems - totalAmount) > 0.05) {
+                preferenceItems = [{
+                    id: ref,
+                    title: `${desc} (IVA Incluido)`,
+                    quantity: 1,
+                    currency_id: 'MXN',
+                    unit_price: totalAmount,
+                }];
+            }
+        } else {
+            preferenceItems = [{
+                id: ref,
+                title: `${desc} (IVA Incluido)`,
+                quantity: 1,
+                currency_id: 'MXN',
+                unit_price: totalAmount,
+            }];
+        }
+
+        const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': `mp-pref-${ref}-${Date.now()}`,
+            },
+            body: JSON.stringify({
+                items: preferenceItems,
+                payer: { email },
+                external_reference: ref,
+                back_urls: {
+                    success: 'https://eurollantas.com.mx/checkout/success',
+                    failure: 'https://eurollantas.com.mx/checkout/failure',
+                    pending: 'https://eurollantas.com.mx/checkout/pending',
+                },
+                auto_return: 'approved',
+                statement_descriptor: 'EUROLLANTAS',
+            }),
+        });
+
+        const pref = await prefRes.json() as any;
+
+        if (!prefRes.ok || !pref.id) {
+            console.error('[createPaymentLink] Preference creation failed:', pref);
+            throw new functions.https.HttpsError(
+                'internal',
+                pref.message || pref.cause?.[0]?.description || 'Error al generar el Link de Pago en MercadoPago.'
+            );
+        }
+
+        const paymentUrl = pref.init_point || pref.sandbox_init_point;
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(paymentUrl)}`;
+
+        // If orderId was passed, update the order in Firestore
+        if (orderId) {
+            await db.collection('orders').doc(orderId).set({
+                paymentMethod: 'mercadopago_link',
+                paymentStatus: 'pending_link',
+                paymentUrl,
+                mpPreferenceId: pref.id,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true }).catch(e => console.error('[createPaymentLink] Failed to update order:', e));
+        }
+
+        return {
+            success: true,
+            preferenceId: pref.id,
+            paymentUrl,
+            sandboxUrl: pref.sandbox_init_point,
+            qrCodeUrl,
+            externalReference: ref,
+        };
+    } catch (error: any) {
+        if (error.code) throw error;
+        console.error('[createPaymentLink] Error:', error);
+        throw new functions.https.HttpsError('internal', error.message || 'Error processing request');
+    }
+});
+
 // ─── Cancel Order ─────────────────────────────────────────────────────────────
 // Customer-facing: cancels a web order within 24 hours of creation.
 // - Paid orders (paymentStatus=approved) cannot be self-cancelled — they need

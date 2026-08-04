@@ -57,7 +57,13 @@
                 <option value="low-stock">Stock bajo</option>
                 <option value="out-of-stock">Sin stock</option>
             </select>
-            <button class="btn-clear-filters" *ngIf="selectedCategory || selectedStatus || selectedStockStatus" (click)="resetFilters()">
+            <select class="filter-select" [(ngModel)]="selectedPublishStatus" (ngModelChange)="onFilterChange()">
+                <option value="">Todos los estados (catálogo)</option>
+                <option value="published">Publicado — visible en catálogo</option>
+                <option value="draft">Borrador — oculto del catálogo</option>
+                <option value="archived">Archivado</option>
+            </select>
+            <button class="btn-clear-filters" *ngIf="selectedCategory || selectedStatus || selectedStockStatus || selectedPublishStatus" (click)="resetFilters()">
                 Limpiar filtros
             </button>
         </div>
@@ -70,6 +76,10 @@
             </span>
             <div class="bulk-divider"></div>
             <div class="actions">
+                <button class="bulk-btn bulk-btn--publish" (click)="bulkPublish()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Publicar en catálogo
+                </button>
                 <button class="bulk-btn bulk-btn--activate" (click)="bulkActivate()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
                     Activar
@@ -104,6 +114,7 @@
                         <th class="sortable" (click)="onSortChange('stock')">
                             Stock <span *ngIf="sortField === 'stock'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span>
                         </th>
+                        <th class="text-center">Catálogo</th>
                         <th class="text-center">Estado</th>
                         <th class="text-right">Acciones</th>
                     </tr>
@@ -172,7 +183,25 @@
                             </div>
                         </td>
 
-                        <!-- Active toggle (new column) -->
+                        <!-- Catalog / Publish Status badge -->
+                        <td class="text-center">
+                            <span class="publish-badge"
+                                [class.pub-published]="product.publishStatus === 'published'"
+                                [class.pub-draft]="!product.publishStatus || product.publishStatus === 'draft'"
+                                [class.pub-archived]="product.publishStatus === 'archived'">
+                                <ng-container *ngIf="product.publishStatus === 'published'">Publicado</ng-container>
+                                <ng-container *ngIf="!product.publishStatus || product.publishStatus === 'draft'">Borrador</ng-container>
+                                <ng-container *ngIf="product.publishStatus === 'archived'">Archivado</ng-container>
+                            </span>
+                            <button *ngIf="!product.publishStatus || product.publishStatus !== 'published'"
+                                class="btn-publish-quick"
+                                (click)="publishSingle(product)"
+                                title="Publicar en catálogo">
+                                ↗ Publicar
+                            </button>
+                        </td>
+
+                        <!-- Active toggle -->
                         <td class="text-center">
                             <button class="toggle-active-btn"
                                     [class.is-active]="product.active"

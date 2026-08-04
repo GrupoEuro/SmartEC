@@ -197,8 +197,25 @@ export class OrderService {
                 }
             }
 
+            // Helper to recursively strip undefined properties for Firestore
+            const sanitizeForFirestore = (obj: any): any => {
+                if (obj === null || obj === undefined) return null;
+                if (typeof obj !== 'object') return obj;
+                if (obj instanceof Date || obj instanceof Timestamp) return obj;
+                if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+
+                const clean: any = {};
+                for (const key of Object.keys(obj)) {
+                    const value = obj[key];
+                    if (value !== undefined) {
+                        clean[key] = sanitizeForFirestore(value);
+                    }
+                }
+                return clean;
+            };
+
             // 2. CREATE ORDER
-            const orderData = {
+            const rawOrderData = {
                 ...order,
                 createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),
@@ -211,6 +228,8 @@ export class OrderService {
                     }
                 ]
             };
+
+            const orderData = sanitizeForFirestore(rawOrderData);
 
             const docRef = await addDoc(this.ordersCollection, orderData);
 

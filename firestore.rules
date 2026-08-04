@@ -676,13 +676,17 @@ service cloud.firestore {
                     && request.resource.data.assignedTo == null
                     && request.resource.data.priority == 'normal';
 
-      // Staff can update operational fields: status, assignedTo, tags, unreadCount, snoozedUntil
+      // Staff can update operational fields and CRM profile data
       allow update: if isStaff()
                     && request.resource.data.diff(resource.data)
                          .affectedKeys()
                          .hasOnly(['status', 'assignedTo', 'tags', 'unreadCount',
                                    'priority', 'snoozedUntil', 'resolvedAt', 'updatedAt',
-                                   'lastMessage']);
+                                   'lastMessage',
+                                   // CRM profile fields (Customer 360 edit)
+                                   'customerName', 'customerPhone', 'customerEmail',
+                                   'customerTags', 'customerId']);
+
 
       // No client-side deletes
       allow delete: if false;
@@ -704,6 +708,15 @@ service cloud.firestore {
         // Staff create (outbound reply from inbox UI)
         allow create: if isStaff();
         allow update, delete: if false;
+      }
+
+      // ── Notes subcollection ──────────────────────────────────────────────────
+      // Internal CRM notes written by staff, scoped to this conversation.
+      match /notes/{noteId} {
+        allow read:   if isStaff();
+        allow create: if isStaff();
+        allow delete: if isStaff();
+        allow update: if false;
       }
     }
 

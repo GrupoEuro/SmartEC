@@ -50,6 +50,8 @@ export class ProductListComponent implements OnInit {
     selectedBrand = '';
     selectedStatus = '';
     selectedStockStatus = '';
+    selectedPublishStatus = ''; // '' = all, 'published' = visible in catalog, 'draft' = hidden
+
 
     // Sorting
     sortField: SortField = 'date';
@@ -151,6 +153,15 @@ export class ProductListComponent implements OnInit {
             filtered = filtered.filter(p => !p.active);
         }
 
+        // Publish status filter (storefront visibility)
+        if (this.selectedPublishStatus === 'published') {
+            filtered = filtered.filter(p => p.publishStatus === 'published');
+        } else if (this.selectedPublishStatus === 'draft') {
+            filtered = filtered.filter(p => !p.publishStatus || p.publishStatus === 'draft');
+        } else if (this.selectedPublishStatus === 'archived') {
+            filtered = filtered.filter(p => p.publishStatus === 'archived');
+        }
+
         // Stock status filter
         if (this.selectedStockStatus === 'in-stock') {
             filtered = filtered.filter(p => p.inStock && p.stockQuantity > 5);
@@ -215,6 +226,7 @@ export class ProductListComponent implements OnInit {
         this.selectedBrand = '';
         this.selectedStatus = '';
         this.selectedStockStatus = '';
+        this.selectedPublishStatus = '';
         this.onFilterChange();
     }
 
@@ -312,6 +324,48 @@ export class ProductListComponent implements OnInit {
         } catch (error) {
             console.error('Error deactivating products:', error);
             this.toast.error('Error al desactivar productos');
+        }
+    }
+
+    /** Bulk-publish: sets publishStatus='published' so products appear in storefront catalog */
+    async bulkPublish() {
+        if (this.selectedProducts.size === 0) return;
+        const confirmed = await this.confirmDialog.confirm({
+            title: `¿Publicar ${this.selectedProducts.size} producto(s) en el catálogo?`,
+            message: 'Se establecerá publishStatus = published. Los productos activos serán visibles en el catálogo público.',
+            confirmText: 'Publicar',
+            type: 'info'
+        });
+        if (!confirmed) return;
+        try {
+            for (const id of this.selectedProducts) {
+                await this.productService.updateProduct(id, {
+                    publishStatus: 'published',
+                    visibility: 'public'
+                } as any);
+            }
+            this.toast.success(`${this.selectedProducts.size} producto(s) publicado(s) en el catálogo`);
+            this.selectedProducts.clear();
+            this.selectAll = false;
+            this.loadData();
+        } catch (error) {
+            console.error('Error publishing products:', error);
+            this.toast.error('Error al publicar productos');
+        }
+    }
+
+    /** Quick-publish a single product from the table row */
+    async publishSingle(product: Product) {
+        if (!product.id) return;
+        try {
+            await this.productService.updateProduct(product.id, {
+                publishStatus: 'published',
+                visibility: 'public'
+            } as any);
+            this.toast.success(`"${product.name?.es || product.name?.en}" publicado en el catálogo`);
+            this.loadData();
+        } catch (error) {
+            this.toast.error('Error al publicar producto');
         }
     }
 
